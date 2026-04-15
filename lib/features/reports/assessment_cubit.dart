@@ -1,0 +1,80 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:edukita/features/reports/assessment_model.dart';
+import 'package:edukita/features/reports/assessment_repository.dart';
+
+part 'assessment_state.dart';
+
+class AssessmentCubit extends Cubit<AssessmentState> {
+  final AssessmentRepository _repository;
+
+  AssessmentCubit(this._repository) : super(const AssessmentState());
+
+  Future<void> loadAssessments() async {
+    emit(state.copyWith(isLoading: true));
+    try {
+      final assessments = await _repository.getAllAssessments();
+      emit(
+        state.copyWith(isLoading: false, assessments: assessments, error: null),
+      );
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: e.toString()));
+    }
+  }
+
+  Future<void> addAssessment(Assessment assessment) async {
+    try {
+      await _repository.insertAssessment(assessment);
+      await loadAssessments();
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+    }
+  }
+
+  Future<void> updateAssessment(Assessment assessment) async {
+    try {
+      await _repository.updateAssessment(assessment);
+      await loadAssessments();
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+    }
+  }
+
+  Future<void> deleteAssessment(String id) async {
+    try {
+      await _repository.deleteAssessment(id);
+      await loadAssessments();
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+    }
+  }
+
+  Future<void> loadGradingScales() async {
+    emit(state.copyWith(isLoading: true));
+    try {
+      final scales = await _repository.getAllGradingScales();
+      emit(
+        state.copyWith(isLoading: false, gradingScales: scales, error: null),
+      );
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: e.toString()));
+    }
+  }
+
+  Future<void> addGradingScale(GradingScale scale) async {
+    try {
+      await _repository.insertGradingScale(scale);
+      await loadGradingScales();
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+    }
+  }
+
+  Future<void> updateGradingScale(GradingScale scale) async {
+    try {
+      await _repository.updateGradingScale(scale);
+      await loadGradingScales();
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+    }
+  }
+}
