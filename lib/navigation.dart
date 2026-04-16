@@ -9,28 +9,33 @@ import 'features/syllabus/syllabus_page.dart';
 import 'features/users/users_page.dart';
 import 'features/management/teachers_page.dart';
 
-const List<Widget> pages = <Widget>[
-  DashboardPage(),
-  UsersPage(),
-  StudentsPage(),
-  TeachersPage(),
-  SyllabusPage(),
-  StrategyPage(),
-  SchedulePage(),
-  ReportsPage(),
-];
+class NavigationItem {
+  final String label;
+  final IconData icon;
+  final Widget page;
 
-const List<BottomNavigationBarItem> navItems = [
-  BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-  BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Users'),
-  BottomNavigationBarItem(
-    icon: Icon(Icons.manage_accounts),
-    label: 'Management',
+  NavigationItem({required this.label, required this.icon, required this.page});
+}
+
+final List<NavigationItem> navigationPageItems = [
+  NavigationItem(
+    label: 'Dashboard',
+    icon: Icons.dashboard,
+    page: const DashboardPage(),
   ),
-  BottomNavigationBarItem(icon: Icon(Icons.school), label: 'Students'),
-  BottomNavigationBarItem(icon: Icon(Icons.person_3), label: 'Teachers'),
-  BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Syllabus'),
-  BottomNavigationBarItem(icon: Icon(Icons.lightbulb), label: 'Strategy'),
-  BottomNavigationBarItem(icon: Icon(Icons.schedule), label: 'Schedule'),
-  BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Reports'),
+  NavigationItem(label: 'Students', icon: Icons.school, page: StudentsPage()),
+  NavigationItem(label: 'Teachers', icon: Icons.person_3, page: TeachersPage()),
+  // NavigationItem(
+  //   label: 'Syllabus',
+  //   icon: Icons.menu_book,
+  //   page: SyllabusPage(),
+  // ),
+  // NavigationItem(
+  //   label: 'Strategy',
+  //   icon: Icons.lightbulb,
+  //   page: StrategyPage(),
+  // ),
+  // NavigationItem(label: 'Schedule', icon: Icons.schedule, page: SchedulePage()),
+  // NavigationItem(label: 'Users', icon: Icons.person, page: UsersPage()),
+  // NavigationItem(label: 'Reports', icon: Icons.bar_chart, page: ReportsPage()),
 ];

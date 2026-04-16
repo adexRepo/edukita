@@ -3,7 +3,7 @@ import 'package:uuid/uuid.dart';
 class Student {
   Student({
     String? id,
-    required this.studentNo,
+    required this.studentId,
     required this.classId,
     this.nickName,
     required this.fullName,
@@ -19,10 +19,11 @@ class Student {
     this.height,
     this.weight,
     this.photoPath,
+    this.isActive,
   }) : id = id ?? const Uuid().v4();
 
   final String id;
-  final String studentNo;
+  final String studentId;
   final String classId;
   final String? nickName;
   final String fullName;
@@ -38,10 +39,11 @@ class Student {
   final double? height;
   final double? weight;
   final String? photoPath;
+  final bool? isActive;
 
   Student copyWith({
     String? id,
-    String? studentNo,
+    String? studentId,
     String? classId,
     String? nickName,
     String? fullName,
@@ -57,10 +59,11 @@ class Student {
     double? height,
     double? weight,
     String? photoPath,
+    bool? isActive,
   }) {
     return Student(
       id: id ?? this.id,
-      studentNo: studentNo ?? this.studentNo,
+      studentId: studentId ?? this.studentId,
       classId: classId ?? this.classId,
       nickName: nickName ?? this.nickName,
       fullName: fullName ?? this.fullName,
@@ -76,13 +79,14 @@ class Student {
       height: height ?? this.height,
       weight: weight ?? this.weight,
       photoPath: photoPath ?? this.photoPath,
+      isActive: isActive ?? this.isActive,
     );
   }
 
   factory Student.fromMap(Map<String, Object?> map) {
     return Student(
       id: map['id']?.toString(),
-      studentNo: map['student_no'] as String,
+      studentId: map['student_no'] as String,
       classId: map['class_id'] as String,
       nickName: map['nick_name'] as String?,
       fullName: map['full_name'] as String,
@@ -104,7 +108,7 @@ class Student {
   Map<String, Object?> toMap() {
     return {
       'id': id,
-      'student_no': studentNo,
+      'student_no': studentId,
       'class_id': classId,
       'nick_name': nickName,
       'full_name': fullName,
@@ -125,7 +129,7 @@ class Student {
 
   factory Student.sample({required String classId}) {
     return Student(
-      studentNo: 'JKTM10001',
+      studentId: 'JKTM10001',
       classId: classId,
       nickName: 'Budi',
       fullName: 'Budi Santoso',
@@ -141,6 +145,7 @@ class Student {
       height: 135.0,
       weight: 32.0,
       photoPath: null,
+      isActive: true,
     );
   }
 }

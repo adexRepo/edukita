@@ -1,6 +1,8 @@
+import 'package:edukita/core/helper/validation_helper.dart';
 import 'package:edukita/features/management/class_model.dart';
 import 'package:edukita/features/students/student_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 typedef StudentFormSubmit = void Function(Student student);
 
@@ -47,7 +49,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
     final student = widget.initialStudent;
     _studentNoController = TextEditingController(
       text:
-          student?.studentNo ?? 'JKTM${DateTime.now().millisecondsSinceEpoch}',
+          student?.studentId ?? 'JKTM${DateTime.now().millisecondsSinceEpoch}',
     );
     _fullNameController = TextEditingController(text: student?.fullName ?? '');
     _nickNameController = TextEditingController(text: student?.nickName ?? '');
@@ -111,71 +113,28 @@ class _StudentFormCardState extends State<StudentFormCard> {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedClassId == null) return;
 
-    final student = widget.initialStudent != null
-        ? widget.initialStudent!.copyWith(
-            studentNo: _studentNoController.text.trim(),
-            classId: _selectedClassId!,
-            nickName: _nickNameController.text.trim().isEmpty
-                ? null
-                : _nickNameController.text.trim(),
-            fullName: _fullNameController.text.trim(),
-            joinAt: _joinAtController.text.trim(),
-            nis: _nisController.text.trim().isEmpty
-                ? null
-                : _nisController.text.trim(),
-            birthDate: _birthDateController.text.trim().isEmpty
-                ? null
-                : _birthDateController.text.trim(),
-            gender: _selectedGender?.trim().isEmpty ?? true
-                ? null
-                : _selectedGender,
-            mobileNo: _mobileNoController.text.trim().isEmpty
-                ? null
-                : _mobileNoController.text.trim(),
-            emailAddr: _emailAddrController.text.trim().isEmpty
-                ? null
-                : _emailAddrController.text.trim(),
-            shoeSize: int.tryParse(_shoeSizeController.text.trim()),
-            uniformSize: int.tryParse(_uniformSizeController.text.trim()),
-            pantsSize: int.tryParse(_pantsSizeController.text.trim()),
-            height: double.tryParse(_heightController.text.trim()),
-            weight: double.tryParse(_weightController.text.trim()),
-            photoPath: _photoPathController.text.trim().isEmpty
-                ? null
-                : _photoPathController.text.trim(),
-          )
-        : Student(
-            studentNo: _studentNoController.text.trim(),
-            classId: _selectedClassId!,
-            nickName: _nickNameController.text.trim().isEmpty
-                ? null
-                : _nickNameController.text.trim(),
-            fullName: _fullNameController.text.trim(),
-            joinAt: _joinAtController.text.trim(),
-            nis: _nisController.text.trim().isEmpty
-                ? null
-                : _nisController.text.trim(),
-            birthDate: _birthDateController.text.trim().isEmpty
-                ? null
-                : _birthDateController.text.trim(),
-            gender: _selectedGender?.trim().isEmpty ?? true
-                ? null
-                : _selectedGender,
-            mobileNo: _mobileNoController.text.trim().isEmpty
-                ? null
-                : _mobileNoController.text.trim(),
-            emailAddr: _emailAddrController.text.trim().isEmpty
-                ? null
-                : _emailAddrController.text.trim(),
-            shoeSize: int.tryParse(_shoeSizeController.text.trim()),
-            uniformSize: int.tryParse(_uniformSizeController.text.trim()),
-            pantsSize: int.tryParse(_pantsSizeController.text.trim()),
-            height: double.tryParse(_heightController.text.trim()),
-            weight: double.tryParse(_weightController.text.trim()),
-            photoPath: _photoPathController.text.trim().isEmpty
-                ? null
-                : _photoPathController.text.trim(),
-          );
+    final student =
+        (widget.initialStudent ??
+                Student(studentId: '', classId: '', fullName: '', joinAt: ''))
+            .copyWith(
+              studentId: _studentNoController.text.trim(),
+              classId: _selectedClassId!,
+              fullName: _fullNameController.text.trim(),
+              nickName: nullIfEmpty(_nickNameController.text),
+              joinAt: _joinAtController.text.trim(),
+              nis: nullIfEmpty(_nisController.text),
+              birthDate: nullIfEmpty(_birthDateController.text),
+              gender: _selectedGender,
+              mobileNo: nullIfEmpty(_mobileNoController.text),
+              emailAddr: nullIfEmpty(_emailAddrController.text),
+              shoeSize: int.tryParse(_shoeSizeController.text),
+              uniformSize: int.tryParse(_uniformSizeController.text),
+              pantsSize: int.tryParse(_pantsSizeController.text),
+              height: double.tryParse(_heightController.text),
+              weight: double.tryParse(_weightController.text),
+              photoPath: nullIfEmpty(_photoPathController.text),
+              isActive: true,
+            );
 
     widget.onSubmit(student);
   }
@@ -233,6 +192,9 @@ class _StudentFormCardState extends State<StudentFormCard> {
                   if (value == null || value.trim().isEmpty) {
                     return 'Full name is required';
                   }
+                  if (value.length < 3) {
+                    return 'Minimum 3 characters';
+                  }
                   return null;
                 },
               ),
@@ -245,8 +207,8 @@ class _StudentFormCardState extends State<StudentFormCard> {
               DropdownButtonFormField<String>(
                 initialValue: _selectedGender,
                 items: const [
-                  DropdownMenuItem(value: 'M', child: Text('M')),
-                  DropdownMenuItem(value: 'F', child: Text('F')),
+                  DropdownMenuItem(value: 'M', child: Text('Male')),
+                  DropdownMenuItem(value: 'F', child: Text('Female')),
                 ],
                 decoration: const InputDecoration(labelText: 'Gender'),
                 onChanged: (value) => setState(() => _selectedGender = value),
@@ -259,71 +221,80 @@ class _StudentFormCardState extends State<StudentFormCard> {
               const SizedBox(height: 14),
               TextFormField(
                 controller: _birthDateController,
-                decoration: const InputDecoration(
-                  labelText: 'Birth Date',
-                  hintText: 'YYYY-MM-DD',
-                ),
+                readOnly: true,
+                decoration: const InputDecoration(labelText: 'Birth Date'),
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate:
+                        DateTime.tryParse(_birthDateController.text) ??
+                        DateTime.now(),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime.now(),
+                  );
+
+                  if (date != null) {
+                    _birthDateController.text = date.toString().split(' ')[0];
+                  }
+                },
               ),
               const SizedBox(height: 14),
               TextFormField(
                 controller: _joinAtController,
                 decoration: const InputDecoration(
                   labelText: 'Join Date',
-                  hintText: 'YYYY-MM-DDTHH:MM:SS',
+                  hintText: 'YYYY-MM-DD',
                 ),
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate:
+                        DateTime.tryParse(_joinAtController.text) ??
+                        DateTime.now(),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime.now(),
+                  );
+
+                  if (date != null) {
+                    _joinAtController.text = date.toString().split(' ')[0];
+                  }
+                },
               ),
               const SizedBox(height: 14),
               TextFormField(
                 controller: _mobileNoController,
                 decoration: const InputDecoration(labelText: 'Mobile No'),
+                keyboardType: TextInputType.phone,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               ),
               const SizedBox(height: 14),
               TextFormField(
                 controller: _emailAddrController,
                 decoration: const InputDecoration(labelText: 'Email Address'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return null;
+
+                  final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                  if (!emailRegex.hasMatch(value)) {
+                    return 'Invalid email format';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 14),
               Row(
                 children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _shoeSizeController,
-                      decoration: const InputDecoration(labelText: 'Shoe Size'),
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
+                  Expanded(child: _shoeSizeField()),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _uniformSizeController,
-                      decoration: const InputDecoration(
-                        labelText: 'Uniform Size',
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
+                  Expanded(child: _uniformSizeField()),
                 ],
               ),
               const SizedBox(height: 14),
               Row(
                 children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _pantsSizeController,
-                      decoration: const InputDecoration(
-                        labelText: 'Pants Size',
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
+                  Expanded(child: _pantsSizeField()),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _heightController,
-                      decoration: const InputDecoration(labelText: 'Height'),
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
+                  Expanded(child: _heightField()),
                 ],
               ),
               const SizedBox(height: 14),
@@ -331,6 +302,12 @@ class _StudentFormCardState extends State<StudentFormCard> {
                 controller: _weightController,
                 decoration: const InputDecoration(labelText: 'Weight'),
                 keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return null;
+                  final number = int.tryParse(value);
+                  if (number == null) return 'Must be a number';
+                  return null;
+                },
               ),
               const SizedBox(height: 14),
               TextFormField(
@@ -360,4 +337,58 @@ class _StudentFormCardState extends State<StudentFormCard> {
       ),
     );
   }
+
+  TextFormField _shoeSizeField() => TextFormField(
+    controller: _shoeSizeController,
+    decoration: const InputDecoration(labelText: 'Shoe Size'),
+    keyboardType: TextInputType.number,
+    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+    validator: (value) {
+      if (value == null || value.isEmpty) return null;
+      final number = int.tryParse(value);
+      if (number == null) return 'Must be a number';
+      return null;
+    },
+  );
+
+  TextFormField _uniformSizeField() => TextFormField(
+    controller: _uniformSizeController,
+    decoration: const InputDecoration(labelText: 'Uniform Size'),
+    keyboardType: TextInputType.number,
+    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+    validator: (value) {
+      if (value == null || value.isEmpty) return null;
+      final number = int.tryParse(value);
+      if (number == null) return 'Must be a number';
+      return null;
+    },
+  );
+
+  TextFormField _pantsSizeField() => TextFormField(
+    controller: _pantsSizeController,
+    decoration: const InputDecoration(labelText: 'Pants Size'),
+    keyboardType: TextInputType.number,
+    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+    validator: (value) {
+      if (value == null || value.isEmpty) return null;
+      final number = int.tryParse(value);
+      if (number == null) return 'Must be a number';
+      return null;
+    },
+  );
+
+  TextFormField _heightField() => TextFormField(
+    controller: _heightController,
+    decoration: const InputDecoration(labelText: 'Height'),
+    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+    inputFormatters: [
+      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+    ],
+    validator: (value) {
+      if (value == null || value.isEmpty) return null;
+      final number = int.tryParse(value);
+      if (number == null) return 'Must be a number';
+      return null;
+    },
+  );
 }

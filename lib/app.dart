@@ -36,7 +36,7 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _selectedIndex = 0;
   bool _loggedIn = false;
-  bool _collapsed = false;
+  bool _collapsed = true;
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
@@ -76,11 +76,11 @@ class _HomeShellState extends State<HomeShell> {
                 Expanded(
                   child: IndexedStack(
                     index: _selectedIndex,
-                    children: pages.map((page) {
+                    children: navigationPageItems.map((item) {
                       return Center(
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 1200),
-                          child: page,
+                          child: item.page,
                         ),
                       );
                     }).toList(),
@@ -118,10 +118,10 @@ class _HomeShellState extends State<HomeShell> {
 
             Expanded(
               child: ListView.builder(
-                itemCount: navItems.length,
+                itemCount: navigationPageItems.length,
                 padding: EdgeInsets.zero,
                 itemBuilder: (context, index) {
-                  final item = navItems[index];
+                  final item = navigationPageItems[index];
                   final selected = _selectedIndex == index;
 
                   return SizedBox(
@@ -134,7 +134,7 @@ class _HomeShellState extends State<HomeShell> {
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         decoration: BoxDecoration(
                           color: selected
-                              ? const Color(0xFF48CFCB).withOpacity(0.12)
+                              ? const Color(0xFF48CFCB).withValues(alpha: 0.12)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -145,7 +145,7 @@ class _HomeShellState extends State<HomeShell> {
                               width: 70,
                               child: Center(
                                 child: Icon(
-                                  (item.icon as Icon).icon,
+                                  item.icon,
                                   size: 22,
                                   color: selected
                                       ? const Color(0xFF48CFCB)
@@ -158,7 +158,7 @@ class _HomeShellState extends State<HomeShell> {
                                 child: Padding(
                                   padding: const EdgeInsets.only(right: 3),
                                   child: Text(
-                                    item.label ?? '',
+                                    item.label,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
@@ -208,93 +208,4 @@ class _HomeShellState extends State<HomeShell> {
       ),
     );
   }
-
-  // Widget _buildSidebar() {
-  //   return AnimatedContainer(
-  //     duration: const Duration(milliseconds: 220),
-  //     curve: Curves.easeInOut,
-  //     width: _collapsed ? 70 : 220,
-  //     color: Colors.white,
-  //     child: Column(
-  //       children: [
-  //         // Toggle button
-  //         IconButton(
-  //           icon: Icon(_collapsed ? Icons.menu : Icons.menu_open),
-  //           onPressed: () {
-  //             setState(() => _collapsed = !_collapsed);
-  //           },
-  //         ),
-
-  //         const SizedBox(height: 8),
-
-  //         // Items
-  //         Expanded(
-  //           child: ListView.builder(
-  //             itemCount: navItems.length,
-  //             itemBuilder: (context, index) {
-  //               final item = navItems[index];
-  //               final selected = _selectedIndex == index;
-
-  //               return SizedBox(
-  //                 height: 44,
-  //                 child: InkWell(
-  //                   onTap: () => _onItemTapped(index),
-  //                   borderRadius: BorderRadius.circular(8),
-  //                   child: Container(
-  //                     margin: const EdgeInsets.symmetric(
-  //                       horizontal: 8,
-  //                       vertical: 4,
-  //                     ),
-  //                     padding: const EdgeInsets.symmetric(vertical: 8),
-  //                     decoration: BoxDecoration(
-  //                       color: selected
-  //                           ? const Color(0xFF48CFCB).withOpacity(0.12)
-  //                           : Colors.transparent,
-  //                       borderRadius: BorderRadius.circular(8),
-  //                     ),
-
-  //                     child: Row(
-  //                       mainAxisAlignment: _collapsed
-  //                           ? MainAxisAlignment.center
-  //                           : MainAxisAlignment.start,
-  //                       children: [
-  //                         Icon(
-  //                           (item.icon as Icon).icon,
-  //                           size: 22,
-  //                           color: selected
-  //                               ? const Color(0xFF48CFCB)
-  //                               : const Color(0xFF6B7280),
-  //                         ),
-
-  //                         // label only when expanded
-  //                         if (!_collapsed) ...[
-  //                           const SizedBox(width: 12),
-  //                           Expanded(
-  //                             child: Text(
-  //                               item.label ?? '',
-  //                               maxLines: 1,
-  //                               overflow: TextOverflow.ellipsis,
-  //                               style: TextStyle(
-  //                                 color: selected
-  //                                     ? const Color(0xFF48CFCB)
-  //                                     : const Color(0xFF374151),
-  //                                 fontWeight: selected
-  //                                     ? FontWeight.w600
-  //                                     : FontWeight.w400,
-  //                               ),
-  //                             ),
-  //                           ),
-  //                         ],
-  //                       ],
-  //                     ),
-  //                   ),
-  //                 ),
-  //               );
-  //             },
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
 }

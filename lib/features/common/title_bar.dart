@@ -34,7 +34,7 @@ Widget buildTitleBar(int selectedIndex, BuildContext context) {
                   const SizedBox(width: 12),
                   if (!isLoginPage)
                     Text(
-                      navItems[selectedIndex].label ?? '',
+                      navigationPageItems[selectedIndex].label,
                       style: const TextStyle(
                         color: Color(0xFF6B7280),
                         fontSize: 13,

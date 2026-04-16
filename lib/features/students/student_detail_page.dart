@@ -21,7 +21,7 @@ class StudentDetailPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text('Full Name: ${student.fullName}'),
-            Text('Student No: ${student.studentNo}'),
+            Text('Student No: ${student.studentId}'),
             Text('Nick Name: ${student.nickName ?? 'N/A'}'),
             Text('Date of Birth: ${student.birthDate ?? 'N/A'}'),
             Text('Gender: ${student.gender ?? 'N/A'}'),
