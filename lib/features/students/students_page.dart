@@ -140,8 +140,6 @@ class _StudentsPageState extends State<StudentsPage> {
           final stats = getSummary(students);
           final sortedStudents = sortedStudent(students);
 
-          print(studentState.items);
-
           return Column(
             children: [
               _buildTopBar(context),
