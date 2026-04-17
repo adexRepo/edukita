@@ -4,7 +4,7 @@ import 'features/dashboard/dashboard_page.dart';
 import 'features/reports/reports_page.dart';
 import 'features/schedule/schedule_page.dart';
 import 'features/strategy/strategy_page.dart';
-import 'features/students/students_page.dart';
+import 'features/students/page/students_page.dart';
 import 'features/syllabus/syllabus_page.dart';
 import 'features/users/users_page.dart';
 import 'features/management/teachers_page.dart';

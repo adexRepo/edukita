@@ -1,11 +1,38 @@
 import 'package:edukita/core/database/database_provider.dart';
+import 'package:edukita/core/database/base_repository.dart';
+import 'package:edukita/features/students/student_mapper.dart';
 import 'package:edukita/features/students/student_model.dart';
 import 'package:edukita/features/students/student_story_model.dart';
 
-class StudentRepository {
+class StudentRepository extends BaseRepository<Student> {
   final DatabaseProvider _dbProvider;
 
-  StudentRepository(this._dbProvider);
+  StudentRepository(this._dbProvider)
+    : super(table: 'students', mapper: StudentMapper());
+
+  Future<List<Student>> findByClass(String classId) async {
+    final db = await DatabaseProvider.instance.database;
+
+    final result = await db.query(
+      table,
+      where: 'class_id = ?',
+      whereArgs: [classId],
+    );
+
+    return result.map(mapper.fromMap).toList();
+  }
+
+  Future<List<Student>> search(String keyword) async {
+    final db = await DatabaseProvider.instance.database;
+
+    final result = await db.query(
+      table,
+      where: 'full_name LIKE ?',
+      whereArgs: ['%$keyword%'],
+    );
+
+    return result.map(mapper.fromMap).toList();
+  }
 
   Future<List<Student>> getAllStudents() async {
     final db = await _dbProvider.database;
