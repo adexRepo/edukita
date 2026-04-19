@@ -21,7 +21,7 @@ import '../features/schedule/schedule_model.dart';
 import '../features/schedule/schedule_repository.dart';
 import '../features/strategy/strategy_cubit.dart';
 import '../features/strategy/strategy_repository.dart';
-import '../features/students/student_model.dart';
+import 'features/students/data/student.dart';
 import '../features/syllabus/subject_cubit.dart';
 import '../features/syllabus/subject_repository.dart';
 import '../features/syllabus/syllabus_model.dart';
@@ -62,8 +62,8 @@ List<BlocProvider> getBlocProviders(DatabaseProvider databaseProvider) {
         repository: FeatureRepository<Student>(
           databaseProvider: databaseProvider,
           tableName: 'students',
-          fromMap: Student.fromMap,
-          toMap: (student) => student.toMap(),
+          fromMap: Student.fromJson,
+          toMap: (student) => student.toJson(),
         ),
       )..loadItems(),
     ),

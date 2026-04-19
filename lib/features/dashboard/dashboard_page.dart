@@ -1,6 +1,6 @@
 import 'package:edukita/features/dashboard/dashboard_cubit.dart';
 import 'package:edukita/features/management/management_page.dart';
-import 'package:edukita/features/students/page/students_page.dart';
+import 'package:edukita/features/students/persentation/students_page.dart';
 import 'package:edukita/features/users/users_page.dart';
 
 import 'package:edukita/features/syllabus/syllabus_page.dart';

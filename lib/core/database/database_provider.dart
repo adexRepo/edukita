@@ -63,25 +63,6 @@ class DatabaseProvider {
     return join(dir.path, 'edukita.db');
   }
 
-  Future<void> _ensureAdminUser(Database db) async {
-    final result = await db.query(
-      'users',
-      columns: ['COUNT(*) as count'],
-      where: 'username = ?',
-      whereArgs: ['admin'],
-    );
-    final adminCount = Sqflite.firstIntValue(result) ?? 0;
-    if (adminCount == 0) {
-      await db.insert('users', {
-        'id': const Uuid().v4(),
-        'username': 'admin',
-        'password': 'admin',
-        'nick_name': 'Admin',
-        'full_name': 'Administrator',
-      }, conflictAlgorithm: ConflictAlgorithm.ignore);
-    }
-  }
-
   Future<int> insert(String table, Map<String, Object?> values) async {
     final db = await database;
     return db.insert(table, values);

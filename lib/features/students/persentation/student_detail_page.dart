@@ -1,4 +1,4 @@
-import 'package:edukita/features/students/student_model.dart';
+import 'package:edukita/features/students/data/student.dart';
 import 'package:flutter/material.dart';
 
 class StudentDetailPage extends StatelessWidget {
@@ -27,7 +27,6 @@ class StudentDetailPage extends StatelessWidget {
             Text('Gender: ${student.gender ?? 'N/A'}'),
             Text('Phone: ${student.mobileNo ?? 'N/A'}'),
             Text('Email: ${student.emailAddr ?? 'N/A'}'),
-            // TODO: Add guardians, schools, history sections
           ],
         ),
       ),

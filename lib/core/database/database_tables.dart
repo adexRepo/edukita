@@ -81,7 +81,7 @@ class DatabaseTables {
         height REAL,
         weight REAL,
         photo_path TEXT,
-        is_active INTEGER,
+        status TEXT,
         FOREIGN KEY(class_id) REFERENCES classes(id)
       )
     ''');

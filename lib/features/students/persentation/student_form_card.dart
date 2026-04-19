@@ -1,6 +1,7 @@
+import 'package:edukita/core/helper/com_enum.dart';
 import 'package:edukita/core/helper/validation_helper.dart';
 import 'package:edukita/features/management/class_model.dart';
-import 'package:edukita/features/students/student_model.dart';
+import 'package:edukita/features/students/data/student.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -41,7 +42,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
   late final TextEditingController _weightController;
   late final TextEditingController _photoPathController;
   String? _selectedClassId;
-  String? _selectedGender;
+  Gender? _selectedGender;
 
   @override
   void initState() {
@@ -115,16 +116,23 @@ class _StudentFormCardState extends State<StudentFormCard> {
 
     final student =
         (widget.initialStudent ??
-                Student(studentId: '', classId: '', fullName: '', joinAt: ''))
+                Student(
+                  studentId: '',
+                  classId: '',
+                  fullName: '',
+                  joinAt: '',
+                  id: '',
+                  status: StudentStatus.inactive,
+                ))
             .copyWith(
               studentId: _studentNoController.text.trim(),
               classId: _selectedClassId!,
+              gender: _selectedGender!,
               fullName: _fullNameController.text.trim(),
               nickName: nullIfEmpty(_nickNameController.text),
               joinAt: _joinAtController.text.trim(),
               nis: nullIfEmpty(_nisController.text),
               birthDate: nullIfEmpty(_birthDateController.text),
-              gender: _selectedGender,
               mobileNo: nullIfEmpty(_mobileNoController.text),
               emailAddr: nullIfEmpty(_emailAddrController.text),
               shoeSize: int.tryParse(_shoeSizeController.text),
@@ -133,7 +141,6 @@ class _StudentFormCardState extends State<StudentFormCard> {
               height: double.tryParse(_heightController.text),
               weight: double.tryParse(_weightController.text),
               photoPath: nullIfEmpty(_photoPathController.text),
-              isActive: true,
             );
 
     widget.onSubmit(student);
@@ -204,19 +211,35 @@ class _StudentFormCardState extends State<StudentFormCard> {
                 decoration: const InputDecoration(labelText: 'Nick Name'),
               ),
               const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
+              DropdownButtonFormField<Gender>(
                 initialValue: _selectedGender,
-                items: const [
-                  DropdownMenuItem(value: 'M', child: Text('Male')),
-                  DropdownMenuItem(value: 'F', child: Text('Female')),
-                ],
+                items: Gender.values
+                    .map(
+                      (gender) => DropdownMenuItem(
+                        value: gender,
+                        child: Text(gender.name),
+                      ),
+                    )
+                    .toList(),
                 decoration: const InputDecoration(labelText: 'Gender'),
+                validator: (value) {
+                  if (value == null || value.toString().isEmpty) {
+                    return 'Gender is required';
+                  }
+                  return null;
+                },
                 onChanged: (value) => setState(() => _selectedGender = value),
               ),
               const SizedBox(height: 14),
               TextFormField(
                 controller: _nisController,
                 decoration: const InputDecoration(labelText: 'NIS'),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'NIS is required';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 14),
               TextFormField(
