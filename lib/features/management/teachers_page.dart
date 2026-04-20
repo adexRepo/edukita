@@ -95,12 +95,7 @@ class _TeachersPageState extends State<TeachersPage> {
                       return ListTile(
                         title: Text(teacher.fullName),
                         subtitle: Text('Email: ${teacher.email ?? 'N/A'}'),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => TeacherDetailPage(teacher: teacher),
-                          ),
-                        ),
+                        onTap: () => {},
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [

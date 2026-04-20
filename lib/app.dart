@@ -1,27 +1,35 @@
 import 'package:edukita/features/auth/login_page.dart';
 import 'package:edukita/features/common/title_bar.dart';
+import 'package:edukita/features/students/domain/student_repository.dart';
 import 'package:edukita/navigation.dart';
+import 'package:edukita/service_locator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'bloc_providers.dart';
+import 'providers.dart';
 import 'core/database/database_provider.dart';
 import 'theme/app_theme.dart';
 
-class EdukitaApp extends StatelessWidget {
+class EdukitaApp extends StatefulWidget {
   const EdukitaApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final databaseProvider = DatabaseProvider.instance;
+  State<EdukitaApp> createState() => _EdukitaAppState();
+}
 
-    return MultiBlocProvider(
-      providers: getBlocProviders(databaseProvider),
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.theme,
-        home: const HomeShell(),
-      ),
+class _EdukitaAppState extends State<EdukitaApp> {
+  @override
+  void initState() {
+    super.initState();
+    setupLocator(); // initialize get_it
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.theme,
+      home: const HomeShell(),
     );
   }
 }
@@ -80,7 +88,7 @@ class _HomeShellState extends State<HomeShell> {
                       return Center(
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 1200),
-                          child: item.page,
+                          child: item.pageBuilder(),
                         ),
                       );
                     }).toList(),
@@ -175,28 +183,6 @@ class _HomeShellState extends State<HomeShell> {
                               ),
                           ],
                         ),
-
-                        // child: Row(
-                        //   children: [
-                        //     Center(
-                        //       child: SizedBox(
-                        //         width: 40,
-                        //         child: Center(
-                        //           child: Icon(
-                        //             (item.icon as Icon).icon,
-                        //             size: 22,
-                        //             color: selected
-                        //                 ? const Color(0xFF48CFCB)
-                        //                 : const Color(0xFF6B7280),
-                        //           ),
-                        //         ),
-                        //       ),
-                        //     ),
-
-                        //     // LABEL ONLY WHEN EXPANDED
-
-                        //   ],
-                        // ),
                       ),
                     ),
                   );

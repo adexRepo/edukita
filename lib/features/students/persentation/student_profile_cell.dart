@@ -1,10 +1,11 @@
-import 'package:edukita/features/students/data/student.dart';
+import 'package:edukita/core/helper/image_helper.dart';
+import 'package:edukita/features/students/data/student_table.dart';
 import 'package:flutter/material.dart';
 
 class StudentProfileCell extends StatelessWidget {
   const StudentProfileCell({super.key, required this.student});
 
-  final Student student;
+  final StudentTable student;
 
   @override
   Widget build(BuildContext context) {
@@ -13,10 +14,7 @@ class StudentProfileCell extends StatelessWidget {
         CircleAvatar(
           radius: 18,
           backgroundColor: Colors.grey.shade200,
-          backgroundImage:
-              student.photoPath != null && student.photoPath!.isNotEmpty
-              ? NetworkImage(student.photoPath!)
-              : null,
+          backgroundImage: getImageByLocalPath(student.photoPath),
           child: student.photoPath == null || student.photoPath!.isEmpty
               ? Text(
                   student.fullName.isNotEmpty
@@ -53,7 +51,7 @@ class StudentProfileCell extends StatelessWidget {
     );
   }
 
-  String _buildSubtitle(Student s) {
-    return s.studentId;
+  String _buildSubtitle(StudentTable s) {
+    return s.studentNo;
   }
 }

@@ -13,7 +13,6 @@ void main() async {
     appWindow.alignment = Alignment.center;
     appWindow.size = initialSize;
     appWindow.minSize = initialSize;
-    appWindow.title = "Custom window with Flutter";
     appWindow.show();
   });
 

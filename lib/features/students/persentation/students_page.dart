@@ -1,16 +1,11 @@
-import 'package:edukita/core/helper/com_enum.dart';
-import 'package:edukita/features/common/clay_card.dart';
-import 'package:edukita/features/common/feature_cubit.dart';
 import 'package:edukita/features/common/feature_state.dart';
-import 'package:edukita/features/common/simple_count_item.dart';
-import 'package:edukita/features/management/class_model.dart';
 import 'package:edukita/features/students/data/student_page_data.dart';
-import 'package:edukita/features/students/persentation/student_detail_page.dart';
-import 'package:edukita/features/students/persentation/student_form_card.dart';
+import 'package:edukita/features/students/data/student_table.dart';
+import 'package:edukita/features/students/domain/student_feature_cubit.dart';
 import 'package:edukita/features/students/persentation/student_profile_cell.dart';
-import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_table.dart';
+import 'package:edukita/widgets/clay_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -25,60 +20,38 @@ class _StudentsPageState extends State<StudentsPage> {
   String? sortColumn;
   bool isAscending = true;
 
-  final int _currentPage = 0;
-  final int _rowsPerPage = 20;
-
-  @override
-  void initState() {
-    super.initState();
-    context.read<FeatureCubit<StudentPageData>>().loadItems();
-  }
-
   // ================= BUILD =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body:
-          BlocBuilder<
-            FeatureCubit<StudentPageData>,
-            FeatureState<StudentPageData>
-          >(
-            builder: (context, state) {
-              final students =
-                  generateDummyStudents(); // replace later with state.items
+      body: BlocBuilder<StudentFeatureCubit, FeatureState<StudentPageData>>(
+        builder: (context, state) {
+          return Column(
+            children: [
+              _buildTopBar(context),
 
-              final sorted = _sortStudents(students);
-
-              final totalPages = (sorted.length / _rowsPerPage).ceil();
-
-              final start = _currentPage * _rowsPerPage;
-              final end = (start + _rowsPerPage).clamp(0, sorted.length);
-
-              final paginated = sorted.sublist(start, end);
-
-              final stats = _buildStatsData(students);
-
-              return Column(
-                children: [
-                  _buildTopBar(context),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          _buildStats(stats),
-                          const SizedBox(height: 16),
-                          _buildHeader(),
-                          const SizedBox(height: 12),
-                          Expanded(child: _buildTable(paginated)),
-                        ],
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      _buildStatsFromState(
+                        state.data ?? StudentPageData.empty(),
                       ),
-                    ),
+
+                      const SizedBox(height: 16),
+                      _buildHeader(),
+                      const SizedBox(height: 12),
+
+                      Expanded(child: _buildTableSection(state)),
+                    ],
                   ),
-                ],
-              );
-            },
-          ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -101,89 +74,50 @@ class _StudentsPageState extends State<StudentsPage> {
     );
   }
 
-  // ================= TABLE =================
-  Widget _buildTable(List<Student> students) {
-    return AppTable<Student>(
-      data: students,
-      columns: [
-        AppTableColumn(
-          title: "Student Profile",
-          flex: 3,
-          cell: (s) => StudentProfileCell(student: s),
-        ),
-        AppTableColumn(
-          title: "Class & School",
-          flex: 3,
-          // sortValue: (s) => s.fullName,
-          cell: (s) => Text(s.fullName),
-        ),
-        AppTableColumn(
-          title: "Gender",
-          flex: 2,
-          cell: (s) => Text(s.gender?.toString() ?? "-"),
-        ),
-        AppTableColumn(
-          title: "Active",
-          flex: 2,
-          sortValue: (s) => (s.status == StudentStatus.active) ? 1 : 0,
-          cell: (s) => Icon(
-            (s.status == StudentStatus.active)
-                ? Icons.check_circle
-                : Icons.cancel,
-            color: (s.status == StudentStatus.active)
-                ? AppColors.success
-                : AppColors.error,
+  // ================= STATS =================
+  Widget _buildStatsFromState(StudentPageData state) {
+    return Row(
+      children: [
+        Expanded(
+          child: ClayCard(
+            title: "Total",
+            value: state.totalStudents.toString(),
           ),
         ),
-        AppTableColumn(
-          title: "Join Date",
-          flex: 3,
-          cell: (s) => Text(s.joinAt.split('T').first),
+        const SizedBox(width: 8),
+        Expanded(
+          child: ClayCard(title: "Male", value: state.maleStudents.toString()),
+        ),
+        const SizedBox(width: 8),
+
+        Expanded(
+          child: ClayCard(
+            title: "Female",
+            value: state.femaleStudents.toString(),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: ClayCard(
+            title: "Active",
+            value: state.activeStudents.toString(),
+          ),
         ),
       ],
     );
   }
 
-  // ================= STATS =================
-  Widget _buildStats(List<StatItem> stats) {
-    return Row(
-      children: List.generate(stats.length * 2 - 1, (index) {
-        if (index.isOdd) return const SizedBox(width: 16);
-
-        final stat = stats[index ~/ 2];
-
-        return Expanded(
-          child: ClayCard(title: stat.title, value: stat.value.toString()),
-        );
-      }),
-    );
-  }
-
-  List<StatItem> _buildStatsData(List<Student> students) {
-    return [
-      StatItem('Total Students', students.length),
-      StatItem('Male', students.where((e) => e.gender == Gender.male).length),
-      StatItem(
-        'Female',
-        students.where((e) => e.gender == Gender.female).length,
-      ),
-      StatItem(
-        'Active',
-        students.where((e) => e.status == StudentStatus.active).length,
-      ),
-    ];
-  }
-
   // ================= SEARCH =================
   Widget _buildHeader() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
         _buildSearchField(),
         const SizedBox(width: 8),
         _buildFilterButton(),
+        const SizedBox(width: 8),
         ElevatedButton.icon(
-          onPressed: () => _showStudentFormDialog(context),
+          onPressed: () => {},
           icon: const Icon(Icons.add),
           label: const Text('Add Student'),
         ),
@@ -220,76 +154,65 @@ class _StudentsPageState extends State<StudentsPage> {
     );
   }
 
-  // ================= SORT =================
-  List<Student> _sortStudents(List<Student> students) {
-    final list = [...students];
-
-    if (sortColumn != null) {
-      list.sort((a, b) {
-        dynamic aVal;
-        dynamic bVal;
-
-        switch (sortColumn) {
-          case 'name':
-            aVal = a.fullName;
-            bVal = b.fullName;
-            break;
-          default:
-            return 0;
-        }
-
-        return isAscending ? aVal.compareTo(bVal) : bVal.compareTo(aVal);
-      });
+  Widget _buildTableSection(FeatureState<StudentPageData> state) {
+    if (state.loading && state.data == null) {
+      return const Center(child: CircularProgressIndicator());
     }
 
-    return list;
-  }
-
-  // ================= DUMMY =================
-  List<Student> generateDummyStudents() {
-    return List.generate(21, (i) {
-      return Student(
-        studentId: 'STD${1000 + i}',
-        classId: 'class-1',
-        fullName: 'Student ${i + 1}',
-        joinAt: DateTime.now().toIso8601String(),
-        gender: i % 2 == 0 ? Gender.male : Gender.female,
-        status: i % 3 != 0 ? StudentStatus.active : StudentStatus.inactive,
-        id: 'dummy-id-${i + 1}',
-      );
-    });
-  }
-
-  // ================= FORM =================
-  Future<void> _showStudentFormDialog(BuildContext context) async {
-    final studentCubit = context.read<FeatureCubit<Student>>();
-    final classCubit = context.read<FeatureCubit<SchoolClass>>();
-
-    await classCubit.loadItems();
-
-    if (!context.mounted) return;
-
-    showDialog(
-      context: context,
-      builder: (_) {
-        return AlertDialog(
-          title: const Text('Add Student'),
-          content:
-              BlocBuilder<FeatureCubit<SchoolClass>, FeatureState<SchoolClass>>(
-                builder: (_, classState) {
-                  return StudentFormCard(
-                    availableClasses: classState.items,
-                    onSubmit: (student) async {
-                      await studentCubit.addItem(student, context);
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                      }
-                    },
-                  );
-                },
+    return AppTable<StudentTable>(
+      data: state.data?.students ?? [],
+      pageable: state.data?.pageable,
+      onPageChanged: (page) =>
+          context.read<StudentFeatureCubit>().goToPage(page),
+      columns: [
+        AppTableColumn(
+          title: "Student\nProfile",
+          flex: 2,
+          sortValue: (data) => data.fullName.codeUnitAt(0),
+          cell: (s) => StudentProfileCell(student: s),
+        ),
+        AppTableColumn(
+          title: "Class\nSchool",
+          flex: 2,
+          sortValue: (data) => data.className.codeUnitAt(0),
+          cell: (s) => Text('${s.className}\n${s.schoolName}'),
+        ),
+        AppTableColumn(
+          title: "Age\nGender",
+          flex: 1,
+          sortValue: (data) => data.age,
+          cell: (s) => Text('${s.age} y.o\n${s.gender.name.toUpperCase()}'),
+        ),
+        AppTableColumn(
+          title: "Score\nStatus",
+          flex: 1,
+          sortValue: (data) => data.age,
+          cell: (s) => Text('${s.age}/100\n${s.status.name.toUpperCase()}'),
+        ),
+        AppTableColumn(
+          title: "Join Date",
+          flex: 1,
+          sortValue: (data) =>
+              DateTime.parse(data.joinAt).millisecondsSinceEpoch,
+          cell: (s) => Text(s.joinAt),
+        ),
+        AppTableColumn(
+          title: "Actions",
+          flex: 1,
+          cell: (s) => Row(
+            children: [
+              IconButton(
+                onPressed: () => {},
+                icon: const Icon(Icons.edit, size: 18),
               ),
-        );
-      },
+              IconButton(
+                onPressed: () => {},
+                icon: const Icon(Icons.delete, size: 18),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

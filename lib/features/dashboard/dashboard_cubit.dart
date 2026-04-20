@@ -45,7 +45,6 @@ class DashboardCubit extends Cubit<DashboardStat> {
   Future<void> loadDashboard() async {
     final userCount = await databaseProvider.count('users');
     final studentCount = await databaseProvider.count('students');
-
     final syllabusCount = await databaseProvider.count('syllabus');
     final strategyCount = await databaseProvider.count('strategies');
     final scheduleCount = await databaseProvider.count('schedules');

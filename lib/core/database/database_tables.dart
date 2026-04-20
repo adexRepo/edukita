@@ -75,7 +75,7 @@ class DatabaseTables {
         gender TEXT,
         mobile_no TEXT,
         email_addr TEXT,
-        shoe_size INTEGER,
+        shoes_size INTEGER,
         uniform_size INTEGER,
         pants_size INTEGER,
         height REAL,

@@ -1,8 +1,12 @@
 import 'package:edukita/core/database/base_repository.dart';
 import 'package:edukita/core/database/database_provider.dart';
+import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/helper/sort.dart';
 import 'package:edukita/features/students/data/student.dart';
+import 'package:edukita/features/students/data/student_page_data.dart';
 import 'package:edukita/features/students/data/student_table.dart';
 import 'package:edukita/features/students/domain/student_mapper.dart';
+import 'package:edukita/features/students/domain/sudent_filter.dart';
 
 class StudentRepository extends BaseRepository<Student> {
   final DatabaseProvider _dbProvider;
@@ -10,9 +14,47 @@ class StudentRepository extends BaseRepository<Student> {
   StudentRepository(this._dbProvider)
     : super(table: 'students', mapper: StudentMapper());
 
-  Future<List<StudentTable>> inquiryStudent() async {
+  Future<List<StudentTable>> getStudents(
+    StudentFilter filter,
+    Pageable pageable,
+  ) async {
     final db = await _dbProvider.database;
-    final result = await db.rawQuery('''
+
+    final where = <String>[];
+    final args = <dynamic>[];
+
+    if (filter.keyword != null && filter.keyword!.isNotEmpty) {
+      where.add('(s.student_no = ? OR s.nis = ? OR s.full_name LIKE ?)');
+      args.addAll([filter.keyword, filter.keyword, '%${filter.keyword}%']);
+    }
+
+    if (filter.status != null) {
+      where.add('s.status = ?');
+      args.add(filter.status);
+    }
+
+    if (filter.joinAt != null) {
+      where.add('s.join_at = ?');
+      args.add(filter.joinAt);
+    }
+
+    if (filter.className != null) {
+      where.add('c.class_name LIKE ?');
+      args.add('%${filter.className}%');
+    }
+
+    if (filter.schoolName != null) {
+      where.add('sc.name LIKE ?');
+      args.add('%${filter.schoolName}%');
+    }
+
+    final whereClause = where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}';
+
+    final orderBy = pageable.buildOrderBy();
+    final limitOffset = pageable.buildLimitOffset();
+
+    final query =
+        '''
       SELECT 
         s.id,
         s.nis,
@@ -23,13 +65,59 @@ class StudentRepository extends BaseRepository<Student> {
         sc.name as school_name,
         s.gender,
         s.status,
-        s.join_at
+        s.join_at,
+        (strftime('%Y', 'now') - strftime('%Y', s.birth_date)) -
+	      (strftime('%m-%d', 'now') < strftime('%m-%d', s.birth_date)) AS age
       FROM students s
       LEFT JOIN classes c ON c.id = s.class_id
       LEFT JOIN student_schools ss ON ss.student_id = s.id
       LEFT JOIN schools sc ON sc.id = ss.school_id
-    ''');
+      $whereClause
+      $orderBy
+      $limitOffset
+      ;
+  ''';
+
+    final result = await db.rawQuery(query, args);
 
     return result.map((e) => StudentTable.fromJson(e)).toList();
+  }
+
+  Future<Map<String, dynamic>> countStudents() async {
+    final db = await _dbProvider.database;
+    final result = await db.rawQuery('''
+        SELECT 
+          COUNT(*) AS total_students,
+          COALESCE(SUM(CASE WHEN gender = 'male' THEN 1 ELSE 0 END),0) AS male_students,
+          COALESCE(SUM(CASE WHEN gender = 'female' THEN 1 ELSE 0 END),0) AS female_students,
+          COALESCE(SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END),0) AS active_students
+        FROM students;
+      ''');
+
+    return result.isNotEmpty
+        ? result.first
+        : {
+            'total_students': 0,
+            'male_students': 0,
+            'female_students': 0,
+            'active_students': 0,
+          };
+  }
+
+  Future<StudentPageData> loadItems(
+    StudentFilter filter,
+    Pageable pageable,
+  ) async {
+    final students = await getStudents(filter, pageable);
+    final counts = await countStudents();
+
+    return StudentPageData(
+      totalStudents: counts['total_students'],
+      maleStudents: counts['male_students'],
+      femaleStudents: counts['female_students'],
+      activeStudents: counts['active_students'],
+      students: students,
+      pageable: pageable,
+    );
   }
 }

@@ -1,23 +1,15 @@
 class FeatureState<T> {
-  const FeatureState({
-    this.items = const [],
-    this.loading = false,
-    this.message,
-  });
-
-  final List<T> items;
+  final T? data;
   final bool loading;
   final String? message;
 
-  FeatureState<T> copyWith({
-    List<T>? items,
-    bool? loading,
-    String? message,
-  }) {
+  const FeatureState({this.data, this.loading = false, this.message});
+
+  FeatureState<T> copyWith({T? data, bool? loading, String? message}) {
     return FeatureState<T>(
-      items: items ?? this.items,
+      data: data ?? this.data,
       loading: loading ?? this.loading,
-      message: message ?? this.message,
+      message: message,
     );
   }
 }

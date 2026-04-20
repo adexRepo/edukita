@@ -97,13 +97,7 @@ class _ClassesPageState extends State<ClassesPage> {
                         subtitle: Text(
                           'Level ${schoolClass.level} • Section ${schoolClass.section ?? '-'} • Year ${schoolClass.year}',
                         ),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                ClassDetailPage(schoolClass: schoolClass),
-                          ),
-                        ),
+                        onTap: () => {},
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [

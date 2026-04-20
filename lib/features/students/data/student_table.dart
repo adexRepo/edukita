@@ -8,13 +8,14 @@ part 'student_table.g.dart';
 abstract class StudentTable with _$StudentTable {
   const factory StudentTable({
     required String id,
-    required String studentId,
+    required String studentNo,
     required String fullName,
     required String className,
     required String schoolName,
     required Gender gender,
     required StudentStatus status,
-    required String jointDate,
+    required String joinAt,
+    required int age,
     String? nis,
     String? photoPath,
   }) = _StudentTable;

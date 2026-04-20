@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$StudentTable {
 
- String get id; String get studentId; String get fullName; String get className; String get schoolName; Gender get gender; StudentStatus get status; String get jointDate; String? get nis; String? get photoPath;
+ String get id; String get studentNo; String get fullName; String get className; String get schoolName; Gender get gender; StudentStatus get status; String get joinAt; int get age; String? get nis; String? get photoPath;
 /// Create a copy of StudentTable
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $StudentTableCopyWith<StudentTable> get copyWith => _$StudentTableCopyWithImpl<S
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is StudentTable&&(identical(other.id, id) || other.id == id)&&(identical(other.studentId, studentId) || other.studentId == studentId)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.className, className) || other.className == className)&&(identical(other.schoolName, schoolName) || other.schoolName == schoolName)&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.status, status) || other.status == status)&&(identical(other.jointDate, jointDate) || other.jointDate == jointDate)&&(identical(other.nis, nis) || other.nis == nis)&&(identical(other.photoPath, photoPath) || other.photoPath == photoPath));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is StudentTable&&(identical(other.id, id) || other.id == id)&&(identical(other.studentNo, studentNo) || other.studentNo == studentNo)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.className, className) || other.className == className)&&(identical(other.schoolName, schoolName) || other.schoolName == schoolName)&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.status, status) || other.status == status)&&(identical(other.joinAt, joinAt) || other.joinAt == joinAt)&&(identical(other.age, age) || other.age == age)&&(identical(other.nis, nis) || other.nis == nis)&&(identical(other.photoPath, photoPath) || other.photoPath == photoPath));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,studentId,fullName,className,schoolName,gender,status,jointDate,nis,photoPath);
+int get hashCode => Object.hash(runtimeType,id,studentNo,fullName,className,schoolName,gender,status,joinAt,age,nis,photoPath);
 
 @override
 String toString() {
-  return 'StudentTable(id: $id, studentId: $studentId, fullName: $fullName, className: $className, schoolName: $schoolName, gender: $gender, status: $status, jointDate: $jointDate, nis: $nis, photoPath: $photoPath)';
+  return 'StudentTable(id: $id, studentNo: $studentNo, fullName: $fullName, className: $className, schoolName: $schoolName, gender: $gender, status: $status, joinAt: $joinAt, age: $age, nis: $nis, photoPath: $photoPath)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $StudentTableCopyWith<$Res>  {
   factory $StudentTableCopyWith(StudentTable value, $Res Function(StudentTable) _then) = _$StudentTableCopyWithImpl;
 @useResult
 $Res call({
- String id, String studentId, String fullName, String className, String schoolName, Gender gender, StudentStatus status, String jointDate, String? nis, String? photoPath
+ String id, String studentNo, String fullName, String className, String schoolName, Gender gender, StudentStatus status, String joinAt, int age, String? nis, String? photoPath
 });
 
 
@@ -65,17 +65,18 @@ class _$StudentTableCopyWithImpl<$Res>
 
 /// Create a copy of StudentTable
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? studentId = null,Object? fullName = null,Object? className = null,Object? schoolName = null,Object? gender = null,Object? status = null,Object? jointDate = null,Object? nis = freezed,Object? photoPath = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? studentNo = null,Object? fullName = null,Object? className = null,Object? schoolName = null,Object? gender = null,Object? status = null,Object? joinAt = null,Object? age = null,Object? nis = freezed,Object? photoPath = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String,studentId: null == studentId ? _self.studentId : studentId // ignore: cast_nullable_to_non_nullable
+as String,studentNo: null == studentNo ? _self.studentNo : studentNo // ignore: cast_nullable_to_non_nullable
 as String,fullName: null == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
 as String,className: null == className ? _self.className : className // ignore: cast_nullable_to_non_nullable
 as String,schoolName: null == schoolName ? _self.schoolName : schoolName // ignore: cast_nullable_to_non_nullable
 as String,gender: null == gender ? _self.gender : gender // ignore: cast_nullable_to_non_nullable
 as Gender,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as StudentStatus,jointDate: null == jointDate ? _self.jointDate : jointDate // ignore: cast_nullable_to_non_nullable
-as String,nis: freezed == nis ? _self.nis : nis // ignore: cast_nullable_to_non_nullable
+as StudentStatus,joinAt: null == joinAt ? _self.joinAt : joinAt // ignore: cast_nullable_to_non_nullable
+as String,age: null == age ? _self.age : age // ignore: cast_nullable_to_non_nullable
+as int,nis: freezed == nis ? _self.nis : nis // ignore: cast_nullable_to_non_nullable
 as String?,photoPath: freezed == photoPath ? _self.photoPath : photoPath // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
@@ -162,10 +163,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String studentId,  String fullName,  String className,  String schoolName,  Gender gender,  StudentStatus status,  String jointDate,  String? nis,  String? photoPath)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String studentNo,  String fullName,  String className,  String schoolName,  Gender gender,  StudentStatus status,  String joinAt,  int age,  String? nis,  String? photoPath)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _StudentTable() when $default != null:
-return $default(_that.id,_that.studentId,_that.fullName,_that.className,_that.schoolName,_that.gender,_that.status,_that.jointDate,_that.nis,_that.photoPath);case _:
+return $default(_that.id,_that.studentNo,_that.fullName,_that.className,_that.schoolName,_that.gender,_that.status,_that.joinAt,_that.age,_that.nis,_that.photoPath);case _:
   return orElse();
 
 }
@@ -183,10 +184,10 @@ return $default(_that.id,_that.studentId,_that.fullName,_that.className,_that.sc
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String studentId,  String fullName,  String className,  String schoolName,  Gender gender,  StudentStatus status,  String jointDate,  String? nis,  String? photoPath)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String studentNo,  String fullName,  String className,  String schoolName,  Gender gender,  StudentStatus status,  String joinAt,  int age,  String? nis,  String? photoPath)  $default,) {final _that = this;
 switch (_that) {
 case _StudentTable():
-return $default(_that.id,_that.studentId,_that.fullName,_that.className,_that.schoolName,_that.gender,_that.status,_that.jointDate,_that.nis,_that.photoPath);case _:
+return $default(_that.id,_that.studentNo,_that.fullName,_that.className,_that.schoolName,_that.gender,_that.status,_that.joinAt,_that.age,_that.nis,_that.photoPath);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -203,10 +204,10 @@ return $default(_that.id,_that.studentId,_that.fullName,_that.className,_that.sc
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String studentId,  String fullName,  String className,  String schoolName,  Gender gender,  StudentStatus status,  String jointDate,  String? nis,  String? photoPath)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String studentNo,  String fullName,  String className,  String schoolName,  Gender gender,  StudentStatus status,  String joinAt,  int age,  String? nis,  String? photoPath)?  $default,) {final _that = this;
 switch (_that) {
 case _StudentTable() when $default != null:
-return $default(_that.id,_that.studentId,_that.fullName,_that.className,_that.schoolName,_that.gender,_that.status,_that.jointDate,_that.nis,_that.photoPath);case _:
+return $default(_that.id,_that.studentNo,_that.fullName,_that.className,_that.schoolName,_that.gender,_that.status,_that.joinAt,_that.age,_that.nis,_that.photoPath);case _:
   return null;
 
 }
@@ -218,17 +219,18 @@ return $default(_that.id,_that.studentId,_that.fullName,_that.className,_that.sc
 @JsonSerializable()
 
 class _StudentTable implements StudentTable {
-  const _StudentTable({required this.id, required this.studentId, required this.fullName, required this.className, required this.schoolName, required this.gender, required this.status, required this.jointDate, this.nis, this.photoPath});
+  const _StudentTable({required this.id, required this.studentNo, required this.fullName, required this.className, required this.schoolName, required this.gender, required this.status, required this.joinAt, required this.age, this.nis, this.photoPath});
   factory _StudentTable.fromJson(Map<String, dynamic> json) => _$StudentTableFromJson(json);
 
 @override final  String id;
-@override final  String studentId;
+@override final  String studentNo;
 @override final  String fullName;
 @override final  String className;
 @override final  String schoolName;
 @override final  Gender gender;
 @override final  StudentStatus status;
-@override final  String jointDate;
+@override final  String joinAt;
+@override final  int age;
 @override final  String? nis;
 @override final  String? photoPath;
 
@@ -245,16 +247,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _StudentTable&&(identical(other.id, id) || other.id == id)&&(identical(other.studentId, studentId) || other.studentId == studentId)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.className, className) || other.className == className)&&(identical(other.schoolName, schoolName) || other.schoolName == schoolName)&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.status, status) || other.status == status)&&(identical(other.jointDate, jointDate) || other.jointDate == jointDate)&&(identical(other.nis, nis) || other.nis == nis)&&(identical(other.photoPath, photoPath) || other.photoPath == photoPath));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _StudentTable&&(identical(other.id, id) || other.id == id)&&(identical(other.studentNo, studentNo) || other.studentNo == studentNo)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.className, className) || other.className == className)&&(identical(other.schoolName, schoolName) || other.schoolName == schoolName)&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.status, status) || other.status == status)&&(identical(other.joinAt, joinAt) || other.joinAt == joinAt)&&(identical(other.age, age) || other.age == age)&&(identical(other.nis, nis) || other.nis == nis)&&(identical(other.photoPath, photoPath) || other.photoPath == photoPath));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,studentId,fullName,className,schoolName,gender,status,jointDate,nis,photoPath);
+int get hashCode => Object.hash(runtimeType,id,studentNo,fullName,className,schoolName,gender,status,joinAt,age,nis,photoPath);
 
 @override
 String toString() {
-  return 'StudentTable(id: $id, studentId: $studentId, fullName: $fullName, className: $className, schoolName: $schoolName, gender: $gender, status: $status, jointDate: $jointDate, nis: $nis, photoPath: $photoPath)';
+  return 'StudentTable(id: $id, studentNo: $studentNo, fullName: $fullName, className: $className, schoolName: $schoolName, gender: $gender, status: $status, joinAt: $joinAt, age: $age, nis: $nis, photoPath: $photoPath)';
 }
 
 
@@ -265,7 +267,7 @@ abstract mixin class _$StudentTableCopyWith<$Res> implements $StudentTableCopyWi
   factory _$StudentTableCopyWith(_StudentTable value, $Res Function(_StudentTable) _then) = __$StudentTableCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String studentId, String fullName, String className, String schoolName, Gender gender, StudentStatus status, String jointDate, String? nis, String? photoPath
+ String id, String studentNo, String fullName, String className, String schoolName, Gender gender, StudentStatus status, String joinAt, int age, String? nis, String? photoPath
 });
 
 
@@ -282,17 +284,18 @@ class __$StudentTableCopyWithImpl<$Res>
 
 /// Create a copy of StudentTable
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? studentId = null,Object? fullName = null,Object? className = null,Object? schoolName = null,Object? gender = null,Object? status = null,Object? jointDate = null,Object? nis = freezed,Object? photoPath = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? studentNo = null,Object? fullName = null,Object? className = null,Object? schoolName = null,Object? gender = null,Object? status = null,Object? joinAt = null,Object? age = null,Object? nis = freezed,Object? photoPath = freezed,}) {
   return _then(_StudentTable(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String,studentId: null == studentId ? _self.studentId : studentId // ignore: cast_nullable_to_non_nullable
+as String,studentNo: null == studentNo ? _self.studentNo : studentNo // ignore: cast_nullable_to_non_nullable
 as String,fullName: null == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
 as String,className: null == className ? _self.className : className // ignore: cast_nullable_to_non_nullable
 as String,schoolName: null == schoolName ? _self.schoolName : schoolName // ignore: cast_nullable_to_non_nullable
 as String,gender: null == gender ? _self.gender : gender // ignore: cast_nullable_to_non_nullable
 as Gender,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as StudentStatus,jointDate: null == jointDate ? _self.jointDate : jointDate // ignore: cast_nullable_to_non_nullable
-as String,nis: freezed == nis ? _self.nis : nis // ignore: cast_nullable_to_non_nullable
+as StudentStatus,joinAt: null == joinAt ? _self.joinAt : joinAt // ignore: cast_nullable_to_non_nullable
+as String,age: null == age ? _self.age : age // ignore: cast_nullable_to_non_nullable
+as int,nis: freezed == nis ? _self.nis : nis // ignore: cast_nullable_to_non_nullable
 as String?,photoPath: freezed == photoPath ? _self.photoPath : photoPath // ignore: cast_nullable_to_non_nullable
 as String?,
   ));

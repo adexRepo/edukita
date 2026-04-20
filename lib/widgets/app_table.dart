@@ -1,3 +1,4 @@
+import 'package:edukita/core/helper/pageable.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 
@@ -19,12 +20,18 @@ class AppTable<T> extends StatefulWidget {
   final List<T> data;
   final List<AppTableColumn<T>> columns;
   final int rowsPerPage;
+  final void Function(T data)? onRowTap;
+  final Pageable? pageable;
+  final void Function(int page)? onPageChanged;
 
   const AppTable({
     super.key,
     required this.data,
     required this.columns,
     this.rowsPerPage = 20,
+    this.onRowTap,
+    this.onPageChanged,
+    this.pageable = const Pageable(page: 0, size: 20, sorts: []),
   });
 
   @override
@@ -56,13 +63,6 @@ class _AppTableState<T> extends State<AppTable<T>> {
 
   @override
   Widget build(BuildContext context) {
-    final totalPages = (processedData.length / widget.rowsPerPage).ceil();
-
-    final start = currentPage * widget.rowsPerPage;
-    final end = (start + widget.rowsPerPage).clamp(0, processedData.length);
-
-    final pageData = processedData.sublist(start, end);
-
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
@@ -73,8 +73,8 @@ class _AppTableState<T> extends State<AppTable<T>> {
         children: [
           _buildHeader(),
           const Divider(height: 1),
-          Expanded(child: _buildBody(pageData, start)),
-          _buildFooter(totalPages),
+          Expanded(child: _buildBody(processedData, 0)),
+          _buildFooter(),
         ],
       ),
     );
@@ -133,14 +133,17 @@ class _AppTableState<T> extends State<AppTable<T>> {
       itemBuilder: (context, index) {
         final item = data[index];
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: List.generate(widget.columns.length, (i) {
-              final col = widget.columns[i];
-              return Expanded(flex: col.flex, child: col.cell(item));
-            }),
+        return InkWell(
+          onTap: widget.onRowTap != null ? () => widget.onRowTap!(item) : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: List.generate(widget.columns.length, (i) {
+                final col = widget.columns[i];
+                return Expanded(flex: col.flex, child: col.cell(item));
+              }),
+            ),
           ),
         );
       },
@@ -149,7 +152,10 @@ class _AppTableState<T> extends State<AppTable<T>> {
 
   // ================= FOOTER =================
 
-  Widget _buildFooter(int totalPages) {
+  Widget _buildFooter() {
+    int totalPage = widget.pageable == null ? 0 : widget.pageable!.totalPages;
+    int curretPage = widget.pageable == null ? 0 : widget.pageable!.page;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
@@ -158,20 +164,20 @@ class _AppTableState<T> extends State<AppTable<T>> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text("Page ${currentPage + 1} of $totalPages"),
+          Text("Page $curretPage of $totalPage"),
           Row(
             children: [
               IconButton(
                 icon: const Icon(Icons.chevron_left),
-                onPressed: currentPage == 0
+                onPressed: curretPage == 0
                     ? null
-                    : () => setState(() => currentPage--),
+                    : () => widget.onPageChanged?.call(curretPage - 1),
               ),
               IconButton(
                 icon: const Icon(Icons.chevron_right),
-                onPressed: currentPage >= totalPages - 1
+                onPressed: curretPage >= totalPage - 1
                     ? null
-                    : () => setState(() => currentPage++),
+                    : () => widget.onPageChanged?.call(curretPage + 1),
               ),
             ],
           ),

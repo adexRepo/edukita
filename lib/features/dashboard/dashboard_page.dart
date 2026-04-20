@@ -61,78 +61,43 @@ class DashboardPage extends StatelessWidget {
                           label: 'Management',
                           value: 0,
                           icon: Icons.manage_accounts,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ManagementPage(),
-                            ),
-                          ),
+                          onTap: () => {},
                         ),
                         _StatCard(
                           label: 'Users',
                           value: state.userCount,
                           icon: Icons.person,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const UsersPage(),
-                            ),
-                          ),
+                          onTap: () => {},
                         ),
                         _StatCard(
                           label: 'Students',
                           value: state.studentCount,
                           icon: Icons.school,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const StudentsPage(),
-                            ),
-                          ),
+                          onTap: () => {},
                         ),
                         _StatCard(
                           label: 'Syllabus',
                           value: state.syllabusCount,
                           icon: Icons.menu_book,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const SyllabusPage(),
-                            ),
-                          ),
+                          onTap: () => {},
                         ),
                         _StatCard(
                           label: 'Strategy',
                           value: state.strategyCount,
                           icon: Icons.lightbulb,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const StrategyPage(),
-                            ),
-                          ),
+                          onTap: () => {},
                         ),
                         _StatCard(
                           label: 'Schedule',
                           value: state.scheduleCount,
                           icon: Icons.schedule,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const SchedulePage(),
-                            ),
-                          ),
+                          onTap: () => {},
                         ),
                         _StatCard(
                           label: 'Reports',
                           value: state.reportCount,
                           icon: Icons.bar_chart,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ReportsPage(),
-                            ),
-                          ),
+                          onTap: () => {},
                         ),
                       ],
                     );
