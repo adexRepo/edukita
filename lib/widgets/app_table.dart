@@ -164,7 +164,7 @@ class _AppTableState<T> extends State<AppTable<T>> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text("Page $curretPage of $totalPage"),
+          Text("Page ${curretPage + 1} of $totalPage"),
           Row(
             children: [
               IconButton(

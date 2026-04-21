@@ -1,15 +1,15 @@
 class StudentFilter {
-  final String? keyword; // for student_no / nis / name
-  final String? status;
-  final String? className;
-  final String? schoolName;
-  final String? joinAt;
+  final List<String>? keyword;
+  final List<String>? status;
+  final List<String>? classNames;
+  final List<String>? schoolNames;
+  final List<String>? joinAt;
 
   const StudentFilter({
     this.keyword,
     this.status,
-    this.className,
-    this.schoolName,
+    this.classNames,
+    this.schoolNames,
     this.joinAt,
   });
 }

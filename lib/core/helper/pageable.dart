@@ -28,7 +28,7 @@ class Pageable {
   }
 
   factory Pageable.empty() => const Pageable(
-    page: 0,
+    page: 1,
     size: 20,
     totalPages: 0,
     totalItems: 0,

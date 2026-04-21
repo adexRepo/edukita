@@ -1,7 +1,6 @@
 import 'package:edukita/core/database/base_repository.dart';
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/helper/pageable.dart';
-import 'package:edukita/core/helper/sort.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/students/data/student_page_data.dart';
 import 'package:edukita/features/students/data/student_table.dart';
@@ -38,14 +37,18 @@ class StudentRepository extends BaseRepository<Student> {
       args.add(filter.joinAt);
     }
 
-    if (filter.className != null) {
-      where.add('c.class_name LIKE ?');
-      args.add('%${filter.className}%');
+    if (filter.classNames != null) {
+      where.add(
+        'c.class_name IN (${filter.classNames!.map((_) => '?').join(',')})',
+      );
+      args.addAll(filter.classNames!);
     }
 
-    if (filter.schoolName != null) {
-      where.add('sc.name LIKE ?');
-      args.add('%${filter.schoolName}%');
+    if (filter.schoolNames != null) {
+      where.add(
+        'sc.name IN (${filter.schoolNames!.map((_) => '?').join(',')})',
+      );
+      args.addAll(filter.schoolNames!);
     }
 
     final whereClause = where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}';
@@ -117,7 +120,13 @@ class StudentRepository extends BaseRepository<Student> {
       femaleStudents: counts['female_students'],
       activeStudents: counts['active_students'],
       students: students,
-      pageable: pageable,
+      pageable: Pageable(
+        page: pageable.page,
+        size: pageable.size,
+        totalItems: counts['total_students'],
+        totalPages: (counts['total_students'] / pageable.size).ceil(),
+        sorts: pageable.sorts,
+      ),
     );
   }
 }
