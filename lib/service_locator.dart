@@ -16,7 +16,7 @@ Future<void> setupLocator() async {
   // Cubits (factory = new instance each time)
   getIt.registerFactory<DashboardCubit>(() => DashboardCubit(db));
 
-  getIt.registerFactory<StudentFeatureCubit>(
-    () => StudentFeatureCubit(getIt<StudentRepository>()),
+  getIt.registerFactory<StudentPageCubit>(
+    () => StudentPageCubit(getIt<StudentRepository>()),
   );
 }

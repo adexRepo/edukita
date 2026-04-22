@@ -1,8 +1,8 @@
-import 'package:edukita/features/students/data/student.dart';
+import 'package:edukita/features/students/data/student_table.dart';
 import 'package:flutter/material.dart';
 
 class StudentDetailPage extends StatelessWidget {
-  final Student student;
+  final StudentTable student;
 
   const StudentDetailPage({super.key, required this.student});
 
@@ -21,12 +21,12 @@ class StudentDetailPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text('Full Name: ${student.fullName}'),
-            Text('Student No: ${student.studentId}'),
-            Text('Nick Name: ${student.nickName ?? 'N/A'}'),
-            Text('Date of Birth: ${student.birthDate ?? 'N/A'}'),
+            Text('Student No: ${student.studentNo}'),
+            Text('Nick Name: ${student.studentNo ?? 'N/A'}'),
+            Text('Date of Birth: ${student.studentNo ?? 'N/A'}'),
             Text('Gender: ${student.gender ?? 'N/A'}'),
-            Text('Phone: ${student.mobileNo ?? 'N/A'}'),
-            Text('Email: ${student.emailAddr ?? 'N/A'}'),
+            Text('Phone: ${student.studentNo ?? 'N/A'}'),
+            Text('Email: ${student.studentNo ?? 'N/A'}'),
           ],
         ),
       ),

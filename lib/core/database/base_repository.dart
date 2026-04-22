@@ -10,6 +10,10 @@ abstract class BaseRepository<T> {
 
   Future<Database> get _db async => await DatabaseProvider.instance.database;
 
+  String placeholders(int length) {
+    return List.filled(length, '?').join(',');
+  }
+
   //  CREATE
   Future<void> insert(T entity) async {
     final db = await _db;

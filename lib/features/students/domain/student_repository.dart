@@ -22,63 +22,67 @@ class StudentRepository extends BaseRepository<Student> {
     final where = <String>[];
     final args = <dynamic>[];
 
-    if (filter.keyword != null && filter.keyword!.isNotEmpty) {
-      where.add('(s.student_no = ? OR s.nis = ? OR s.full_name LIKE ?)');
-      args.addAll([filter.keyword, filter.keyword, '%${filter.keyword}%']);
+    // 🔍 keyword (search multiple fields)
+    if (filter.keyword.isNotEmpty) {
+      where.add('''
+      (s.student_no IN (${placeholders(filter.keyword.length)}) 
+      OR s.nis IN (${placeholders(filter.keyword.length)}) 
+      OR s.full_name LIKE ?)
+    ''');
+
+      args.addAll(filter.keyword);
+      args.addAll(filter.keyword);
+      args.add('%${filter.keyword.first}%');
     }
 
-    if (filter.status != null) {
-      where.add('s.status = ?');
-      args.add(filter.status);
+    // 📌 status
+    if (filter.status.isNotEmpty) {
+      where.add('s.status IN (${placeholders(filter.status.length)})');
+      args.addAll(filter.status);
     }
 
-    if (filter.joinAt != null) {
-      where.add('s.join_at = ?');
-      args.add(filter.joinAt);
+    // 📅 join date
+    if (filter.joinAt.isNotEmpty) {
+      where.add('s.join_at IN (${placeholders(filter.joinAt.length)})');
+      args.addAll(filter.joinAt);
     }
 
-    if (filter.classNames != null) {
-      where.add(
-        'c.class_name IN (${filter.classNames!.map((_) => '?').join(',')})',
-      );
-      args.addAll(filter.classNames!);
+    // 🏫 class
+    if (filter.classNames.isNotEmpty) {
+      where.add('c.class_name IN (${placeholders(filter.classNames.length)})');
+      args.addAll(filter.classNames);
     }
 
-    if (filter.schoolNames != null) {
-      where.add(
-        'sc.name IN (${filter.schoolNames!.map((_) => '?').join(',')})',
-      );
-      args.addAll(filter.schoolNames!);
+    // 🏫 school
+    if (filter.schoolNames.isNotEmpty) {
+      where.add('sc.name IN (${placeholders(filter.schoolNames.length)})');
+      args.addAll(filter.schoolNames);
     }
 
     final whereClause = where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}';
 
-    final orderBy = pageable.buildOrderBy();
-    final limitOffset = pageable.buildLimitOffset();
-
     final query =
         '''
-      SELECT 
-        s.id,
-        s.nis,
-        s.student_no,
-        s.full_name,
-        s.photo_path,
-        c.class_name,
-        sc.name as school_name,
-        s.gender,
-        s.status,
-        s.join_at,
-        (strftime('%Y', 'now') - strftime('%Y', s.birth_date)) -
-	      (strftime('%m-%d', 'now') < strftime('%m-%d', s.birth_date)) AS age
-      FROM students s
-      LEFT JOIN classes c ON c.id = s.class_id
-      LEFT JOIN student_schools ss ON ss.student_id = s.id
-      LEFT JOIN schools sc ON sc.id = ss.school_id
-      $whereClause
-      $orderBy
-      $limitOffset
-      ;
+    SELECT 
+      s.id,
+      s.nis,
+      s.student_no,
+      s.full_name,
+      s.photo_path,
+      c.class_name,
+      sc.name as school_name,
+      s.gender,
+      s.status,
+      s.join_at,
+      (strftime('%Y', 'now') - strftime('%Y', s.birth_date)) -
+      (strftime('%m-%d', 'now') < strftime('%m-%d', s.birth_date)) AS age
+    FROM students s
+    LEFT JOIN classes c ON c.id = s.class_id
+    LEFT JOIN student_schools ss ON ss.student_id = s.id
+    LEFT JOIN schools sc ON sc.id = ss.school_id
+    $whereClause
+    ${pageable.buildOrderBy()}
+    ${pageable.buildLimitOffset()}
   ''';
 
     final result = await db.rawQuery(query, args);

@@ -5,16 +5,17 @@ import 'package:edukita/features/students/domain/student_repository.dart';
 import 'package:edukita/features/students/domain/sudent_filter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class StudentFeatureCubit extends Cubit<FeatureState<StudentPageData>> {
+class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
   final StudentRepository repo;
 
   StudentFilter _filter = const StudentFilter();
   Pageable _pageable = const Pageable(page: 0, size: 20);
 
-  StudentFeatureCubit(this.repo) : super(const FeatureState()) {
+  StudentPageCubit(this.repo) : super(const FeatureState()) {
     init();
   }
   Future<void> init() async {
+    print("i init called");
     await _fetch();
   }
 
@@ -31,6 +32,8 @@ class StudentFeatureCubit extends Cubit<FeatureState<StudentPageData>> {
   }
 
   Future<void> applyFilter(StudentFilter filter) async {
+    print("i applyFilter called");
+
     _filter = filter;
     _pageable = Pageable(page: 0, size: _pageable.size);
     await _fetch();

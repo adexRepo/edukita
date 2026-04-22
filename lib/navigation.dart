@@ -35,7 +35,7 @@ final List<NavigationItem> navigationPageItems = [
     label: 'Students',
     icon: Icons.school,
     pageBuilder: () => BlocProvider(
-      create: (_) => getIt<StudentFeatureCubit>()..init(),
+      create: (_) => getIt<StudentPageCubit>()..init(),
       child: const StudentsPage(),
     ),
   ),
