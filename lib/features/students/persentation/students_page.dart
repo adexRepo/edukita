@@ -3,7 +3,7 @@ import 'package:edukita/features/students/data/student_page_data.dart';
 import 'package:edukita/features/students/data/student_table.dart';
 import 'package:edukita/features/students/domain/student_feature_cubit.dart';
 import 'package:edukita/features/students/domain/sudent_filter.dart';
-import 'package:edukita/features/students/persentation/student_detail_page.dart';
+import 'package:edukita/features/students/persentation/detail/student_detail_page.dart';
 import 'package:edukita/features/students/persentation/student_profile_cell.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_table.dart';
@@ -165,7 +165,9 @@ class _StudentsPageState extends State<StudentsPage> {
       onRowTap: (item) {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => StudentDetailPage(student: item)),
+          MaterialPageRoute(
+            builder: (_) => StudentDetailPage(studentId: item.id),
+          ),
         );
       },
       onPageChanged: (page) => context.read<StudentPageCubit>().goToPage(page),

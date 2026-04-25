@@ -1,5 +1,5 @@
 import 'package:bitsdojo_window/bitsdojo_window.dart';
-import 'package:edukita/navigation.dart';
+import 'package:edukita/core/router/navigation.dart';
 import 'package:flutter/material.dart';
 
 Widget buildTitleBar(int selectedIndex, BuildContext context) {

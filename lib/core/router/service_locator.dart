@@ -1,8 +1,8 @@
 import 'package:get_it/get_it.dart';
-import 'core/database/database_provider.dart';
-import 'features/students/domain/student_repository.dart';
-import 'features/students/domain/student_feature_cubit.dart';
-import 'features/dashboard/dashboard_cubit.dart';
+import '../database/database_provider.dart';
+import '../../features/students/domain/student_repository.dart';
+import '../../features/students/domain/student_feature_cubit.dart';
+import '../../features/dashboard/dashboard_cubit.dart';
 
 final getIt = GetIt.instance;
 

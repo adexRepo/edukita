@@ -1,3 +1,4 @@
+import 'package:edukita/features/students/data/student_table.dart';
 import 'package:flutter/material.dart';
 
 class StudentDetailPage extends StatelessWidget {

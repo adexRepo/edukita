@@ -1,7 +1,9 @@
-﻿import 'package:edukita/app.dart';
+﻿import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:edukita/core/router/app_router.dart';
+import 'package:edukita/core/router/service_locator.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,4 +19,28 @@ void main() async {
   });
 
   runApp(const EdukitaApp());
+}
+
+class EdukitaApp extends StatefulWidget {
+  const EdukitaApp({super.key});
+
+  @override
+  State<EdukitaApp> createState() => _EdukitaAppState();
+}
+
+class _EdukitaAppState extends State<EdukitaApp> {
+  @override
+  void initState() {
+    super.initState();
+    setupLocator();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.theme,
+      routerConfig: appRouter,
+    );
+  }
 }
