@@ -1,256 +1,293 @@
-# Edukita
-
-# 📘 Requirement Sistem Informasi Baitul Hikmah  
-
-## 1. Latar Belakang & Definisi  
----  
-Baitul Hikmah (Bayt al-Hikmah) merupakan pusat pengembangan ilmu pengetahuan dan penerjemahan pada masa kejayaan peradaban Islam di Baghdad. Institusi ini menjadi simbol integrasi antara ilmu, sistem, dan manajemen pengetahuan.  
-
-Dengan semangat yang serupa, sistem ini dirancang sebagai platform manajemen informasi pendidikan terintegrasi untuk mendukung operasional dan pengambilan keputusan di lingkungan Yayasan Alkahfi.  
-
-Sistem ini berfungsi sebagai *single source of truth* dalam pengelolaan data pendidikan, guna meningkatkan kualitas pembelajaran, efisiensi operasional, dan objektivitas evaluasi.  
+# Edukita  
+## Baitul Hikmah Education Management Information System (EMIS)
 
 ---
 
-## 2. Identifikasi Permasalahan  
----  
-Berdasarkan observasi empiris dan pengalaman operasional di bidang pengajaran, ditemukan beberapa permasalahan utama:  
-
-1. Kurangnya pemahaman komprehensif terhadap karakteristik siswa.  
-2. Keterbatasan jumlah dan distribusi tenaga pengajar.  
-3. Ketidakterstandarisasian materi dan silabus antar kelas maupun institusi.  
-4. Manajemen jadwal pembelajaran yang tidak terstruktur.  
-5. Tidak adanya perencanaan dan strategi pembelajaran yang terdokumentasi dengan baik.  
-6. Evaluasi progres siswa yang bersifat subjektif dan tidak berbasis data.  
-7. Dokumentasi kegiatan yang tidak terorganisir.  
-8. Kesulitan dalam penyusunan laporan pembelajaran periodik.  
-9. Manajemen lingkungan belajar (pengondisian) yang tidak sistematis.  
-10. Data yang tidak terstruktur untuk mendukung pengambilan keputusan (misalnya penentuan penerima beasiswa).  
+# 📘 System Requirements Document  
+### *Enterprise Learning & Education Platform*
 
 ---
 
-## 3. Solusi yang Diusulkan  
----  
-Sistem ini dirancang sebagai *Education Management Information System (EMIS)* yang terintegrasi, dengan cakupan sebagai berikut:  
+## 1. Background & Definition  
 
-### 3.1 Manajemen Data Siswa  
-Menyediakan profil siswa yang komprehensif, meliputi:  
+Baitul Hikmah (Bayt al-Hikmah) was a historic center of knowledge and translation during the Islamic Golden Age in Baghdad. It represented the integration of knowledge systems, structured learning, and institutionalized intellectual development.
 
-1. Data identitas pribadi.  
-2. Latar belakang lingkungan (sekolah dan keluarga).  
-3. Data orang tua/wali.  
-4. Relasi sosial (pertemanan).  
-5. Riwayat interaksi dengan pengajar.  
-6. Riwayat akademik dan penilaian.  
-7. Dokumentasi (foto/video).  
-8. Catatan perilaku dan perkembangan.  
+Inspired by this legacy, **Edukita** is designed as a modern **Education Management Information System (EMIS)** to support operational excellence and data-driven decision-making within the Alkahfi Foundation.
 
----
+This system acts as a:
 
-### 3.2 Manajemen Data Pengajar  
-Mencakup:  
+> **Single Source of Truth (SSOT)** for all educational data across the institution.
 
-1. Profil pengajar.  
-2. Latar belakang pendidikan.  
-3. Pengalaman mengajar.  
-4. Spesialisasi bidang.  
-5. Jadwal mengajar.  
+### Key Objectives
+- Improve learning quality  
+- Standardize educational operations  
+- Enable data-driven decision-making  
+- Increase operational efficiency  
 
 ---
 
-### 3.3 Standarisasi Materi dan Silabus  
+## 2. Problem Statement  
 
-1. Penyusunan materi berbasis level/kelas.  
-2. Integrasi dengan kurikulum resmi (misalnya dari dinas pendidikan).  
-3. Penyediaan repository materi terstruktur.  
+Current educational operations face several structural challenges:
 
----
+### 📌 Core Issues
 
-### 3.4 Manajemen Jadwal Pembelajaran  
-
-1. Penjadwalan terintegrasi antara siswa, pengajar, waktu, dan lokasi.  
-2. Pengelolaan konflik jadwal.  
-3. Monitoring kehadiran.  
-
----
-
-### 3.5 Perencanaan dan Strategi Pembelajaran  
-
-Sistem menyediakan repository strategi pembelajaran yang dapat digunakan ulang, seperti:  
-
-1. Direct Instruction: Penjelasan → Latihan → Evaluasi.  
-2. Contextual Learning: Observasi → Analisis → Refleksi.  
-3. Problem-Based Learning: Identifikasi masalah → Analisis → Solusi → Evaluasi.  
-4. Gamification-Based Learning.  
-
-Tujuan: meningkatkan konsistensi dan efisiensi pengajaran.  
+- Limited understanding of student profiles and behavior  
+- Insufficient and uneven teacher distribution  
+- Lack of standardized curriculum and materials  
+- Unstructured scheduling of learning activities  
+- Absence of documented teaching strategies  
+- Subjective student evaluation processes  
+- Poor documentation of academic activities  
+- Difficulty generating periodic reports  
+- Lack of structured classroom management  
+- Insufficient data for strategic decisions (e.g., scholarships)  
 
 ---
 
-### 3.6 Manajemen Pengondisian Lingkungan Belajar  
+## 3. Proposed Solution  
 
-Meliputi:  
-
-1. Aturan disiplin.  
-2. Manajemen visual (mading, poster edukatif).  
-3. Standar perilaku dan budaya yayasan.  
-4. Aktivitas pembentukan karakter.  
+A fully integrated **Education Management Information System (EMIS)** designed to centralize all academic and operational processes.
 
 ---
 
-### 3.7 Sistem Evaluasi dan Progress Siswa  
+## 3.1 Student Management System  
 
-Penilaian berbasis data, meliputi:  
+Comprehensive student profile management:
 
-1. Nilai akademik (rapor, latihan).  
-2. Kehadiran.  
-3. Interaksi pembelajaran.  
-4. Penilaian akhlak.  
-
-Output:  
-
-1. Dashboard analitik (chart performa siswa).  
-2. Ranking siswa (akademik, akhlak, keaktifan).  
-3. Rekomendasi penerima beasiswa berbasis data.  
+- Personal identity information  
+- Family and environmental background  
+- Parent/guardian details  
+- Social relationships mapping  
+- Teacher interaction history  
+- Academic performance records  
+- Multimedia documentation (photo/video)  
+- Behavioral and development notes  
 
 ---
 
-### 3.8 Manajemen Dokumentasi  
+## 3.2 Teacher Management System  
 
-1. Dokumentasi kegiatan pembelajaran.  
-2. Dokumentasi program yayasan (beasiswa, sosial, dll).  
-3. Arsip kegiatan khusus (study tour, donasi, kurban, dll).  
+Structured educator data management:
 
----
-
-### 3.9 Sistem Pelaporan (Reporting)  
-
-1. Laporan perkembangan siswa (real-time & periodik).  
-2. Laporan performa pengajar.  
-3. Laporan operasional yayasan.  
-4. Insight berbasis data untuk pengambilan keputusan strategis.  
+- Personal & professional profile  
+- Academic background  
+- Teaching experience history  
+- Subject specialization  
+- Teaching schedules  
 
 ---
 
-## 4. Arsitektur & Pengembangan Aplikasi  
----  
+## 3.3 Curriculum & Material Standardization  
 
-### 4.1 Karakteristik Sistem  
-
-1. Aplikasi internal (highly restricted access).  
-2. Data bersifat sensitif (high confidentiality).  
-3. Role-based access (otorisasi terbatas).  
+- Structured curriculum per grade/level  
+- Alignment with official education standards  
+- Centralized learning repository  
+- Version-controlled teaching materials  
 
 ---
 
-### 4.2 Model Deployment  
+## 3.4 Scheduling System  
 
-Beberapa opsi implementasi:  
-
-1. Desktop-based (offline-first): hanya pada perangkat tertentu.  
-2. Local network (intranet-based): hanya dapat diakses dalam jaringan internal yayasan.  
-3. Centralized system (future state):  
-   3.1. Integrasi antar cabang.  
-   3.2. Sinkronisasi data ke pusat.  
-   3.3. Monitoring nasional oleh manajemen pusat.  
+- Integrated scheduling (students, teachers, rooms, time)  
+- Conflict detection & resolution  
+- Attendance tracking system  
 
 ---
 
-### 4.3 Roadmap Pengembangan  
+## 3.5 Learning Strategy Repository  
 
-1. Phase 1: Desktop / Local system / Offline System.  
-2. Phase 2: Web-based internal system.  
-3. Phase 3: Mobile application dengan enhanced security.  
+Reusable teaching methodologies:
 
----
+### Teaching Models
+- Direct Instruction → Explain → Practice → Assess  
+- Contextual Learning → Observe → Analyze → Reflect  
+- Problem-Based Learning → Identify → Solve → Evaluate  
+- Gamification-Based Learning  
 
-## 5. Teknologi  
----  
-
-### 5.1 Tech Stack  
-
-1. Frontend: Flutter (cross-platform, rapid development).  
-2. Backend: REST API / modular architecture.  
-3. Database: Relational DB dengan strong consistency (ACID compliant, misalnya PostgreSQL).  
+### Objective
+Ensure consistency and scalability of teaching methods.
 
 ---
 
-## 6. Keamanan Sistem (Security Architecture)  
----  
-Mengacu pada standar dari OWASP, sistem harus memenuhi prinsip *defense in depth*:  
+## 3.6 Learning Environment Management  
+
+- Discipline and behavioral rules  
+- Visual learning environment (posters, boards, etc.)  
+- Institutional culture standards  
+- Character-building programs  
 
 ---
 
-### 6.1 Access Control  
+## 3.7 Evaluation & Student Progress System  
 
-1. VPN-based access restriction.  
-2. Device whitelisting.  
-3. Role-Based Access Control (RBAC).  
-4. Token-based authentication (short-lived token).  
+Data-driven assessment model:
 
----
+### Metrics
+- Academic performance  
+- Attendance records  
+- Engagement levels  
+- Behavioral evaluation  
 
-### 6.2 Authentication & Verification  
-
-1. Multi-Factor Authentication (MFA).  
-2. Biometric (opsional, mobile).  
-3. Session management yang aman.  
-
----
-
-### 6.3 Data Protection  
-
-1. Enkripsi data (in transit: HTTPS/TLS).  
-2. Enkripsi data sensitif (at rest).  
-3. Secure key management.  
+### Outputs
+- Real-time analytics dashboard  
+- Student ranking system  
+- Scholarship recommendation engine  
 
 ---
 
-### 6.4 Application Security  
+## 3.8 Documentation System  
 
-Proteksi terhadap:  
+Centralized institutional documentation:
 
-1. SQL Injection.  
-2. Cross-Site Scripting (XSS).  
-3. Cross-Site Request Forgery (CSRF).  
-4. Broken Access Control.  
-5. Input validation & sanitization.  
-6. Rate limiting (anti abuse API).  
+- Learning activities  
+- Institutional programs  
+- Special events (study tours, charity, religious events, etc.)  
 
 ---
 
-### 6.5 Mobile & Client Security  
+## 3.9 Reporting & Analytics  
 
-1. Code obfuscation.  
-2. No secret stored di client.  
-3. Backend validation.  
-4. Anti reverse engineering.  
-
----
-
-### 6.6 Operational Security  
-
-1. Disable debug mode di production.  
-2. Logging & monitoring.  
-3. Incident response mechanism.  
+- Student progress reports (real-time & periodic)  
+- Teacher performance reports  
+- Operational reports  
+- Strategic decision insights  
 
 ---
 
-### 6.7 Kebijakan Penggunaan  
-
-1. Akses hanya melalui jaringan terpercaya.  
-2. Larangan penggunaan WiFi publik tanpa proteksi.  
-3. Pengamanan perangkat (device security awareness).  
+## 4. System Architecture & Deployment  
 
 ---
 
-## 7. Kesimpulan  
----  
-Sistem Baitul Hikmah ini dirancang sebagai platform strategis untuk:  
+## 4.1 System Characteristics  
 
-1. Meningkatkan kualitas pendidikan berbasis data.  
-2. Menstandarisasi proses pembelajaran.  
-3. Mendukung pengambilan keputusan yang objektif.  
-4. Membangun ekosistem pendidikan yang terintegrasi dan berkelanjutan.  
+- Internal enterprise system  
+- Highly confidential data  
+- Strict access control (RBAC)  
 
-Dalam jangka panjang, sistem ini berpotensi menjadi *core platform* pendidikan yayasan yang dapat diskalakan secara nasional.  
+---
+
+## 4.2 Deployment Models  
+
+### Phase 1 – Offline/Desktop System
+- Local execution  
+- Minimal infrastructure dependency  
+
+### Phase 2 – Internal Web System
+- Intranet-based deployment  
+- Controlled institutional access  
+
+### Phase 3 – Centralized Platform
+- Multi-branch integration  
+- Central data synchronization  
+- Executive-level monitoring dashboard  
+
+---
+
+## 4.3 Development Roadmap  
+
+| Phase | Description |
+|------|------------|
+| Phase 1 | Offline/Desktop MVP |
+| Phase 2 | Internal Web System |
+| Phase 3 | Mobile Application + Advanced Security |
+
+---
+
+## 5. Technology Stack  
+
+- **Frontend:** Flutter (Cross-platform UI)  
+- **Backend:** RESTful API / Modular Architecture  
+- **Database:** PostgreSQL (ACID-compliant relational DB)  
+
+---
+
+## 6. Security Architecture  
+
+Built with **OWASP standards** and a **Defense-in-Depth** approach.
+
+---
+
+## 6.1 Access Control  
+
+- VPN-based access restriction  
+- Device whitelisting  
+- Role-Based Access Control (RBAC)  
+- Short-lived authentication tokens  
+
+---
+
+## 6.2 Authentication  
+
+- Multi-Factor Authentication (MFA)  
+- Optional biometric authentication  
+- Secure session management  
+
+---
+
+## 6.3 Data Protection  
+
+- TLS encryption (in transit)  
+- Encryption at rest  
+- Secure key management  
+
+---
+
+## 6.4 Application Security  
+
+Protection against:
+
+- SQL Injection  
+- XSS (Cross-Site Scripting)  
+- CSRF (Cross-Site Request Forgery)  
+- Broken Access Control  
+- Input validation issues  
+- API abuse & rate limiting  
+
+---
+
+## 6.5 Client Security  
+
+- Code obfuscation  
+- No sensitive data stored on client  
+- Backend-enforced validation  
+- Anti-tampering mechanisms  
+
+---
+
+## 6.6 Operational Security  
+
+- Production debug disabled  
+- Centralized logging system  
+- Incident response procedures  
+
+---
+
+## 6.7 Security Policy  
+
+- Access only via trusted networks  
+- No unsecured public WiFi usage  
+- Device security compliance required  
+
+---
+
+## 7. Strategic Conclusion  
+
+Edukita EMIS is designed as a **strategic digital transformation platform** for the Alkahfi Foundation.
+
+### Strategic Value
+
+- Data-driven education system  
+- Standardized learning processes  
+- Objective evaluation framework  
+- Scalable institutional ecosystem  
+
+---
+
+## 🚀 Long-Term Vision  
+
+Edukita is positioned to evolve into a:
+
+> **National-scale Education Operating System**
+
+supporting multi-branch institutions with centralized governance and analytics.
