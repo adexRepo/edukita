@@ -188,6 +188,26 @@ Win32Window::MessageHandler(HWND hwnd,
       }
       return 0;
 
+    case WM_GETMINMAXINFO: {
+      auto minmax_info = reinterpret_cast<MINMAXINFO*>(lparam);
+      HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+      MONITORINFO monitor_info{};
+      monitor_info.cbSize = sizeof(MONITORINFO);
+
+      if (GetMonitorInfo(monitor, &monitor_info)) {
+        RECT work_area = monitor_info.rcWork;
+        RECT monitor_area = monitor_info.rcMonitor;
+
+        minmax_info->ptMaxPosition.x = work_area.left - monitor_area.left;
+        minmax_info->ptMaxPosition.y = work_area.top - monitor_area.top;
+        minmax_info->ptMaxSize.x = work_area.right - work_area.left;
+        minmax_info->ptMaxSize.y = work_area.bottom - work_area.top;
+        minmax_info->ptMaxTrackSize.x = minmax_info->ptMaxSize.x;
+        minmax_info->ptMaxTrackSize.y = minmax_info->ptMaxSize.y;
+      }
+      return 0;
+    }
+
     case WM_DPICHANGED: {
       auto newRectSize = reinterpret_cast<RECT*>(lparam);
       LONG newWidth = newRectSize->right - newRectSize->left;

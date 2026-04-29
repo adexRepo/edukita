@@ -12,8 +12,6 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  bool _collapsed = true;
-
   int _getSelectedIndex(BuildContext context) {
     final location = GoRouter.of(context).state.uri.path;
 
@@ -63,70 +61,68 @@ class _AppShellState extends State<AppShell> {
       ('Students', Icons.school, '/students'),
     ];
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      width: _collapsed ? 70 : 220,
+    return Container(
+      width: 90,
       color: Colors.white,
-      child: Column(
-        children: [
-          SizedBox(
-            height: 56,
-            child: IconButton(
-              icon: Icon(_collapsed ? Icons.menu : Icons.menu_open),
-              onPressed: () {
-                setState(() => _collapsed = !_collapsed);
-              },
-            ),
-          ),
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final (label, icon, route) = items[index];
+          final selected = selectedIndex == index;
+          final color = selected
+              ? const Color(0xFF48CFCB)
+              : const Color(0xFF6B7280);
 
-          Expanded(
-            child: ListView.builder(
-              itemCount: items.length,
-              itemBuilder: (context, index) {
-                final (label, icon, route) = items[index];
-                final selected = selectedIndex == index;
-
-                return InkWell(
-                  onTap: () => context.go(route),
-                  child: Container(
-                    height: 46,
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? const Color(0xFF48CFCB).withValues(alpha: 0.12)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 70,
-                          child: Icon(
-                            icon,
-                            color: selected
-                                ? const Color(0xFF48CFCB)
-                                : const Color(0xFF6B7280),
-                          ),
-                        ),
-                        if (!_collapsed)
-                          Expanded(
-                            child: Text(
-                              label,
-                              style: TextStyle(
-                                color: selected
-                                    ? const Color(0xFF48CFCB)
-                                    : const Color(0xFF374151),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Tooltip(
+              message: label,
+              waitDuration: const Duration(milliseconds: 500),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => context.go(route),
+                child: Container(
+                  height: 70,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? const Color(0xFF48CFCB).withValues(alpha: 0.12)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: selected
+                        ? Border.all(
+                            color: const Color(
+                              0xFF48CFCB,
+                            ).withValues(alpha: 0.18),
+                          )
+                        : null,
                   ),
-                );
-              },
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(icon, size: 24, color: color),
+                      const SizedBox(height: 5),
+                      Text(
+                        label,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 8,
+                          fontWeight: selected
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

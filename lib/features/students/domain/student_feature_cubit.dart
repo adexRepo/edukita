@@ -6,16 +6,15 @@ import 'package:edukita/features/students/domain/sudent_filter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
-  final StudentRepository repo;
+  final StudentRepository _repo;
 
   StudentFilter _filter = const StudentFilter();
   Pageable _pageable = const Pageable(page: 0, size: 20);
 
-  StudentPageCubit(this.repo) : super(const FeatureState()) {
-    init();
-  }
+  StudentPageCubit(this._repo) : super(const FeatureState());
+
   Future<void> init() async {
-    print("i init called");
+    _filter = const StudentFilter();
     await _fetch();
   }
 
@@ -23,7 +22,7 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
     emit(state.copyWith(loading: true, data: null));
 
     try {
-      final result = await repo.loadItems(_filter, _pageable);
+      final result = await _repo.loadItems(_filter, _pageable);
 
       emit(state.copyWith(data: result, loading: false));
     } catch (e) {
@@ -32,8 +31,6 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
   }
 
   Future<void> applyFilter(StudentFilter filter) async {
-    print("i applyFilter called");
-
     _filter = filter;
     _pageable = Pageable(page: 0, size: _pageable.size);
     await _fetch();

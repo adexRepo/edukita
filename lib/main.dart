@@ -38,6 +38,7 @@ class _EdukitaAppState extends State<EdukitaApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
+      scrollBehavior: ScrollBehavior(),
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
       routerConfig: appRouter,

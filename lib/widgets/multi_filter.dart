@@ -187,206 +187,225 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.sizeOf(context);
+    final isWide = screenSize.width >= 760;
+    final dialogWidth = (screenSize.width * 0.72)
+        .clamp(340.0, 820.0)
+        .toDouble();
+    final dialogHeight = (screenSize.height * 0.72)
+        .clamp(420.0, 620.0)
+        .toDouble();
+
     return Dialog(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      child: SizedBox(
+        width: dialogWidth,
+        height: dialogHeight,
+        child: Column(
+          children: [
+            _buildDialogHeader(context),
+            Expanded(
+              child: isWide
+                  ? Row(
+                      children: [
+                        Expanded(child: _buildFilterInputPanel()),
+                        const VerticalDivider(width: 1),
+                        Expanded(child: _buildActiveFiltersPanel()),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        Flexible(flex: 5, child: _buildFilterInputPanel()),
+                        const Divider(height: 1),
+                        Flexible(flex: 4, child: _buildActiveFiltersPanel()),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDialogHeader(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+      ),
+      child: Row(
         children: [
-          // HEADER
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(8),
+          Expanded(
+            child: Text(
+              widget.title,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  widget.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+          ),
+          IconButton(
+            constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+            padding: EdgeInsets.zero,
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.close, color: Colors.white, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
 
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
+  Widget _buildFilterInputPanel() {
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        children: [
+          DropdownButtonFormField<FilterField>(
+            value: selectedField,
+            isExpanded: true,
+            items: widget.fields.map((f) {
+              return DropdownMenuItem(value: f, child: Text(f.label));
+            }).toList(),
+            onChanged: (val) => setState(() {
+              selectedField = val!;
+              controller.clear();
+            }),
+            decoration: const InputDecoration(labelText: "Field"),
+          ),
+          const SizedBox(height: 10),
+          Flexible(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                _radio("is", FilterOperator.isEqual),
+                _radio("is not", FilterOperator.isNot),
+                _radio("contains", FilterOperator.contains),
+                _radio("has any value", FilterOperator.hasAnyValue),
               ],
             ),
           ),
+          const SizedBox(height: 10),
+          Form(key: _formKey, child: _buildInputField()),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(onPressed: clearAll, child: const Text("Clear")),
+              const SizedBox(width: 8),
+              ElevatedButton(onPressed: addFilter, child: const Text("Add")),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-          const SizedBox(height: 12),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 700, maxHeight: 430),
-            child: Row(
-              children: [
-                // LEFT: INPUT
-                Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        DropdownButtonFormField<FilterField>(
-                          initialValue: selectedField,
-                          items: widget.fields.map((f) {
-                            return DropdownMenuItem(
-                              value: f,
-                              child: Text(f.label),
-                            );
-                          }).toList(),
-                          onChanged: (val) => setState(() {
-                            selectedField = val!;
-                            controller.clear(); // reset value
-                          }),
-                          decoration: const InputDecoration(labelText: "Field"),
+  Widget _buildActiveFiltersPanel() {
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  "Active Filters",
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              const SizedBox(width: 6),
+              ElevatedButton(onPressed: done, child: const Text("Done")),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: draftFilters.isEmpty
+                ? Center(
+                    child: Text(
+                      "No active filters",
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: draftFilters.length,
+                    itemBuilder: (_, i) {
+                      final f = draftFilters[i];
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
                         ),
-
-                        const SizedBox(height: 12),
-
-                        _radio("is", FilterOperator.isEqual),
-                        _radio("is not", FilterOperator.isNot),
-                        _radio("contains", FilterOperator.contains),
-                        _radio("has any value", FilterOperator.hasAnyValue),
-                        const SizedBox(height: 12),
-                        Form(key: _formKey, child: _buildInputField()),
-                        const SizedBox(height: 12),
-
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ElevatedButton(
-                              onPressed: addFilter,
-                              child: const Text("Add"),
-                            ),
+                            const Icon(Icons.filter_alt, size: 16),
                             const SizedBox(width: 8),
-                            TextButton(
-                              onPressed: clearAll,
-                              child: const Text("Clear"),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const VerticalDivider(width: 1),
-
-                // RIGHT: PREVIEW
-                Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            const Text(
-                              "Active Filters",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text("Cancel"),
-                                ),
-                                const SizedBox(width: 8),
-                                ElevatedButton(
-                                  onPressed: done,
-                                  child: const Text("Done"),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: draftFilters.length,
-                            itemBuilder: (_, i) {
-                              final f = draftFilters[i];
-
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 10),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade50,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: Colors.grey.shade300,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    f.label,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Icon(Icons.filter_alt, size: 18),
-                                    const SizedBox(width: 10),
-
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            f.label,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            f.operator.name,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey.shade600,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            f.value ?? "-",
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    f.operator.name,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade600,
                                     ),
-
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.delete_outline,
-                                        size: 20,
-                                      ),
-                                      onPressed: () {
-                                        setState(
-                                          () => draftFilters.removeAt(i),
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    f.value ?? "-",
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 2,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              constraints: const BoxConstraints.tightFor(
+                                width: 30,
+                                height: 30,
+                              ),
+                              padding: EdgeInsets.zero,
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                size: 18,
+                              ),
+                              onPressed: () {
+                                setState(() => draftFilters.removeAt(i));
+                              },
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -397,7 +416,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
     switch (selectedField.inputType) {
       case FilterInputType.dropdown:
         return DropdownButtonFormField<String>(
-          initialValue: controller.text.isEmpty ? null : controller.text,
+          value: controller.text.isEmpty ? null : controller.text,
           items: selectedField.options!
               .map((e) => DropdownMenuItem(value: e, child: Text(e)))
               .toList(),
@@ -466,6 +485,9 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
 
   Widget _radio(String label, FilterOperator value) {
     return RadioListTile<FilterOperator>(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
       title: Text(label),
       value: value,
       groupValue: operator,

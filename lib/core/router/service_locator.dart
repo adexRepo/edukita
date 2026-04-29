@@ -1,3 +1,4 @@
+import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
 import 'package:get_it/get_it.dart';
 import '../database/database_provider.dart';
 import '../../features/students/domain/student_repository.dart';
@@ -18,5 +19,9 @@ Future<void> setupLocator() async {
 
   getIt.registerFactory<StudentPageCubit>(
     () => StudentPageCubit(getIt<StudentRepository>()),
+  );
+
+  getIt.registerFactory<StudentDetailCubit>(
+    () => StudentDetailCubit(getIt<StudentRepository>()),
   );
 }

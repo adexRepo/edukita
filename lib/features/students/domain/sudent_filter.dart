@@ -80,7 +80,10 @@ StudentFilter buildStudentFilter(List<MultiFilterItem> items) {
     joinAt: items.mapString(StudentFilterCodes.joinDate),
     ages: items.mapInt(StudentFilterCodes.age),
     scores: items.mapDouble(StudentFilterCodes.score),
-    genders: items.mapString(StudentFilterCodes.gender),
+    genders: items
+        .mapString(StudentFilterCodes.gender)
+        .map((value) => value.toLowerCase())
+        .toList(),
   );
 }
 
@@ -159,7 +162,7 @@ final List<FilterField> studentFilterFields = [
     code: StudentFilterCodes.gender.name,
     label: "Gender",
     inputType: FilterInputType.dropdown,
-    options: [Gender.male.name.toUpperCase(), Gender.female.name.toUpperCase()],
+    options: [Gender.male.name, Gender.female.name],
   ),
 
   FilterField(

@@ -1,12 +1,4 @@
 import 'package:edukita/features/dashboard/dashboard_cubit.dart';
-import 'package:edukita/features/management/management_page.dart';
-import 'package:edukita/features/students/persentation/students_page.dart';
-import 'package:edukita/features/users/users_page.dart';
-
-import 'package:edukita/features/syllabus/syllabus_page.dart';
-import 'package:edukita/features/strategy/strategy_page.dart';
-import 'package:edukita/features/schedule/schedule_page.dart';
-import 'package:edukita/features/reports/reports_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -149,7 +141,7 @@ class _StatCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: primary.withOpacity(0.1),
+                      color: primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(icon, color: primary, size: 20),

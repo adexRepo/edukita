@@ -66,7 +66,7 @@ class _AppTableState<T> extends State<AppTable<T>> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -84,10 +84,10 @@ class _AppTableState<T> extends State<AppTable<T>> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: const BoxDecoration(
         color: AppColors.primaryLight,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -110,11 +110,17 @@ class _AppTableState<T> extends State<AppTable<T>> {
                     },
               child: Row(
                 children: [
-                  Text(col.title),
+                  Text(
+                    col.title,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   if (sortColumnIndex == index)
                     Icon(
                       ascending ? Icons.arrow_upward : Icons.arrow_downward,
-                      size: 14,
+                      size: 12,
                     ),
                 ],
               ),
@@ -136,7 +142,7 @@ class _AppTableState<T> extends State<AppTable<T>> {
         return InkWell(
           onTap: widget.onRowTap != null ? () => widget.onRowTap!(item) : null,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: List.generate(widget.columns.length, (i) {
@@ -157,24 +163,37 @@ class _AppTableState<T> extends State<AppTable<T>> {
     int curretPage = widget.pageable == null ? 0 : widget.pageable!.page;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text("Page ${curretPage + 1} of $totalPage"),
+          Text(
+            "Page ${curretPage + 1} of $totalPage",
+            style: const TextStyle(fontSize: 12),
+          ),
           Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.chevron_left),
+                constraints: const BoxConstraints.tightFor(
+                  width: 32,
+                  height: 32,
+                ),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.chevron_left, size: 18),
                 onPressed: curretPage == 0
                     ? null
                     : () => widget.onPageChanged?.call(curretPage - 1),
               ),
               IconButton(
-                icon: const Icon(Icons.chevron_right),
+                constraints: const BoxConstraints.tightFor(
+                  width: 32,
+                  height: 32,
+                ),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.chevron_right, size: 18),
                 onPressed: curretPage >= totalPage - 1
                     ? null
                     : () => widget.onPageChanged?.call(curretPage + 1),

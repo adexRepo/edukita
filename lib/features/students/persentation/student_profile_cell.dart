@@ -12,7 +12,7 @@ class StudentProfileCell extends StatelessWidget {
     return Row(
       children: [
         CircleAvatar(
-          radius: 18,
+          radius: 14,
           backgroundColor: Colors.grey.shade200,
           backgroundImage: getImageByLocalPath(student.photoPath),
           child: student.photoPath == null || student.photoPath!.isEmpty
@@ -21,13 +21,14 @@ class StudentProfileCell extends StatelessWidget {
                       ? student.fullName[0].toUpperCase()
                       : '?',
                   style: const TextStyle(
+                    fontSize: 11,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
                 )
               : null,
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,13 +37,16 @@ class StudentProfileCell extends StatelessWidget {
               Text(
                 student.fullName,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               Text(
                 _buildSubtitle(student),
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
               ),
             ],
           ),

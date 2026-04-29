@@ -3,7 +3,6 @@ import 'package:edukita/features/students/data/student_page_data.dart';
 import 'package:edukita/features/students/data/student_table.dart';
 import 'package:edukita/features/students/domain/student_feature_cubit.dart';
 import 'package:edukita/features/students/domain/sudent_filter.dart';
-import 'package:edukita/features/students/persentation/detail/student_detail_page.dart';
 import 'package:edukita/features/students/persentation/student_profile_cell.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_table.dart';
@@ -11,6 +10,7 @@ import 'package:edukita/widgets/clay_card.dart';
 import 'package:edukita/widgets/multi_filter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 class StudentsPage extends StatefulWidget {
   const StudentsPage({super.key});
@@ -24,18 +24,8 @@ class _StudentsPageState extends State<StudentsPage> {
   StudentFilter _filter = const StudentFilter();
   bool isAscending = true;
 
-  @override
-  void initState() {
-    super.initState();
-    context.read<StudentPageCubit>().init();
-  }
-
   void _inquiry() {
-    if (_filter.isEmpty) {
-      context.read<StudentPageCubit>().init();
-    } else {
-      context.read<StudentPageCubit>().applyFilter(_filter);
-    }
+    context.read<StudentPageCubit>().applyFilter(_filter);
   }
 
   // ================= BUILD =================
@@ -49,16 +39,16 @@ class _StudentsPageState extends State<StudentsPage> {
               _buildTopBar(context),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(12),
                   child: Column(
                     children: [
                       _buildStatsFromState(
                         state.data ?? StudentPageData.empty(),
                       ),
 
-                      const SizedBox(height: 16),
-                      _buildHeader(),
                       const SizedBox(height: 12),
+                      _buildHeader(),
+                      const SizedBox(height: 8),
 
                       Expanded(child: _buildTableSection(state)),
                     ],
@@ -91,35 +81,42 @@ class _StudentsPageState extends State<StudentsPage> {
     );
   }
 
+  Widget _buildCard(String title, String value) {
+    return ClayCard(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary, // highlight number
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ================= STATS =================
   Widget _buildStatsFromState(StudentPageData state) {
     return Row(
       children: [
-        Expanded(
-          child: ClayCard(
-            title: "Total",
-            value: state.totalStudents.toString(),
-          ),
-        ),
+        Expanded(child: _buildCard("Total", state.totalStudents.toString())),
         const SizedBox(width: 8),
-        Expanded(
-          child: ClayCard(title: "Male", value: state.maleStudents.toString()),
-        ),
+        Expanded(child: _buildCard("Male", state.maleStudents.toString())),
         const SizedBox(width: 8),
-
-        Expanded(
-          child: ClayCard(
-            title: "Female",
-            value: state.femaleStudents.toString(),
-          ),
-        ),
+        Expanded(child: _buildCard("Female", state.femaleStudents.toString())),
         const SizedBox(width: 8),
-        Expanded(
-          child: ClayCard(
-            title: "Active",
-            value: state.activeStudents.toString(),
-          ),
-        ),
+        Expanded(child: _buildCard("Active", state.activeStudents.toString())),
       ],
     );
   }
@@ -141,7 +138,11 @@ class _StudentsPageState extends State<StudentsPage> {
             MultiFilterButton(
               title: "Filter Students",
               fields: studentFilterFields,
-              onApply: (filters) => {_filter = buildStudentFilter(filters)},
+              onApply: (filters) {
+                setState(() {
+                  _filter = buildStudentFilter(filters);
+                });
+              },
             ),
             const SizedBox(width: 8),
             IconButton.filled(
@@ -162,14 +163,7 @@ class _StudentsPageState extends State<StudentsPage> {
     return AppTable<StudentTable>(
       data: state.data?.students ?? [],
       pageable: state.data?.pageable,
-      onRowTap: (item) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => StudentDetailPage(studentId: item.id),
-          ),
-        );
-      },
+      onRowTap: (item) => context.push('/students/${item.id}'),
       onPageChanged: (page) => context.read<StudentPageCubit>().goToPage(page),
       columns: [
         AppTableColumn(
@@ -182,26 +176,35 @@ class _StudentsPageState extends State<StudentsPage> {
           title: "Class\nSchool",
           flex: 2,
           sortValue: (data) => data.className.codeUnitAt(0),
-          cell: (s) => Text('${s.className}\n${s.schoolName}'),
+          cell: (s) => Text(
+            '${s.className}\n${s.schoolName}',
+            style: const TextStyle(fontSize: 12, height: 1.2),
+          ),
         ),
         AppTableColumn(
           title: "Age\nGender",
           flex: 1,
           sortValue: (data) => data.age,
-          cell: (s) => Text('${s.age} y.o\n${s.gender.name.toUpperCase()}'),
+          cell: (s) => Text(
+            '${s.age} y.o\n${s.gender.name.toUpperCase()}',
+            style: const TextStyle(fontSize: 12, height: 1.2),
+          ),
         ),
         AppTableColumn(
           title: "Score\nStatus",
           flex: 1,
           sortValue: (data) => data.age,
-          cell: (s) => Text('${s.age}/100\n${s.status.name.toUpperCase()}'),
+          cell: (s) => Text(
+            '${s.age}/100\n${s.status.name.toUpperCase()}',
+            style: const TextStyle(fontSize: 12, height: 1.2),
+          ),
         ),
         AppTableColumn(
           title: "Join Date",
           flex: 1,
           sortValue: (data) =>
               DateTime.parse(data.joinAt).millisecondsSinceEpoch,
-          cell: (s) => Text(s.joinAt),
+          cell: (s) => Text(s.joinAt, style: const TextStyle(fontSize: 12)),
         ),
         AppTableColumn(
           title: "Actions",
@@ -210,11 +213,21 @@ class _StudentsPageState extends State<StudentsPage> {
             children: [
               IconButton(
                 onPressed: () => {},
-                icon: const Icon(Icons.edit, size: 18),
+                constraints: const BoxConstraints.tightFor(
+                  width: 30,
+                  height: 30,
+                ),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.edit, size: 16),
               ),
               IconButton(
                 onPressed: () => {},
-                icon: const Icon(Icons.delete, size: 18),
+                constraints: const BoxConstraints.tightFor(
+                  width: 30,
+                  height: 30,
+                ),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.delete, size: 16),
               ),
             ],
           ),
