@@ -26,7 +26,7 @@ class AttendanceLineChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
+      padding: const EdgeInsets.fromLTRB(10, 10, 18, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -73,6 +73,9 @@ class AttendanceLineChart extends StatelessWidget {
       lineTouchData: LineTouchData(
         touchTooltipData: LineTouchTooltipData(
           getTooltipColor: (_) => Colors.blueGrey,
+          fitInsideHorizontally: true,
+          fitInsideVertically: true,
+          maxContentWidth: 80,
           getTooltipItems: (spots) {
             return spots.map((spot) {
               final month = _monthName(spot.x.toInt());

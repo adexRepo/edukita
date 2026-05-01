@@ -8,7 +8,18 @@ class ClassRepository {
 
   Future<List<SchoolClass>> getAllClasses() async {
     final db = await _dbProvider.database;
-    final maps = await db.query('classes');
+    final maps = await db.query('classes', orderBy: 'level, section, name');
+    return maps.map((map) => SchoolClass.fromMap(map)).toList();
+  }
+
+  Future<List<SchoolClass>> getClassesBySchool(String schoolId) async {
+    final db = await _dbProvider.database;
+    final maps = await db.query(
+      'classes',
+      where: 'school_id = ?',
+      whereArgs: [schoolId],
+      orderBy: 'level, section, name',
+    );
     return maps.map((map) => SchoolClass.fromMap(map)).toList();
   }
 
@@ -21,12 +32,12 @@ class ClassRepository {
     return SchoolClass.fromMap(maps.first);
   }
 
-  Future<SchoolClass?> getClassByName(String className) async {
+  Future<SchoolClass?> getClassByName(String name) async {
     final db = await _dbProvider.database;
     final maps = await db.query(
       'classes',
-      where: 'class_name = ?',
-      whereArgs: [className],
+      where: 'name = ?',
+      whereArgs: [name],
     );
     if (maps.isEmpty) {
       return null;
@@ -36,14 +47,14 @@ class ClassRepository {
 
   Future<int> insertClass(SchoolClass schoolClass) async {
     final db = await _dbProvider.database;
-    return db.insert('classes', schoolClass.toMap());
+    return db.insert('classes', await _classMapForDb(schoolClass));
   }
 
   Future<int> updateClass(SchoolClass schoolClass) async {
     final db = await _dbProvider.database;
     return db.update(
       'classes',
-      schoolClass.toMap(),
+      await _classMapForDb(schoolClass),
       where: 'id = ?',
       whereArgs: [schoolClass.id],
     );
@@ -72,5 +83,20 @@ class ClassRepository {
       whereArgs: [year],
     );
     return maps.map((map) => SchoolClass.fromMap(map)).toList();
+  }
+
+  Future<Map<String, Object?>> _classMapForDb(SchoolClass schoolClass) async {
+    final db = await _dbProvider.database;
+    final columns = await db.rawQuery('PRAGMA table_info(classes)');
+    final names = columns.map((row) => row['name']).toSet();
+    final map = schoolClass.toMap();
+
+    if (names.contains('class_name')) {
+      map['class_name'] = schoolClass.schoolId == null
+          ? schoolClass.name
+          : '${schoolClass.schoolId}_${schoolClass.name}';
+    }
+    map.removeWhere((key, value) => !names.contains(key));
+    return map;
   }
 }

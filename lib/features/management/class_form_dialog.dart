@@ -136,7 +136,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
               _formKey.currentState!.save();
               final schoolClass = SchoolClass(
                 id: widget.schoolClass?.id,
-                className: className,
+                name: className,
                 level: level,
                 section: section,
                 year: year,

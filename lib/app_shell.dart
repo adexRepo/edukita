@@ -15,6 +15,7 @@ class _AppShellState extends State<AppShell> {
   int _getSelectedIndex(BuildContext context) {
     final location = GoRouter.of(context).state.uri.path;
 
+    if (location.startsWith('/school')) return 2;
     if (location.startsWith('/students')) return 1;
     return 0;
   }
@@ -59,6 +60,7 @@ class _AppShellState extends State<AppShell> {
     final items = [
       ('Dashboard', Icons.dashboard, '/dashboard'),
       ('Students', Icons.school, '/students'),
+      ('School', Icons.apartment, '/school'),
     ];
 
     return Container(

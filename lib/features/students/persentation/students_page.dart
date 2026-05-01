@@ -3,6 +3,7 @@ import 'package:edukita/features/students/data/student_page_data.dart';
 import 'package:edukita/features/students/data/student_table.dart';
 import 'package:edukita/features/students/domain/student_feature_cubit.dart';
 import 'package:edukita/features/students/domain/sudent_filter.dart';
+import 'package:edukita/features/students/persentation/student_form_dialog.dart';
 import 'package:edukita/features/students/persentation/student_profile_cell.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_table.dart';
@@ -26,6 +27,95 @@ class _StudentsPageState extends State<StudentsPage> {
 
   void _inquiry() {
     context.read<StudentPageCubit>().applyFilter(_filter);
+  }
+
+  Future<void> _showAddStudentDialog() async {
+    final cubit = context.read<StudentPageCubit>();
+    final schools = await cubit.loadAvailableSchools();
+    final classes = await cubit.loadAvailableClasses();
+    final studentNo = await cubit.generateStudentNumber();
+
+    if (!mounted) return;
+
+    if (schools.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Create a school before adding students.'),
+        ),
+      );
+      return;
+    }
+
+    if (classes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Create a class before adding students.')),
+      );
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StudentFormDialog(
+        availableSchools: schools,
+        availableClasses: classes,
+        generatedStudentNo: studentNo,
+        onSubmit: (student, schoolId) async {
+          await cubit.addStudent(student, schoolId);
+          if (dialogContext.mounted) {
+            Navigator.of(dialogContext).pop();
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _showEditStudentDialog(StudentTable row) async {
+    final cubit = context.read<StudentPageCubit>();
+    final schools = await cubit.loadAvailableSchools();
+    final classes = await cubit.loadAvailableClasses();
+    final student = await cubit.loadStudent(row.id);
+
+    if (!mounted || student == null) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StudentFormDialog(
+        availableSchools: schools,
+        availableClasses: classes,
+        generatedStudentNo: student.studentId,
+        initialStudent: student,
+        onSubmit: (updatedStudent, schoolId) async {
+          await cubit.updateStudent(updatedStudent, schoolId);
+          if (dialogContext.mounted) {
+            Navigator.of(dialogContext).pop();
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteStudent(StudentTable student) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Student'),
+        content: Text('Delete ${student.fullName}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await context.read<StudentPageCubit>().deleteStudent(student.id);
+    }
   }
 
   // ================= BUILD =================
@@ -127,7 +217,7 @@ class _StudentsPageState extends State<StudentsPage> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         ElevatedButton.icon(
-          onPressed: () => {},
+          onPressed: _showAddStudentDialog,
           icon: const Icon(Icons.add),
           label: const Text('Add Student'),
         ),
@@ -168,13 +258,13 @@ class _StudentsPageState extends State<StudentsPage> {
       columns: [
         AppTableColumn(
           title: "Student Profile",
-          flex: 2,
+          flex: 4,
           sortValue: (data) => data.fullName.codeUnitAt(0),
           cell: (s) => StudentProfileCell(student: s),
         ),
         AppTableColumn(
           title: "Class\nSchool",
-          flex: 2,
+          flex: 3,
           sortValue: (data) => data.className.codeUnitAt(0),
           cell: (s) => Text(
             '${s.className}\n${s.schoolName}',
@@ -183,7 +273,7 @@ class _StudentsPageState extends State<StudentsPage> {
         ),
         AppTableColumn(
           title: "Age\nGender",
-          flex: 1,
+          flex: 2,
           sortValue: (data) => data.age,
           cell: (s) => Text(
             '${s.age} y.o\n${s.gender.name.toUpperCase()}',
@@ -192,7 +282,7 @@ class _StudentsPageState extends State<StudentsPage> {
         ),
         AppTableColumn(
           title: "Score\nStatus",
-          flex: 1,
+          flex: 2,
           sortValue: (data) => data.age,
           cell: (s) => Text(
             '${s.age}/100\n${s.status.name.toUpperCase()}',
@@ -201,35 +291,41 @@ class _StudentsPageState extends State<StudentsPage> {
         ),
         AppTableColumn(
           title: "Join Date",
-          flex: 1,
+          flex: 2,
           sortValue: (data) =>
               DateTime.parse(data.joinAt).millisecondsSinceEpoch,
           cell: (s) => Text(s.joinAt, style: const TextStyle(fontSize: 12)),
         ),
         AppTableColumn(
           title: "Actions",
-          flex: 1,
-          cell: (s) => Row(
-            children: [
-              IconButton(
-                onPressed: () => {},
-                constraints: const BoxConstraints.tightFor(
-                  width: 30,
-                  height: 30,
+          flex: 2,
+          cell: (s) => Align(
+            alignment: Alignment.centerLeft,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Edit student',
+                  onPressed: () => _showEditStudentDialog(s),
+                  constraints: const BoxConstraints.tightFor(
+                    width: 28,
+                    height: 28,
+                  ),
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.edit, size: 16),
                 ),
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.edit, size: 16),
-              ),
-              IconButton(
-                onPressed: () => {},
-                constraints: const BoxConstraints.tightFor(
-                  width: 30,
-                  height: 30,
+                IconButton(
+                  tooltip: 'Delete student',
+                  onPressed: () => _confirmDeleteStudent(s),
+                  constraints: const BoxConstraints.tightFor(
+                    width: 28,
+                    height: 28,
+                  ),
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.delete_outline, size: 16),
                 ),
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.delete, size: 16),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:edukita/core/router/navigation.dart';
 import 'package:flutter/material.dart';
@@ -51,8 +53,54 @@ Widget buildTitleBar(int selectedIndex, BuildContext context) {
   );
 }
 
-class WindowButtons extends StatelessWidget {
+class WindowButtons extends StatefulWidget {
   const WindowButtons({super.key});
+
+  @override
+  State<WindowButtons> createState() => _WindowButtonsState();
+}
+
+class _WindowButtonsState extends State<WindowButtons>
+    with WidgetsBindingObserver {
+  Timer? _windowStateTimer;
+  bool _isMaximized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _syncWindowState();
+    _windowStateTimer = Timer.periodic(
+      const Duration(milliseconds: 250),
+      (_) => _syncWindowState(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _windowStateTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    _syncWindowState();
+  }
+
+  void _syncWindowState() {
+    final nextValue = appWindow.isMaximized;
+    if (!mounted || nextValue == _isMaximized) return;
+
+    setState(() {
+      _isMaximized = nextValue;
+    });
+  }
+
+  void _maximizeOrRestore() {
+    appWindow.maximizeOrRestore();
+    _syncWindowState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +123,15 @@ class WindowButtons extends StatelessWidget {
     return Row(
       children: [
         MinimizeWindowButton(colors: buttonColors),
-        MaximizeWindowButton(colors: buttonColors),
+        _isMaximized
+            ? RestoreWindowButton(
+                colors: buttonColors,
+                onPressed: _maximizeOrRestore,
+              )
+            : MaximizeWindowButton(
+                colors: buttonColors,
+                onPressed: _maximizeOrRestore,
+              ),
         CloseWindowButton(colors: closeButtonColors),
       ],
     );

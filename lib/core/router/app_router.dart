@@ -3,6 +3,9 @@ import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/auth/login_page.dart';
 import 'package:edukita/features/dashboard/dashboard_cubit.dart';
 import 'package:edukita/features/dashboard/dashboard_page.dart';
+import 'package:edukita/features/management/class_cubit.dart';
+import 'package:edukita/features/management/school_cubit.dart';
+import 'package:edukita/features/management/schools_page.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
 import 'package:edukita/features/students/domain/student_feature_cubit.dart';
 import 'package:edukita/features/students/persentation/detail/student_detail_page.dart';
@@ -69,6 +72,21 @@ final GoRouter appRouter = GoRouter(
               },
             ),
           ],
+        ),
+        GoRoute(
+          path: '/school',
+          pageBuilder: (context, state) => _noTransitionPage(
+            state: state,
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<SchoolCubit>(
+                  create: (_) => getIt<SchoolCubit>()..loadSchools(),
+                ),
+                BlocProvider<ClassCubit>(create: (_) => getIt<ClassCubit>()),
+              ],
+              child: const SchoolsPage(),
+            ),
+          ),
         ),
       ],
     ),

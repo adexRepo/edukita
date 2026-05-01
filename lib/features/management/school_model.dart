@@ -1,15 +1,62 @@
 import 'package:uuid/uuid.dart';
 
+enum SchoolType { paud, tk, sd, smp, sma, smk, univ }
+
+extension SchoolTypeLabel on SchoolType {
+  String get label => name.toUpperCase();
+
+  bool get usesAutoClassName {
+    return this == SchoolType.sd ||
+        this == SchoolType.smp ||
+        this == SchoolType.sma ||
+        this == SchoolType.smk;
+  }
+
+  int get minLevel {
+    return switch (this) {
+      SchoolType.paud || SchoolType.tk => 0,
+      SchoolType.sd => 1,
+      SchoolType.smp => 7,
+      SchoolType.sma || SchoolType.smk => 10,
+      SchoolType.univ => 13,
+    };
+  }
+
+  int get maxLevel {
+    return switch (this) {
+      SchoolType.paud || SchoolType.tk => 0,
+      SchoolType.sd => 6,
+      SchoolType.smp => 9,
+      SchoolType.sma || SchoolType.smk => 12,
+      SchoolType.univ => 13,
+    };
+  }
+
+  String get levelHint {
+    if (minLevel == maxLevel) return '$minLevel';
+    return '$minLevel-$maxLevel';
+  }
+
+  List<int> get allowedLevels {
+    return List.generate(maxLevel - minLevel + 1, (index) => minLevel + index);
+  }
+}
+
 class School {
   School({String? id, this.type, this.name, this.address})
     : id = id ?? const Uuid().v4();
 
   final String id;
-  final String? type;
+  final SchoolType? type;
   final String? name;
   final String? address;
 
-  School copyWith({String? id, String? type, String? name, String? address}) {
+  School copyWith({
+    String? id,
+    SchoolType? type,
+    String? name,
+    String? address,
+  }) {
     return School(
       id: id ?? this.id,
       type: type ?? this.type,
@@ -19,16 +66,22 @@ class School {
   }
 
   factory School.fromMap(Map<String, Object?> map) {
+    final rawType = map['type']?.toString().toLowerCase();
     return School(
       id: map['id']?.toString(),
-      type: map['type'] as String?,
+      type: rawType == null
+          ? null
+          : SchoolType.values.firstWhere(
+              (type) => type.name == rawType,
+              orElse: () => SchoolType.sd,
+            ),
       name: map['name'] as String?,
       address: map['address'] as String?,
     );
   }
 
   Map<String, Object?> toMap() {
-    return {'id': id, 'type': type, 'name': name, 'address': address};
+    return {'id': id, 'type': type?.label, 'name': name, 'address': address};
   }
 
   @override

@@ -1,12 +1,16 @@
 import 'package:edukita/core/database/base_repository.dart';
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/features/management/class_model.dart';
+import 'package:edukita/features/management/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/data/student_page_data.dart';
 import 'package:edukita/features/students/data/student_table.dart';
 import 'package:edukita/features/students/domain/student_mapper.dart';
 import 'package:edukita/features/students/domain/sudent_filter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:uuid/uuid.dart';
 
 class StudentRepository extends BaseRepository<Student> {
   final DatabaseProvider _dbProvider;
@@ -76,7 +80,7 @@ class StudentRepository extends BaseRepository<Student> {
 
     // 🏫 class
     if (filter.classNames.isNotEmpty) {
-      where.add('c.class_name IN (${placeholders(filter.classNames.length)})');
+      where.add('c.name IN (${placeholders(filter.classNames.length)})');
       args.addAll(filter.classNames);
     }
 
@@ -96,16 +100,19 @@ class StudentRepository extends BaseRepository<Student> {
       s.student_no,
       s.full_name,
       s.photo_path,
-      c.class_name,
-      sc.name as school_name,
+      c.name as class_name,
+      COALESCE(sc.name, '-') as school_name,
       s.gender,
       s.status,
       s.join_at,
-      (strftime('%Y', 'now') - strftime('%Y', s.birth_date)) -
-      (strftime('%m-%d', 'now') < strftime('%m-%d', s.birth_date)) AS age
+      COALESCE(
+        (strftime('%Y', 'now') - strftime('%Y', s.birth_date)) -
+        (strftime('%m-%d', 'now') < strftime('%m-%d', s.birth_date)),
+        0
+      ) AS age
     FROM students s
     LEFT JOIN classes c ON c.id = s.class_id
-    LEFT JOIN student_schools ss ON ss.student_id = s.id
+    LEFT JOIN student_schools ss ON ss.student_id = s.id AND ss.status = 1
     LEFT JOIN schools sc ON sc.id = ss.school_id
     $whereClause
     ${pageable.buildOrderBy()}
@@ -173,7 +180,7 @@ class StudentRepository extends BaseRepository<Student> {
     }
 
     if (filter.classNames.isNotEmpty) {
-      where.add('c.class_name IN (${placeholders(filter.classNames.length)})');
+      where.add('c.name IN (${placeholders(filter.classNames.length)})');
       args.addAll(filter.classNames);
     }
 
@@ -184,8 +191,7 @@ class StudentRepository extends BaseRepository<Student> {
 
     final whereClause = where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}';
 
-    final result = await db.rawQuery(
-      '''
+    final result = await db.rawQuery('''
         SELECT 
           COUNT(DISTINCT s.id) AS total_students,
           COALESCE(COUNT(DISTINCT CASE WHEN s.gender = 'male' THEN s.id END),0) AS male_students,
@@ -196,9 +202,7 @@ class StudentRepository extends BaseRepository<Student> {
         LEFT JOIN student_schools ss ON ss.student_id = s.id
         LEFT JOIN schools sc ON sc.id = ss.school_id
         $whereClause;
-      ''',
-      args,
-    );
+      ''', args);
 
     return result.isNotEmpty
         ? result.first
@@ -233,6 +237,99 @@ class StudentRepository extends BaseRepository<Student> {
     );
   }
 
+  Future<List<SchoolClass>> loadAvailableClasses() async {
+    final db = await _dbProvider.database;
+    final result = await db.query('classes', orderBy: 'level, section, name');
+    return result.map(SchoolClass.fromMap).toList();
+  }
+
+  Future<List<School>> loadAvailableSchools() async {
+    final db = await _dbProvider.database;
+    final result = await db.query('schools', orderBy: 'name');
+    return result.map(School.fromMap).toList();
+  }
+
+  Future<void> insertStudentWithSchool(Student student, String schoolId) async {
+    final db = await _dbProvider.database;
+    await db.transaction((txn) async {
+      await txn.insert(table, mapper.toMap(student));
+      await txn.insert('student_schools', {
+        'id': const Uuid().v4(),
+        'student_id': student.id,
+        'school_id': schoolId,
+        'status': 1,
+      });
+    });
+  }
+
+  Future<void> updateStudentWithSchool(Student student, String schoolId) async {
+    final db = await _dbProvider.database;
+    await db.transaction((txn) async {
+      await txn.update(
+        table,
+        mapper.toMap(student),
+        where: 'id = ?',
+        whereArgs: [student.id],
+      );
+      await txn.delete(
+        'student_schools',
+        where: 'student_id = ?',
+        whereArgs: [student.id],
+      );
+      await txn.insert('student_schools', {
+        'id': const Uuid().v4(),
+        'student_id': student.id,
+        'school_id': schoolId,
+        'status': 1,
+      });
+    });
+  }
+
+  Future<void> deleteStudent(String studentId) async {
+    final db = await _dbProvider.database;
+    await db.transaction((txn) async {
+      await txn.delete(
+        'student_schools',
+        where: 'student_id = ?',
+        whereArgs: [studentId],
+      );
+      await txn.delete(table, where: 'id = ?', whereArgs: [studentId]);
+    });
+  }
+
+  Future<String> generateStudentNumber() async {
+    final db = await _dbProvider.database;
+    final now = DateTime.now();
+    final branchId = dotenv.env['BRANCH_ID'] ?? 'BRANCH';
+    final year = now.year.toString();
+    final month = now.month.toString().padLeft(2, '0');
+    final prefix = '$branchId$year$month';
+
+    final result = await db.rawQuery(
+      '''
+      SELECT student_no
+      FROM students
+      WHERE student_no LIKE ?
+      ORDER BY student_no DESC
+      LIMIT 1
+      ''',
+      ['$prefix%'],
+    );
+
+    final lastStudentNo = result.isEmpty
+        ? null
+        : result.first['student_no'] as String?;
+    final lastRunningNumber = lastStudentNo == null
+        ? 0
+        : int.tryParse(lastStudentNo.substring(prefix.length)) ?? 0;
+    final nextRunningNumber = (lastRunningNumber + 1).toString().padLeft(
+      4,
+      '0',
+    );
+
+    return '$prefix$nextRunningNumber';
+  }
+
   Future<StudentDetailData> loadDetailItem(String studentId) async {
     final db = await _dbProvider.database;
     print(studentId);
@@ -243,7 +340,7 @@ class StudentRepository extends BaseRepository<Student> {
             s.nick_name,
             s.student_no,
             s.class_id ,
-            c.class_name ,
+            c.name as class_name ,
             s.full_name ,
             s.join_at ,
             s.nis ,
@@ -258,17 +355,19 @@ class StudentRepository extends BaseRepository<Student> {
             s.weight ,
             s.photo_path ,
             s.status ,
-            sc.name as school_name,
-            (strftime('%Y', 'now') - strftime('%Y', s.birth_date)) -
-            (strftime('%m-%d', 'now') < strftime('%m-%d', s.birth_date)) AS age
+            COALESCE(sc.name, '-') as school_name,
+            COALESCE(
+              (strftime('%Y', 'now') - strftime('%Y', s.birth_date)) -
+              (strftime('%m-%d', 'now') < strftime('%m-%d', s.birth_date)),
+              0
+            ) AS age
           from
             students as s
             LEFT JOIN classes c ON c.id = s.class_id
-            LEFT JOIN student_schools ss ON ss.student_id = s.id
+            LEFT JOIN student_schools ss ON ss.student_id = s.id AND ss.status = 1
             LEFT JOIN schools sc ON sc.id = ss.school_id
           where 
-            ss.status = 1
-            and s.id = ?
+            s.id = ?
         ''';
 
     final result = await db.rawQuery(query, [studentId]);

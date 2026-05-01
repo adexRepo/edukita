@@ -96,7 +96,7 @@ class _ClassFormCardState extends State<ClassFormCard> {
 
     final schoolClass = widget.initialClass != null
         ? widget.initialClass!.copyWith(
-            className: className,
+            name: className,
             level: int.parse(_levelController.text.trim()),
             section: _sectionController.text.trim().isEmpty
                 ? null
@@ -104,7 +104,7 @@ class _ClassFormCardState extends State<ClassFormCard> {
             year: _yearController.text.trim(),
           )
         : SchoolClass(
-            className: className,
+            name: className,
             level: int.parse(_levelController.text.trim()),
             section: _sectionController.text.trim().isEmpty
                 ? null

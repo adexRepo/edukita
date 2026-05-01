@@ -41,7 +41,7 @@ class AppTable<T> extends StatefulWidget {
 class _AppTableState<T> extends State<AppTable<T>> {
   int currentPage = 0;
   int? sortColumnIndex;
-  bool ascending = true;
+  bool ascending = false;
 
   List<T> get processedData {
     final data = [...widget.data];
@@ -84,51 +84,89 @@ class _AppTableState<T> extends State<AppTable<T>> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: const BoxDecoration(
-        color: AppColors.primaryLight,
+        color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: List.generate(widget.columns.length, (index) {
           final col = widget.columns[index];
+          final isSortable = col.sortValue != null;
+          final isActiveSort = sortColumnIndex == index;
           return Expanded(
             flex: col.flex,
             child: InkWell(
-              onTap: col.sortValue == null
+              onTap: !isSortable
                   ? null
                   : () {
                       setState(() {
-                        if (sortColumnIndex == index) {
-                          ascending = !ascending;
-                        } else {
+                        if (!isActiveSort) {
                           sortColumnIndex = index;
+                          ascending = false;
+                        } else if (!ascending) {
                           ascending = true;
+                        } else {
+                          sortColumnIndex = null;
+                          ascending = false;
                         }
                       });
                     },
-              child: Row(
-                children: [
-                  Text(
-                    col.title,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+              child: Tooltip(
+                message: _sortTooltip(col.title, isSortable, isActiveSort),
+                waitDuration: const Duration(milliseconds: 450),
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    right: index == widget.columns.length - 1 ? 0 : 12,
                   ),
-                  if (sortColumnIndex == index)
-                    Icon(
-                      ascending ? Icons.arrow_upward : Icons.arrow_downward,
-                      size: 12,
-                    ),
-                ],
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          col.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            height: 1.15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                      if (isSortable) ...[
+                        const SizedBox(width: 4),
+                        Icon(
+                          isActiveSort
+                              ? (ascending
+                                    ? Icons.arrow_upward
+                                    : Icons.arrow_downward)
+                              : Icons.unfold_more,
+                          size: isActiveSort ? 13 : 15,
+                          color: isActiveSort
+                              ? AppColors.primaryDark
+                              : AppColors.textHint,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
           );
         }),
       ),
     );
+  }
+
+  String _sortTooltip(String title, bool isSortable, bool isActiveSort) {
+    if (!isSortable) return title;
+
+    final columnName = title.replaceAll('\n', ' ').toLowerCase();
+    if (!isActiveSort) return 'Sorting by $columnName descending';
+    if (!ascending) return 'Sorted by $columnName descending';
+    return 'Sorted by $columnName ascending';
   }
 
   // ================= BODY =================
@@ -142,12 +180,19 @@ class _AppTableState<T> extends State<AppTable<T>> {
         return InkWell(
           onTap: widget.onRowTap != null ? () => widget.onRowTap!(item) : null,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
               children: List.generate(widget.columns.length, (i) {
                 final col = widget.columns[i];
-                return Expanded(flex: col.flex, child: col.cell(item));
+                return Expanded(
+                  flex: col.flex,
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: i == widget.columns.length - 1 ? 0 : 12,
+                    ),
+                    child: col.cell(item),
+                  ),
+                );
               }),
             ),
           ),

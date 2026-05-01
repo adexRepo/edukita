@@ -1,22 +1,32 @@
+import 'dart:io';
+
 import 'package:edukita/core/helper/com_enum.dart';
 import 'package:edukita/core/helper/validation_helper.dart';
 import 'package:edukita/features/management/class_model.dart';
+import 'package:edukita/features/management/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:path/path.dart' as p;
 
-typedef StudentFormSubmit = void Function(Student student);
+typedef StudentFormSubmit = void Function(Student student, String schoolId);
 
 class StudentFormCard extends StatefulWidget {
   const StudentFormCard({
     super.key,
+    required this.availableSchools,
     required this.availableClasses,
+    required this.generatedStudentNo,
     required this.onSubmit,
     this.initialStudent,
     this.isEditing = false,
   });
 
+  final List<School> availableSchools;
   final List<SchoolClass> availableClasses;
+  final String generatedStudentNo;
   final Student? initialStudent;
   final bool isEditing;
   final StudentFormSubmit onSubmit;
@@ -40,22 +50,23 @@ class _StudentFormCardState extends State<StudentFormCard> {
   late final TextEditingController _pantsSizeController;
   late final TextEditingController _heightController;
   late final TextEditingController _weightController;
-  late final TextEditingController _photoPathController;
+  String? _selectedSchoolId;
   String? _selectedClassId;
-  Gender? _selectedGender;
+  String? _selectedPhotoSourcePath;
+  String? _selectedPhotoFileName;
+  late Gender _selectedGender;
 
   @override
   void initState() {
     super.initState();
     final student = widget.initialStudent;
     _studentNoController = TextEditingController(
-      text:
-          student?.studentId ?? 'JKTM${DateTime.now().millisecondsSinceEpoch}',
+      text: student?.studentId ?? widget.generatedStudentNo,
     );
     _fullNameController = TextEditingController(text: student?.fullName ?? '');
     _nickNameController = TextEditingController(text: student?.nickName ?? '');
     _joinAtController = TextEditingController(
-      text: student?.joinAt ?? DateTime.now().toIso8601String(),
+      text: student?.joinAt ?? DateTime.now().toString().split(' ')[0],
     );
     _nisController = TextEditingController(text: student?.nis ?? '');
     _birthDateController = TextEditingController(
@@ -80,15 +91,13 @@ class _StudentFormCardState extends State<StudentFormCard> {
     _weightController = TextEditingController(
       text: student?.weight?.toString() ?? '',
     );
-    _photoPathController = TextEditingController(
-      text: student?.photoPath ?? '',
-    );
-    _selectedClassId =
-        student?.classId ??
-        (widget.availableClasses.isNotEmpty
-            ? widget.availableClasses.first.id
-            : null);
-    _selectedGender = student?.gender;
+    _selectedPhotoSourcePath = student?.photoPath;
+    _selectedPhotoFileName = student?.photoPath == null
+        ? null
+        : p.basename(student!.photoPath!);
+    _selectedClassId = student?.classId;
+    _selectedSchoolId = _schoolIdForClass(_selectedClassId);
+    _selectedGender = student?.gender ?? Gender.male;
   }
 
   @override
@@ -106,13 +115,67 @@ class _StudentFormCardState extends State<StudentFormCard> {
     _pantsSizeController.dispose();
     _heightController.dispose();
     _weightController.dispose();
-    _photoPathController.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _pickPhoto() async {
+    if (_studentNoController.text.trim().isEmpty) {
+      _showMessage('Student number is not ready yet.');
+      return;
+    }
+
+    const photoGroup = XTypeGroup(
+      label: 'Photos',
+      extensions: ['jpg', 'jpeg', 'png', 'webp'],
+    );
+    final file = await openFile(acceptedTypeGroups: [photoGroup]);
+    if (file == null) return;
+
+    final sourceFile = File(file.path);
+    final size = await sourceFile.length();
+    const maxPhotoSize = 20 * 1024 * 1024;
+    if (size > maxPhotoSize) {
+      _showMessage('Photo must be 20 MB or smaller.');
+      return;
+    }
+
+    setState(() {
+      _selectedPhotoSourcePath = file.path;
+      _selectedPhotoFileName = file.name;
+    });
+  }
+
+  Future<String?> _saveSelectedPhoto() async {
+    final sourcePath = _selectedPhotoSourcePath;
+    if (sourcePath == null || sourcePath.isEmpty) return null;
+
+    final sourceFile = File(sourcePath);
+    if (!await sourceFile.exists()) return sourcePath;
+
+    final studentNo = _studentNoController.text.trim();
+    final fullName = _fullNameController.text.trim();
+    final storagePath = dotenv.env['STORAGE_PATH'] ?? './edukita/storage';
+    final photoDirectory = Directory(p.join(storagePath, 'photos', studentNo));
+    await photoDirectory.create(recursive: true);
+
+    final extension = p.extension(sourceFile.path);
+    final filename =
+        '${studentNo}_${_fileSafeName(fullName)}_${_compactDate(DateTime.now())}$extension';
+    final destinationPath = p.join(photoDirectory.path, filename);
+
+    if (p.normalize(sourceFile.path) == p.normalize(destinationPath)) {
+      return destinationPath;
+    }
+
+    await sourceFile.copy(destinationPath);
+    return destinationPath;
+  }
+
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_selectedSchoolId == null) return;
     if (_selectedClassId == null) return;
+    final photoPath = await _saveSelectedPhoto();
 
     final student =
         (widget.initialStudent ??
@@ -122,12 +185,13 @@ class _StudentFormCardState extends State<StudentFormCard> {
                   fullName: '',
                   joinAt: '',
                   id: '',
-                  status: StudentStatus.inactive,
+                  status: StudentStatus.active,
                 ))
             .copyWith(
               studentId: _studentNoController.text.trim(),
               classId: _selectedClassId!,
-              gender: _selectedGender!,
+              gender: _selectedGender,
+              status: StudentStatus.active,
               fullName: _fullNameController.text.trim(),
               nickName: nullIfEmpty(_nickNameController.text),
               joinAt: _joinAtController.text.trim(),
@@ -140,223 +204,327 @@ class _StudentFormCardState extends State<StudentFormCard> {
               pantsSize: int.tryParse(_pantsSizeController.text),
               height: double.tryParse(_heightController.text),
               weight: double.tryParse(_weightController.text),
-              photoPath: nullIfEmpty(_photoPathController.text),
+              photoPath: photoPath,
             );
 
-    widget.onSubmit(student);
+    widget.onSubmit(student, _selectedSchoolId!);
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _compactDate(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}$month$day';
+  }
+
+  String _fileSafeName(String value) {
+    final cleaned = value.trim().replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-');
+    return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
+  }
+
+  String? _schoolIdForClass(String? classId) {
+    if (classId == null) return null;
+    for (final schoolClass in widget.availableClasses) {
+      if (schoolClass.id == classId) return schoolClass.schoolId;
+    }
+    return null;
+  }
+
+  List<SchoolClass> get _classesForSelectedSchool {
+    final schoolId = _selectedSchoolId;
+    if (schoolId == null) return const [];
+    return widget.availableClasses
+        .where((schoolClass) => schoolClass.schoolId == schoolId)
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: _selectedClassId,
-                items: widget.availableClasses
-                    .map(
-                      (schoolClass) => DropdownMenuItem(
-                        value: schoolClass.id,
-                        child: Text(
-                          '${schoolClass.className} (${schoolClass.year})',
-                        ),
-                      ),
-                    )
-                    .toList(),
-                decoration: const InputDecoration(labelText: 'Class'),
-                onChanged: (value) => setState(() => _selectedClassId = value),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please select a class';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _studentNoController,
-                decoration: const InputDecoration(
-                  labelText: 'Student Number',
-                  hintText: 'JKTM10001',
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _FormSection(
+              title: 'Basic Info',
+              children: [
+                _generatedStudentNoDisplay(),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _nickNameController,
+                  decoration: const InputDecoration(labelText: 'Nick Name'),
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Student number is required';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _fullNameController,
-                decoration: const InputDecoration(labelText: 'Full Name'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Full name is required';
-                  }
-                  if (value.length < 3) {
-                    return 'Minimum 3 characters';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _nickNameController,
-                decoration: const InputDecoration(labelText: 'Nick Name'),
-              ),
-              const SizedBox(height: 14),
-              DropdownButtonFormField<Gender>(
-                initialValue: _selectedGender,
-                items: Gender.values
-                    .map(
-                      (gender) => DropdownMenuItem(
-                        value: gender,
-                        child: Text(gender.name),
-                      ),
-                    )
-                    .toList(),
-                decoration: const InputDecoration(labelText: 'Gender'),
-                validator: (value) {
-                  if (value == null || value.toString().isEmpty) {
-                    return 'Gender is required';
-                  }
-                  return null;
-                },
-                onChanged: (value) => setState(() => _selectedGender = value),
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _nisController,
-                decoration: const InputDecoration(labelText: 'NIS'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'NIS is required';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _birthDateController,
-                readOnly: true,
-                decoration: const InputDecoration(labelText: 'Birth Date'),
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate:
-                        DateTime.tryParse(_birthDateController.text) ??
-                        DateTime.now(),
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime.now(),
-                  );
-
-                  if (date != null) {
-                    _birthDateController.text = date.toString().split(' ')[0];
-                  }
-                },
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _joinAtController,
-                decoration: const InputDecoration(
-                  labelText: 'Join Date',
-                  hintText: 'YYYY-MM-DD',
-                ),
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate:
-                        DateTime.tryParse(_joinAtController.text) ??
-                        DateTime.now(),
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime.now(),
-                  );
-
-                  if (date != null) {
-                    _joinAtController.text = date.toString().split(' ')[0];
-                  }
-                },
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _mobileNoController,
-                decoration: const InputDecoration(labelText: 'Mobile No'),
-                keyboardType: TextInputType.phone,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _emailAddrController,
-                decoration: const InputDecoration(labelText: 'Email Address'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) return null;
-
-                  final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                  if (!emailRegex.hasMatch(value)) {
-                    return 'Invalid email format';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(child: _shoeSizeField()),
-                  const SizedBox(width: 12),
-                  Expanded(child: _uniformSizeField()),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(child: _pantsSizeField()),
-                  const SizedBox(width: 12),
-                  Expanded(child: _heightField()),
-                ],
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _weightController,
-                decoration: const InputDecoration(labelText: 'Weight'),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) return null;
-                  final number = int.tryParse(value);
-                  if (number == null) return 'Must be a number';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _photoPathController,
-                decoration: const InputDecoration(labelText: 'Photo Path'),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _fullNameController,
+                  decoration: InputDecoration(
+                    label: _requiredLabel('Full Name'),
                   ),
-                  const SizedBox(width: 12),
-                  FilledButton(
-                    onPressed: _submit,
-                    child: Text(
-                      widget.isEditing ? 'Update Student' : 'Create Student',
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Full name is required';
+                    }
+                    if (value.length < 3) {
+                      return 'Minimum 3 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+                _EnumSegmentedField<Gender>(
+                  label: _requiredLabel('Gender'),
+                  value: _selectedGender,
+                  values: Gender.values,
+                  labelBuilder: (gender) => gender.name,
+                  onChanged: (gender) =>
+                      setState(() => _selectedGender = gender),
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _nisController,
+                  decoration: InputDecoration(label: _requiredLabel('NIS')),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'NIS is required';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _dateField('Birth Date', _birthDateController),
                     ),
+                    const SizedBox(width: 12),
+                    Expanded(child: _dateField('Join Date', _joinAtController)),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _FormSection(
+              title: 'School',
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedSchoolId,
+                  items: widget.availableSchools
+                      .map(
+                        (school) => DropdownMenuItem(
+                          value: school.id,
+                          child: Text(
+                            '${school.name ?? '-'} (${school.type?.label ?? '-'})',
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  decoration: InputDecoration(label: _requiredLabel('School')),
+                  onChanged: (value) => setState(() {
+                    _selectedSchoolId = value;
+                    _selectedClassId = null;
+                  }),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please select a school';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedClassId,
+                  items: _classesForSelectedSchool
+                      .map(
+                        (schoolClass) => DropdownMenuItem(
+                          value: schoolClass.id,
+                          child: Text(
+                            '${schoolClass.className} (${schoolClass.year})',
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  decoration: InputDecoration(
+                    label: _requiredLabel('Class'),
+                    hintText: _selectedSchoolId == null
+                        ? 'Select school first'
+                        : 'Select class',
                   ),
-                ],
-              ),
-            ],
-          ),
+                  onChanged: _selectedSchoolId == null
+                      ? null
+                      : (value) => setState(() => _selectedClassId = value),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please select a class';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _FormSection(
+              title: 'Contact',
+              children: [
+                TextFormField(
+                  controller: _mobileNoController,
+                  decoration: const InputDecoration(labelText: 'Mobile No'),
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _emailAddrController,
+                  decoration: const InputDecoration(labelText: 'Email Address'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return null;
+
+                    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                    if (!emailRegex.hasMatch(value)) {
+                      return 'Invalid email format';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _FormSection(
+              title: 'Physical',
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: _shoeSizeField()),
+                    const SizedBox(width: 12),
+                    Expanded(child: _uniformSizeField()),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(child: _pantsSizeField()),
+                    const SizedBox(width: 12),
+                    Expanded(child: _heightField()),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                _weightField(),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _FormSection(title: 'Photo', children: [_photoPicker()]),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 12),
+                FilledButton(
+                  onPressed: _submit,
+                  child: Text(
+                    widget.isEditing ? 'Update Student' : 'Create Student',
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _generatedStudentNoDisplay() {
+    return InputDecorator(
+      decoration: const InputDecoration(
+        labelText: 'Generated No',
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.all(12),
+      ),
+      child: Text(
+        _studentNoController.text,
+        style: Theme.of(
+          context,
+        ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+
+  TextFormField _dateField(String label, TextEditingController controller) {
+    return TextFormField(
+      controller: controller,
+      readOnly: true,
+      decoration: InputDecoration(
+        label: _requiredLabel(label),
+        hintText: 'YYYY-MM-DD',
+        suffixIcon: const Icon(Icons.calendar_today_outlined),
+      ),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return '$label is required';
+        }
+        return null;
+      },
+      onTap: () async {
+        final date = await showDatePicker(
+          context: context,
+          initialDate: DateTime.tryParse(controller.text) ?? DateTime.now(),
+          firstDate: DateTime(2000),
+          lastDate: DateTime.now(),
+        );
+
+        if (date != null) {
+          controller.text = date.toString().split(' ')[0];
+        }
+      },
+    );
+  }
+
+  Widget _requiredLabel(String label) {
+    return RichText(
+      text: TextSpan(
+        text: label,
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+        children: const [
+          TextSpan(
+            text: ' *',
+            style: TextStyle(color: Colors.red),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _photoPicker() {
+    return InputDecorator(
+      decoration: const InputDecoration(
+        labelText: 'Student Photo',
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.all(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              _selectedPhotoFileName ?? 'No photo selected',
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton.icon(
+            onPressed: _pickPhoto,
+            icon: const Icon(Icons.upload_file),
+            label: const Text('Upload'),
+          ),
+        ],
       ),
     );
   }
@@ -409,9 +577,91 @@ class _StudentFormCardState extends State<StudentFormCard> {
     ],
     validator: (value) {
       if (value == null || value.isEmpty) return null;
-      final number = int.tryParse(value);
+      final number = double.tryParse(value);
       if (number == null) return 'Must be a number';
       return null;
     },
   );
+
+  TextFormField _weightField() => TextFormField(
+    controller: _weightController,
+    decoration: const InputDecoration(labelText: 'Weight'),
+    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+    inputFormatters: [
+      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+    ],
+    validator: (value) {
+      if (value == null || value.isEmpty) return null;
+      final number = double.tryParse(value);
+      if (number == null) return 'Must be a number';
+      return null;
+    },
+  );
+}
+
+class _FormSection extends StatelessWidget {
+  const _FormSection({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
+        ...children,
+      ],
+    );
+  }
+}
+
+class _EnumSegmentedField<T extends Enum> extends StatelessWidget {
+  const _EnumSegmentedField({
+    required this.label,
+    required this.value,
+    required this.values,
+    required this.labelBuilder,
+    required this.onChanged,
+  });
+
+  final Widget label;
+  final T value;
+  final List<T> values;
+  final String Function(T value) labelBuilder;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InputDecorator(
+      decoration: InputDecoration(
+        label: label,
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+      ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: SegmentedButton<T>(
+          showSelectedIcon: false,
+          segments: values
+              .map(
+                (item) => ButtonSegment<T>(
+                  value: item,
+                  label: Text(labelBuilder(item)),
+                ),
+              )
+              .toList(),
+          selected: {value},
+          onSelectionChanged: (selection) => onChanged(selection.first),
+        ),
+      ),
+    );
+  }
 }

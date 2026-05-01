@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:edukita/features/management/class_model.dart';
 import 'package:edukita/features/management/school_model.dart';
 import 'package:edukita/features/management/school_repository.dart';
 
@@ -28,9 +29,33 @@ class SchoolCubit extends Cubit<SchoolState> {
     }
   }
 
+  Future<void> addSchoolWithClasses(
+    School school,
+    List<SchoolClass> classes,
+  ) async {
+    try {
+      await _repository.insertSchoolWithClasses(school, classes);
+      await loadSchools();
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+    }
+  }
+
   Future<void> updateSchool(School school) async {
     try {
       await _repository.updateSchool(school);
+      await loadSchools();
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+    }
+  }
+
+  Future<void> updateSchoolWithClasses(
+    School school,
+    List<SchoolClass> classes,
+  ) async {
+    try {
+      await _repository.updateSchoolWithClasses(school, classes);
       await loadSchools();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));

@@ -1,6 +1,9 @@
+import 'package:edukita/features/management/class_cubit.dart';
+import 'package:edukita/features/management/class_model.dart';
 import 'package:edukita/features/management/school_cubit.dart';
 import 'package:edukita/features/management/school_form_dialog.dart';
 import 'package:edukita/features/management/school_model.dart';
+import 'package:edukita/widgets/clay_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -12,110 +15,304 @@ class SchoolsPage extends StatefulWidget {
 }
 
 class _SchoolsPageState extends State<SchoolsPage> {
+  School? _selectedSchool;
+
   @override
   void initState() {
     super.initState();
     context.read<SchoolCubit>().loadSchools();
   }
 
-  Future<void> _showSchoolFormDialog(
-    BuildContext context, {
-    School? existingSchool,
-  }) async {
+  Future<void> _showSchoolFormDialog({School? school}) async {
+    final schoolCubit = context.read<SchoolCubit>();
+    final classCubit = context.read<ClassCubit>();
+    final isEditing = school != null;
+    final classes = isEditing
+        ? await classCubit.getClassesBySchool(school.id)
+        : <SchoolClass>[];
+
+    if (!mounted) return;
+
     await showDialog<void>(
       context: context,
       builder: (context) => SchoolFormDialog(
-        school: existingSchool,
-        onSave: (school) async {
-          final cubit = context.read<SchoolCubit>();
-          if (existingSchool != null) {
-            await cubit.updateSchool(school);
+        school: school,
+        initialClasses: classes,
+        onSave: (school, classes) async {
+          if (isEditing) {
+            await schoolCubit.updateSchoolWithClasses(school, classes);
           } else {
-            await cubit.addSchool(school);
+            await schoolCubit.addSchoolWithClasses(school, classes);
           }
+          await classCubit.loadClassesBySchool(school.id);
+          setState(() => _selectedSchool = school);
         },
       ),
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, String id) async {
-    final cubit = context.read<SchoolCubit>();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Delete School'),
-          content: const Text('Are you sure you want to delete this school?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed == true) {
-      await cubit.deleteSchool(id);
-    }
+  void _selectSchool(School school) {
+    setState(() => _selectedSchool = school);
+    context.read<ClassCubit>().loadClassesBySchool(school.id);
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SchoolCubit, SchoolState>(
-      builder: (context, state) {
-        if (state.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (state.error != null) {
-          return Center(child: Text('Error: ${state.error}'));
-        } else {
-          final schools = state.schools;
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('Schools'),
-              actions: [
-                IconButton(
+    return Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'School',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: _showSchoolFormDialog,
                   icon: const Icon(Icons.add),
-                  onPressed: () => _showSchoolFormDialog(context),
+                  label: const Text('Add School'),
                 ),
               ],
             ),
-            body: schools.isEmpty
-                ? const Center(child: Text('No schools yet. Add a school.'))
-                : ListView.builder(
-                    itemCount: schools.length,
-                    itemBuilder: (context, index) {
-                      final school = schools[index];
-                      return ListTile(
-                        title: Text(school.name ?? 'Unnamed'),
-                        subtitle: Text('Address: ${school.address ?? 'N/A'}'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit),
-                              onPressed: () => _showSchoolFormDialog(
-                                context,
-                                existingSchool: school,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () =>
-                                  _confirmDelete(context, school.id),
-                            ),
-                          ],
-                        ),
-                      );
+            const SizedBox(height: 14),
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _SchoolTable(
+                      selected: _selectedSchool,
+                      onSelect: _selectSchool,
+                      onEdit: (school) => _showSchoolFormDialog(school: school),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(child: _ClassTable(selectedSchool: _selectedSchool)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SchoolTable extends StatelessWidget {
+  const _SchoolTable({
+    required this.selected,
+    required this.onSelect,
+    required this.onEdit,
+  });
+
+  final School? selected;
+  final ValueChanged<School> onSelect;
+  final ValueChanged<School> onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClayCard(
+      child: BlocBuilder<SchoolCubit, SchoolState>(
+        builder: (context, state) {
+          if (state.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (state.error != null) {
+            return Center(child: Text('Error: ${state.error}'));
+          }
+          if (state.schools.isEmpty) {
+            return const Center(child: Text('No schools yet.'));
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Schools',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: state.schools.length,
+                  itemBuilder: (context, index) {
+                    final school = state.schools[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _SchoolRow(
+                        school: school,
+                        selected: selected?.id == school.id,
+                        onTap: () => onSelect(school),
+                        onEdit: () => onEdit(school),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SchoolRow extends StatelessWidget {
+  const _SchoolRow({
+    required this.school,
+    required this.selected,
+    required this.onTap,
+    required this.onEdit,
+  });
+
+  final School school;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final selectedColor = colorScheme.primary;
+
+    return Material(
+      color: selected
+          ? selectedColor.withValues(alpha: 0.08)
+          : Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: selected ? selectedColor : const Color(0xFFE5E7EB),
+          width: selected ? 1.5 : 1,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                width: selected ? 5 : 0,
+                color: selectedColor,
+              ),
+              Expanded(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    radius: 16,
+                    backgroundColor: selected
+                        ? selectedColor
+                        : const Color(0xFFF3F4F6),
+                    child: Icon(
+                      selected ? Icons.check : Icons.apartment,
+                      size: 17,
+                      color: selected ? Colors.white : const Color(0xFF6B7280),
+                    ),
+                  ),
+                  title: Text(
+                    school.name ?? '-',
+                    style: TextStyle(
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${school.type?.label ?? '-'} - ${school.address ?? '-'}',
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Edit school',
+                        onPressed: onEdit,
+                        icon: const Icon(Icons.edit, size: 18),
+                      ),
+                      if (selected)
+                        Icon(Icons.chevron_right, color: selectedColor),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ClassTable extends StatelessWidget {
+  const _ClassTable({required this.selectedSchool});
+
+  final School? selectedSchool;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClayCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            selectedSchool == null
+                ? 'Classes'
+                : 'Classes - ${selectedSchool!.name ?? '-'}',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: selectedSchool == null
+                ? const Center(child: Text('Select a school to view classes.'))
+                : BlocBuilder<ClassCubit, ClassState>(
+                    builder: (context, state) {
+                      if (state.isLoading) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (state.error != null) {
+                        return Center(child: Text('Error: ${state.error}'));
+                      }
+                      if (state.classes.isEmpty) {
+                        return const Center(
+                          child: Text('No classes for this school.'),
+                        );
+                      }
+                      return _ClassList(classes: state.classes);
                     },
                   ),
-          );
-        }
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ClassList extends StatelessWidget {
+  const _ClassList({required this.classes});
+
+  final List<SchoolClass> classes;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      itemCount: classes.length,
+      separatorBuilder: (_, _) => const Divider(height: 1),
+      itemBuilder: (context, index) {
+        final schoolClass = classes[index];
+        return ListTile(
+          title: Text(schoolClass.name),
+          subtitle: Text(
+            'Level ${schoolClass.level} - Section ${schoolClass.section ?? '-'} - Year ${schoolClass.year}',
+          ),
+        );
       },
     );
   }

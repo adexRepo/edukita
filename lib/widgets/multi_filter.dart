@@ -265,7 +265,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
       child: Column(
         children: [
           DropdownButtonFormField<FilterField>(
-            value: selectedField,
+            initialValue: selectedField,
             isExpanded: true,
             items: widget.fields.map((f) {
               return DropdownMenuItem(value: f, child: Text(f.label));
@@ -393,10 +393,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
                                 height: 30,
                               ),
                               padding: EdgeInsets.zero,
-                              icon: const Icon(
-                                Icons.delete_outline,
-                                size: 18,
-                              ),
+                              icon: const Icon(Icons.delete_outline, size: 18),
                               onPressed: () {
                                 setState(() => draftFilters.removeAt(i));
                               },
@@ -416,7 +413,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
     switch (selectedField.inputType) {
       case FilterInputType.dropdown:
         return DropdownButtonFormField<String>(
-          value: controller.text.isEmpty ? null : controller.text,
+          initialValue: controller.text.isEmpty ? null : controller.text,
           items: selectedField.options!
               .map((e) => DropdownMenuItem(value: e, child: Text(e)))
               .toList(),

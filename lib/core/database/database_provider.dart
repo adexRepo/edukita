@@ -9,7 +9,6 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
-import 'package:uuid/uuid.dart';
 
 class DatabaseProvider {
   DatabaseProvider._();
@@ -29,7 +28,7 @@ class DatabaseProvider {
 
     final db = await openDatabase(
       path,
-      version: 6,
+      version: 9,
       onConfigure: (db) async => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, version) async {
         await DatabaseTables.createAll(db);

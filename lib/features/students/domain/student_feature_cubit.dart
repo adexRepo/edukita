@@ -1,9 +1,13 @@
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/features/common/feature_state.dart';
+import 'package:edukita/features/management/class_model.dart';
+import 'package:edukita/features/management/school_model.dart';
+import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/students/data/student_page_data.dart';
 import 'package:edukita/features/students/domain/student_repository.dart';
 import 'package:edukita/features/students/domain/sudent_filter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 
 class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
   final StudentRepository _repo;
@@ -33,6 +37,41 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
   Future<void> applyFilter(StudentFilter filter) async {
     _filter = filter;
     _pageable = Pageable(page: 0, size: _pageable.size);
+    await _fetch();
+  }
+
+  Future<List<SchoolClass>> loadAvailableClasses() {
+    return _repo.loadAvailableClasses();
+  }
+
+  Future<List<School>> loadAvailableSchools() {
+    return _repo.loadAvailableSchools();
+  }
+
+  Future<String> generateStudentNumber() {
+    return _repo.generateStudentNumber();
+  }
+
+  Future<Student?> loadStudent(String id) {
+    return _repo.findById(id);
+  }
+
+  Future<void> addStudent(Student student, String schoolId) async {
+    final studentToSave = student.copyWith(
+      id: student.id.isEmpty ? const Uuid().v4() : student.id,
+    );
+
+    await _repo.insertStudentWithSchool(studentToSave, schoolId);
+    await _fetch();
+  }
+
+  Future<void> updateStudent(Student student, String schoolId) async {
+    await _repo.updateStudentWithSchool(student, schoolId);
+    await _fetch();
+  }
+
+  Future<void> deleteStudent(String id) async {
+    await _repo.deleteStudent(id);
     await _fetch();
   }
 

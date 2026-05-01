@@ -1,4 +1,5 @@
 import 'package:edukita/core/database/database_provider.dart';
+import 'package:edukita/features/management/class_model.dart';
 import 'package:edukita/features/management/school_model.dart';
 
 class SchoolRepository {
@@ -24,6 +25,73 @@ class SchoolRepository {
   Future<int> insertSchool(School school) async {
     final db = await _dbProvider.database;
     return db.insert('schools', school.toMap());
+  }
+
+  Future<void> insertSchoolWithClasses(
+    School school,
+    List<SchoolClass> classes,
+  ) async {
+    final db = await _dbProvider.database;
+    await db.transaction((txn) async {
+      await txn.insert('schools', school.toMap());
+      final columns = await txn.rawQuery('PRAGMA table_info(classes)');
+      final names = columns.map((row) => row['name']).toSet();
+
+      for (final schoolClass in classes) {
+        final classWithSchool = schoolClass.copyWith(schoolId: school.id);
+        final map = classWithSchool.toMap();
+        if (names.contains('class_name')) {
+          map['class_name'] =
+              '${classWithSchool.schoolId}_${classWithSchool.name}';
+        }
+        map.removeWhere((key, value) => !names.contains(key));
+        await txn.insert('classes', map);
+      }
+    });
+  }
+
+  Future<void> updateSchoolWithClasses(
+    School school,
+    List<SchoolClass> classes,
+  ) async {
+    final db = await _dbProvider.database;
+    await db.transaction((txn) async {
+      await txn.update(
+        'schools',
+        school.toMap(),
+        where: 'id = ?',
+        whereArgs: [school.id],
+      );
+      await txn.delete(
+        'classes',
+        where: classes.isEmpty
+            ? 'school_id = ?'
+            : 'school_id = ? AND id NOT IN (${List.filled(classes.length, '?').join(',')})',
+        whereArgs: [school.id, ...classes.map((schoolClass) => schoolClass.id)],
+      );
+
+      final columns = await txn.rawQuery('PRAGMA table_info(classes)');
+      final names = columns.map((row) => row['name']).toSet();
+
+      for (final schoolClass in classes) {
+        final classWithSchool = schoolClass.copyWith(schoolId: school.id);
+        final map = classWithSchool.toMap();
+        if (names.contains('class_name')) {
+          map['class_name'] =
+              '${classWithSchool.schoolId}_${classWithSchool.name}';
+        }
+        map.removeWhere((key, value) => !names.contains(key));
+        final updated = await txn.update(
+          'classes',
+          map,
+          where: 'id = ?',
+          whereArgs: [classWithSchool.id],
+        );
+        if (updated == 0) {
+          await txn.insert('classes', map);
+        }
+      }
+    });
   }
 
   Future<int> updateSchool(School school) async {
