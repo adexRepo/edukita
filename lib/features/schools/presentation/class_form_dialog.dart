@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
@@ -5,7 +7,7 @@ import 'package:edukita/features/common/common_form_widgets.dart';
 
 class ClassFormDialog extends StatefulWidget {
   final SchoolClass? schoolClass;
-  final Function(SchoolClass) onSave;
+  final FutureOr<void> Function(SchoolClass) onSave;
 
   const ClassFormDialog({super.key, this.schoolClass, required this.onSave});
 
@@ -110,7 +112,10 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
                 value: year,
                 hint: 'Enter Year',
                 keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                ],
                 onChanged: (value) {
                   year = value;
                   _refreshClassName();
@@ -118,6 +123,9 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
                 onSaved: (value) => year = value ?? '',
                 validator: (value) {
                   if (value?.isEmpty ?? true) return 'Year is required';
+                  if (!RegExp(r'^\d{4}$').hasMatch(value!.trim())) {
+                    return 'Year must be 4 digits';
+                  }
                   return null;
                 },
               ),
@@ -131,7 +139,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: () {
+          onPressed: () async {
             if (_formKey.currentState!.validate()) {
               _formKey.currentState!.save();
               final schoolClass = SchoolClass(
@@ -141,8 +149,8 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
                 section: section,
                 year: year,
               );
-              widget.onSave(schoolClass);
-              Navigator.pop(context);
+              await widget.onSave(schoolClass);
+              if (context.mounted) Navigator.pop(context);
             }
           },
           child: const Text('Save'),

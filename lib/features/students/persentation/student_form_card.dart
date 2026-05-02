@@ -7,6 +7,7 @@ import 'package:edukita/features/management/guardian_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/form_validation.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -310,6 +311,12 @@ class _StudentFormCardState extends State<StudentFormCard> {
                 TextFormField(
                   controller: _nickNameController,
                   decoration: const InputDecoration(labelText: 'Nick Name'),
+                  inputFormatters: [LengthLimitingTextInputFormatter(40)],
+                  validator: (value) => AppFormValidation.optionalText(
+                    value,
+                    'Nick name',
+                    maxLength: 40,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
@@ -321,11 +328,15 @@ class _StudentFormCardState extends State<StudentFormCard> {
                     if (value == null || value.trim().isEmpty) {
                       return 'Full name is required';
                     }
-                    if (value.length < 3) {
+                    if (value.trim().length < 3) {
                       return 'Minimum 3 characters';
+                    }
+                    if (value.trim().length > 80) {
+                      return 'Full name must be at most 80 characters';
                     }
                     return null;
                   },
+                  inputFormatters: [LengthLimitingTextInputFormatter(80)],
                 ),
                 const SizedBox(height: 14),
                 _EnumSegmentedField<Gender>(
@@ -344,8 +355,12 @@ class _StudentFormCardState extends State<StudentFormCard> {
                     if (value == null || value.trim().isEmpty) {
                       return 'NIS is required';
                     }
+                    if (value.trim().length > 24) {
+                      return 'NIS must be at most 24 characters';
+                    }
                     return null;
                   },
+                  inputFormatters: [LengthLimitingTextInputFormatter(24)],
                 ),
                 const SizedBox(height: 14),
                 Row(
@@ -424,23 +439,20 @@ class _StudentFormCardState extends State<StudentFormCard> {
               children: [
                 TextFormField(
                   controller: _mobileNoController,
-                  decoration: const InputDecoration(labelText: 'Mobile No'),
+                  decoration: const InputDecoration(
+                    labelText: 'Mobile No',
+                    hintText: AppFormValidation.mobilePlaceholder,
+                  ),
                   keyboardType: TextInputType.phone,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  inputFormatters: AppFormValidation.mobileInputFormatters,
+                  validator: AppFormValidation.optionalMobile,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _emailAddrController,
                   decoration: const InputDecoration(labelText: 'Email Address'),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return null;
-
-                    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                    if (!emailRegex.hasMatch(value)) {
-                      return 'Invalid email format';
-                    }
-                    return null;
-                  },
+                  validator: AppFormValidation.optionalEmail,
+                  inputFormatters: [LengthLimitingTextInputFormatter(120)],
                 ),
               ],
             ),
@@ -877,11 +889,14 @@ class _GuardianDraftCard extends StatelessWidget {
             validator: (value) {
               if (!hasAnyGuardianInput()) return null;
               if (!draft.hasInput) return null;
-              if (value == null || value.trim().isEmpty) {
-                return 'Guardian name is required';
-              }
-              return null;
+              return AppFormValidation.requiredText(
+                value,
+                'Guardian name',
+                minLength: 3,
+                maxLength: 80,
+              );
             },
+            inputFormatters: [LengthLimitingTextInputFormatter(80)],
           ),
           const SizedBox(height: 14),
           Row(
@@ -889,9 +904,16 @@ class _GuardianDraftCard extends StatelessWidget {
               Expanded(
                 child: TextFormField(
                   controller: draft.mobileController,
-                  decoration: const InputDecoration(labelText: 'Mobile No'),
+                  decoration: const InputDecoration(
+                    labelText: 'Mobile No',
+                    hintText: AppFormValidation.mobilePlaceholder,
+                  ),
                   keyboardType: TextInputType.phone,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  inputFormatters: AppFormValidation.mobileInputFormatters,
+                  validator: (value) {
+                    if (!hasAnyGuardianInput() || !draft.hasInput) return null;
+                    return AppFormValidation.requiredMobile(value);
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -899,15 +921,8 @@ class _GuardianDraftCard extends StatelessWidget {
                 child: TextFormField(
                   controller: draft.emailController,
                   decoration: const InputDecoration(labelText: 'Email Address'),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) return null;
-
-                    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                    if (!emailRegex.hasMatch(value)) {
-                      return 'Invalid email format';
-                    }
-                    return null;
-                  },
+                  validator: AppFormValidation.optionalEmail,
+                  inputFormatters: [LengthLimitingTextInputFormatter(120)],
                 ),
               ),
             ],
@@ -919,6 +934,12 @@ class _GuardianDraftCard extends StatelessWidget {
                 child: TextFormField(
                   controller: draft.occupationController,
                   decoration: const InputDecoration(labelText: 'Occupation'),
+                  validator: (value) => AppFormValidation.optionalText(
+                    value,
+                    'Occupation',
+                    maxLength: 60,
+                  ),
+                  inputFormatters: [LengthLimitingTextInputFormatter(60)],
                 ),
               ),
               const SizedBox(width: 12),
@@ -926,6 +947,12 @@ class _GuardianDraftCard extends StatelessWidget {
                 child: TextFormField(
                   controller: draft.addressController,
                   decoration: const InputDecoration(labelText: 'Address'),
+                  validator: (value) => AppFormValidation.optionalText(
+                    value,
+                    'Address',
+                    maxLength: 160,
+                  ),
+                  inputFormatters: [LengthLimitingTextInputFormatter(160)],
                 ),
               ),
             ],

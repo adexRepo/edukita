@@ -1,4 +1,5 @@
 import 'package:edukita/core/database/database_provider.dart';
+import 'package:edukita/core/database/database_migrations.dart';
 import 'package:edukita/features/teachers/data/teacher_model.dart';
 
 class TeacherRepository {
@@ -23,11 +24,13 @@ class TeacherRepository {
 
   Future<int> insertTeacher(Teacher teacher) async {
     final db = await _dbProvider.database;
+    await DatabaseMigrations.ensureTeacherSchema(db);
     return db.insert('teachers', teacher.toMap());
   }
 
   Future<int> updateTeacher(Teacher teacher) async {
     final db = await _dbProvider.database;
+    await DatabaseMigrations.ensureTeacherSchema(db);
     return db.update(
       'teachers',
       teacher.toMap(),

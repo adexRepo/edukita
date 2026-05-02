@@ -1,10 +1,12 @@
-import 'package:edukita/features/schools/domain/class_cubit.dart';
+import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
-import 'package:edukita/features/schools/domain/school_cubit.dart';
-import 'package:edukita/features/schools/presentation/school_form_dialog.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
+import 'package:edukita/features/schools/domain/class_cubit.dart';
+import 'package:edukita/features/schools/domain/school_cubit.dart';
+import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
+import 'package:edukita/features/schools/presentation/school_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
-import 'package:edukita/widgets/clay_card.dart';
+import 'package:edukita/widgets/app_table.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -16,12 +18,31 @@ class SchoolsPage extends StatefulWidget {
 }
 
 class _SchoolsPageState extends State<SchoolsPage> {
-  School? _selectedSchool;
+  String _schoolSearchQuery = '';
+  late Future<Map<String, int>> _classCountsFuture;
 
   @override
   void initState() {
     super.initState();
     context.read<SchoolCubit>().loadSchools();
+    _classCountsFuture = _loadClassCounts();
+  }
+
+  Future<Map<String, int>> _loadClassCounts() async {
+    final allClasses = await context.read<ClassCubit>().getAllClasses();
+    final counts = <String, int>{};
+    for (final schoolClass in allClasses) {
+      final schoolId = schoolClass.schoolId;
+      if (schoolId == null || schoolId.isEmpty) continue;
+      counts[schoolId] = (counts[schoolId] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  Future<void> _refreshClassCounts() async {
+    setState(() {
+      _classCountsFuture = _loadClassCounts();
+    });
   }
 
   Future<void> _showSchoolFormDialog({School? school}) async {
@@ -45,16 +66,89 @@ class _SchoolsPageState extends State<SchoolsPage> {
           } else {
             await schoolCubit.addSchoolWithClasses(school, classes);
           }
-          await classCubit.loadClassesBySchool(school.id);
-          setState(() => _selectedSchool = school);
+          await _refreshClassCounts();
         },
       ),
     );
   }
 
-  void _selectSchool(School school) {
-    setState(() => _selectedSchool = school);
-    context.read<ClassCubit>().loadClassesBySchool(school.id);
+  Future<void> _showClassDialog(School school) async {
+    final classCubit = context.read<ClassCubit>();
+    final classes = await classCubit.getClassesBySchool(school.id);
+
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => _SchoolClassesDialog(
+        school: school,
+        classes: classes,
+        onAdd: () async {
+          await _showClassFormDialog(school: school);
+          if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+          await _showClassDialog(school);
+        },
+        onEdit: (schoolClass) async {
+          await _showClassFormDialog(school: school, schoolClass: schoolClass);
+          if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+          await _showClassDialog(school);
+        },
+        onDelete: (schoolClass) async {
+          final deleted = await _confirmDeleteClass(schoolClass);
+          if (!deleted) return;
+          if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+          await _showClassDialog(school);
+        },
+      ),
+    );
+  }
+
+  Future<void> _showClassFormDialog({
+    required School school,
+    SchoolClass? schoolClass,
+  }) async {
+    final classCubit = context.read<ClassCubit>();
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => ClassFormDialog(
+        schoolClass: schoolClass,
+        onSave: (value) async {
+          final classWithSchool = value.copyWith(schoolId: school.id);
+          if (schoolClass == null) {
+            await classCubit.addClass(classWithSchool);
+          } else {
+            await classCubit.updateClass(classWithSchool);
+          }
+          await _refreshClassCounts();
+        },
+      ),
+    );
+  }
+
+  Future<bool> _confirmDeleteClass(SchoolClass schoolClass) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Class'),
+        content: Text('Delete ${schoolClass.name}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return false;
+    await context.read<ClassCubit>().deleteClass(schoolClass.id);
+    await _refreshClassCounts();
+    return true;
   }
 
   Future<void> _confirmDeleteSchool(School school) async {
@@ -79,117 +173,21 @@ class _SchoolsPageState extends State<SchoolsPage> {
     if (confirmed != true || !mounted) return;
 
     await context.read<SchoolCubit>().deleteSchool(school.id);
-    if (!mounted) return;
-
-    if (_selectedSchool?.id == school.id) {
-      setState(() => _selectedSchool = null);
-      context.read<ClassCubit>().loadClassesBySchool('');
-    }
+    await _refreshClassCounts();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'School',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                FilledButton.icon(
-                  onPressed: _showSchoolFormDialog,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add School'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Expanded(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _SchoolTable(
-                      selected: _selectedSchool,
-                      onSelect: _selectSchool,
-                      onEdit: (school) => _showSchoolFormDialog(school: school),
-                      onDelete: _confirmDeleteSchool,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(child: _ClassTable(selectedSchool: _selectedSchool)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SchoolTable extends StatelessWidget {
-  const _SchoolTable({
-    required this.selected,
-    required this.onSelect,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  final School? selected;
-  final ValueChanged<School> onSelect;
-  final ValueChanged<School> onEdit;
-  final ValueChanged<School> onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClayCard(
-      child: BlocBuilder<SchoolCubit, SchoolState>(
+      body: BlocBuilder<SchoolCubit, SchoolState>(
         builder: (context, state) {
-          if (state.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (state.error != null) {
-            return Center(child: Text('Error: ${state.error}'));
-          }
-          if (state.schools.isEmpty) {
-            return const Center(child: Text('No schools yet.'));
-          }
-
           return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Schools',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 10),
+              _buildTopBar(context),
               Expanded(
-                child: ListView.builder(
-                  itemCount: state.schools.length,
-                  itemBuilder: (context, index) {
-                    final school = state.schools[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _SchoolRow(
-                        school: school,
-                        selected: selected?.id == school.id,
-                        onTap: () => onSelect(school),
-                        onEdit: () => onEdit(school),
-                        onDelete: () => onDelete(school),
-                      ),
-                    );
-                  },
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: _buildContent(state),
                 ),
               ),
             ],
@@ -198,166 +196,343 @@ class _SchoolTable extends StatelessWidget {
       ),
     );
   }
-}
 
-class _SchoolRow extends StatelessWidget {
-  const _SchoolRow({
-    required this.school,
-    required this.selected,
-    required this.onTap,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  final School school;
-  final bool selected;
-  final VoidCallback onTap;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final selectedColor = colorScheme.primary;
-
-    return Material(
-      color: selected
-          ? selectedColor.withValues(alpha: 0.08)
-          : AppColors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(
-          color: selected ? selectedColor : AppColors.border,
-          width: selected ? 1.5 : 1,
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: IntrinsicHeight(
-          child: Row(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
-                width: selected ? 5 : 0,
-                color: selectedColor,
-              ),
-              Expanded(
-                child: ListTile(
-                  leading: CircleAvatar(
-                    radius: 16,
-                    backgroundColor: selected
-                        ? selectedColor
-                        : AppColors.surfaceMuted,
-                    child: Icon(
-                      selected ? Icons.check : Icons.apartment,
-                      size: 17,
-                      color: selected
-                          ? AppColors.white
-                          : AppColors.textSecondary,
-                    ),
-                  ),
-                  title: Text(
-                    school.name ?? '-',
-                    style: TextStyle(
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: Text(
-                    '${school.type?.label ?? '-'} - ${school.address ?? '-'}',
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: 'Edit school',
-                        onPressed: onEdit,
-                        icon: const Icon(Icons.edit, size: 18),
-                      ),
-                      IconButton(
-                        tooltip: 'Delete school',
-                        onPressed: onDelete,
-                        icon: const Icon(Icons.delete_outline, size: 18),
-                      ),
-                      if (selected)
-                        Icon(Icons.chevron_right, color: selectedColor),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ClassTable extends StatelessWidget {
-  const _ClassTable({required this.selectedSchool});
-
-  final School? selectedSchool;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClayCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildTopBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
         children: [
-          Text(
-            selectedSchool == null
-                ? 'Classes'
-                : 'Classes - ${selectedSchool!.name ?? '-'}',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 10),
           Expanded(
-            child: selectedSchool == null
-                ? const Center(child: Text('Select a school to view classes.'))
-                : BlocBuilder<ClassCubit, ClassState>(
-                    builder: (context, state) {
-                      if (state.isLoading) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (state.error != null) {
-                        return Center(child: Text('Error: ${state.error}'));
-                      }
-                      if (state.classes.isEmpty) {
-                        return const Center(
-                          child: Text('No classes for this school.'),
-                        );
-                      }
-                      return _ClassList(classes: state.classes);
-                    },
-                  ),
+            child: Text(
+              'Schools',
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildContent(SchoolState state) {
+    if (state.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (state.error != null) {
+      return Center(child: Text('Error: ${state.error}'));
+    }
+
+    final normalizedQuery = _schoolSearchQuery.trim().toLowerCase();
+    final schools = normalizedQuery.isEmpty
+        ? state.schools
+        : state.schools.where((school) {
+            return (school.name ?? '').toLowerCase().contains(normalizedQuery);
+          }).toList();
+
+    return Column(
+      children: [
+        _buildTableHeader(),
+        const SizedBox(height: 12),
+        Expanded(
+          child: FutureBuilder<Map<String, int>>(
+            future: _classCountsFuture,
+            builder: (context, snapshot) {
+              final classCounts = snapshot.data ?? const <String, int>{};
+              if (schools.isEmpty) {
+                return Center(
+                  child: Text(
+                    state.schools.isEmpty
+                        ? 'No schools yet.'
+                        : 'No schools match your search.',
+                  ),
+                );
+              }
+
+              return AppTable<School>(
+                data: schools,
+                pageable: Pageable(
+                  page: 0,
+                  size: schools.length,
+                  totalPages: 1,
+                  totalItems: schools.length,
+                ),
+                onRowTap: _showClassDialog,
+                columns: [
+                  AppTableColumn(
+                    title: 'School',
+                    flex: 4,
+                    sortValue: (school) {
+                      final name = school.name ?? '';
+                      return name.isEmpty ? 0 : name.codeUnitAt(0);
+                    },
+                    cell: (school) => Text(
+                      school.name ?? '-',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  AppTableColumn(
+                    title: 'Type',
+                    flex: 2,
+                    sortValue: (school) => school.type?.index ?? 0,
+                    cell: (school) => Text(
+                      school.type?.label ?? '-',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  AppTableColumn(
+                    title: 'Address',
+                    flex: 4,
+                    sortValue: (school) {
+                      final address = school.address ?? '';
+                      return address.isEmpty ? 0 : address.codeUnitAt(0);
+                    },
+                    cell: (school) => Text(
+                      school.address ?? '-',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  AppTableColumn(
+                    title: 'Classes',
+                    flex: 2,
+                    sortValue: (school) => classCounts[school.id] ?? 0,
+                    cell: (school) => Text(
+                      '${classCounts[school.id] ?? 0}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  AppTableColumn(
+                    title: 'Actions',
+                    flex: 2,
+                    cell: (school) => Align(
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: 'Edit school',
+                            onPressed: () =>
+                                _showSchoolFormDialog(school: school),
+                            constraints: const BoxConstraints.tightFor(
+                              width: 28,
+                              height: 28,
+                            ),
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(Icons.edit, size: 16),
+                          ),
+                          IconButton(
+                            tooltip: 'Delete school',
+                            onPressed: () => _confirmDeleteSchool(school),
+                            constraints: const BoxConstraints.tightFor(
+                              width: 28,
+                              height: 28,
+                            ),
+                            padding: EdgeInsets.zero,
+                            color: AppColors.errorDark,
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              size: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTableHeader() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 560;
+        final search = TextField(
+          onChanged: (value) {
+            setState(() {
+              _schoolSearchQuery = value;
+            });
+          },
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.search),
+            hintText: 'Search school name',
+          ),
+        );
+        final addButton = FilledButton.icon(
+          onPressed: () => _showSchoolFormDialog(),
+          icon: const Icon(Icons.add),
+          label: const Text('Add School'),
+        );
+
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              search,
+              const SizedBox(height: 10),
+              Align(alignment: Alignment.centerRight, child: addButton),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: search),
+            const SizedBox(width: 12),
+            addButton,
+          ],
+        );
+      },
+    );
+  }
 }
 
-class _ClassList extends StatelessWidget {
-  const _ClassList({required this.classes});
+class _SchoolClassesDialog extends StatelessWidget {
+  const _SchoolClassesDialog({
+    required this.school,
+    required this.classes,
+    required this.onAdd,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
+  final School school;
   final List<SchoolClass> classes;
+  final Future<void> Function() onAdd;
+  final Future<void> Function(SchoolClass schoolClass) onEdit;
+  final Future<void> Function(SchoolClass schoolClass) onDelete;
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      itemCount: classes.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final schoolClass = classes[index];
-        return ListTile(
-          title: Text(schoolClass.name),
-          subtitle: Text(
-            'Level ${schoolClass.level} - Section ${schoolClass.section ?? '-'} - Year ${schoolClass.year}',
-          ),
-        );
-      },
+    return AlertDialog(
+      title: Text('Classes - ${school.name ?? '-'}'),
+      content: SizedBox(
+        width: 720,
+        height: 420,
+        child: Column(
+          children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                onPressed: () => onAdd(),
+                icon: const Icon(Icons.add),
+                label: const Text('Add Class'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: classes.isEmpty
+                  ? const Center(child: Text('No classes for this school.'))
+                  : AppTable<SchoolClass>(
+                      data: classes,
+                      pageable: Pageable(
+                        page: 0,
+                        size: classes.length,
+                        totalPages: 1,
+                        totalItems: classes.length,
+                      ),
+                      columns: [
+                        AppTableColumn(
+                          title: 'Class',
+                          flex: 3,
+                          sortValue: (schoolClass) =>
+                              schoolClass.name.codeUnitAt(0),
+                          cell: (schoolClass) => Text(
+                            schoolClass.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        AppTableColumn(
+                          title: 'Level',
+                          flex: 2,
+                          sortValue: (schoolClass) => schoolClass.level,
+                          cell: (schoolClass) => Text(
+                            '${schoolClass.level}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        AppTableColumn(
+                          title: 'Section',
+                          flex: 2,
+                          sortValue: (schoolClass) =>
+                              schoolClass.section?.codeUnitAt(0) ?? 0,
+                          cell: (schoolClass) => Text(
+                            schoolClass.section ?? '-',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        AppTableColumn(
+                          title: 'Year',
+                          flex: 2,
+                          sortValue: (schoolClass) =>
+                              int.tryParse(schoolClass.year) ?? 0,
+                          cell: (schoolClass) => Text(
+                            schoolClass.year,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        AppTableColumn(
+                          title: 'Actions',
+                          flex: 2,
+                          cell: (schoolClass) => Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Edit class',
+                                onPressed: () => onEdit(schoolClass),
+                                constraints: const BoxConstraints.tightFor(
+                                  width: 28,
+                                  height: 28,
+                                ),
+                                padding: EdgeInsets.zero,
+                                icon: const Icon(Icons.edit, size: 16),
+                              ),
+                              IconButton(
+                                tooltip: 'Delete class',
+                                onPressed: () => onDelete(schoolClass),
+                                constraints: const BoxConstraints.tightFor(
+                                  width: 28,
+                                  height: 28,
+                                ),
+                                padding: EdgeInsets.zero,
+                                color: AppColors.errorDark,
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
     );
   }
 }

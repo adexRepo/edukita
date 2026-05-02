@@ -5,7 +5,6 @@ class Teacher {
     String? id,
     this.nickName,
     required this.fullName,
-    this.role,
     this.lastEducationType,
     this.gender,
     this.email,
@@ -15,7 +14,6 @@ class Teacher {
   final String id;
   final String? nickName;
   final String fullName;
-  final String? role;
   final String? lastEducationType;
   final String? gender;
   final String? email;
@@ -25,7 +23,6 @@ class Teacher {
     String? id,
     String? nickName,
     String? fullName,
-    String? role,
     String? lastEducationType,
     String? gender,
     String? email,
@@ -35,7 +32,6 @@ class Teacher {
       id: id ?? this.id,
       nickName: nickName ?? this.nickName,
       fullName: fullName ?? this.fullName,
-      role: role ?? this.role,
       lastEducationType: lastEducationType ?? this.lastEducationType,
       gender: gender ?? this.gender,
       email: email ?? this.email,
@@ -48,7 +44,6 @@ class Teacher {
       id: map['id']?.toString(),
       nickName: map['nick_name'] as String?,
       fullName: map['full_name'] as String,
-      role: map['role'] as String?,
       lastEducationType: map['last_education_type'] as String?,
       gender: map['gender'] as String?,
       email: map['email'] as String?,
@@ -61,7 +56,6 @@ class Teacher {
       'id': id,
       'nick_name': nickName,
       'full_name': fullName,
-      'role': role,
       'last_education_type': lastEducationType,
       'gender': gender,
       'email': email,
@@ -71,7 +65,7 @@ class Teacher {
 
   @override
   String toString() =>
-      'Teacher(id: $id, nickName: $nickName, fullName: $fullName, role: $role, lastEducationType: $lastEducationType, gender: $gender, email: $email, mobileNo: $mobileNo)';
+      'Teacher(id: $id, nickName: $nickName, fullName: $fullName, lastEducationType: $lastEducationType, gender: $gender, email: $email, mobileNo: $mobileNo)';
 
   @override
   bool operator ==(Object other) =>
@@ -81,7 +75,6 @@ class Teacher {
           id == other.id &&
           nickName == other.nickName &&
           fullName == other.fullName &&
-          role == other.role &&
           lastEducationType == other.lastEducationType &&
           gender == other.gender &&
           email == other.email &&
@@ -92,7 +85,6 @@ class Teacher {
       id.hashCode ^
       nickName.hashCode ^
       fullName.hashCode ^
-      role.hashCode ^
       lastEducationType.hashCode ^
       gender.hashCode ^
       email.hashCode ^
@@ -139,14 +131,6 @@ class TeacherDetailData {
   final List<List<String>> riskRows;
   final List<List<String>> studentImpactRows;
   final List<List<String>> alertRows;
-
-  String get role {
-    if (teacher.role != null && teacher.role!.trim().isNotEmpty) {
-      return teacher.role!;
-    }
-    if (classes.isNotEmpty) return 'Subject Teacher';
-    return 'Teacher';
-  }
 
   String get followUpRateLabel {
     if (atRiskStudents == 0) return '-';

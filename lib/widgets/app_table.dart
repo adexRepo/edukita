@@ -172,8 +172,9 @@ class _AppTableState<T> extends State<AppTable<T>> {
   // ================= BODY =================
 
   Widget _buildBody(List<T> data, int startIndex) {
-    return ListView.builder(
+    return ListView.separated(
       itemCount: data.length,
+      separatorBuilder: (context, index) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final item = data[index];
 

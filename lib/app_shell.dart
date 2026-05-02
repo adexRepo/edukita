@@ -59,7 +59,7 @@ class _AppShellState extends State<AppShell> {
     final items = [
       ('Dashboard', Icons.dashboard, '/dashboard'),
       ('Students', Icons.school, '/students'),
-      ('School', Icons.apartment, '/school'),
+      ('Schools', Icons.apartment, '/school'),
       ('Teachers', Icons.badge, '/teachers'),
     ];
 

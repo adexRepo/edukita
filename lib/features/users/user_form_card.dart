@@ -1,5 +1,7 @@
 import 'package:edukita/features/users/user_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:edukita/widgets/form_validation.dart';
 
 typedef UserFormSubmit = void Function(User user);
 
@@ -91,11 +93,14 @@ class _UserFormCardState extends State<UserFormCard> {
                     enabled: !isEditing,
                     decoration: const InputDecoration(labelText: 'Username'),
                     validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Username is required';
-                      }
-                      return null;
+                      return AppFormValidation.requiredText(
+                        value,
+                        'Username',
+                        minLength: 3,
+                        maxLength: 32,
+                      );
                     },
+                    inputFormatters: [LengthLimitingTextInputFormatter(32)],
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
@@ -108,30 +113,40 @@ class _UserFormCardState extends State<UserFormCard> {
                           (value == null || value.trim().isEmpty)) {
                         return 'Password is required';
                       }
+                      if ((value?.isNotEmpty ?? false) &&
+                          value!.trim().length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      if ((value?.length ?? 0) > 64) {
+                        return 'Password must be at most 64 characters';
+                      }
                       return null;
                     },
+                    inputFormatters: [LengthLimitingTextInputFormatter(64)],
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _nickNameController,
                     decoration: const InputDecoration(labelText: 'Nickname'),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Nickname is required';
-                      }
-                      return null;
-                    },
+                    validator: (value) => AppFormValidation.requiredText(
+                      value,
+                      'Nickname',
+                      minLength: 2,
+                      maxLength: 40,
+                    ),
+                    inputFormatters: [LengthLimitingTextInputFormatter(40)],
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _fullNameController,
                     decoration: const InputDecoration(labelText: 'Full Name'),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Full name is required';
-                      }
-                      return null;
-                    },
+                    validator: (value) => AppFormValidation.requiredText(
+                      value,
+                      'Full name',
+                      minLength: 3,
+                      maxLength: 80,
+                    ),
+                    inputFormatters: [LengthLimitingTextInputFormatter(80)],
                   ),
                   const SizedBox(height: 24),
                   Row(

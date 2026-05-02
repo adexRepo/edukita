@@ -25,6 +25,7 @@ class TeacherCubit extends Cubit<TeacherState> {
       await loadTeachers();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -34,6 +35,7 @@ class TeacherCubit extends Cubit<TeacherState> {
       await loadTeachers();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 

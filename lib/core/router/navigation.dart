@@ -45,7 +45,7 @@ final List<NavigationItem> navigationPageItems = [
     ),
   ),
   NavigationItem(
-    label: 'School',
+    label: 'Schools',
     icon: Icons.apartment,
     pageBuilder: () => MultiBlocProvider(
       providers: [

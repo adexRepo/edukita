@@ -5,6 +5,7 @@ import 'package:edukita/features/students/persentation/detail/detail_section_car
 import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/teachers/domain/teacher_repository.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/detail_tab_scroll.dart';
 import 'package:flutter/material.dart';
 
 class TeacherDetailPage extends StatelessWidget {
@@ -19,14 +20,30 @@ class TeacherDetailPage extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
-            appBar: AppBar(title: Text(teacher.fullName)),
+            appBar: AppBar(
+              title: Text(
+                teacher.fullName,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
             body: const Center(child: CircularProgressIndicator()),
           );
         }
 
         if (snapshot.hasError || snapshot.data == null) {
           return Scaffold(
-            appBar: AppBar(title: Text(teacher.fullName)),
+            appBar: AppBar(
+              title: Text(
+                teacher.fullName,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
             body: Center(
               child: Text(snapshot.error?.toString() ?? 'Teacher not found'),
             ),
@@ -35,7 +52,12 @@ class TeacherDetailPage extends StatelessWidget {
 
         final data = snapshot.data!;
         return Scaffold(
-          appBar: AppBar(title: Text(data.teacher.fullName)),
+          appBar: AppBar(
+            title: const Text(
+              "Teacher Detail",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
           body: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: DefaultTabController(
@@ -43,20 +65,7 @@ class TeacherDetailPage extends StatelessWidget {
               child: Column(
                 children: [
                   const SizedBox(height: 8),
-                  _TeacherHeader(data: data),
-                  const SizedBox(height: 12),
-                  const TabBar(
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
-                    tabs: [
-                      Tab(text: 'Overview'),
-                      Tab(text: 'Students Impact'),
-                      Tab(text: 'Classes'),
-                      Tab(text: 'Notes Activity'),
-                      Tab(text: 'Risk Management'),
-                      Tab(text: 'More'),
-                    ],
-                  ),
+                  const _TeacherDetailTabs(),
                   Expanded(
                     child: TabBarView(
                       children: [
@@ -75,6 +84,33 @@ class TeacherDetailPage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _TeacherDetailTabs extends StatelessWidget {
+  const _TeacherDetailTabs();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.background,
+      alignment: Alignment.bottomCenter,
+      child: const TabBar(
+        isScrollable: false,
+        labelPadding: EdgeInsets.zero,
+        indicatorSize: TabBarIndicatorSize.label,
+        labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+        unselectedLabelStyle: TextStyle(fontSize: 11),
+        tabs: [
+          Tab(text: 'Overview'),
+          Tab(text: 'Impact'),
+          Tab(text: 'Classes'),
+          Tab(text: 'Notes'),
+          Tab(text: 'Risk'),
+          Tab(text: 'More'),
+        ],
+      ),
     );
   }
 }
@@ -119,7 +155,9 @@ class _TeacherHeader extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${data.role} | ${data.subjects.isEmpty ? 'No subjects assigned' : data.subjects.join(', ')}',
+                    data.subjects.isEmpty
+                        ? 'No subjects assigned'
+                        : data.subjects.join(', '),
                     style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,
@@ -143,14 +181,20 @@ class _TeacherHeader extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _MetricTile(label: 'Students', value: data.totalStudents.toString()),
+            _MetricTile(
+              label: 'Students',
+              value: data.totalStudents.toString(),
+            ),
             _MetricTile(label: 'Classes', value: data.classCount.toString()),
             _MetricTile(label: 'Notes', value: data.notesWritten.toString()),
             _MetricTile(
               label: 'Interventions',
               value: data.interventionsHandled.toString(),
             ),
-            _MetricTile(label: 'At-risk', value: data.atRiskStudents.toString()),
+            _MetricTile(
+              label: 'At-risk',
+              value: data.atRiskStudents.toString(),
+            ),
           ],
         ),
       ],
@@ -172,14 +216,18 @@ class _OverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TabScroll(
+    return DetailTabScroll(
       children: [
+        _TeacherHeader(data: data),
         DetailSectionCard(
           title: 'Teaching Load',
           icon: Icons.work_outline,
           children: [
             _MetricTile(label: 'Classes', value: data.classCount.toString()),
-            _MetricTile(label: 'Students', value: data.totalStudents.toString()),
+            _MetricTile(
+              label: 'Students',
+              value: data.totalStudents.toString(),
+            ),
             _MetricTile(
               label: 'Subjects',
               value: data.subjects.length.toString(),
@@ -191,9 +239,7 @@ class _OverviewTab extends StatelessWidget {
           title: 'Summary Insight',
           icon: Icons.auto_awesome_outlined,
           wrapChildren: false,
-          children: [
-            DetailEmptySectionText(data.summary),
-          ],
+          children: [DetailEmptySectionText(data.summary)],
         ),
         DetailSectionCard(
           title: 'Alerts',
@@ -219,7 +265,7 @@ class _ImpactTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TabScroll(
+    return DetailTabScroll(
       children: [
         DetailSectionCard(
           title: 'Student Impact Snapshot',
@@ -265,7 +311,7 @@ class _ClassesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TabScroll(
+    return DetailTabScroll(
       children: [
         DetailSectionCard(
           title: 'Assigned Classes & Students',
@@ -292,13 +338,16 @@ class _NotesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TabScroll(
+    return DetailTabScroll(
       children: [
         DetailSectionCard(
           title: 'Notes Activity',
           icon: Icons.note_alt_outlined,
           children: [
-            _MetricTile(label: 'Total Notes', value: data.notesWritten.toString()),
+            _MetricTile(
+              label: 'Total Notes',
+              value: data.notesWritten.toString(),
+            ),
             const _MetricTile(label: 'Academic', value: '-'),
             const _MetricTile(label: 'Behavior', value: '-'),
             const _MetricTile(label: 'Well-being', value: '-'),
@@ -313,7 +362,8 @@ class _NotesTab extends StatelessWidget {
             DetailDataTable(
               columns: const ['Date', 'Student', 'Class', 'Note'],
               rows: data.noteRows,
-              emptyText: 'No teaching notes have been recorded by this teacher.',
+              emptyText:
+                  'No teaching notes have been recorded by this teacher.',
             ),
           ],
         ),
@@ -329,7 +379,7 @@ class _RiskTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TabScroll(
+    return DetailTabScroll(
       children: [
         DetailSectionCard(
           title: 'Risk Management Performance',
@@ -356,9 +406,16 @@ class _RiskTab extends StatelessWidget {
           wrapChildren: false,
           children: [
             DetailDataTable(
-              columns: const ['Detected At', 'Student', 'Class', 'Risk Type', 'Level'],
+              columns: const [
+                'Detected At',
+                'Student',
+                'Class',
+                'Risk Type',
+                'Level',
+              ],
               rows: data.riskRows,
-              emptyText: 'No at-risk students are currently linked to this teacher.',
+              emptyText:
+                  'No at-risk students are currently linked to this teacher.',
             ),
           ],
         ),
@@ -372,7 +429,7 @@ class _MoreTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TabScroll(
+    return DetailTabScroll(
       children: const [
         DetailSectionCard(
           title: 'Attendance / Presence',
@@ -393,7 +450,12 @@ class _MoreTab extends StatelessWidget {
           wrapChildren: false,
           children: [
             DetailDataTable(
-              columns: ['Student', 'Interaction Count', 'Flags', 'Latest Contact'],
+              columns: [
+                'Student',
+                'Interaction Count',
+                'Flags',
+                'Latest Contact',
+              ],
               rows: [],
               emptyText:
                   'Most interacted and most flagged student signals will appear after engagement history is available.',
@@ -445,22 +507,6 @@ class _MetricTile extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _TabScroll extends StatelessWidget {
-  const _TabScroll({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      itemCount: children.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, index) => children[index],
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 
 typedef ClassFormSubmit = void Function(SchoolClass schoolClass);
@@ -134,6 +135,10 @@ class _ClassFormCardState extends State<ClassFormCard> {
                   hintText: '1-5',
                 ),
                 keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(1),
+                ],
                 validator: (value) {
                   final text = value?.trim() ?? '';
                   if (text.isEmpty) {
@@ -153,7 +158,22 @@ class _ClassFormCardState extends State<ClassFormCard> {
                   labelText: 'Section',
                   hintText: 'A, B, C',
                 ),
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp('[a-zA-Z]')),
+                  LengthLimitingTextInputFormatter(1),
+                  TextInputFormatter.withFunction((oldValue, newValue) {
+                    return newValue.copyWith(
+                      text: newValue.text.toUpperCase(),
+                    );
+                  }),
+                ],
                 validator: (value) {
+                  final text = value?.trim() ?? '';
+                  if (text.isNotEmpty &&
+                      !RegExp(r'^[A-Z]$').hasMatch(text.toUpperCase())) {
+                    return 'Section must be one letter';
+                  }
                   return null;
                 },
               ),
@@ -174,9 +194,17 @@ class _ClassFormCardState extends State<ClassFormCard> {
                   labelText: 'Year',
                   hintText: '2026',
                 ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                ],
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Year is required';
+                  }
+                  if (!RegExp(r'^\d{4}$').hasMatch(value.trim())) {
+                    return 'Year must be 4 digits';
                   }
                   return null;
                 },

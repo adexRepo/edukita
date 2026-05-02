@@ -3,7 +3,7 @@ import 'package:edukita/features/students/persentation/detail/detail_data_table.
 import 'package:edukita/features/students/persentation/detail/detail_empty_section_text.dart';
 import 'package:edukita/features/students/persentation/detail/detail_metric_summary.dart';
 import 'package:edukita/features/students/persentation/detail/detail_section_card.dart';
-import 'package:edukita/features/students/persentation/detail/detail_tab_scroll.dart';
+import 'package:edukita/widgets/detail_tab_scroll.dart';
 import 'package:flutter/material.dart';
 
 class StudentAcademicTab extends StatelessWidget {

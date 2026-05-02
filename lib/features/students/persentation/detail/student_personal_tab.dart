@@ -1,7 +1,7 @@
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/persentation/detail/detail_data_table.dart';
 import 'package:edukita/features/students/persentation/detail/detail_section_card.dart';
-import 'package:edukita/features/students/persentation/detail/detail_tab_scroll.dart';
+import 'package:edukita/widgets/detail_tab_scroll.dart';
 import 'package:edukita/features/students/persentation/detail/student_information_section.dart';
 import 'package:flutter/material.dart';
 

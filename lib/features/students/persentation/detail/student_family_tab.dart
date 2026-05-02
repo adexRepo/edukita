@@ -4,7 +4,7 @@ import 'package:edukita/features/students/domain/detail/student_detail_cubit.dar
 import 'package:edukita/features/students/persentation/detail/detail_data_table.dart';
 import 'package:edukita/features/students/persentation/detail/detail_empty_section_text.dart';
 import 'package:edukita/features/students/persentation/detail/detail_section_card.dart';
-import 'package:edukita/features/students/persentation/detail/detail_tab_scroll.dart';
+import 'package:edukita/widgets/detail_tab_scroll.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 

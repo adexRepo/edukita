@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:edukita/features/management/guardian_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
+import 'package:edukita/widgets/form_validation.dart';
+import 'package:flutter/services.dart';
 
 class GuardianFormDialog extends StatefulWidget {
   final Guardian? guardian;
@@ -49,30 +51,49 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
                 label: 'Full Name',
                 value: fullName,
                 onSaved: (value) => fullName = value ?? '',
-                validator: (value) {
-                  if (value?.isEmpty ?? true) return 'Full name is required';
-                  return null;
-                },
+                validator: (value) => AppFormValidation.requiredText(
+                  value,
+                  'Full name',
+                  minLength: 3,
+                  maxLength: 80,
+                ),
+                inputFormatters: [LengthLimitingTextInputFormatter(80)],
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
                 label: 'Mobile No',
                 value: mobileNo,
-                onSaved: (value) => mobileNo = value,
+                onSaved: (value) => mobileNo = value?.trim(),
                 keyboardType: TextInputType.phone,
+                hint: AppFormValidation.mobilePlaceholder,
+                inputFormatters: AppFormValidation.mobileInputFormatters,
+                validator: AppFormValidation.requiredMobile,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
                 label: 'Occupation',
                 value: occupation,
-                onSaved: (value) => occupation = value,
+                onSaved: (value) => occupation = value?.trim(),
+                validator: (value) => AppFormValidation.optionalText(
+                  value,
+                  'Occupation',
+                  maxLength: 60,
+                ),
+                inputFormatters: [LengthLimitingTextInputFormatter(60)],
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
                 label: 'Address',
                 value: address,
-                onSaved: (value) => address = value,
+                onSaved: (value) => address = value?.trim(),
                 maxLines: 3,
+                validator: (value) => AppFormValidation.requiredText(
+                  value,
+                  'Address',
+                  minLength: 5,
+                  maxLength: 160,
+                ),
+                inputFormatters: [LengthLimitingTextInputFormatter(160)],
               ),
             ],
           ),

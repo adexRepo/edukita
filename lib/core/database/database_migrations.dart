@@ -95,10 +95,48 @@ class DatabaseMigrations {
 
   static Future<void> _ensureTeacherManagementSchema(Database db) async {
     await DatabaseTables.createAll(db);
+    await _ensureTeacherColumns(db);
+  }
+
+  static Future<void> ensureTeacherSchema(Database db) async {
+    await _ensureTeacherColumns(db);
+  }
+
+  static Future<void> _ensureTeacherColumns(Database db) async {
     await _addColumnIfMissing(
       db,
       table: 'teachers',
-      column: 'role',
+      column: 'nick_name',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'teachers',
+      column: 'full_name',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'teachers',
+      column: 'last_education_type',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'teachers',
+      column: 'gender',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'teachers',
+      column: 'email',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'teachers',
+      column: 'mobile_no',
       definition: 'TEXT',
     );
   }

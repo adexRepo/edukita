@@ -9,7 +9,12 @@ class ClassDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(schoolClass.className)),
+      appBar: AppBar(
+        title: Text(
+          schoolClass.className,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -17,7 +22,7 @@ class ClassDetailPage extends StatelessWidget {
           children: [
             Text(
               'Class Details',
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 16),
             Text('Class Name: ${schoolClass.className}'),

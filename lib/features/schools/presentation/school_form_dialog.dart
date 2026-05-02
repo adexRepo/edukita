@@ -207,20 +207,23 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.school == null ? 'Add School' : 'Edit School'),
-      content: SizedBox(
-        width: 720,
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildSchoolInfoSection(),
-                  const SizedBox(height: 20),
-                  _buildClasses(),
-                ],
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 720),
+        child: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildSchoolInfoSection(),
+                    const SizedBox(height: 20),
+                    _buildClasses(),
+                  ],
+                ),
               ),
             ),
           ),
@@ -277,8 +280,15 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
             if (value == null || value.trim().isEmpty) {
               return 'School name is required';
             }
+            if (value.trim().length < 3) {
+              return 'School name must be at least 3 characters';
+            }
+            if (value.trim().length > 80) {
+              return 'School name must be at most 80 characters';
+            }
             return null;
           },
+          inputFormatters: [LengthLimitingTextInputFormatter(80)],
         ),
         const SizedBox(height: 14),
         TextFormField(
@@ -289,8 +299,15 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
             if (value == null || value.trim().isEmpty) {
               return 'Address is required';
             }
+            if (value.trim().length < 5) {
+              return 'Address must be at least 5 characters';
+            }
+            if (value.trim().length > 160) {
+              return 'Address must be at most 160 characters';
+            }
             return null;
           },
+          inputFormatters: [LengthLimitingTextInputFormatter(160)],
         ),
       ],
     );
@@ -475,12 +492,24 @@ class _ClassDraftRow extends StatelessWidget {
     final autoNameText = draft.classNameFor(type);
     final levelHint = type.levelHint;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 2,
-          child: TextFormField(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 640;
+        final nameWidth = compact
+            ? constraints.maxWidth
+            : (constraints.maxWidth - 44) * 0.28;
+        final fieldWidth = compact
+            ? (constraints.maxWidth - 10) / 2
+            : (constraints.maxWidth - 44) * 0.21;
+
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.start,
+          children: [
+            SizedBox(
+              width: nameWidth,
+              child: TextFormField(
             controller: draft.nameController,
             enabled: !autoName,
             decoration: InputDecoration(
@@ -495,16 +524,21 @@ class _ClassDraftRow extends StatelessWidget {
               if (!autoName && (value == null || value.trim().isEmpty)) {
                 return 'Class name is required';
               }
+              if (!autoName && value!.trim().length > 40) {
+                return 'Class name must be at most 40 characters';
+              }
               if (isDuplicate) return 'Duplicate class and year';
               return null;
             },
             onChanged: (_) => onChanged(),
+            inputFormatters: [LengthLimitingTextInputFormatter(40)],
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: DropdownButtonFormField<int>(
+            ),
+            SizedBox(
+              width: fieldWidth,
+              child: DropdownButtonFormField<int>(
             initialValue: int.tryParse(draft.levelController.text),
+            isExpanded: true,
             decoration: InputDecoration(
               label: requiredLabel(context, 'Level'),
               hintText: levelHint,
@@ -532,10 +566,10 @@ class _ClassDraftRow extends StatelessWidget {
               return null;
             },
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: TextFormField(
+            ),
+            SizedBox(
+              width: fieldWidth,
+              child: TextFormField(
             controller: draft.sectionController,
             decoration: const InputDecoration(labelText: 'Section'),
             textCapitalization: TextCapitalization.characters,
@@ -558,10 +592,10 @@ class _ClassDraftRow extends StatelessWidget {
               return null;
             },
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: TextFormField(
+            ),
+            SizedBox(
+              width: fieldWidth,
+              child: TextFormField(
             controller: draft.yearController,
             decoration: InputDecoration(label: requiredLabel(context, 'Year')),
             keyboardType: TextInputType.number,
@@ -583,14 +617,23 @@ class _ClassDraftRow extends StatelessWidget {
               return null;
             },
           ),
-        ),
-        const SizedBox(width: 4),
-        IconButton(
-          onPressed: onRemove,
-          icon: const Icon(Icons.delete_outline),
-          tooltip: 'Remove class',
-        ),
-      ],
+            ),
+            SizedBox(
+              width: compact ? constraints.maxWidth : 44,
+              child: Align(
+                alignment: compact
+                    ? Alignment.centerRight
+                    : Alignment.center,
+                child: IconButton(
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.delete_outline),
+                  tooltip: 'Remove class',
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

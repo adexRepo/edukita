@@ -78,7 +78,10 @@ class _ClassesPageState extends State<ClassesPage> {
           final classes = state.classes;
           return Scaffold(
             appBar: AppBar(
-              title: const Text('Classes'),
+              title: const Text(
+                'Classes',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.add),

@@ -70,6 +70,10 @@ class ClassCubit extends Cubit<ClassState> {
     return _repository.getClassesBySchool(schoolId);
   }
 
+  Future<List<SchoolClass>> getAllClasses() {
+    return _repository.getAllClasses();
+  }
+
   Future<void> loadClassesByYear(String year) async {
     emit(state.copyWith(isLoading: true));
     try {
