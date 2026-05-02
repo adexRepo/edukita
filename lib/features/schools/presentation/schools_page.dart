@@ -1,8 +1,8 @@
-import 'package:edukita/features/management/class_cubit.dart';
-import 'package:edukita/features/management/class_model.dart';
-import 'package:edukita/features/management/school_cubit.dart';
-import 'package:edukita/features/management/school_form_dialog.dart';
-import 'package:edukita/features/management/school_model.dart';
+import 'package:edukita/features/schools/domain/class_cubit.dart';
+import 'package:edukita/features/schools/data/class_model.dart';
+import 'package:edukita/features/schools/domain/school_cubit.dart';
+import 'package:edukita/features/schools/presentation/school_form_dialog.dart';
+import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/clay_card.dart';
 import 'package:flutter/material.dart';

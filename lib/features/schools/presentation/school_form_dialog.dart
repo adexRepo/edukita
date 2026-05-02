@@ -1,5 +1,5 @@
-import 'package:edukita/features/management/class_model.dart';
-import 'package:edukita/features/management/school_model.dart';
+import 'package:edukita/features/schools/data/class_model.dart';
+import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

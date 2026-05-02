@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:edukita/features/management/class_model.dart';
-import 'package:edukita/features/management/class_repository.dart';
+import 'package:edukita/features/schools/data/class_model.dart';
+import 'package:edukita/features/schools/domain/class_repository.dart';
 
 part 'class_state.dart';
 

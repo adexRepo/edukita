@@ -1,9 +1,9 @@
 import 'package:edukita/core/database/base_repository.dart';
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/helper/pageable.dart';
-import 'package:edukita/features/management/class_model.dart';
+import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/management/guardian_model.dart';
-import 'package:edukita/features/management/school_model.dart';
+import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/data/student_page_data.dart';

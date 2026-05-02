@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:edukita/features/users/teacher_model.dart';
+import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 
 class TeacherFormDialog extends StatefulWidget {
@@ -16,6 +16,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
   final _formKey = GlobalKey<FormState>();
   late String? nickName;
   late String fullName;
+  late String? role;
   late String? lastEducationType;
   late String? gender;
   late String? email;
@@ -27,6 +28,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
     if (widget.teacher != null) {
       nickName = widget.teacher!.nickName;
       fullName = widget.teacher!.fullName;
+      role = widget.teacher!.role;
       lastEducationType = widget.teacher!.lastEducationType;
       gender = widget.teacher!.gender;
       email = widget.teacher!.email;
@@ -34,6 +36,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
     } else {
       nickName = null;
       fullName = '';
+      role = null;
       lastEducationType = null;
       gender = null;
       email = null;
@@ -55,6 +58,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                 label: 'Nick Name',
                 value: nickName,
                 onSaved: (value) => nickName = value,
+                validator: (_) => null,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
@@ -65,6 +69,19 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   if (value?.isEmpty ?? true) return 'Full name is required';
                   return null;
                 },
+              ),
+              const SizedBox(height: 16),
+              CommonFormWidgets.dropdownField(
+                label: 'Role',
+                items: const [
+                  '',
+                  'Subject Teacher',
+                  'Homeroom Teacher',
+                  'Counselor',
+                ],
+                value: role ?? '',
+                onSaved: (value) => role = value?.isEmpty ?? true ? null : value,
+                isRequired: false,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.dropdownField(
@@ -90,6 +107,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                 value: email,
                 onSaved: (value) => email = value,
                 keyboardType: TextInputType.emailAddress,
+                validator: (_) => null,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
@@ -97,6 +115,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                 value: mobileNo,
                 onSaved: (value) => mobileNo = value,
                 keyboardType: TextInputType.phone,
+                validator: (_) => null,
               ),
             ],
           ),
@@ -115,6 +134,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                 id: widget.teacher?.id,
                 nickName: nickName,
                 fullName: fullName,
+                role: role,
                 lastEducationType: lastEducationType,
                 gender: gender,
                 email: email,

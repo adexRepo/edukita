@@ -1,4 +1,4 @@
-﻿import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:edukita/core/router/app_router.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/theme/app_theme.dart';

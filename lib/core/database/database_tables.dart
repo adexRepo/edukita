@@ -86,6 +86,7 @@ class DatabaseTables {
         id TEXT PRIMARY KEY NOT NULL,
         nick_name TEXT,
         full_name TEXT NOT NULL,
+        role TEXT,
         last_education_type TEXT,
         gender TEXT,
         email TEXT,

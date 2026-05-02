@@ -30,6 +30,10 @@ class DatabaseMigrations {
     if (oldVersion < 9) {
       await _ensureSchoolClassSchema(db);
     }
+
+    if (oldVersion < 10) {
+      await _ensureTeacherManagementSchema(db);
+    }
   }
 
   static Future<void> _fixUsers(Database db) async {
@@ -87,6 +91,16 @@ class DatabaseMigrations {
         "UPDATE classes SET name = class_name WHERE name IS NULL OR name = ''",
       );
     }
+  }
+
+  static Future<void> _ensureTeacherManagementSchema(Database db) async {
+    await DatabaseTables.createAll(db);
+    await _addColumnIfMissing(
+      db,
+      table: 'teachers',
+      column: 'role',
+      definition: 'TEXT',
+    );
   }
 
   static Future<void> _addColumnIfMissing(

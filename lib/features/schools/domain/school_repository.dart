@@ -1,6 +1,6 @@
 import 'package:edukita/core/database/database_provider.dart';
-import 'package:edukita/features/management/class_model.dart';
-import 'package:edukita/features/management/school_model.dart';
+import 'package:edukita/features/schools/data/class_model.dart';
+import 'package:edukita/features/schools/data/school_model.dart';
 
 class SchoolRepository {
   final DatabaseProvider _dbProvider;

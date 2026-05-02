@@ -1,6 +1,6 @@
-import 'package:edukita/features/management/class_model.dart';
+import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/management/guardian_model.dart';
-import 'package:edukita/features/management/school_model.dart';
+import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/students/persentation/student_form_card.dart';
 import 'package:flutter/material.dart';

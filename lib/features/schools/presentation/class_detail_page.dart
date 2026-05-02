@@ -1,4 +1,4 @@
-import 'package:edukita/features/management/class_model.dart';
+import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:flutter/material.dart';
 
 class ClassDetailPage extends StatelessWidget {

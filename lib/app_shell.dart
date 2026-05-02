@@ -17,6 +17,7 @@ class _AppShellState extends State<AppShell> {
     final location = GoRouter.of(context).state.uri.path;
 
     if (location.startsWith('/school')) return 2;
+    if (location.startsWith('/teachers')) return 3;
     if (location.startsWith('/students')) return 1;
     return 0;
   }
@@ -29,23 +30,20 @@ class _AppShellState extends State<AppShell> {
       body: Column(
         children: [
           buildTitleBar(selectedIndex, context),
-
           Expanded(
             child: Row(
               children: [
                 _buildSidebar(context, selectedIndex),
-
                 const VerticalDivider(
                   width: 1,
                   thickness: 1,
                   color: AppColors.border,
                 ),
-
                 Expanded(
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1200),
-                      child: widget.child, // 🔥 route content here
+                      child: widget.child,
                     ),
                   ),
                 ),
@@ -62,6 +60,7 @@ class _AppShellState extends State<AppShell> {
       ('Dashboard', Icons.dashboard, '/dashboard'),
       ('Students', Icons.school, '/students'),
       ('School', Icons.apartment, '/school'),
+      ('Teachers', Icons.badge, '/teachers'),
     ];
 
     return Container(

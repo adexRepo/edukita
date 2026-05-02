@@ -1,9 +1,10 @@
-import 'package:edukita/features/users/teacher_cubit.dart';
-import 'package:edukita/features/users/teacher_detail_page.dart';
-import 'package:edukita/features/users/teacher_form_dialog.dart';
-import 'package:edukita/features/users/teacher_model.dart';
+import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
+import 'package:edukita/features/teachers/presentation/teacher_form_dialog.dart';
+import 'package:edukita/features/teachers/data/teacher_model.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 class TeachersPage extends StatefulWidget {
   const TeachersPage({super.key});
@@ -94,8 +95,15 @@ class _TeachersPageState extends State<TeachersPage> {
                       final teacher = teachers[index];
                       return ListTile(
                         title: Text(teacher.fullName),
-                        subtitle: Text('Email: ${teacher.email ?? 'N/A'}'),
-                        onTap: () => {},
+                        subtitle: Text(
+                          '${teacher.role ?? 'Teacher'} | ${teacher.email ?? teacher.mobileNo ?? 'No contact'}',
+                        ),
+                        onTap: () {
+                          context.push(
+                            '/teachers/${teacher.id}',
+                            extra: teacher,
+                          );
+                        },
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -107,7 +115,8 @@ class _TeachersPageState extends State<TeachersPage> {
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete),
+                              color: AppColors.errorDark,
+                              icon: const Icon(Icons.delete_outline),
                               onPressed: () =>
                                   _confirmDelete(context, teacher.id),
                             ),

@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 
 Widget buildTitleBar(int selectedIndex, BuildContext context) {
   bool isLoginPage = selectedIndex == -1;
+  final hasSelectedPage =
+      selectedIndex >= 0 && selectedIndex < navigationPageItems.length;
 
   return WindowTitleBarBox(
     child: Container(
@@ -24,13 +26,13 @@ Widget buildTitleBar(int selectedIndex, BuildContext context) {
                 children: [
                   Image.asset(
                     'assets/images/logo.webp',
-                    width: 18,
-                    height: 18,
+                    width: 32,
+                    height: 32,
                     fit: BoxFit.contain,
                     errorBuilder: (_, _, _) => const Icon(
                       Icons.school,
                       color: AppColors.primary,
-                      size: 18,
+                      size: 32,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -45,7 +47,7 @@ Widget buildTitleBar(int selectedIndex, BuildContext context) {
                   const SizedBox(width: 12),
                   Container(width: 1, height: 16, color: AppColors.border),
                   const SizedBox(width: 12),
-                  if (!isLoginPage)
+                  if (!isLoginPage && hasSelectedPage)
                     Text(
                       navigationPageItems[selectedIndex].label,
                       style: const TextStyle(

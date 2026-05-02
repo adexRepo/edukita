@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:edukita/features/users/teacher_model.dart';
-import 'package:edukita/features/users/teacher_repository.dart';
+import 'package:edukita/features/teachers/data/teacher_model.dart';
+import 'package:edukita/features/teachers/domain/teacher_repository.dart';
 
 part 'teacher_state.dart';
 

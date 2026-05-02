@@ -1,9 +1,11 @@
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/dashboard/dashboard_cubit.dart';
-import 'package:edukita/features/management/class_cubit.dart';
-import 'package:edukita/features/management/school_cubit.dart';
-import 'package:edukita/features/management/schools_page.dart';
+import 'package:edukita/features/schools/domain/class_cubit.dart';
+import 'package:edukita/features/schools/domain/school_cubit.dart';
+import 'package:edukita/features/schools/presentation/schools_page.dart';
+import 'package:edukita/features/teachers/presentation/teachers_page.dart';
 import 'package:edukita/features/students/domain/student_feature_cubit.dart';
+import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -53,6 +55,14 @@ final List<NavigationItem> navigationPageItems = [
         BlocProvider<ClassCubit>(create: (_) => getIt<ClassCubit>()),
       ],
       child: const SchoolsPage(),
+    ),
+  ),
+  NavigationItem(
+    label: 'Teachers',
+    icon: Icons.badge,
+    pageBuilder: () => BlocProvider(
+      create: (_) => getIt<TeacherCubit>()..loadTeachers(),
+      child: const TeachersPage(),
     ),
   ),
 ];

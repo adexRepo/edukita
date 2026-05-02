@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:edukita/features/management/class_model.dart';
+import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 
 class ClassFormDialog extends StatefulWidget {

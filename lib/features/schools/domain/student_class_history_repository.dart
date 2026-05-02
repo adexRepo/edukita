@@ -1,5 +1,5 @@
 import 'package:edukita/core/database/database_provider.dart';
-import 'package:edukita/features/management/student_class_history_model.dart';
+import 'package:edukita/features/schools/data/student_class_history_model.dart';
 
 class StudentClassHistoryRepository {
   final DatabaseProvider _dbProvider;

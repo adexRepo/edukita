@@ -3,13 +3,18 @@ import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/auth/login_page.dart';
 import 'package:edukita/features/dashboard/dashboard_cubit.dart';
 import 'package:edukita/features/dashboard/dashboard_page.dart';
-import 'package:edukita/features/management/class_cubit.dart';
-import 'package:edukita/features/management/school_cubit.dart';
-import 'package:edukita/features/management/schools_page.dart';
+import 'package:edukita/features/schools/domain/class_cubit.dart';
+import 'package:edukita/features/schools/domain/school_cubit.dart';
+import 'package:edukita/features/schools/presentation/schools_page.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
 import 'package:edukita/features/students/domain/student_feature_cubit.dart';
 import 'package:edukita/features/students/persentation/detail/student_detail_page.dart';
 import 'package:edukita/features/students/persentation/students_page.dart';
+import 'package:edukita/features/teachers/presentation/teachers_page.dart';
+import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
+import 'package:edukita/features/teachers/presentation/teacher_detail_page.dart';
+import 'package:edukita/features/teachers/data/teacher_model.dart';
+import 'package:edukita/features/teachers/domain/teacher_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -88,6 +93,31 @@ final GoRouter appRouter = GoRouter(
             ),
           ),
         ),
+        GoRoute(
+          path: '/teachers',
+          pageBuilder: (context, state) => _noTransitionPage(
+            state: state,
+            child: withCubit(
+              create: () => getIt<TeacherCubit>()..loadTeachers(),
+              child: const TeachersPage(),
+            ),
+          ),
+          routes: [
+            GoRoute(
+              path: ':id',
+              pageBuilder: (context, state) {
+                final id = state.pathParameters['id']!;
+                final teacher = state.extra is Teacher
+                    ? state.extra as Teacher
+                    : null;
+                return _noTransitionPage(
+                  state: state,
+                  child: _TeacherDetailRoute(id: id, teacher: teacher),
+                );
+              },
+            ),
+          ],
+        ),
       ],
     ),
   ],
@@ -105,4 +135,37 @@ Widget withCubit<T extends Cubit<Object?>>({
   required Widget child,
 }) {
   return BlocProvider<T>(create: (_) => create(), child: child);
+}
+
+class _TeacherDetailRoute extends StatelessWidget {
+  const _TeacherDetailRoute({required this.id, this.teacher});
+
+  final String id;
+  final Teacher? teacher;
+
+  @override
+  Widget build(BuildContext context) {
+    final initialTeacher = teacher;
+    if (initialTeacher != null) {
+      return TeacherDetailPage(teacher: initialTeacher);
+    }
+
+    return FutureBuilder<Teacher?>(
+      future: getIt<TeacherRepository>().getTeacherById(id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final loadedTeacher = snapshot.data;
+        if (loadedTeacher == null) {
+          return const Scaffold(body: Center(child: Text('Teacher not found')));
+        }
+
+        return TeacherDetailPage(teacher: loadedTeacher);
+      },
+    );
+  }
 }

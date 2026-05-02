@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:edukita/features/schools/presentation/classes_page.dart';
+import 'package:edukita/features/schools/presentation/schools_page.dart';
+import 'package:edukita/features/teachers/presentation/teachers_page.dart';
 
-import 'classes_page.dart';
 import 'guardians_page.dart';
-import 'schools_page.dart';
 
 class ManagementPage extends StatefulWidget {
   const ManagementPage({super.key});
@@ -18,7 +19,7 @@ class _ManagementPageState extends State<ManagementPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -42,6 +43,7 @@ class _ManagementPageState extends State<ManagementPage>
               ).colorScheme.onSurface.withAlpha(153),
               tabs: const [
                 Tab(text: 'Classes'),
+                Tab(text: 'Teachers'),
                 Tab(text: 'Guardians'),
                 Tab(text: 'Schools'),
               ],
@@ -50,7 +52,12 @@ class _ManagementPageState extends State<ManagementPage>
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: const [ClassesPage(), GuardiansPage(), SchoolsPage()],
+              children: const [
+                ClassesPage(),
+                TeachersPage(),
+                GuardiansPage(),
+                SchoolsPage(),
+              ],
             ),
           ),
         ],

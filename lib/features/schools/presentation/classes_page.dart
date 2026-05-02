@@ -1,7 +1,7 @@
-import 'package:edukita/features/management/class_cubit.dart';
-import 'package:edukita/features/management/class_detail_page.dart';
-import 'package:edukita/features/management/class_form_dialog.dart';
-import 'package:edukita/features/management/class_model.dart';
+import 'package:edukita/features/schools/domain/class_cubit.dart';
+import 'package:edukita/features/schools/presentation/class_detail_page.dart';
+import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
+import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
