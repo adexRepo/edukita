@@ -5,6 +5,7 @@ class Guardian {
     String? id,
     required this.fullName,
     this.mobileNo,
+    this.email,
     this.occupation,
     this.address,
   }) : id = id ?? const Uuid().v4();
@@ -12,6 +13,7 @@ class Guardian {
   final String id;
   final String fullName;
   final String? mobileNo;
+  final String? email;
   final String? occupation;
   final String? address;
 
@@ -19,6 +21,7 @@ class Guardian {
     String? id,
     String? fullName,
     String? mobileNo,
+    String? email,
     String? occupation,
     String? address,
   }) {
@@ -26,6 +29,7 @@ class Guardian {
       id: id ?? this.id,
       fullName: fullName ?? this.fullName,
       mobileNo: mobileNo ?? this.mobileNo,
+      email: email ?? this.email,
       occupation: occupation ?? this.occupation,
       address: address ?? this.address,
     );
@@ -36,6 +40,7 @@ class Guardian {
       id: map['id']?.toString(),
       fullName: map['full_name'] as String,
       mobileNo: map['mobile_no'] as String?,
+      email: map['email'] as String?,
       occupation: map['occupation'] as String?,
       address: map['address'] as String?,
     );
@@ -46,6 +51,7 @@ class Guardian {
       'id': id,
       'full_name': fullName,
       'mobile_no': mobileNo,
+      'email': email,
       'occupation': occupation,
       'address': address,
     };
@@ -53,7 +59,7 @@ class Guardian {
 
   @override
   String toString() =>
-      'Guardian(id: $id, fullName: $fullName, mobileNo: $mobileNo, occupation: $occupation, address: $address)';
+      'Guardian(id: $id, fullName: $fullName, mobileNo: $mobileNo, email: $email, occupation: $occupation, address: $address)';
 
   @override
   bool operator ==(Object other) =>
@@ -63,6 +69,7 @@ class Guardian {
           id == other.id &&
           fullName == other.fullName &&
           mobileNo == other.mobileNo &&
+          email == other.email &&
           occupation == other.occupation &&
           address == other.address;
 
@@ -71,8 +78,55 @@ class Guardian {
       id.hashCode ^
       fullName.hashCode ^
       mobileNo.hashCode ^
+      email.hashCode ^
       occupation.hashCode ^
       address.hashCode;
+}
+
+class StudentGuardianFormData {
+  const StudentGuardianFormData({
+    this.guardianId,
+    this.fullName,
+    this.relationship,
+    this.isPrimary = false,
+    this.mobileNo,
+    this.email,
+    this.occupation,
+    this.address,
+  });
+
+  final String? guardianId;
+  final String? fullName;
+  final String? relationship;
+  final bool isPrimary;
+  final String? mobileNo;
+  final String? email;
+  final String? occupation;
+  final String? address;
+
+  bool get hasData {
+    return [
+      fullName,
+      relationship,
+      mobileNo,
+      email,
+      occupation,
+      address,
+    ].any((value) => value != null && value.trim().isNotEmpty);
+  }
+}
+
+class GuardianRelationshipOptions {
+  GuardianRelationshipOptions._();
+
+  static const values = [
+    'MOTHER',
+    'FATHER',
+    'UNCLE',
+    'AUNTY',
+    'GRANDPA',
+    'GRANDMA',
+  ];
 }
 
 class StudentGuardian {
@@ -80,21 +134,25 @@ class StudentGuardian {
     required this.studentId,
     required this.guardianId,
     required this.relationship,
+    this.isPrimary = true,
   });
 
   final String studentId;
   final String guardianId;
   final String relationship;
+  final bool isPrimary;
 
   StudentGuardian copyWith({
     String? studentId,
     String? guardianId,
     String? relationship,
+    bool? isPrimary,
   }) {
     return StudentGuardian(
       studentId: studentId ?? this.studentId,
       guardianId: guardianId ?? this.guardianId,
       relationship: relationship ?? this.relationship,
+      isPrimary: isPrimary ?? this.isPrimary,
     );
   }
 
@@ -103,6 +161,7 @@ class StudentGuardian {
       studentId: map['student_id'] as String,
       guardianId: map['guardian_id'] as String,
       relationship: map['relationship'] as String,
+      isPrimary: (map['is_primary'] as num?)?.toInt() == 1,
     );
   }
 
@@ -111,12 +170,13 @@ class StudentGuardian {
       'student_id': studentId,
       'guardian_id': guardianId,
       'relationship': relationship,
+      'is_primary': isPrimary ? 1 : 0,
     };
   }
 
   @override
   String toString() =>
-      'StudentGuardian(studentId: $studentId, guardianId: $guardianId, relationship: $relationship)';
+      'StudentGuardian(studentId: $studentId, guardianId: $guardianId, relationship: $relationship, isPrimary: $isPrimary)';
 
   @override
   bool operator ==(Object other) =>
@@ -125,9 +185,13 @@ class StudentGuardian {
           runtimeType == other.runtimeType &&
           studentId == other.studentId &&
           guardianId == other.guardianId &&
-          relationship == other.relationship;
+          relationship == other.relationship &&
+          isPrimary == other.isPrimary;
 
   @override
   int get hashCode =>
-      studentId.hashCode ^ guardianId.hashCode ^ relationship.hashCode;
+      studentId.hashCode ^
+      guardianId.hashCode ^
+      relationship.hashCode ^
+      isPrimary.hashCode;
 }

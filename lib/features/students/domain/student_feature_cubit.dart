@@ -1,6 +1,7 @@
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/features/common/feature_state.dart';
 import 'package:edukita/features/management/class_model.dart';
+import 'package:edukita/features/management/guardian_model.dart';
 import 'package:edukita/features/management/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/students/data/student_page_data.dart';
@@ -56,17 +57,33 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
     return _repo.findById(id);
   }
 
-  Future<void> addStudent(Student student, String schoolId) async {
+  Future<StudentGuardianFormData?> loadPrimaryGuardian(String studentId) {
+    return _repo.loadPrimaryGuardian(studentId);
+  }
+
+  Future<List<StudentGuardianFormData>> loadGuardians(String studentId) {
+    return _repo.loadGuardians(studentId);
+  }
+
+  Future<void> addStudent(
+    Student student,
+    String schoolId, [
+    List<StudentGuardianFormData> guardians = const [],
+  ]) async {
     final studentToSave = student.copyWith(
       id: student.id.isEmpty ? const Uuid().v4() : student.id,
     );
 
-    await _repo.insertStudentWithSchool(studentToSave, schoolId);
+    await _repo.insertStudentWithSchool(studentToSave, schoolId, guardians);
     await _fetch();
   }
 
-  Future<void> updateStudent(Student student, String schoolId) async {
-    await _repo.updateStudentWithSchool(student, schoolId);
+  Future<void> updateStudent(
+    Student student,
+    String schoolId, [
+    List<StudentGuardianFormData> guardians = const [],
+  ]) async {
+    await _repo.updateStudentWithSchool(student, schoolId, guardians);
     await _fetch();
   }
 

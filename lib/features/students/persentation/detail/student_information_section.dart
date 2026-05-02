@@ -1,5 +1,6 @@
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/persentation/detail/student_info_item.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class StudentInformationSection extends StatelessWidget {
@@ -11,7 +12,7 @@ class StudentInformationSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: const Color(0xFFE5E7EB)),
+      border: Border.all(color: AppColors.border),
     );
     final items = [
       MapEntry('Full Name', student.fullName),
@@ -27,7 +28,7 @@ class StudentInformationSection extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
-      decoration: boxDecoration.copyWith(color: Colors.white),
+      decoration: boxDecoration.copyWith(color: AppColors.white),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;

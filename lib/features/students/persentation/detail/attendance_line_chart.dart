@@ -72,7 +72,7 @@ class AttendanceLineChart extends StatelessWidget {
       maxY: 100,
       lineTouchData: LineTouchData(
         touchTooltipData: LineTouchTooltipData(
-          getTooltipColor: (_) => Colors.blueGrey,
+          getTooltipColor: (_) => AppColors.blueGrey,
           fitInsideHorizontally: true,
           fitInsideVertically: true,
           maxContentWidth: 80,
@@ -82,7 +82,7 @@ class AttendanceLineChart extends StatelessWidget {
               return LineTooltipItem(
                 '$month\n${spot.y.toStringAsFixed(0)}%',
                 const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -150,7 +150,7 @@ class AttendanceLineChart extends StatelessWidget {
                 radius: 2.5,
                 color: AppColors.primary,
                 strokeWidth: 1.5,
-                strokeColor: Colors.white,
+                strokeColor: AppColors.white,
               );
             },
           ),

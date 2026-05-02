@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:edukita/core/router/navigation.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 Widget buildTitleBar(int selectedIndex, BuildContext context) {
@@ -12,8 +13,8 @@ Widget buildTitleBar(int selectedIndex, BuildContext context) {
       height: 50,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+        color: AppColors.white,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
         children: [
@@ -21,24 +22,34 @@ Widget buildTitleBar(int selectedIndex, BuildContext context) {
             child: MoveWindow(
               child: Row(
                 children: [
-                  Icon(Icons.school, color: Color(0xFF48CFCB), size: 18),
+                  Image.asset(
+                    'assets/images/logo.webp',
+                    width: 18,
+                    height: 18,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => const Icon(
+                      Icons.school,
+                      color: AppColors.primary,
+                      size: 18,
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     isLoginPage ? '' : 'Edukita',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF1F2937),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Container(width: 1, height: 16, color: Color(0xFFE5E7EB)),
+                  Container(width: 1, height: 16, color: AppColors.border),
                   const SizedBox(width: 12),
                   if (!isLoginPage)
                     Text(
                       navigationPageItems[selectedIndex].label,
                       style: const TextStyle(
-                        color: Color(0xFF6B7280),
+                        color: AppColors.textSecondary,
                         fontSize: 13,
                       ),
                     ),
@@ -105,19 +116,19 @@ class _WindowButtonsState extends State<WindowButtons>
   @override
   Widget build(BuildContext context) {
     final buttonColors = WindowButtonColors(
-      iconNormal: const Color(0xFF6B7280),
-      iconMouseOver: Colors.white,
-      iconMouseDown: Colors.white,
-      mouseOver: const Color(0xFF48CFCB),
-      mouseDown: const Color(0xFF2BA7A3),
+      iconNormal: AppColors.textSecondary,
+      iconMouseOver: AppColors.white,
+      iconMouseDown: AppColors.white,
+      mouseOver: AppColors.primary,
+      mouseDown: AppColors.primaryDark,
     );
 
     final closeButtonColors = WindowButtonColors(
-      iconNormal: const Color(0xFF6B7280),
-      iconMouseOver: Colors.white,
-      iconMouseDown: Colors.white,
-      mouseOver: Colors.red,
-      mouseDown: Colors.redAccent,
+      iconNormal: AppColors.textSecondary,
+      iconMouseOver: AppColors.white,
+      iconMouseDown: AppColors.white,
+      mouseOver: AppColors.errorDark,
+      mouseDown: AppColors.errorAccent,
     );
 
     return Row(

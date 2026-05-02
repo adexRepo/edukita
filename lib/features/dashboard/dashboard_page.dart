@@ -1,4 +1,5 @@
 import 'package:edukita/features/dashboard/dashboard_cubit.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -25,7 +26,7 @@ class DashboardPage extends StatelessWidget {
               Text(
                 'Overview of education management for the foundation.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF6B7280),
+                  color: AppColors.textSecondary,
                 ),
               ),
 
@@ -119,16 +120,16 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = const Color(0xFF48CFCB);
+    final primary = AppColors.primary;
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: onTap,
       child: Ink(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          border: Border.all(color: AppColors.border),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -165,7 +166,7 @@ class _StatCard extends StatelessWidget {
                 value.toString(),
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF1F2937),
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],

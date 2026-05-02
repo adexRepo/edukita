@@ -1,3 +1,4 @@
+import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class StyleCell {
@@ -16,7 +17,7 @@ class StyleCell {
           Text(
             subtitle,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+            style: const TextStyle(fontSize: 10, color: AppColors.grey600),
           ),
         ],
       ),

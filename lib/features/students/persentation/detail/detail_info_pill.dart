@@ -18,9 +18,9 @@ class DetailInfoPill extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 54),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppColors.surfaceSoft,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

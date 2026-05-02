@@ -7,11 +7,13 @@ class DetailSectionCard extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.children,
+    this.wrapChildren = true,
   });
 
   final String title;
   final IconData icon;
   final List<Widget> children;
+  final bool wrapChildren;
 
   @override
   Widget build(BuildContext context) {
@@ -19,9 +21,9 @@ class DetailSectionCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -40,7 +42,13 @@ class DetailSectionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Wrap(spacing: 8, runSpacing: 8, children: children),
+          if (wrapChildren)
+            Wrap(spacing: 8, runSpacing: 8, children: children)
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children,
+            ),
         ],
       ),
     );

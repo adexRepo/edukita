@@ -59,8 +59,8 @@ class _StudentsPageState extends State<StudentsPage> {
         availableSchools: schools,
         availableClasses: classes,
         generatedStudentNo: studentNo,
-        onSubmit: (student, schoolId) async {
-          await cubit.addStudent(student, schoolId);
+        onSubmit: (student, schoolId, guardians) async {
+          await cubit.addStudent(student, schoolId, guardians);
           if (dialogContext.mounted) {
             Navigator.of(dialogContext).pop();
           }
@@ -74,6 +74,7 @@ class _StudentsPageState extends State<StudentsPage> {
     final schools = await cubit.loadAvailableSchools();
     final classes = await cubit.loadAvailableClasses();
     final student = await cubit.loadStudent(row.id);
+    final guardians = await cubit.loadGuardians(row.id);
 
     if (!mounted || student == null) return;
 
@@ -84,8 +85,9 @@ class _StudentsPageState extends State<StudentsPage> {
         availableClasses: classes,
         generatedStudentNo: student.studentId,
         initialStudent: student,
-        onSubmit: (updatedStudent, schoolId) async {
-          await cubit.updateStudent(updatedStudent, schoolId);
+        initialGuardians: guardians,
+        onSubmit: (updatedStudent, schoolId, guardians) async {
+          await cubit.updateStudent(updatedStudent, schoolId, guardians);
           if (dialogContext.mounted) {
             Navigator.of(dialogContext).pop();
           }

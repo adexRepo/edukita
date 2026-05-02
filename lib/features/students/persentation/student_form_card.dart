@@ -3,15 +3,22 @@ import 'dart:io';
 import 'package:edukita/core/helper/com_enum.dart';
 import 'package:edukita/core/helper/validation_helper.dart';
 import 'package:edukita/features/management/class_model.dart';
+import 'package:edukita/features/management/guardian_model.dart';
 import 'package:edukita/features/management/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path/path.dart' as p;
 
-typedef StudentFormSubmit = void Function(Student student, String schoolId);
+typedef StudentFormSubmit =
+    void Function(
+      Student student,
+      String schoolId,
+      List<StudentGuardianFormData> guardians,
+    );
 
 class StudentFormCard extends StatefulWidget {
   const StudentFormCard({
@@ -21,6 +28,7 @@ class StudentFormCard extends StatefulWidget {
     required this.generatedStudentNo,
     required this.onSubmit,
     this.initialStudent,
+    this.initialGuardians = const [],
     this.isEditing = false,
   });
 
@@ -28,6 +36,7 @@ class StudentFormCard extends StatefulWidget {
   final List<SchoolClass> availableClasses;
   final String generatedStudentNo;
   final Student? initialStudent;
+  final List<StudentGuardianFormData> initialGuardians;
   final bool isEditing;
   final StudentFormSubmit onSubmit;
 
@@ -50,11 +59,13 @@ class _StudentFormCardState extends State<StudentFormCard> {
   late final TextEditingController _pantsSizeController;
   late final TextEditingController _heightController;
   late final TextEditingController _weightController;
+  final List<_GuardianDraft> _guardianDrafts = [];
   String? _selectedSchoolId;
   String? _selectedClassId;
   String? _selectedPhotoSourcePath;
   String? _selectedPhotoFileName;
   late Gender _selectedGender;
+  late bool _showAdvancedDetail;
 
   @override
   void initState() {
@@ -91,6 +102,15 @@ class _StudentFormCardState extends State<StudentFormCard> {
     _weightController = TextEditingController(
       text: student?.weight?.toString() ?? '',
     );
+    if (widget.initialGuardians.isEmpty) {
+      _guardianDrafts.addAll([
+        _GuardianDraft(relationship: 'FATHER', isPrimary: true),
+      ]);
+    } else {
+      _guardianDrafts.addAll(
+        widget.initialGuardians.map(_GuardianDraft.fromData),
+      );
+    }
     _selectedPhotoSourcePath = student?.photoPath;
     _selectedPhotoFileName = student?.photoPath == null
         ? null
@@ -98,6 +118,9 @@ class _StudentFormCardState extends State<StudentFormCard> {
     _selectedClassId = student?.classId;
     _selectedSchoolId = _schoolIdForClass(_selectedClassId);
     _selectedGender = student?.gender ?? Gender.male;
+    _showAdvancedDetail = widget.initialGuardians.any(
+      (guardian) => guardian.hasData,
+    );
   }
 
   @override
@@ -115,6 +138,9 @@ class _StudentFormCardState extends State<StudentFormCard> {
     _pantsSizeController.dispose();
     _heightController.dispose();
     _weightController.dispose();
+    for (final draft in _guardianDrafts) {
+      draft.dispose();
+    }
     super.dispose();
   }
 
@@ -175,6 +201,19 @@ class _StudentFormCardState extends State<StudentFormCard> {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedSchoolId == null) return;
     if (_selectedClassId == null) return;
+    final guardians = _buildGuardianData();
+    final primaryGuardianCount = guardians
+        .where((guardian) => guardian.isPrimary)
+        .length;
+    if (guardians.isNotEmpty && primaryGuardianCount == 0) {
+      _showMessage('Select one primary guardian.');
+      return;
+    }
+    if (primaryGuardianCount > 1) {
+      _showMessage('Only one primary guardian is permitted.');
+      return;
+    }
+
     final photoPath = await _saveSelectedPhoto();
 
     final student =
@@ -207,7 +246,18 @@ class _StudentFormCardState extends State<StudentFormCard> {
               photoPath: photoPath,
             );
 
-    widget.onSubmit(student, _selectedSchoolId!);
+    widget.onSubmit(student, _selectedSchoolId!, guardians);
+  }
+
+  List<StudentGuardianFormData> _buildGuardianData() {
+    return _guardianDrafts
+        .map((draft) => draft.toData())
+        .where((guardian) => guardian.hasData)
+        .toList();
+  }
+
+  bool _hasGuardianInput() {
+    return _guardianDrafts.any((draft) => draft.hasInput);
   }
 
   void _showMessage(String message) {
@@ -419,6 +469,12 @@ class _StudentFormCardState extends State<StudentFormCard> {
             ),
             const SizedBox(height: 18),
             _FormSection(title: 'Photo', children: [_photoPicker()]),
+            const SizedBox(height: 18),
+            _advancedDetailButton(),
+            if (_showAdvancedDetail) ...[
+              const SizedBox(height: 12),
+              _guardianSection(),
+            ],
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -439,6 +495,57 @@ class _StudentFormCardState extends State<StudentFormCard> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _advancedDetailButton() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: OutlinedButton.icon(
+        onPressed: () =>
+            setState(() => _showAdvancedDetail = !_showAdvancedDetail),
+        icon: Icon(_showAdvancedDetail ? Icons.expand_less : Icons.expand_more),
+        label: Text(
+          _showAdvancedDetail ? 'Hide Advanced Detail' : 'Advanced Detail',
+        ),
+      ),
+    );
+  }
+
+  Widget _guardianSection() {
+    return _FormSection(
+      title: 'Guardian / Parents',
+      children: [
+        for (var index = 0; index < _guardianDrafts.length; index++) ...[
+          _GuardianDraftCard(
+            draft: _guardianDrafts[index],
+            canRemove: _guardianDrafts.length > 1,
+            onPrimaryChanged: (isPrimary) => setState(() {
+              if (isPrimary) {
+                for (final draft in _guardianDrafts) {
+                  draft.isPrimary = false;
+                }
+              }
+              _guardianDrafts[index].isPrimary = isPrimary;
+            }),
+            onRemove: () => setState(() {
+              _guardianDrafts.removeAt(index).dispose();
+            }),
+            hasAnyGuardianInput: _hasGuardianInput,
+          ),
+          const SizedBox(height: 14),
+        ],
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed: () => setState(() {
+              _guardianDrafts.add(_GuardianDraft());
+            }),
+            icon: const Icon(Icons.add),
+            label: const Text('Add Parent / Guardian'),
+          ),
+        ),
+      ],
     );
   }
 
@@ -496,7 +603,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
         children: const [
           TextSpan(
             text: ' *',
-            style: TextStyle(color: Colors.red),
+            style: TextStyle(color: AppColors.errorDark),
           ),
         ],
       ),
@@ -623,6 +730,212 @@ class _FormSection extends StatelessWidget {
   }
 }
 
+class _GuardianDraft {
+  _GuardianDraft({String? relationship, this.isPrimary = false})
+    : relationship = relationship ?? GuardianRelationshipOptions.values.first;
+
+  _GuardianDraft.fromData(StudentGuardianFormData data)
+    : guardianId = data.guardianId,
+      isPrimary = data.isPrimary,
+      relationship =
+          GuardianRelationshipOptions.values.contains(data.relationship)
+          ? data.relationship!
+          : GuardianRelationshipOptions.values.first {
+    nameController.text = data.fullName ?? '';
+    mobileController.text = data.mobileNo ?? '';
+    emailController.text = data.email ?? '';
+    occupationController.text = data.occupation ?? '';
+    addressController.text = data.address ?? '';
+  }
+
+  final nameController = TextEditingController();
+  final mobileController = TextEditingController();
+  final emailController = TextEditingController();
+  final occupationController = TextEditingController();
+  final addressController = TextEditingController();
+
+  String? guardianId;
+  String relationship;
+  bool isPrimary;
+
+  bool get hasInput {
+    return [
+      nameController,
+      mobileController,
+      emailController,
+      occupationController,
+      addressController,
+    ].any((controller) => controller.text.trim().isNotEmpty);
+  }
+
+  StudentGuardianFormData toData() {
+    return StudentGuardianFormData(
+      guardianId: guardianId,
+      fullName: nullIfEmpty(nameController.text),
+      relationship: relationship,
+      isPrimary: isPrimary,
+      mobileNo: nullIfEmpty(mobileController.text),
+      email: nullIfEmpty(emailController.text),
+      occupation: nullIfEmpty(occupationController.text),
+      address: nullIfEmpty(addressController.text),
+    );
+  }
+
+  void dispose() {
+    nameController.dispose();
+    mobileController.dispose();
+    emailController.dispose();
+    occupationController.dispose();
+    addressController.dispose();
+  }
+}
+
+class _GuardianDraftCard extends StatelessWidget {
+  const _GuardianDraftCard({
+    required this.draft,
+    required this.canRemove,
+    required this.onRemove,
+    required this.onPrimaryChanged,
+    required this.hasAnyGuardianInput,
+  });
+
+  final _GuardianDraft draft;
+  final bool canRemove;
+  final VoidCallback onRemove;
+  final ValueChanged<bool> onPrimaryChanged;
+  final bool Function() hasAnyGuardianInput;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: draft.relationship,
+                  items: GuardianRelationshipOptions.values
+                      .map(
+                        (relationship) => DropdownMenuItem(
+                          value: relationship,
+                          child: Text(relationship),
+                        ),
+                      )
+                      .toList(),
+                  decoration: const InputDecoration(labelText: 'Relationship'),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    draft.relationship = value;
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              IconButton(
+                onPressed: canRemove ? onRemove : null,
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Remove guardian',
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          InputDecorator(
+            decoration: const InputDecoration(
+              labelText: 'Primary Guardian',
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.fromLTRB(12, 14, 12, 12),
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<bool>(
+                expandedInsets: EdgeInsets.zero,
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(value: true, label: Text('Primary')),
+                  ButtonSegment(value: false, label: Text('Not Primary')),
+                ],
+                selected: {draft.isPrimary},
+                onSelectionChanged: (selection) {
+                  onPrimaryChanged(selection.first);
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          TextFormField(
+            controller: draft.nameController,
+            decoration: const InputDecoration(
+              labelText: 'Parent / Guardian Name',
+            ),
+            validator: (value) {
+              if (!hasAnyGuardianInput()) return null;
+              if (!draft.hasInput) return null;
+              if (value == null || value.trim().isEmpty) {
+                return 'Guardian name is required';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: draft.mobileController,
+                  decoration: const InputDecoration(labelText: 'Mobile No'),
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: draft.emailController,
+                  decoration: const InputDecoration(labelText: 'Email Address'),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) return null;
+
+                    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                    if (!emailRegex.hasMatch(value)) {
+                      return 'Invalid email format';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: draft.occupationController,
+                  decoration: const InputDecoration(labelText: 'Occupation'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: draft.addressController,
+                  decoration: const InputDecoration(labelText: 'Address'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _EnumSegmentedField<T extends Enum> extends StatelessWidget {
   const _EnumSegmentedField({
     required this.label,
@@ -646,9 +959,15 @@ class _EnumSegmentedField<T extends Enum> extends StatelessWidget {
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
       ),
-      child: Align(
-        alignment: Alignment.centerLeft,
+      child: SizedBox(
+        width: double.infinity,
         child: SegmentedButton<T>(
+          expandedInsets: EdgeInsets.zero,
+          style: SegmentedButton.styleFrom(
+            backgroundColor: AppColors.surfaceSoft,
+            selectedForegroundColor: Theme.of(context).colorScheme.onSurface,
+            selectedBackgroundColor: AppColors.primary,
+          ),
           showSelectedIcon: false,
           segments: values
               .map(

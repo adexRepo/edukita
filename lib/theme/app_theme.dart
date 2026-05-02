@@ -9,24 +9,39 @@ class AppColors {
 
   static const Color background = Color(0xFFFFFFFF);
   static const Color surface = Color(0xFFF8FAFB);
+  static const Color surfaceMuted = Color(0xFFF3F4F6);
+  static const Color surfaceSoft = Color(0xFFF8FAFC);
   static const Color card = Color(0xFFFFFFFF);
+  static const Color transparent = Color(0x00000000);
+  static const Color white = Color(0xFFFFFFFF);
+  static const Color white12 = Color(0x1FFFFFFF);
+  static const Color black = Color(0xFF000000);
+  static const Color black87 = Color(0xDD000000);
+  static const Color black26 = Color(0x42000000);
+  static const Color blueGrey = Color(0xFF607D8B);
 
   static const Color textPrimary = Color(0xFF1F2937);
   static const Color textSecondary = Color(0xFF6B7280);
   static const Color textHint = Color(0xFF9CA3AF);
+  static const Color greyLight = Color(0xFFE5E7EB);
+  static const Color greyMedium = Color(0xFFD1D5DB);
+  static const Color grey600 = Color(0xFF757575);
 
   static const Color success = Color(0xFF22C55E);
   static const Color warning = Color(0xFFF59E0B);
   static const Color error = Color(0xFFEF4444);
+  static const Color errorDark = Color(0xFFD32F2F);
+  static const Color errorAccent = Color(0xFFFF5252);
 
   static const Color border = Color(0xFFE5E7EB);
   static const Color divider = Color(0xFFF1F5F9);
+  static const Color successContainer = Color(0x1F22C55E);
 
   static const Color accentBlue = Color(0xFF3B82F6);
   static const Color accentPurple = Color(0xFF8B5CF6);
-  static const Color contentColorBlack = Colors.black;
-  static const Color contentColorWhite = Colors.white;
-  static const Color contentColorWhite12 = Colors.white12;
+  static const Color contentColorBlack = black;
+  static const Color contentColorWhite = white;
+  static const Color contentColorWhite12 = white12;
   static const Color contentColorBlue = Color(0xFF2196F3);
   static const Color contentColorYellow = Color(0xFFFFC300);
   static const Color contentColorOrange = Color(0xFFFF683B);
@@ -42,31 +57,31 @@ class AppTheme {
 
   static final ColorScheme colorScheme = ColorScheme.light(
     primary: AppColors.primary,
-    onPrimary: Colors.white,
+    onPrimary: AppColors.white,
     primaryContainer: AppColors.primaryLight,
     onPrimaryContainer: AppColors.textPrimary,
     secondary: AppColors.accentBlue,
-    onSecondary: Colors.white,
+    onSecondary: AppColors.white,
     secondaryContainer: AppColors.accentPurple,
-    onSecondaryContainer: Colors.white,
+    onSecondaryContainer: AppColors.white,
     tertiary: AppColors.success,
-    onTertiary: Colors.white,
-    tertiaryContainer: const Color(0x1F22C55E),
-    onTertiaryContainer: Colors.white,
+    onTertiary: AppColors.white,
+    tertiaryContainer: AppColors.successContainer,
+    onTertiaryContainer: AppColors.white,
     error: AppColors.error,
-    onError: Colors.white,
+    onError: AppColors.white,
     surface: AppColors.background,
     onSurface: AppColors.textPrimary,
     surfaceContainerHighest: AppColors.card,
     // onSurfaceContainerHighest: AppColors.textSecondary,
     outline: AppColors.border,
-    shadow: Colors.black,
-    inverseSurface: Colors.black,
-    onInverseSurface: Colors.white,
+    shadow: AppColors.black,
+    inverseSurface: AppColors.black,
+    onInverseSurface: AppColors.white,
     inversePrimary: AppColors.primaryDark,
     surfaceTint: AppColors.primary,
     outlineVariant: AppColors.divider,
-    scrim: Colors.black26,
+    scrim: AppColors.black26,
   );
 
   static final TextTheme textTheme = Typography.blackMountainView
@@ -104,7 +119,7 @@ class AppTheme {
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.white,
         disabledBackgroundColor: AppColors.primaryLight.withValues(alpha: 0.5),
         shadowColor: AppColors.primaryDark.withValues(alpha: 0.24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -120,9 +135,37 @@ class AppTheme {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(foregroundColor: AppColors.primary),
     ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        foregroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.white;
+          }
+          return AppColors.primary;
+        }),
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.primary;
+          }
+          return AppColors.transparent;
+        }),
+        side: WidgetStateProperty.resolveWith((states) {
+          final color = states.contains(WidgetState.selected)
+              ? AppColors.primary
+              : AppColors.primaryLight;
+          return BorderSide(color: color);
+        }),
+        iconColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.white;
+          }
+          return AppColors.primary;
+        }),
+      ),
+    ),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
+      foregroundColor: AppColors.white,
     ),
     cardTheme: CardThemeData(
       color: AppColors.card,
@@ -176,7 +219,7 @@ class AppTheme {
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: AppColors.textPrimary.withValues(alpha: 0.95),
-      contentTextStyle: const TextStyle(color: Colors.white),
+      contentTextStyle: const TextStyle(color: AppColors.white),
     ),
     tabBarTheme: const TabBarThemeData(
       labelColor: AppColors.primary,

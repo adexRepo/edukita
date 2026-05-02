@@ -107,12 +107,12 @@ class _MultiFilterButtonState extends State<MultiFilterButton> {
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: const BoxDecoration(
-                color: Colors.red,
+                color: AppColors.errorDark,
                 shape: BoxShape.circle,
               ),
               child: Text(
                 activeFilters.length.toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 12),
+                style: const TextStyle(color: AppColors.white, fontSize: 12),
               ),
             ),
           ),
@@ -242,7 +242,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
               widget.title,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -252,7 +252,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
             constraints: const BoxConstraints.tightFor(width: 34, height: 34),
             padding: EdgeInsets.zero,
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.close, color: Colors.white, size: 20),
+            icon: const Icon(Icons.close, color: AppColors.white, size: 20),
           ),
         ],
       ),
@@ -278,14 +278,21 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
           ),
           const SizedBox(height: 10),
           Flexible(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _radio("is", FilterOperator.isEqual),
-                _radio("is not", FilterOperator.isNot),
-                _radio("contains", FilterOperator.contains),
-                _radio("has any value", FilterOperator.hasAnyValue),
-              ],
+            child: RadioGroup<FilterOperator>(
+              groupValue: operator,
+              onChanged: (val) {
+                if (val == null) return;
+                setState(() => operator = val);
+              },
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _radio("is", FilterOperator.isEqual),
+                  _radio("is not", FilterOperator.isNot),
+                  _radio("contains", FilterOperator.contains),
+                  _radio("has any value", FilterOperator.hasAnyValue),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 10),
@@ -333,8 +340,8 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
                 ? Center(
                     child: Text(
                       "No active filters",
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
+                      style: const TextStyle(
+                        color: AppColors.grey600,
                         fontSize: 12,
                       ),
                     ),
@@ -348,9 +355,9 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
+                          color: AppColors.surfaceSoft,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(color: AppColors.greyMedium),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,9 +379,9 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
                                   const SizedBox(height: 3),
                                   Text(
                                     f.operator.name,
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 11,
-                                      color: Colors.grey.shade600,
+                                      color: AppColors.grey600,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -487,8 +494,6 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
       visualDensity: VisualDensity.compact,
       title: Text(label),
       value: value,
-      groupValue: operator,
-      onChanged: (val) => setState(() => operator = val!),
     );
   }
 }

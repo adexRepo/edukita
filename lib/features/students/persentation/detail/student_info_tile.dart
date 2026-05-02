@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:edukita/core/helper/image_helper.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class StudentInfoTile extends StatelessWidget {
@@ -14,7 +15,7 @@ class StudentInfoTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(12),
       ),
       child: LayoutBuilder(
@@ -54,12 +55,18 @@ class StudentInfoTile extends StatelessWidget {
                   Text(
                     student.fullName,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.grey600,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${student.age} years',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.grey600,
+                    ),
                   ),
                 ],
               ),

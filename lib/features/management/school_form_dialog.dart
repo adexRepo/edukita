@@ -1,5 +1,6 @@
 import 'package:edukita/features/management/class_model.dart';
 import 'package:edukita/features/management/school_model.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -28,12 +29,16 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   final _addressController = TextEditingController();
   final List<_ClassDraft> _classes = [];
   SchoolType _type = SchoolType.sd;
+  int _typeDropdownVersion = 0;
 
-  bool get _isEditing => widget.school != null;
   bool get _autoClassName => _type.usesAutoClassName;
   bool get _canManageClasses =>
       _nameController.text.trim().isNotEmpty &&
       _addressController.text.trim().isNotEmpty;
+  bool get _hasUserClassDrafts =>
+      _classes.any((draft) => draft.hasClassInput(_type));
+  int get _classCount =>
+      _classes.where((draft) => draft.hasClassInput(_type)).length;
 
   @override
   void initState() {
@@ -74,8 +79,8 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
     );
 
     final classes = _classes
+        .where((draft) => draft.shouldSave(_type))
         .map((draft) => draft.toSchoolClass(_type))
-        .where((schoolClass) => schoolClass.name.trim().isNotEmpty)
         .toList();
 
     await widget.onSave(school, classes);
@@ -100,48 +105,64 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   }
 
   Future<void> _changeType(SchoolType value) async {
-    if (_isEditing && value != _type && _classes.isNotEmpty) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Change School Type'),
-          content: const Text(
-            'Changing the school type will remove all classes added to this school.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Change'),
-            ),
-          ],
-        ),
-      );
+    if (value == _type) return;
 
-      if (confirmed != true) return;
+    if (_hasUserClassDrafts) {
+      final confirmed = await _confirmTypeChange(value);
+
+      if (confirmed != true) {
+        if (mounted) setState(() => _typeDropdownVersion++);
+        return;
+      }
       if (!mounted) return;
 
       _updateClassDraftsSilently(() {
         _type = value;
-        for (final draft in _classes) {
-          draft.dispose();
-        }
-        _classes
-          ..clear()
-          ..add(_ClassDraft(type: value));
+        _typeDropdownVersion++;
+        _resetClassDrafts(value);
       });
       return;
     }
 
     _updateClassDraftsSilently(() {
       _type = value;
+      _typeDropdownVersion++;
       for (final draft in _classes) {
         draft.ensureLevelInRange(value);
       }
     });
+  }
+
+  Future<bool?> _confirmTypeChange(SchoolType newType) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Change School Type'),
+        content: Text(
+          'Changing the school type from ${_type.label} to ${newType.label} '
+          'will remove the classes already created for ${_type.label}.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep Type'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remove Classes'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _resetClassDrafts(SchoolType type) {
+    for (final draft in _classes) {
+      draft.dispose();
+    }
+    _classes
+      ..clear()
+      ..add(_ClassDraft(type: type));
   }
 
   void _generateClassDrafts() {
@@ -154,7 +175,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
         final key = '$level-$section';
         if (existingKeys.contains(key)) continue;
         generated.add(
-          _ClassDraft(type: _type)
+          _ClassDraft(type: _type, hasUserInput: true)
             ..levelController.text = level.toString()
             ..sectionController.text = section,
         );
@@ -166,19 +187,18 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   }
 
   void _removeAllClassDrafts() {
-    _updateClassDrafts(() {
-      for (final draft in _classes) {
-        draft.dispose();
-      }
-      _classes
-        ..clear()
-        ..add(_ClassDraft(type: _type));
-    });
+    _updateClassDrafts(() => _resetClassDrafts(_type));
   }
 
   bool _isDuplicateDraft(_ClassDraft target) {
+    if (!target.hasClassInput(_type)) return false;
+
     return _classes
-            .where((draft) => draft.keyFor(_type) == target.keyFor(_type))
+            .where(
+              (draft) =>
+                  draft.hasClassInput(_type) &&
+                  draft.keyFor(_type) == target.keyFor(_type),
+            )
             .length >
         1;
   }
@@ -231,7 +251,9 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<SchoolType>(
+          key: ValueKey('school-type-$_type-$_typeDropdownVersion'),
           initialValue: _type,
+          isExpanded: true,
           decoration: InputDecoration(label: requiredLabel(context, 'Type')),
           items: SchoolType.values
               .map(
@@ -282,7 +304,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
           children: [
             Expanded(
               child: Text(
-                'Classes (${_classes.length})',
+                'Classes ($_classCount)',
                 style: Theme.of(
                   context,
                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
@@ -291,7 +313,10 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
             IconButton.filledTonal(
               onPressed: _canManageClasses
                   ? () => _updateClassDrafts(
-                      () => _classes.insert(0, _ClassDraft(type: _type)),
+                      () => _classes.insert(
+                        0,
+                        _ClassDraft(type: _type, hasUserInput: true),
+                      ),
                     )
                   : null,
               icon: const Icon(Icons.add),
@@ -327,8 +352,10 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
                   draft: _classes[index],
                   type: _type,
                   autoName: _autoClassName,
+                  requiresValidation: _classes[index].hasClassInput(_type),
                   isDuplicate: _isDuplicateDraft(_classes[index]),
-                  onChanged: () => _updateClassDrafts(() {}),
+                  onChanged: () =>
+                      _updateClassDrafts(() => _classes[index].markUserInput()),
                   onRemove: _classes.length == 1
                       ? null
                       : () => _updateClassDrafts(
@@ -346,11 +373,14 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
 }
 
 class _ClassDraft {
-  _ClassDraft({SchoolType type = SchoolType.sd}) {
+  _ClassDraft({
+    SchoolType type = SchoolType.sd,
+    this.hasUserInput = false,
+  }) {
     levelController.text = type.minLevel.toString();
   }
 
-  _ClassDraft.fromClass(SchoolClass schoolClass) {
+  _ClassDraft.fromClass(SchoolClass schoolClass) : hasUserInput = true {
     id = schoolClass.id;
     schoolId = schoolClass.schoolId;
     nameController.text = schoolClass.name;
@@ -366,6 +396,8 @@ class _ClassDraft {
     text: DateTime.now().year.toString(),
   );
 
+  bool hasUserInput;
+
   String classNameFor(SchoolType type) {
     if (!type.usesAutoClassName) return nameController.text.trim();
     return '${levelController.text.trim()}${sectionController.text.trim()}';
@@ -373,6 +405,19 @@ class _ClassDraft {
 
   String keyFor(SchoolType type) {
     return '${classNameFor(type).toUpperCase()}-${yearController.text.trim()}';
+  }
+
+  bool hasClassInput(SchoolType type) {
+    if (id != null || hasUserInput) return true;
+    return !type.usesAutoClassName && nameController.text.trim().isNotEmpty;
+  }
+
+  bool shouldSave(SchoolType type) {
+    return hasClassInput(type) && classNameFor(type).trim().isNotEmpty;
+  }
+
+  void markUserInput() {
+    hasUserInput = true;
   }
 
   SchoolClass toSchoolClass(SchoolType type) {
@@ -411,6 +456,7 @@ class _ClassDraftRow extends StatelessWidget {
     required this.draft,
     required this.type,
     required this.autoName,
+    required this.requiresValidation,
     required this.isDuplicate,
     required this.onChanged,
     this.onRemove,
@@ -419,6 +465,7 @@ class _ClassDraftRow extends StatelessWidget {
   final _ClassDraft draft;
   final SchoolType type;
   final bool autoName;
+  final bool requiresValidation;
   final bool isDuplicate;
   final VoidCallback onChanged;
   final VoidCallback? onRemove;
@@ -444,6 +491,7 @@ class _ClassDraftRow extends StatelessWidget {
               helperText: autoName ? autoNameText : null,
             ),
             validator: (value) {
+              if (!requiresValidation) return null;
               if (!autoName && (value == null || value.trim().isEmpty)) {
                 return 'Class name is required';
               }
@@ -477,6 +525,7 @@ class _ClassDraftRow extends StatelessWidget {
                     onChanged();
                   },
             validator: (value) {
+              if (!requiresValidation) return null;
               if (value == null) {
                 return 'Level is required';
               }
@@ -499,6 +548,7 @@ class _ClassDraftRow extends StatelessWidget {
             ],
             onChanged: (_) => onChanged(),
             validator: (value) {
+              if (!requiresValidation) return null;
               final text = value?.trim() ?? '';
               if (text.isEmpty && !autoName) return null;
               if (text.isEmpty) return 'Section is required';
@@ -521,6 +571,7 @@ class _ClassDraftRow extends StatelessWidget {
             ],
             onChanged: (_) => onChanged(),
             validator: (value) {
+              if (!requiresValidation) return null;
               final text = value?.trim() ?? '';
               if (text.isEmpty) {
                 return 'Year is required';
@@ -549,12 +600,12 @@ Widget requiredLabel(BuildContext context, String label) {
     text: TextSpan(
       text: label,
       style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-      children: const [
-        TextSpan(
-          text: ' *',
-          style: TextStyle(color: Colors.red),
-        ),
-      ],
+        children: const [
+          TextSpan(
+            text: ' *',
+            style: TextStyle(color: AppColors.errorDark),
+          ),
+        ],
     ),
   );
 }

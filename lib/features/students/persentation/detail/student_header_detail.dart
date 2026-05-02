@@ -1,6 +1,7 @@
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/persentation/detail/attendance_line_chart.dart';
 import 'package:edukita/features/students/persentation/detail/student_info_tile.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class StudentHeaderDetail extends StatelessWidget {
@@ -12,7 +13,7 @@ class StudentHeaderDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     final boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: const Color(0xFFE5E7EB)),
+      border: Border.all(color: AppColors.border),
     );
 
     return LayoutBuilder(
@@ -40,7 +41,7 @@ class StudentHeaderDetail extends StatelessWidget {
                     const Divider(
                       height: 1,
                       thickness: 1,
-                      color: Color(0xFFE5E7EB),
+                      color: AppColors.border,
                     ),
                     Expanded(child: AttendanceLineChart()),
                   ],
@@ -55,7 +56,7 @@ class StudentHeaderDetail extends StatelessWidget {
                     const VerticalDivider(
                       width: 1,
                       thickness: 1,
-                      color: Color(0xFFE5E7EB),
+                      color: AppColors.border,
                     ),
                     Expanded(flex: chartFlex, child: AttendanceLineChart()),
                   ],

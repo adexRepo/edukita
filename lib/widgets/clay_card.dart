@@ -54,12 +54,12 @@ class _ClayCardState extends State<ClayCard> {
                 ? [
                     // 🔥 pressed (inset illusion)
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
+                      color: AppColors.black.withValues(alpha: 0.12),
                       offset: const Offset(2, 2),
                       blurRadius: 6,
                     ),
                     BoxShadow(
-                      color: Colors.white.withValues(alpha: 0.7),
+                      color: AppColors.white.withValues(alpha: 0.7),
                       offset: const Offset(-2, -2),
                       blurRadius: 6,
                     ),
@@ -67,14 +67,14 @@ class _ClayCardState extends State<ClayCard> {
                 : [
                     // normal / hover (raised)
                     BoxShadow(
-                      color: Colors.white.withValues(
+                      color: AppColors.white.withValues(
                         alpha: isHover ? 0.9 : 0.8,
                       ),
                       offset: const Offset(-4, -4),
                       blurRadius: isHover ? 12 : 8,
                     ),
                     BoxShadow(
-                      color: Colors.black.withValues(
+                      color: AppColors.black.withValues(
                         alpha: isHover ? 0.12 : 0.08,
                       ),
                       offset: const Offset(4, 4),

@@ -1,4 +1,5 @@
 import 'package:edukita/features/management/class_model.dart';
+import 'package:edukita/features/management/guardian_model.dart';
 import 'package:edukita/features/management/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/students/persentation/student_form_card.dart';
@@ -12,12 +13,14 @@ class StudentFormDialog extends StatelessWidget {
     required this.generatedStudentNo,
     required this.onSubmit,
     this.initialStudent,
+    this.initialGuardians = const [],
   });
 
   final List<School> availableSchools;
   final List<SchoolClass> availableClasses;
   final String generatedStudentNo;
   final Student? initialStudent;
+  final List<StudentGuardianFormData> initialGuardians;
   final StudentFormSubmit onSubmit;
 
   @override
@@ -35,6 +38,7 @@ class StudentFormDialog extends StatelessWidget {
             availableClasses: availableClasses,
             generatedStudentNo: generatedStudentNo,
             initialStudent: initialStudent,
+            initialGuardians: initialGuardians,
             isEditing: isEditing,
             onSubmit: onSubmit,
           ),

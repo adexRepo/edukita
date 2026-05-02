@@ -1,5 +1,6 @@
 import 'package:edukita/core/helper/image_helper.dart';
 import 'package:edukita/features/students/data/student_table.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class StudentProfileCell extends StatelessWidget {
@@ -13,7 +14,7 @@ class StudentProfileCell extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 14,
-          backgroundColor: Colors.grey.shade200,
+          backgroundColor: AppColors.surfaceMuted,
           backgroundImage: getImageByLocalPath(student.photoPath),
           child: student.photoPath == null || student.photoPath!.isEmpty
               ? Text(
@@ -23,7 +24,7 @@ class StudentProfileCell extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: AppColors.black87,
                   ),
                 )
               : null,
@@ -46,7 +47,7 @@ class StudentProfileCell extends StatelessWidget {
               Text(
                 _buildSubtitle(student),
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                style: const TextStyle(fontSize: 10, color: AppColors.grey600),
               ),
             ],
           ),

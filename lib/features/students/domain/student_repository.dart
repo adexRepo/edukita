@@ -2,6 +2,7 @@ import 'package:edukita/core/database/base_repository.dart';
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/features/management/class_model.dart';
+import 'package:edukita/features/management/guardian_model.dart';
 import 'package:edukita/features/management/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
@@ -10,6 +11,7 @@ import 'package:edukita/features/students/data/student_table.dart';
 import 'package:edukita/features/students/domain/student_mapper.dart';
 import 'package:edukita/features/students/domain/sudent_filter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:sqflite_common/sqlite_api.dart';
 import 'package:uuid/uuid.dart';
 
 class StudentRepository extends BaseRepository<Student> {
@@ -249,7 +251,11 @@ class StudentRepository extends BaseRepository<Student> {
     return result.map(School.fromMap).toList();
   }
 
-  Future<void> insertStudentWithSchool(Student student, String schoolId) async {
+  Future<void> insertStudentWithSchool(
+    Student student,
+    String schoolId, [
+    List<StudentGuardianFormData> guardians = const [],
+  ]) async {
     final db = await _dbProvider.database;
     await db.transaction((txn) async {
       await txn.insert(table, mapper.toMap(student));
@@ -259,10 +265,15 @@ class StudentRepository extends BaseRepository<Student> {
         'school_id': schoolId,
         'status': 1,
       });
+      await _saveGuardians(txn, student.id, guardians);
     });
   }
 
-  Future<void> updateStudentWithSchool(Student student, String schoolId) async {
+  Future<void> updateStudentWithSchool(
+    Student student,
+    String schoolId, [
+    List<StudentGuardianFormData> guardians = const [],
+  ]) async {
     final db = await _dbProvider.database;
     await db.transaction((txn) async {
       await txn.update(
@@ -282,7 +293,118 @@ class StudentRepository extends BaseRepository<Student> {
         'school_id': schoolId,
         'status': 1,
       });
+      await _saveGuardians(txn, student.id, guardians);
     });
+  }
+
+  Future<StudentGuardianFormData?> loadPrimaryGuardian(String studentId) async {
+    final guardians = await loadGuardians(studentId);
+    return guardians.isEmpty ? null : guardians.first;
+  }
+
+  Future<List<StudentGuardianFormData>> loadGuardians(String studentId) async {
+    final db = await _dbProvider.database;
+    final result = await db.rawQuery(
+      '''
+        SELECT 
+          g.id AS guardian_id,
+          g.full_name,
+          g.mobile_no,
+          g.email,
+          g.occupation,
+          g.address,
+          sg.relationship,
+          sg.is_primary
+        FROM student_guardians sg
+        INNER JOIN guardians g ON g.id = sg.guardian_id
+        WHERE sg.student_id = ?
+        ORDER BY sg.is_primary DESC, sg.relationship
+      ''',
+      [studentId],
+    );
+
+    return result.map((row) {
+      return StudentGuardianFormData(
+        guardianId: row['guardian_id'] as String?,
+        fullName: row['full_name'] as String?,
+        relationship: row['relationship'] as String?,
+        isPrimary: (row['is_primary'] as num?)?.toInt() == 1,
+        mobileNo: row['mobile_no'] as String?,
+        email: row['email'] as String?,
+        occupation: row['occupation'] as String?,
+        address: row['address'] as String?,
+      );
+    }).toList();
+  }
+
+  Future<void> _saveGuardians(
+    Transaction txn,
+    String studentId,
+    List<StudentGuardianFormData> guardians,
+  ) async {
+    final existing = await txn.rawQuery(
+      '''
+        SELECT guardian_id
+        FROM student_guardians
+        WHERE student_id = ?
+        ORDER BY is_primary DESC
+        LIMIT 1
+      ''',
+      [studentId],
+    );
+    final existingGuardianId = existing.isEmpty
+        ? null
+        : existing.first['guardian_id'] as String?;
+
+    await txn.delete(
+      'student_guardians',
+      where: 'student_id = ?',
+      whereArgs: [studentId],
+    );
+
+    final validGuardians = guardians.where((guardian) => guardian.hasData);
+
+    var index = 0;
+    for (final guardian in validGuardians) {
+      final guardianId =
+          guardian.guardianId ??
+          (index == 0 ? existingGuardianId : null) ??
+          const Uuid().v4();
+      final guardianMap = Guardian(
+        id: guardianId,
+        fullName: guardian.fullName?.trim().isNotEmpty == true
+            ? guardian.fullName!.trim()
+            : '-',
+        mobileNo: _nullIfBlank(guardian.mobileNo),
+        email: _nullIfBlank(guardian.email),
+        occupation: _nullIfBlank(guardian.occupation),
+        address: _nullIfBlank(guardian.address),
+      ).toMap();
+
+      final updated = await txn.update(
+        'guardians',
+        guardianMap,
+        where: 'id = ?',
+        whereArgs: [guardianId],
+      );
+      if (updated == 0) {
+        await txn.insert('guardians', guardianMap);
+      }
+
+      await txn.insert('student_guardians', {
+        'student_id': studentId,
+        'guardian_id': guardianId,
+        'relationship': _nullIfBlank(guardian.relationship) ?? '-',
+        'is_primary': guardian.isPrimary ? 1 : 0,
+      });
+      index++;
+    }
+  }
+
+  String? _nullIfBlank(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    return trimmed;
   }
 
   Future<void> deleteStudent(String studentId) async {

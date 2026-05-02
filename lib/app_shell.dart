@@ -1,4 +1,5 @@
 import 'package:edukita/features/common/title_bar.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -37,7 +38,7 @@ class _AppShellState extends State<AppShell> {
                 const VerticalDivider(
                   width: 1,
                   thickness: 1,
-                  color: Color(0xFFE5E7EB),
+                  color: AppColors.border,
                 ),
 
                 Expanded(
@@ -65,7 +66,7 @@ class _AppShellState extends State<AppShell> {
 
     return Container(
       width: 90,
-      color: Colors.white,
+      color: AppColors.white,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         itemCount: items.length,
@@ -73,8 +74,8 @@ class _AppShellState extends State<AppShell> {
           final (label, icon, route) = items[index];
           final selected = selectedIndex == index;
           final color = selected
-              ? const Color(0xFF48CFCB)
-              : const Color(0xFF6B7280);
+              ? AppColors.primary
+              : AppColors.textSecondary;
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 6),
@@ -89,14 +90,12 @@ class _AppShellState extends State<AppShell> {
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   decoration: BoxDecoration(
                     color: selected
-                        ? const Color(0xFF48CFCB).withValues(alpha: 0.12)
-                        : Colors.transparent,
+                        ? AppColors.primary.withValues(alpha: 0.12)
+                        : AppColors.transparent,
                     borderRadius: BorderRadius.circular(8),
                     border: selected
                         ? Border.all(
-                            color: const Color(
-                              0xFF48CFCB,
-                            ).withValues(alpha: 0.18),
+                            color: AppColors.primary.withValues(alpha: 0.18),
                           )
                         : null,
                   ),

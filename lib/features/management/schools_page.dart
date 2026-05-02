@@ -3,6 +3,7 @@ import 'package:edukita/features/management/class_model.dart';
 import 'package:edukita/features/management/school_cubit.dart';
 import 'package:edukita/features/management/school_form_dialog.dart';
 import 'package:edukita/features/management/school_model.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/clay_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -56,6 +57,36 @@ class _SchoolsPageState extends State<SchoolsPage> {
     context.read<ClassCubit>().loadClassesBySchool(school.id);
   }
 
+  Future<void> _confirmDeleteSchool(School school) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete School'),
+        content: Text('Delete ${school.name ?? 'this school'}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await context.read<SchoolCubit>().deleteSchool(school.id);
+    if (!mounted) return;
+
+    if (_selectedSchool?.id == school.id) {
+      setState(() => _selectedSchool = null);
+      context.read<ClassCubit>().loadClassesBySchool('');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,6 +121,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
                       selected: _selectedSchool,
                       onSelect: _selectSchool,
                       onEdit: (school) => _showSchoolFormDialog(school: school),
+                      onDelete: _confirmDeleteSchool,
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -109,11 +141,13 @@ class _SchoolTable extends StatelessWidget {
     required this.selected,
     required this.onSelect,
     required this.onEdit,
+    required this.onDelete,
   });
 
   final School? selected;
   final ValueChanged<School> onSelect;
   final ValueChanged<School> onEdit;
+  final ValueChanged<School> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -152,6 +186,7 @@ class _SchoolTable extends StatelessWidget {
                         selected: selected?.id == school.id,
                         onTap: () => onSelect(school),
                         onEdit: () => onEdit(school),
+                        onDelete: () => onDelete(school),
                       ),
                     );
                   },
@@ -171,12 +206,14 @@ class _SchoolRow extends StatelessWidget {
     required this.selected,
     required this.onTap,
     required this.onEdit,
+    required this.onDelete,
   });
 
   final School school;
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -186,11 +223,11 @@ class _SchoolRow extends StatelessWidget {
     return Material(
       color: selected
           ? selectedColor.withValues(alpha: 0.08)
-          : Colors.transparent,
+          : AppColors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(
-          color: selected ? selectedColor : const Color(0xFFE5E7EB),
+          color: selected ? selectedColor : AppColors.border,
           width: selected ? 1.5 : 1,
         ),
       ),
@@ -211,11 +248,13 @@ class _SchoolRow extends StatelessWidget {
                     radius: 16,
                     backgroundColor: selected
                         ? selectedColor
-                        : const Color(0xFFF3F4F6),
+                        : AppColors.surfaceMuted,
                     child: Icon(
                       selected ? Icons.check : Icons.apartment,
                       size: 17,
-                      color: selected ? Colors.white : const Color(0xFF6B7280),
+                      color: selected
+                          ? AppColors.white
+                          : AppColors.textSecondary,
                     ),
                   ),
                   title: Text(
@@ -234,6 +273,11 @@ class _SchoolRow extends StatelessWidget {
                         tooltip: 'Edit school',
                         onPressed: onEdit,
                         icon: const Icon(Icons.edit, size: 18),
+                      ),
+                      IconButton(
+                        tooltip: 'Delete school',
+                        onPressed: onDelete,
+                        icon: const Icon(Icons.delete_outline, size: 18),
                       ),
                       if (selected)
                         Icon(Icons.chevron_right, color: selectedColor),
