@@ -1,5 +1,5 @@
 import 'package:edukita/core/database/database_provider.dart';
-import 'package:edukita/features/management/guardian_model.dart';
+import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common/sql.dart';
 

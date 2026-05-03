@@ -9,6 +9,28 @@ class AssessmentCubit extends Cubit<AssessmentState> {
 
   AssessmentCubit(this._repository) : super(const AssessmentState());
 
+  Future<void> loadAssessmentModule() async {
+    emit(state.copyWith(isLoading: true));
+    try {
+      final assessments = await _repository.getAllAssessments();
+      final studentAssessments = await _repository.getAllStudentAssessments();
+      final students = await _repository.getStudentOptions();
+      final gradingScales = await _repository.getAllGradingScales();
+      emit(
+        state.copyWith(
+          isLoading: false,
+          assessments: assessments,
+          studentAssessments: studentAssessments,
+          students: students,
+          gradingScales: gradingScales,
+          error: null,
+        ),
+      );
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: e.toString()));
+    }
+  }
+
   Future<void> loadAssessments() async {
     emit(state.copyWith(isLoading: true));
     try {
@@ -24,7 +46,7 @@ class AssessmentCubit extends Cubit<AssessmentState> {
   Future<void> addAssessment(Assessment assessment) async {
     try {
       await _repository.insertAssessment(assessment);
-      await loadAssessments();
+      await loadAssessmentModule();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
       rethrow;
@@ -34,7 +56,7 @@ class AssessmentCubit extends Cubit<AssessmentState> {
   Future<void> updateAssessment(Assessment assessment) async {
     try {
       await _repository.updateAssessment(assessment);
-      await loadAssessments();
+      await loadAssessmentModule();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
       rethrow;
@@ -44,7 +66,7 @@ class AssessmentCubit extends Cubit<AssessmentState> {
   Future<void> deleteAssessment(String id) async {
     try {
       await _repository.deleteAssessment(id);
-      await loadAssessments();
+      await loadAssessmentModule();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
       rethrow;
@@ -77,6 +99,28 @@ class AssessmentCubit extends Cubit<AssessmentState> {
     try {
       await _repository.updateGradingScale(scale);
       await loadGradingScales();
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+      rethrow;
+    }
+  }
+
+  Future<void> recordStudentAssessment(
+    StudentAssessment studentAssessment,
+  ) async {
+    try {
+      await _repository.recordStudentAssessment(studentAssessment);
+      await loadAssessmentModule();
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+      rethrow;
+    }
+  }
+
+  Future<void> deleteStudentAssessment(String id) async {
+    try {
+      await _repository.deleteStudentAssessment(id);
+      await loadAssessmentModule();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
       rethrow;

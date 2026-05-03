@@ -1,20 +1,28 @@
 import 'package:edukita/app_shell.dart';
 import 'package:edukita/core/router/service_locator.dart';
-import 'package:edukita/features/auth/login_page.dart';
-import 'package:edukita/features/dashboard/dashboard_cubit.dart';
-import 'package:edukita/features/dashboard/dashboard_page.dart';
+import 'package:edukita/features/auth/presentation/login_page.dart';
+import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
+import 'package:edukita/features/dashboard/presentation/dashboard_page.dart';
+import 'package:edukita/features/reports/assessment_cubit.dart';
+import 'package:edukita/features/reports/reports_page.dart';
+import 'package:edukita/features/schedule/domain/schedule_cubit.dart';
+import 'package:edukita/features/schedule/presentation/schedule_page.dart';
 import 'package:edukita/features/schools/domain/class_cubit.dart';
 import 'package:edukita/features/schools/domain/school_cubit.dart';
 import 'package:edukita/features/schools/presentation/schools_page.dart';
+import 'package:edukita/features/strategy/domain/strategy_cubit.dart';
+import 'package:edukita/features/strategy/presentation/strategy_page.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
 import 'package:edukita/features/students/domain/student_feature_cubit.dart';
 import 'package:edukita/features/students/persentation/detail/student_detail_page.dart';
 import 'package:edukita/features/students/persentation/students_page.dart';
-import 'package:edukita/features/teachers/presentation/teachers_page.dart';
-import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
-import 'package:edukita/features/teachers/presentation/teacher_detail_page.dart';
+import 'package:edukita/features/syllabus/domain/subject_cubit.dart';
+import 'package:edukita/features/syllabus/presentation/syllabus_page.dart';
 import 'package:edukita/features/teachers/data/teacher_model.dart';
+import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:edukita/features/teachers/domain/teacher_repository.dart';
+import 'package:edukita/features/teachers/presentation/teacher_detail_page.dart';
+import 'package:edukita/features/teachers/presentation/teachers_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -117,6 +125,70 @@ final GoRouter appRouter = GoRouter(
               },
             ),
           ],
+        ),
+        GoRoute(
+          path: '/curriculum',
+          pageBuilder: (context, state) => _noTransitionPage(
+            state: state,
+            child: withCubit(
+              create: () => getIt<SubjectCubit>()..loadCurriculum(),
+              child: const SyllabusPage(),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/strategies',
+          pageBuilder: (context, state) => _noTransitionPage(
+            state: state,
+            child: withCubit(
+              create: () => getIt<StrategyCubit>()..loadStrategies(),
+              child: const StrategyPage(),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/schedules',
+          pageBuilder: (context, state) => _noTransitionPage(
+            state: state,
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<ScheduleCubit>(
+                  create: (_) => getIt<ScheduleCubit>()..loadSchedules(),
+                ),
+                BlocProvider<SubjectCubit>(
+                  create: (_) => getIt<SubjectCubit>()..loadCurriculum(),
+                ),
+                BlocProvider<StrategyCubit>(
+                  create: (_) => getIt<StrategyCubit>()..loadStrategies(),
+                ),
+                BlocProvider<ClassCubit>(
+                  create: (_) => getIt<ClassCubit>()..loadClasses(),
+                ),
+                BlocProvider<TeacherCubit>(
+                  create: (_) => getIt<TeacherCubit>()..loadTeachers(),
+                ),
+              ],
+              child: const SchedulePage(),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/reports',
+          pageBuilder: (context, state) => _noTransitionPage(
+            state: state,
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<AssessmentCubit>(
+                  create: (_) =>
+                      getIt<AssessmentCubit>()..loadAssessmentModule(),
+                ),
+                BlocProvider<SubjectCubit>(
+                  create: (_) => getIt<SubjectCubit>()..loadCurriculum(),
+                ),
+              ],
+              child: const ReportsPage(),
+            ),
+          ),
         ),
       ],
     ),

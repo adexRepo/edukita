@@ -1,8 +1,8 @@
 import 'package:edukita/core/database/base_repository.dart';
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
-import 'package:edukita/features/management/guardian_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
@@ -454,7 +454,7 @@ class StudentRepository extends BaseRepository<Student> {
 
   Future<StudentDetailData> loadDetailItem(String studentId) async {
     final db = await _dbProvider.database;
-    print(studentId);
+    // print(studentId);
 
     final query = '''
           select
@@ -498,7 +498,7 @@ class StudentRepository extends BaseRepository<Student> {
       throw Exception('Student not found');
     }
 
-    print(result.first);
+    // print(result.first);
     return StudentDetailData.fromJson(result.first);
   }
 }

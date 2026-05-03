@@ -1,6 +1,6 @@
+import 'package:edukita/features/schedule/data/schedule_model.dart';
+import 'package:edukita/features/schedule/domain/schedule_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:edukita/features/schedule/schedule_model.dart';
-import 'package:edukita/features/schedule/schedule_repository.dart';
 
 part 'schedule_state.dart';
 
@@ -73,6 +73,16 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     emit(state.copyWith(isLoading: true));
     try {
       final schedules = await _repository.getSchedulesByDate(date);
+      emit(state.copyWith(isLoading: false, schedules: schedules, error: null));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: e.toString()));
+    }
+  }
+
+  Future<void> loadSchedulesBySubject(String subjectId) async {
+    emit(state.copyWith(isLoading: true));
+    try {
+      final schedules = await _repository.getSchedulesBySubject(subjectId);
       emit(state.copyWith(isLoading: false, schedules: schedules, error: null));
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));

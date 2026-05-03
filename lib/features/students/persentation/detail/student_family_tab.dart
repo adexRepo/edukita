@@ -1,4 +1,4 @@
-import 'package:edukita/features/management/guardian_model.dart';
+import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
 import 'package:edukita/features/students/persentation/detail/detail_data_table.dart';

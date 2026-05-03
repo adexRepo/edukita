@@ -1,7 +1,7 @@
 import 'dart:async';
 
+import 'package:edukita/features/strategy/data/strategy_model.dart';
 import 'package:flutter/material.dart';
-import 'package:edukita/features/strategy/strategy_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/widgets/app_toast.dart';
 
@@ -18,7 +18,8 @@ class StrategyFormDialog extends StatefulWidget {
 class _StrategyFormDialogState extends State<StrategyFormDialog> {
   final _formKey = GlobalKey<FormState>();
   late String? code;
-  late String? name;
+  late String name;
+  late String? description;
   late String? rule;
   bool _isSaving = false;
 
@@ -28,10 +29,12 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
     if (widget.strategy != null) {
       code = widget.strategy!.code;
       name = widget.strategy!.name;
+      description = widget.strategy!.description;
       rule = widget.strategy!.rule;
     } else {
       code = null;
-      name = null;
+      name = '';
+      description = null;
       rule = null;
     }
   }
@@ -51,13 +54,29 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
                 value: code,
                 onSaved: (value) =>
                     code = value?.isEmpty ?? true ? null : value,
+                validator: (_) => null,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
                 label: 'Name',
                 value: name,
-                onSaved: (value) =>
-                    name = value?.isEmpty ?? true ? null : value,
+                onSaved: (value) => name = value ?? '',
+                validator: (value) {
+                  if (value?.trim().isEmpty ?? true) {
+                    return 'Strategy name is required';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              CommonFormWidgets.textField(
+                label: 'Description',
+                value: description,
+                onSaved: (value) => description = value?.trim().isEmpty ?? true
+                    ? null
+                    : value?.trim(),
+                maxLines: 3,
+                validator: (_) => null,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
@@ -66,6 +85,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
                 onSaved: (value) =>
                     rule = value?.isEmpty ?? true ? null : value,
                 maxLines: 4,
+                validator: (_) => null,
               ),
             ],
           ),
@@ -101,6 +121,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
       id: widget.strategy?.id,
       code: code,
       name: name,
+      description: description,
       rule: rule,
     );
 

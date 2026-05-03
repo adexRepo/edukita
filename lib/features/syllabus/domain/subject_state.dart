@@ -1,6 +1,8 @@
 part of 'subject_cubit.dart';
 
 class SubjectState {
+  final List<Curriculum> curriculums;
+  final List<Syllabus> syllabi;
   final List<Subject> subjects;
   final List<Unit> units;
   final List<Competency> competencies;
@@ -8,6 +10,8 @@ class SubjectState {
   final String? error;
 
   const SubjectState({
+    this.curriculums = const [],
+    this.syllabi = const [],
     this.subjects = const [],
     this.units = const [],
     this.competencies = const [],
@@ -16,6 +20,8 @@ class SubjectState {
   });
 
   SubjectState copyWith({
+    List<Curriculum>? curriculums,
+    List<Syllabus>? syllabi,
     List<Subject>? subjects,
     List<Unit>? units,
     List<Competency>? competencies,
@@ -23,6 +29,8 @@ class SubjectState {
     String? error,
   }) {
     return SubjectState(
+      curriculums: curriculums ?? this.curriculums,
+      syllabi: syllabi ?? this.syllabi,
       subjects: subjects ?? this.subjects,
       units: units ?? this.units,
       competencies: competencies ?? this.competencies,

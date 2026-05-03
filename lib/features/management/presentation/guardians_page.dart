@@ -1,38 +1,38 @@
-import 'package:edukita/features/strategy/strategy_cubit.dart';
-import 'package:edukita/features/strategy/strategy_form_dialog.dart';
-import 'package:edukita/features/strategy/strategy_model.dart';
+import 'package:edukita/features/management/data/guardian_model.dart';
+import 'package:edukita/features/management/domain/guardian_cubit.dart';
+import 'package:edukita/features/management/presentation/guardian_form_dialog.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class StrategyPage extends StatefulWidget {
-  const StrategyPage({super.key});
+class GuardiansPage extends StatefulWidget {
+  const GuardiansPage({super.key});
 
   @override
-  State<StrategyPage> createState() => _StrategyPageState();
+  State<GuardiansPage> createState() => _GuardiansPageState();
 }
 
-class _StrategyPageState extends State<StrategyPage> {
+class _GuardiansPageState extends State<GuardiansPage> {
   @override
   void initState() {
     super.initState();
-    context.read<StrategyCubit>().loadStrategies();
+    context.read<GuardianCubit>().loadGuardians();
   }
 
-  Future<void> _showStrategyFormDialog(
+  Future<void> _showGuardianFormDialog(
     BuildContext context, {
-    Strategy? existingStrategy,
+    Guardian? existingGuardian,
   }) async {
     await showDialog<void>(
       context: context,
-      builder: (context) => StrategyFormDialog(
-        strategy: existingStrategy,
-        onSave: (strategy) async {
-          final cubit = context.read<StrategyCubit>();
-          if (existingStrategy != null) {
-            await cubit.updateStrategy(strategy);
+      builder: (context) => GuardianFormDialog(
+        guardian: existingGuardian,
+        onSave: (guardian) async {
+          final cubit = context.read<GuardianCubit>();
+          if (existingGuardian != null) {
+            await cubit.updateGuardian(guardian);
           } else {
-            await cubit.addStrategy(strategy);
+            await cubit.addGuardian(guardian);
           }
         },
       ),
@@ -40,13 +40,13 @@ class _StrategyPageState extends State<StrategyPage> {
   }
 
   Future<void> _confirmDelete(BuildContext context, String id) async {
-    final cubit = context.read<StrategyCubit>();
+    final cubit = context.read<GuardianCubit>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Delete Strategy'),
-          content: const Text('Are you sure you want to delete this strategy?'),
+          title: const Text('Delete Guardian'),
+          content: const Text('Are you sure you want to delete this guardian?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -63,15 +63,15 @@ class _StrategyPageState extends State<StrategyPage> {
 
     if (confirmed == true) {
       try {
-        await cubit.deleteStrategy(id);
+        await cubit.deleteGuardian(id);
         AppToast.showSubmissionSuccess(
           action: SubmissionAction.delete,
-          subject: 'strategy',
+          subject: 'guardian',
         );
       } catch (_) {
         AppToast.showSubmissionFailed(
           action: SubmissionAction.delete,
-          subject: 'strategy',
+          subject: 'guardian',
         );
       }
     }
@@ -79,49 +79,47 @@ class _StrategyPageState extends State<StrategyPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<StrategyCubit, StrategyState>(
+    return BlocBuilder<GuardianCubit, GuardianState>(
       builder: (context, state) {
         if (state.isLoading) {
           return const Center(child: CircularProgressIndicator());
         } else if (state.error != null) {
           return Center(child: Text('Error: ${state.error}'));
         } else {
-          final strategies = state.strategies;
+          final guardians = state.guardians;
           return Scaffold(
             appBar: AppBar(
-              title: const Text('Strategies'),
+              title: const Text('Guardians'),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.add),
-                  onPressed: () => _showStrategyFormDialog(context),
+                  onPressed: () => _showGuardianFormDialog(context),
                 ),
               ],
             ),
-            body: strategies.isEmpty
-                ? const Center(
-                    child: Text('No strategies yet. Add a strategy.'),
-                  )
+            body: guardians.isEmpty
+                ? const Center(child: Text('No guardians yet. Add a guardian.'))
                 : ListView.builder(
-                    itemCount: strategies.length,
+                    itemCount: guardians.length,
                     itemBuilder: (context, index) {
-                      final strategy = strategies[index];
+                      final guardian = guardians[index];
                       return ListTile(
-                        title: Text(strategy.name ?? 'Unnamed Strategy'),
-                        subtitle: Text('Code: ${strategy.code ?? 'N/A'}'),
+                        title: Text(guardian.fullName),
+                        subtitle: Text('Phone: ${guardian.mobileNo ?? 'N/A'}'),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
                               icon: const Icon(Icons.edit),
-                              onPressed: () => _showStrategyFormDialog(
+                              onPressed: () => _showGuardianFormDialog(
                                 context,
-                                existingStrategy: strategy,
+                                existingGuardian: guardian,
                               ),
                             ),
                             IconButton(
                               icon: const Icon(Icons.delete),
                               onPressed: () =>
-                                  _confirmDelete(context, strategy.id ?? ''),
+                                  _confirmDelete(context, guardian.id),
                             ),
                           ],
                         ),

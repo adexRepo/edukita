@@ -1,5 +1,5 @@
 import 'package:edukita/core/database/database_provider.dart';
-import 'package:edukita/features/strategy/strategy_model.dart';
+import 'package:edukita/features/strategy/data/strategy_model.dart';
 
 class StrategyRepository {
   final DatabaseProvider _dbProvider;
@@ -8,7 +8,7 @@ class StrategyRepository {
 
   Future<List<Strategy>> getAllStrategies() async {
     final db = await _dbProvider.database;
-    final maps = await db.query('strategies');
+    final maps = await db.query('strategies', orderBy: 'name COLLATE NOCASE');
     return maps.map((map) => Strategy.fromMap(map)).toList();
   }
 

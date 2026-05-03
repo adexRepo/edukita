@@ -1,5 +1,5 @@
 import 'package:edukita/features/common/feature_state.dart';
-import 'package:edukita/features/management/guardian_model.dart';
+import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/domain/student_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

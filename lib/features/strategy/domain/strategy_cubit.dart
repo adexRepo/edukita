@@ -1,6 +1,6 @@
+import 'package:edukita/features/strategy/data/strategy_model.dart';
+import 'package:edukita/features/strategy/domain/strategy_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:edukita/features/strategy/strategy_model.dart';
-import 'package:edukita/features/strategy/strategy_repository.dart';
 
 part 'strategy_state.dart';
 

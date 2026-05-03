@@ -4,30 +4,38 @@ class Assessment {
   Assessment({
     String? id,
     required this.unitId,
+    this.competencyId,
     required this.name,
     this.type,
     this.maxScore,
+    this.description,
   }) : id = id ?? const Uuid().v4();
 
   final String id;
   final String unitId;
+  final String? competencyId;
   final String name;
   final String? type;
-  final int? maxScore;
+  final double? maxScore;
+  final String? description;
 
   Assessment copyWith({
     String? id,
     String? unitId,
+    String? competencyId,
     String? name,
     String? type,
-    int? maxScore,
+    double? maxScore,
+    String? description,
   }) {
     return Assessment(
       id: id ?? this.id,
       unitId: unitId ?? this.unitId,
+      competencyId: competencyId ?? this.competencyId,
       name: name ?? this.name,
       type: type ?? this.type,
       maxScore: maxScore ?? this.maxScore,
+      description: description ?? this.description,
     );
   }
 
@@ -35,9 +43,13 @@ class Assessment {
     return Assessment(
       id: map['id']?.toString(),
       unitId: map['unit_id'] as String,
+      competencyId: map['competency_id']?.toString(),
       name: map['name'] as String,
       type: map['type'] as String?,
-      maxScore: map['max_score'] as int?,
+      maxScore: map['max_score'] == null
+          ? null
+          : (map['max_score'] as num).toDouble(),
+      description: map['description'] as String?,
     );
   }
 
@@ -45,15 +57,17 @@ class Assessment {
     return {
       'id': id,
       'unit_id': unitId,
+      'competency_id': competencyId,
       'name': name,
       'type': type,
       'max_score': maxScore,
+      'description': description,
     };
   }
 
   @override
   String toString() =>
-      'Assessment(id: $id, unitId: $unitId, name: $name, type: $type, maxScore: $maxScore)';
+      'Assessment(id: $id, unitId: $unitId, competencyId: $competencyId, name: $name, type: $type, maxScore: $maxScore)';
 
   @override
   bool operator ==(Object other) =>
@@ -62,17 +76,21 @@ class Assessment {
           runtimeType == other.runtimeType &&
           id == other.id &&
           unitId == other.unitId &&
+          competencyId == other.competencyId &&
           name == other.name &&
           type == other.type &&
-          maxScore == other.maxScore;
+          maxScore == other.maxScore &&
+          description == other.description;
 
   @override
   int get hashCode =>
       id.hashCode ^
       unitId.hashCode ^
+      competencyId.hashCode ^
       name.hashCode ^
       type.hashCode ^
-      maxScore.hashCode;
+      maxScore.hashCode ^
+      description.hashCode;
 }
 
 class StudentAssessment {
@@ -81,24 +99,32 @@ class StudentAssessment {
     required this.studentId,
     required this.assessmentId,
     this.score,
+    this.note,
+    this.assessedAt,
   }) : id = id ?? const Uuid().v4();
 
   final String id;
   final String studentId;
   final String assessmentId;
   final double? score;
+  final String? note;
+  final String? assessedAt;
 
   StudentAssessment copyWith({
     String? id,
     String? studentId,
     String? assessmentId,
     double? score,
+    String? note,
+    String? assessedAt,
   }) {
     return StudentAssessment(
       id: id ?? this.id,
       studentId: studentId ?? this.studentId,
       assessmentId: assessmentId ?? this.assessmentId,
       score: score ?? this.score,
+      note: note ?? this.note,
+      assessedAt: assessedAt ?? this.assessedAt,
     );
   }
 
@@ -108,6 +134,8 @@ class StudentAssessment {
       studentId: map['student_id'] as String,
       assessmentId: map['assessment_id'] as String,
       score: map['score'] == null ? null : (map['score'] as num).toDouble(),
+      note: map['note'] as String?,
+      assessedAt: map['assessed_at'] as String?,
     );
   }
 
@@ -117,6 +145,8 @@ class StudentAssessment {
       'student_id': studentId,
       'assessment_id': assessmentId,
       'score': score,
+      'note': note,
+      'assessed_at': assessedAt,
     };
   }
 
@@ -132,11 +162,18 @@ class StudentAssessment {
           id == other.id &&
           studentId == other.studentId &&
           assessmentId == other.assessmentId &&
-          score == other.score;
+          score == other.score &&
+          note == other.note &&
+          assessedAt == other.assessedAt;
 
   @override
   int get hashCode =>
-      id.hashCode ^ studentId.hashCode ^ assessmentId.hashCode ^ score.hashCode;
+      id.hashCode ^
+      studentId.hashCode ^
+      assessmentId.hashCode ^
+      score.hashCode ^
+      note.hashCode ^
+      assessedAt.hashCode;
 }
 
 class GradingScale {
@@ -201,4 +238,24 @@ class GradingScale {
   @override
   int get hashCode =>
       id.hashCode ^ minPercent.hashCode ^ maxPercent.hashCode ^ grade.hashCode;
+}
+
+class AssessmentStudentOption {
+  const AssessmentStudentOption({
+    required this.id,
+    required this.fullName,
+    required this.className,
+  });
+
+  final String id;
+  final String fullName;
+  final String className;
+
+  factory AssessmentStudentOption.fromMap(Map<String, Object?> map) {
+    return AssessmentStudentOption(
+      id: map['id']?.toString() ?? '',
+      fullName: map['full_name']?.toString() ?? '-',
+      className: map['class_name']?.toString() ?? '-',
+    );
+  }
 }

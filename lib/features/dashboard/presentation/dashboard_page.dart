@@ -1,7 +1,8 @@
-import 'package:edukita/features/dashboard/dashboard_cubit.dart';
+import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -69,28 +70,28 @@ class DashboardPage extends StatelessWidget {
                           onTap: () => {},
                         ),
                         _StatCard(
-                          label: 'Syllabus',
+                          label: 'Curriculum',
                           value: state.syllabusCount,
-                          icon: Icons.menu_book,
-                          onTap: () => {},
+                          icon: Icons.account_tree,
+                          onTap: () => context.go('/curriculum'),
                         ),
                         _StatCard(
                           label: 'Strategy',
                           value: state.strategyCount,
                           icon: Icons.lightbulb,
-                          onTap: () => {},
+                          onTap: () => context.go('/strategies'),
                         ),
                         _StatCard(
                           label: 'Schedule',
                           value: state.scheduleCount,
                           icon: Icons.schedule,
-                          onTap: () => {},
+                          onTap: () => context.go('/schedules'),
                         ),
                         _StatCard(
                           label: 'Reports',
                           value: state.reportCount,
                           icon: Icons.bar_chart,
-                          onTap: () => {},
+                          onTap: () => context.go('/reports'),
                         ),
                       ],
                     );

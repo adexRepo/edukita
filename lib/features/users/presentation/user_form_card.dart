@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:edukita/features/users/user_model.dart';
+import 'package:edukita/features/users/data/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:edukita/widgets/app_toast.dart';

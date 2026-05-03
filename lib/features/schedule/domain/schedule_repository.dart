@@ -1,5 +1,5 @@
 import 'package:edukita/core/database/database_provider.dart';
-import 'package:edukita/features/schedule/schedule_model.dart';
+import 'package:edukita/features/schedule/data/schedule_model.dart';
 
 class ScheduleRepository {
   final DatabaseProvider _dbProvider;
@@ -8,7 +8,10 @@ class ScheduleRepository {
 
   Future<List<Schedule>> getAllSchedules() async {
     final db = await _dbProvider.database;
-    final maps = await db.query('schedules');
+    final maps = await db.query(
+      'schedules',
+      orderBy: 'date DESC, start_at, title COLLATE NOCASE',
+    );
     return maps.map((map) => Schedule.fromMap(map)).toList();
   }
 
@@ -23,14 +26,14 @@ class ScheduleRepository {
 
   Future<int> insertSchedule(Schedule schedule) async {
     final db = await _dbProvider.database;
-    return db.insert('schedules', schedule.toMap());
+    return db.insert('schedules', await _scheduleMapForDb(schedule));
   }
 
   Future<int> updateSchedule(Schedule schedule) async {
     final db = await _dbProvider.database;
     return db.update(
       'schedules',
-      schedule.toMap(),
+      await _scheduleMapForDb(schedule),
       where: 'id = ?',
       whereArgs: [schedule.id],
     );
@@ -79,5 +82,42 @@ class ScheduleRepository {
       whereArgs: [date],
     );
     return maps.map((map) => Schedule.fromMap(map)).toList();
+  }
+
+  Future<List<Schedule>> getSchedulesBySubject(String subjectId) async {
+    final db = await _dbProvider.database;
+    final maps = await db.rawQuery(
+      '''
+        SELECT sch.*
+        FROM schedules sch
+        INNER JOIN units u ON u.id = sch.unit_id
+        WHERE u.subject_id = ?
+        ORDER BY sch.date DESC, sch.start_at, sch.title COLLATE NOCASE
+      ''',
+      [subjectId],
+    );
+    return maps.map((map) => Schedule.fromMap(map)).toList();
+  }
+
+  Future<Map<String, Object?>> _scheduleMapForDb(Schedule schedule) async {
+    final db = await _dbProvider.database;
+    final columns = await db.rawQuery('PRAGMA table_info(schedules)');
+    final names = columns.map((row) => row['name']?.toString()).toSet();
+    final idColumn = columns.firstWhere(
+      (row) => row['name'] == 'id',
+      orElse: () => const <String, Object?>{},
+    );
+    final idType = idColumn['type']?.toString().toUpperCase() ?? '';
+    final map = schedule.toMap();
+
+    if (names.contains('strategies_id') && !names.contains('strategy_id')) {
+      map['strategies_id'] = schedule.strategyId;
+    }
+    if (idType.contains('INT')) {
+      map.remove('id');
+    }
+
+    map.removeWhere((key, value) => !names.contains(key));
+    return map;
   }
 }

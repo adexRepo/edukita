@@ -13,12 +13,31 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  late List<(String, IconData, String)> _menuItems;
+
+  @override
+  void initState() {
+    super.initState();
+    _menuItems = [
+      ('Dashboard', Icons.dashboard, '/dashboard'),
+      ('Students', Icons.school, '/students'),
+      ('Schools', Icons.apartment, '/school'),
+      ('Teachers', Icons.badge, '/teachers'),
+      ('Curriculum', Icons.menu_book, '/curriculum'),
+      ('Strategies', Icons.lightbulb, '/strategies'),
+      ('Schedule', Icons.schedule, '/schedules'),
+      ('Reports', Icons.bar_chart, '/reports'),
+    ];
+  }
+
   int _getSelectedIndex(BuildContext context) {
     final location = GoRouter.of(context).state.uri.path;
 
-    if (location.startsWith('/school')) return 2;
-    if (location.startsWith('/teachers')) return 3;
-    if (location.startsWith('/students')) return 1;
+    for (int i = 0; i < _menuItems.length; i++) {
+      if (location.startsWith(_menuItems[i].$3)) {
+        return i;
+      }
+    }
     return 0;
   }
 
@@ -56,64 +75,123 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _buildSidebar(BuildContext context, int selectedIndex) {
-    final items = [
-      ('Dashboard', Icons.dashboard, '/dashboard'),
-      ('Students', Icons.school, '/students'),
-      ('Schools', Icons.apartment, '/school'),
-      ('Teachers', Icons.badge, '/teachers'),
-    ];
-
     return Container(
       width: 90,
       color: AppColors.white,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        itemCount: items.length,
-        itemBuilder: (context, index) {
-          final (label, icon, route) = items[index];
-          final selected = selectedIndex == index;
-          final color = selected
-              ? AppColors.primary
-              : AppColors.textSecondary;
+      child: Column(
+        children: [
+          Expanded(
+            child: ReorderableListView(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+              buildDefaultDragHandles: false,
+              onReorder: (oldIndex, newIndex) {
+                setState(() {
+                  if (oldIndex < newIndex) {
+                    newIndex -= 1;
+                  }
+                  final item = _menuItems.removeAt(oldIndex);
+                  _menuItems.insert(newIndex, item);
+                });
+              },
+              children: List.generate(_menuItems.length, (index) {
+                final (label, icon, route) = _menuItems[index];
+                final selected = selectedIndex == index;
+                final color = selected
+                    ? AppColors.primary
+                    : AppColors.textSecondary;
 
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
+                return ReorderableDragStartListener(
+                  key: ValueKey(route),
+                  index: index,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Tooltip(
+                      message: label,
+                      waitDuration: const Duration(milliseconds: 500),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => context.go(route),
+                        child: Container(
+                          height: 55,
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? AppColors.primary.withValues(alpha: 0.12)
+                                : AppColors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                            border: selected
+                                ? Border.all(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.18,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(icon, size: 20, color: color),
+                              const SizedBox(height: 4),
+                              Text(
+                                label,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: color,
+                                  fontSize: 8,
+                                  fontWeight: selected
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+          Divider(height: 1, thickness: 1, color: AppColors.border),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
             child: Tooltip(
-              message: label,
+              message: 'Logout',
               waitDuration: const Duration(milliseconds: 500),
               child: InkWell(
                 borderRadius: BorderRadius.circular(8),
-                onTap: () => context.go(route),
+                onTap: () {
+                  // TODO: Add logout functionality
+                  // Example: AuthProvider.logout() and navigate to login
+                },
                 child: Container(
-                  height: 70,
+                  height: 55,
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   decoration: BoxDecoration(
-                    color: selected
-                        ? AppColors.primary.withValues(alpha: 0.12)
-                        : AppColors.transparent,
+                    color: AppColors.transparent,
                     borderRadius: BorderRadius.circular(8),
-                    border: selected
-                        ? Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.18),
-                          )
-                        : null,
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(icon, size: 24, color: color),
-                      const SizedBox(height: 5),
-                      Text(
-                        label,
+                      Icon(
+                        Icons.logout,
+                        size: 20,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Logout',
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: color,
+                          color: AppColors.textSecondary,
                           fontSize: 8,
-                          fontWeight: selected
-                              ? FontWeight.w600
-                              : FontWeight.w500,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -121,8 +199,8 @@ class _AppShellState extends State<AppShell> {
                 ),
               ),
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }

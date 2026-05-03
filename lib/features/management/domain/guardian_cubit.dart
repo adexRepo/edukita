@@ -1,6 +1,6 @@
+import 'package:edukita/features/management/data/guardian_model.dart';
+import 'package:edukita/features/management/domain/guardian_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:edukita/features/management/guardian_model.dart';
-import 'package:edukita/features/management/guardian_repository.dart';
 
 part 'guardian_state.dart';
 

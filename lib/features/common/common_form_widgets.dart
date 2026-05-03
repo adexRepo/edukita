@@ -87,6 +87,7 @@ class CommonFormWidgets {
     required String Function(T) valueBuilder,
     T? value,
     required Function(T?) onSaved,
+    ValueChanged<T?>? onChanged,
     String? Function(T?)? validator,
     bool isRequired = true,
   }) {
@@ -102,7 +103,18 @@ class CommonFormWidgets {
             ),
           )
           .toList(),
-      onChanged: (newValue) {},
+      onChanged: (newValue) {
+        if (onChanged == null) return;
+        if (newValue == null) {
+          onChanged(null);
+          return;
+        }
+        final selectedItem = items.firstWhere(
+          (item) => valueBuilder(item) == newValue,
+          orElse: () => items.first,
+        );
+        onChanged(selectedItem);
+      },
       onSaved: (newValue) {
         if (newValue == null) {
           onSaved(null);

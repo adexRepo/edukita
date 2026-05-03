@@ -8,7 +8,7 @@ class AssessmentRepository {
 
   Future<List<Assessment>> getAllAssessments() async {
     final db = await _dbProvider.database;
-    final maps = await db.query('assessments');
+    final maps = await db.query('assessments', orderBy: 'name COLLATE NOCASE');
     return maps.map((map) => Assessment.fromMap(map)).toList();
   }
 
@@ -55,6 +55,19 @@ class AssessmentRepository {
     return maps.map((map) => Assessment.fromMap(map)).toList();
   }
 
+  Future<List<Assessment>> getAssessmentsByCompetency(
+    String competencyId,
+  ) async {
+    final db = await _dbProvider.database;
+    final maps = await db.query(
+      'assessments',
+      where: 'competency_id = ?',
+      whereArgs: [competencyId],
+      orderBy: 'name COLLATE NOCASE',
+    );
+    return maps.map((map) => Assessment.fromMap(map)).toList();
+  }
+
   Future<List<Assessment>> getAssessmentsByType(String type) async {
     final db = await _dbProvider.database;
     final maps = await db.query(
@@ -67,7 +80,10 @@ class AssessmentRepository {
 
   Future<List<StudentAssessment>> getAllStudentAssessments() async {
     final db = await _dbProvider.database;
-    final maps = await db.query('student_assessments');
+    final maps = await db.query(
+      'student_assessments',
+      orderBy: 'assessed_at DESC, id DESC',
+    );
     return maps.map((map) => StudentAssessment.fromMap(map)).toList();
   }
 
@@ -130,6 +146,78 @@ class AssessmentRepository {
       whereArgs: [assessmentId],
     );
     return maps.map((map) => StudentAssessment.fromMap(map)).toList();
+  }
+
+  Future<List<StudentAssessment>> getStudentAssessmentsByUnit(
+    String unitId,
+  ) async {
+    final db = await _dbProvider.database;
+    final maps = await db.rawQuery(
+      '''
+        SELECT sa.*
+        FROM student_assessments sa
+        INNER JOIN assessments a ON a.id = sa.assessment_id
+        WHERE a.unit_id = ?
+        ORDER BY sa.assessed_at DESC, sa.id DESC
+      ''',
+      [unitId],
+    );
+    return maps.map((map) => StudentAssessment.fromMap(map)).toList();
+  }
+
+  Future<List<StudentAssessment>> getStudentAssessmentsByCompetency(
+    String competencyId,
+  ) async {
+    final db = await _dbProvider.database;
+    final maps = await db.rawQuery(
+      '''
+        SELECT sa.*
+        FROM student_assessments sa
+        INNER JOIN assessments a ON a.id = sa.assessment_id
+        WHERE a.competency_id = ?
+        ORDER BY sa.assessed_at DESC, sa.id DESC
+      ''',
+      [competencyId],
+    );
+    return maps.map((map) => StudentAssessment.fromMap(map)).toList();
+  }
+
+  Future<List<AssessmentStudentOption>> getStudentOptions() async {
+    final db = await _dbProvider.database;
+    final maps = await db.rawQuery('''
+      SELECT
+        s.id,
+        s.full_name,
+        COALESCE(c.name, '-') AS class_name
+      FROM students s
+      LEFT JOIN classes c ON c.id = s.class_id
+      ORDER BY c.level, c.section, s.full_name COLLATE NOCASE
+    ''');
+    return maps.map((map) => AssessmentStudentOption.fromMap(map)).toList();
+  }
+
+  Future<void> recordStudentAssessment(
+    StudentAssessment studentAssessment,
+  ) async {
+    final db = await _dbProvider.database;
+    final existing = await db.query(
+      'student_assessments',
+      where: 'student_id = ? AND assessment_id = ?',
+      whereArgs: [studentAssessment.studentId, studentAssessment.assessmentId],
+      limit: 1,
+    );
+
+    if (existing.isEmpty) {
+      await db.insert('student_assessments', studentAssessment.toMap());
+      return;
+    }
+
+    await db.update(
+      'student_assessments',
+      studentAssessment.copyWith(id: existing.first['id']?.toString()).toMap(),
+      where: 'id = ?',
+      whereArgs: [existing.first['id']],
+    );
   }
 
   Future<List<GradingScale>> getAllGradingScales() async {

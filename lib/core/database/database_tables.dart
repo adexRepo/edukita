@@ -18,6 +18,8 @@ class DatabaseTables {
     await studentClassHistory(db);
     await studentStories(db);
 
+    await curriculums(db);
+    await syllabus(db);
     await subjects(db);
     await units(db);
     await competencies(db);
@@ -49,7 +51,6 @@ class DatabaseTables {
     await studentWellbeing(db);
     await studentWellBeing(db);
 
-    await syllabus(db);
     await reports(db);
     await indexes(db);
   }
@@ -222,7 +223,24 @@ class DatabaseTables {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS subjects(
         id TEXT PRIMARY KEY NOT NULL,
-        name TEXT NOT NULL
+        syllabus_id TEXT,
+        name TEXT NOT NULL,
+        description TEXT,
+        status TEXT,
+        FOREIGN KEY(syllabus_id) REFERENCES syllabus(id) ON DELETE SET NULL
+      )
+    ''');
+  }
+
+  static Future<void> curriculums(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS curriculums(
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        version TEXT,
+        description TEXT,
+        effective_year TEXT,
+        status TEXT
       )
     ''');
   }
@@ -233,6 +251,8 @@ class DatabaseTables {
         id TEXT PRIMARY KEY NOT NULL,
         subject_id TEXT NOT NULL,
         name TEXT NOT NULL,
+        description TEXT,
+        sequence_no INTEGER,
         FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE
       )
     ''');
@@ -243,7 +263,9 @@ class DatabaseTables {
       CREATE TABLE IF NOT EXISTS competencies(
         id TEXT PRIMARY KEY NOT NULL,
         unit_id TEXT NOT NULL,
-        description TEXT,
+        code TEXT,
+        description TEXT NOT NULL,
+        level TEXT,
         FOREIGN KEY(unit_id) REFERENCES units(id) ON DELETE CASCADE
       )
     ''');
@@ -252,9 +274,10 @@ class DatabaseTables {
   static Future<void> strategies(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS strategies(
-        id TEXT PRIMARY KEY,
+        id TEXT PRIMARY KEY NOT NULL,
         code TEXT,
-        name TEXT,
+        name TEXT NOT NULL,
+        description TEXT,
         rule TEXT
       )
     ''');
@@ -263,20 +286,20 @@ class DatabaseTables {
   static Future<void> schedules(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS schedules(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        class_id TEXT,
+        id TEXT PRIMARY KEY NOT NULL,
+        class_id TEXT NOT NULL,
         teacher_id TEXT,
-        unit_id TEXT,
-        strategies_id TEXT,
+        unit_id TEXT NOT NULL,
+        strategy_id TEXT,
+        title TEXT,
+        description TEXT,
+        date TEXT,
         start_at TEXT,
         end_at TEXT,
-        title TEXT NOT NULL,
-        date TEXT NOT NULL,
-        description TEXT NOT NULL,
         FOREIGN KEY(class_id) REFERENCES classes(id),
         FOREIGN KEY(teacher_id) REFERENCES teachers(id),
         FOREIGN KEY(unit_id) REFERENCES units(id),
-        FOREIGN KEY(strategies_id) REFERENCES strategies(id)
+        FOREIGN KEY(strategy_id) REFERENCES strategies(id)
       )
     ''');
   }
@@ -286,10 +309,13 @@ class DatabaseTables {
       CREATE TABLE IF NOT EXISTS assessments(
         id TEXT PRIMARY KEY NOT NULL,
         unit_id TEXT NOT NULL,
+        competency_id TEXT,
         name TEXT NOT NULL,
         type TEXT,
-        max_score INTEGER,
-        FOREIGN KEY(unit_id) REFERENCES units(id) ON DELETE CASCADE
+        max_score REAL,
+        description TEXT,
+        FOREIGN KEY(unit_id) REFERENCES units(id) ON DELETE CASCADE,
+        FOREIGN KEY(competency_id) REFERENCES competencies(id) ON DELETE SET NULL
       )
     ''');
   }
@@ -301,6 +327,8 @@ class DatabaseTables {
         student_id TEXT NOT NULL,
         assessment_id TEXT NOT NULL,
         score REAL,
+        note TEXT,
+        assessed_at TEXT,
         FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
         FOREIGN KEY(assessment_id) REFERENCES assessments(id) ON DELETE CASCADE
       )
@@ -591,10 +619,17 @@ class DatabaseTables {
   static Future<void> syllabus(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS syllabus(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT PRIMARY KEY NOT NULL,
+        curriculum_id TEXT,
         title TEXT NOT NULL,
-        description TEXT NOT NULL,
-        updatedAt TEXT NOT NULL
+        description TEXT,
+        academic_year TEXT,
+        level TEXT,
+        semester TEXT,
+        status TEXT,
+        created_at TEXT,
+        updated_at TEXT,
+        FOREIGN KEY(curriculum_id) REFERENCES curriculums(id) ON DELETE SET NULL
       )
     ''');
   }
@@ -626,6 +661,76 @@ class DatabaseTables {
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_assessments_student_id ON student_assessments(student_id)',
     );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'syllabus',
+      columns: const ['curriculum_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_syllabus_curriculum_id ON syllabus(curriculum_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'subjects',
+      columns: const ['syllabus_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_subjects_syllabus_id ON subjects(syllabus_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'units',
+      columns: const ['subject_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_units_subject_id ON units(subject_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'competencies',
+      columns: const ['unit_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_competencies_unit_id ON competencies(unit_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'schedules',
+      columns: const ['class_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_schedules_class_id ON schedules(class_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'schedules',
+      columns: const ['teacher_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_schedules_teacher_id ON schedules(teacher_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'schedules',
+      columns: const ['unit_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_schedules_unit_id ON schedules(unit_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'schedules',
+      columns: const ['strategy_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_schedules_strategy_id ON schedules(strategy_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'assessments',
+      columns: const ['unit_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_assessments_unit_id ON assessments(unit_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'assessments',
+      columns: const ['competency_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_assessments_competency_id ON assessments(competency_id)',
+    );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_attendance_student_id ON student_attendance(student_id)',
     );
@@ -647,5 +752,20 @@ class DatabaseTables {
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_wellbeing_student_id ON student_wellbeing(student_id)',
     );
+  }
+
+  static Future<void> _createIndexIfColumnsExist(
+    Database db, {
+    required String table,
+    required List<String> columns,
+    required String sql,
+  }) async {
+    final tableInfo = await db.rawQuery('PRAGMA table_info($table)');
+    if (tableInfo.isEmpty) return;
+
+    final names = tableInfo.map((row) => row['name']?.toString()).toSet();
+    if (columns.every(names.contains)) {
+      await db.execute(sql);
+    }
   }
 }
