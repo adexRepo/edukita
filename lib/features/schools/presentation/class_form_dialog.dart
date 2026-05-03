@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
+import 'package:edukita/widgets/app_toast.dart';
 
 class ClassFormDialog extends StatefulWidget {
   final SchoolClass? schoolClass;
@@ -22,6 +23,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
   late String? section;
   late String year;
   late final TextEditingController _classNameController;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -135,28 +137,54 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: () async {
-            if (_formKey.currentState!.validate()) {
-              _formKey.currentState!.save();
-              final schoolClass = SchoolClass(
-                id: widget.schoolClass?.id,
-                name: className,
-                level: level,
-                section: section,
-                year: year,
-              );
-              await widget.onSave(schoolClass);
-              if (context.mounted) Navigator.pop(context);
-            }
-          },
-          child: const Text('Save'),
+          onPressed: _isSaving ? null : _submit,
+          child: _isSaving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Save'),
         ),
       ],
     );
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final action = widget.schoolClass == null
+        ? SubmissionAction.create
+        : SubmissionAction.update;
+    _formKey.currentState!.save();
+    final schoolClass = SchoolClass(
+      id: widget.schoolClass?.id,
+      name: className,
+      level: level,
+      section: section,
+      year: year,
+    );
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await widget.onSave(schoolClass);
+      AppToast.showSubmissionSuccess(action: action, subject: 'class');
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      AppToast.showSubmissionFailed(action: action, subject: 'class');
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 
   @override

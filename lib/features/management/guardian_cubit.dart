@@ -25,6 +25,7 @@ class GuardianCubit extends Cubit<GuardianState> {
       await loadGuardians();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -34,6 +35,7 @@ class GuardianCubit extends Cubit<GuardianState> {
       await loadGuardians();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -43,6 +45,7 @@ class GuardianCubit extends Cubit<GuardianState> {
       await loadGuardians();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -61,6 +64,7 @@ class GuardianCubit extends Cubit<GuardianState> {
       await _repository.linkStudentGuardian(studentGuardian);
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -69,6 +73,7 @@ class GuardianCubit extends Cubit<GuardianState> {
       await _repository.unlinkStudentGuardian(studentId, guardianId);
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 }

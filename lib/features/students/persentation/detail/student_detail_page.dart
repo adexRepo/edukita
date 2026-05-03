@@ -8,6 +8,8 @@ import 'package:edukita/features/students/persentation/detail/student_family_tab
 import 'package:edukita/features/students/persentation/detail/student_more_tab.dart';
 import 'package:edukita/features/students/persentation/detail/student_overview_tab.dart';
 import 'package:edukita/features/students/persentation/detail/student_personal_tab.dart';
+import 'package:edukita/widgets/detail_breadcrumbs.dart';
+import 'package:edukita/widgets/detail_tab_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -24,9 +26,22 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Student Detail",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        leadingWidth: 40,
+        leading: const DetailAppBarBackButton(fallbackRoute: '/students'),
+        title: BlocBuilder<StudentDetailCubit, FeatureState<StudentDetailData>>(
+          builder: (context, state) {
+            return DetailBreadcrumbs(
+              items: [
+                const DetailBreadcrumbItem(
+                  label: 'Students',
+                  route: '/students',
+                ),
+                DetailBreadcrumbItem(
+                  label: state.data?.fullName ?? 'Student Detail',
+                ),
+              ],
+            );
+          },
         ),
       ),
       body: BlocBuilder<StudentDetailCubit, FeatureState<StudentDetailData>>(
@@ -54,17 +69,15 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
         child: Column(
           children: <Widget>[
             const SizedBox(height: 8),
-            const TabBar(
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
+            const DetailTabBar(
               tabs: [
-                Tab(text: "Overview"),
-                Tab(text: "Personal"),
-                Tab(text: "Family"),
-                Tab(text: "Academic"),
-                Tab(text: "Behavior"),
-                Tab(text: "Activities"),
-                Tab(text: "More"),
+                "Overview",
+                "Personal",
+                "Family",
+                "Academic",
+                "Behavior",
+                "Activities",
+                "More",
               ],
             ),
             Expanded(

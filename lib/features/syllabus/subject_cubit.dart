@@ -25,6 +25,7 @@ class SubjectCubit extends Cubit<SubjectState> {
       await loadSubjects();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -34,6 +35,7 @@ class SubjectCubit extends Cubit<SubjectState> {
       await loadSubjects();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -43,6 +45,7 @@ class SubjectCubit extends Cubit<SubjectState> {
       await loadSubjects();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -62,6 +65,7 @@ class SubjectCubit extends Cubit<SubjectState> {
       await loadUnits();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -71,6 +75,7 @@ class SubjectCubit extends Cubit<SubjectState> {
       await loadUnits();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -80,6 +85,7 @@ class SubjectCubit extends Cubit<SubjectState> {
       await loadUnits();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -115,6 +121,7 @@ class SubjectCubit extends Cubit<SubjectState> {
       await loadCompetencies();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -124,6 +131,7 @@ class SubjectCubit extends Cubit<SubjectState> {
       await loadCompetencies();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -133,6 +141,7 @@ class SubjectCubit extends Cubit<SubjectState> {
       await loadCompetencies();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 

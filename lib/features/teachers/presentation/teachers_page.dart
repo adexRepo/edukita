@@ -4,6 +4,7 @@ import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:edukita/features/teachers/presentation/teacher_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_table.dart';
+import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -24,9 +25,7 @@ class _TeachersPageState extends State<TeachersPage> {
     context.read<TeacherCubit>().loadTeachers();
   }
 
-  Future<void> _showTeacherFormDialog({
-    Teacher? existingTeacher,
-  }) async {
+  Future<void> _showTeacherFormDialog({Teacher? existingTeacher}) async {
     final cubit = context.read<TeacherCubit>();
 
     await showDialog<void>(
@@ -67,7 +66,18 @@ class _TeachersPageState extends State<TeachersPage> {
     );
 
     if (confirmed == true) {
-      await cubit.deleteTeacher(teacher.id);
+      try {
+        await cubit.deleteTeacher(teacher.id);
+        AppToast.showSubmissionSuccess(
+          action: SubmissionAction.delete,
+          subject: 'teacher',
+        );
+      } catch (_) {
+        AppToast.showSubmissionFailed(
+          action: SubmissionAction.delete,
+          subject: 'teacher',
+        );
+      }
     }
   }
 
@@ -206,9 +216,8 @@ class _TeachersPageState extends State<TeachersPage> {
         AppTableColumn(
           title: 'Teacher',
           flex: 4,
-          sortValue: (teacher) => teacher.fullName.isEmpty
-              ? 0
-              : teacher.fullName.codeUnitAt(0),
+          sortValue: (teacher) =>
+              teacher.fullName.isEmpty ? 0 : teacher.fullName.codeUnitAt(0),
           cell: (teacher) => Text(
             teacher.nickName == null || teacher.nickName!.trim().isEmpty
                 ? teacher.fullName

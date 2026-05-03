@@ -27,6 +27,7 @@ class AssessmentCubit extends Cubit<AssessmentState> {
       await loadAssessments();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -36,6 +37,7 @@ class AssessmentCubit extends Cubit<AssessmentState> {
       await loadAssessments();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -45,6 +47,7 @@ class AssessmentCubit extends Cubit<AssessmentState> {
       await loadAssessments();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -66,6 +69,7 @@ class AssessmentCubit extends Cubit<AssessmentState> {
       await loadGradingScales();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -75,6 +79,7 @@ class AssessmentCubit extends Cubit<AssessmentState> {
       await loadGradingScales();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 }

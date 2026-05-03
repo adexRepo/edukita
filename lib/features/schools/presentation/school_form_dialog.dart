@@ -1,6 +1,7 @@
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -30,6 +31,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   final List<_ClassDraft> _classes = [];
   SchoolType _type = SchoolType.sd;
   int _typeDropdownVersion = 0;
+  bool _isSaving = false;
 
   bool get _autoClassName => _type.usesAutoClassName;
   bool get _canManageClasses =>
@@ -71,6 +73,9 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final action = widget.school == null
+        ? SubmissionAction.create
+        : SubmissionAction.update;
     final school = School(
       id: widget.school?.id,
       type: _type,
@@ -83,8 +88,22 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
         .map((draft) => draft.toSchoolClass(_type))
         .toList();
 
-    await widget.onSave(school, classes);
-    if (mounted) Navigator.of(context).pop();
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await widget.onSave(school, classes);
+      AppToast.showSubmissionSuccess(action: action, subject: 'school');
+      if (mounted) Navigator.of(context).pop();
+    } catch (_) {
+      AppToast.showSubmissionFailed(action: action, subject: 'school');
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 
   void _revalidateForm() {
@@ -231,12 +250,18 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: _canManageClasses ? _submit : null,
-          child: const Text('Save'),
+          onPressed: _canManageClasses && !_isSaving ? _submit : null,
+          child: _isSaving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Save'),
         ),
       ],
     );
@@ -390,10 +415,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
 }
 
 class _ClassDraft {
-  _ClassDraft({
-    SchoolType type = SchoolType.sd,
-    this.hasUserInput = false,
-  }) {
+  _ClassDraft({SchoolType type = SchoolType.sd, this.hasUserInput = false}) {
     levelController.text = type.minLevel.toString();
   }
 
@@ -510,120 +532,120 @@ class _ClassDraftRow extends StatelessWidget {
             SizedBox(
               width: nameWidth,
               child: TextFormField(
-            controller: draft.nameController,
-            enabled: !autoName,
-            decoration: InputDecoration(
-              label: autoName
-                  ? const Text('Name')
-                  : requiredLabel(context, 'Name'),
-              hintText: autoName ? autoNameText : 'Class name',
-              helperText: autoName ? autoNameText : null,
-            ),
-            validator: (value) {
-              if (!requiresValidation) return null;
-              if (!autoName && (value == null || value.trim().isEmpty)) {
-                return 'Class name is required';
-              }
-              if (!autoName && value!.trim().length > 40) {
-                return 'Class name must be at most 40 characters';
-              }
-              if (isDuplicate) return 'Duplicate class and year';
-              return null;
-            },
-            onChanged: (_) => onChanged(),
-            inputFormatters: [LengthLimitingTextInputFormatter(40)],
-          ),
+                controller: draft.nameController,
+                enabled: !autoName,
+                decoration: InputDecoration(
+                  label: autoName
+                      ? const Text('Name')
+                      : requiredLabel(context, 'Name'),
+                  hintText: autoName ? autoNameText : 'Class name',
+                  helperText: autoName ? autoNameText : null,
+                ),
+                validator: (value) {
+                  if (!requiresValidation) return null;
+                  if (!autoName && (value == null || value.trim().isEmpty)) {
+                    return 'Class name is required';
+                  }
+                  if (!autoName && value!.trim().length > 40) {
+                    return 'Class name must be at most 40 characters';
+                  }
+                  if (isDuplicate) return 'Duplicate class and year';
+                  return null;
+                },
+                onChanged: (_) => onChanged(),
+                inputFormatters: [LengthLimitingTextInputFormatter(40)],
+              ),
             ),
             SizedBox(
               width: fieldWidth,
               child: DropdownButtonFormField<int>(
-            initialValue: int.tryParse(draft.levelController.text),
-            isExpanded: true,
-            decoration: InputDecoration(
-              label: requiredLabel(context, 'Level'),
-              hintText: levelHint,
-            ),
-            items: type.allowedLevels
-                .map(
-                  (level) => DropdownMenuItem<int>(
-                    value: level,
-                    child: Text(level.toString()),
-                  ),
-                )
-                .toList(),
-            onChanged: type.allowedLevels.length == 1
-                ? null
-                : (level) {
-                    if (level == null) return;
-                    draft.levelController.text = level.toString();
-                    onChanged();
-                  },
-            validator: (value) {
-              if (!requiresValidation) return null;
-              if (value == null) {
-                return 'Level is required';
-              }
-              return null;
-            },
-          ),
-            ),
-            SizedBox(
-              width: fieldWidth,
-              child: TextFormField(
-            controller: draft.sectionController,
-            decoration: const InputDecoration(labelText: 'Section'),
-            textCapitalization: TextCapitalization.characters,
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp('[a-zA-Z]')),
-              LengthLimitingTextInputFormatter(1),
-              TextInputFormatter.withFunction((oldValue, newValue) {
-                return newValue.copyWith(text: newValue.text.toUpperCase());
-              }),
-            ],
-            onChanged: (_) => onChanged(),
-            validator: (value) {
-              if (!requiresValidation) return null;
-              final text = value?.trim() ?? '';
-              if (text.isEmpty && !autoName) return null;
-              if (text.isEmpty) return 'Section is required';
-              if (!RegExp(r'^[A-Z]$').hasMatch(text.toUpperCase())) {
-                return 'Alphabet only';
-              }
-              return null;
-            },
-          ),
+                initialValue: int.tryParse(draft.levelController.text),
+                isExpanded: true,
+                decoration: InputDecoration(
+                  label: requiredLabel(context, 'Level'),
+                  hintText: levelHint,
+                ),
+                items: type.allowedLevels
+                    .map(
+                      (level) => DropdownMenuItem<int>(
+                        value: level,
+                        child: Text(level.toString()),
+                      ),
+                    )
+                    .toList(),
+                onChanged: type.allowedLevels.length == 1
+                    ? null
+                    : (level) {
+                        if (level == null) return;
+                        draft.levelController.text = level.toString();
+                        onChanged();
+                      },
+                validator: (value) {
+                  if (!requiresValidation) return null;
+                  if (value == null) {
+                    return 'Level is required';
+                  }
+                  return null;
+                },
+              ),
             ),
             SizedBox(
               width: fieldWidth,
               child: TextFormField(
-            controller: draft.yearController,
-            decoration: InputDecoration(label: requiredLabel(context, 'Year')),
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(4),
-            ],
-            onChanged: (_) => onChanged(),
-            validator: (value) {
-              if (!requiresValidation) return null;
-              final text = value?.trim() ?? '';
-              if (text.isEmpty) {
-                return 'Year is required';
-              }
-              if (!RegExp(r'^\d{4}$').hasMatch(text)) {
-                return 'Year must be 4 digits';
-              }
-              if (isDuplicate) return 'Duplicate class and year';
-              return null;
-            },
-          ),
+                controller: draft.sectionController,
+                decoration: const InputDecoration(labelText: 'Section'),
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp('[a-zA-Z]')),
+                  LengthLimitingTextInputFormatter(1),
+                  TextInputFormatter.withFunction((oldValue, newValue) {
+                    return newValue.copyWith(text: newValue.text.toUpperCase());
+                  }),
+                ],
+                onChanged: (_) => onChanged(),
+                validator: (value) {
+                  if (!requiresValidation) return null;
+                  final text = value?.trim() ?? '';
+                  if (text.isEmpty && !autoName) return null;
+                  if (text.isEmpty) return 'Section is required';
+                  if (!RegExp(r'^[A-Z]$').hasMatch(text.toUpperCase())) {
+                    return 'Alphabet only';
+                  }
+                  return null;
+                },
+              ),
+            ),
+            SizedBox(
+              width: fieldWidth,
+              child: TextFormField(
+                controller: draft.yearController,
+                decoration: InputDecoration(
+                  label: requiredLabel(context, 'Year'),
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                ],
+                onChanged: (_) => onChanged(),
+                validator: (value) {
+                  if (!requiresValidation) return null;
+                  final text = value?.trim() ?? '';
+                  if (text.isEmpty) {
+                    return 'Year is required';
+                  }
+                  if (!RegExp(r'^\d{4}$').hasMatch(text)) {
+                    return 'Year must be 4 digits';
+                  }
+                  if (isDuplicate) return 'Duplicate class and year';
+                  return null;
+                },
+              ),
             ),
             SizedBox(
               width: compact ? constraints.maxWidth : 44,
               child: Align(
-                alignment: compact
-                    ? Alignment.centerRight
-                    : Alignment.center,
+                alignment: compact ? Alignment.centerRight : Alignment.center,
                 child: IconButton(
                   onPressed: onRemove,
                   icon: const Icon(Icons.delete_outline),
@@ -643,12 +665,12 @@ Widget requiredLabel(BuildContext context, String label) {
     text: TextSpan(
       text: label,
       style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-        children: const [
-          TextSpan(
-            text: ' *',
-            style: TextStyle(color: AppColors.errorDark),
-          ),
-        ],
+      children: const [
+        TextSpan(
+          text: ' *',
+          style: TextStyle(color: AppColors.errorDark),
+        ),
+      ],
     ),
   );
 }

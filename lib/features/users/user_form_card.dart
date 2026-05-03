@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:edukita/features/users/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/form_validation.dart';
 
-typedef UserFormSubmit = void Function(User user);
+typedef UserFormSubmit = FutureOr<void> Function(User user);
 
 class UserFormCard extends StatefulWidget {
   const UserFormCard({
@@ -27,6 +30,7 @@ class _UserFormCardState extends State<UserFormCard> {
   late final TextEditingController _passwordController;
   late final TextEditingController _nickNameController;
   late final TextEditingController _fullNameController;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -54,7 +58,8 @@ class _UserFormCardState extends State<UserFormCard> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_isSaving) return;
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -71,7 +76,26 @@ class _UserFormCardState extends State<UserFormCard> {
             fullName: _fullNameController.text.trim(),
           );
 
-    widget.onSubmit(user);
+    final action = widget.isEditing
+        ? SubmissionAction.update
+        : SubmissionAction.create;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await widget.onSubmit(user);
+      AppToast.showSubmissionSuccess(action: action, subject: 'user');
+      if (mounted) Navigator.of(context).pop();
+    } catch (_) {
+      AppToast.showSubmissionFailed(action: action, subject: 'user');
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 
   @override
@@ -153,13 +177,23 @@ class _UserFormCardState extends State<UserFormCard> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: _isSaving
+                            ? null
+                            : () => Navigator.of(context).pop(),
                         child: const Text('Cancel'),
                       ),
                       const SizedBox(width: 12),
                       FilledButton(
-                        onPressed: _submit,
-                        child: Text(isEditing ? 'Update User' : 'Create User'),
+                        onPressed: _isSaving ? null : _submit,
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(isEditing ? 'Update User' : 'Create User'),
                       ),
                     ],
                   ),

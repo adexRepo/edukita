@@ -2,6 +2,7 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:edukita/core/router/app_router.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -42,6 +43,9 @@ class _EdukitaAppState extends State<EdukitaApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
       routerConfig: appRouter,
+      builder: (context, child) {
+        return AppToastHost(child: child ?? const SizedBox.shrink());
+      },
     );
   }
 }

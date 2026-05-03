@@ -1,6 +1,7 @@
 import 'package:edukita/features/strategy/strategy_cubit.dart';
 import 'package:edukita/features/strategy/strategy_form_dialog.dart';
 import 'package:edukita/features/strategy/strategy_model.dart';
+import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -61,7 +62,18 @@ class _StrategyPageState extends State<StrategyPage> {
     );
 
     if (confirmed == true) {
-      await cubit.deleteStrategy(id);
+      try {
+        await cubit.deleteStrategy(id);
+        AppToast.showSubmissionSuccess(
+          action: SubmissionAction.delete,
+          subject: 'strategy',
+        );
+      } catch (_) {
+        AppToast.showSubmissionFailed(
+          action: SubmissionAction.delete,
+          subject: 'strategy',
+        );
+      }
     }
   }
 

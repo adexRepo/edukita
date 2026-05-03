@@ -1,7 +1,7 @@
 import 'package:edukita/features/schools/domain/class_cubit.dart';
-import 'package:edukita/features/schools/presentation/class_detail_page.dart';
 import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
+import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -62,7 +62,18 @@ class _ClassesPageState extends State<ClassesPage> {
     );
 
     if (confirmed == true) {
-      await cubit.deleteClass(id);
+      try {
+        await cubit.deleteClass(id);
+        AppToast.showSubmissionSuccess(
+          action: SubmissionAction.delete,
+          subject: 'class',
+        );
+      } catch (_) {
+        AppToast.showSubmissionFailed(
+          action: SubmissionAction.delete,
+          subject: 'class',
+        );
+      }
     }
   }
 

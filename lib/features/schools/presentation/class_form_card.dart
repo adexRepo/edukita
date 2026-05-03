@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
+import 'package:edukita/widgets/app_toast.dart';
 
-typedef ClassFormSubmit = void Function(SchoolClass schoolClass);
+typedef ClassFormSubmit = FutureOr<void> Function(SchoolClass schoolClass);
 
 class ClassFormCard extends StatefulWidget {
   const ClassFormCard({
@@ -26,6 +29,7 @@ class _ClassFormCardState extends State<ClassFormCard> {
   late final TextEditingController _levelController;
   late final TextEditingController _sectionController;
   late final TextEditingController _yearController;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -82,16 +86,15 @@ class _ClassFormCardState extends State<ClassFormCard> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_isSaving) return;
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     final className = _generateClassName();
     if (className.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter level and section')),
-      );
+      AppToast.showFailed('Please enter level and section.');
       return;
     }
 
@@ -113,7 +116,26 @@ class _ClassFormCardState extends State<ClassFormCard> {
             year: _yearController.text.trim(),
           );
 
-    widget.onSubmit(schoolClass);
+    final action = widget.isEditing
+        ? SubmissionAction.update
+        : SubmissionAction.create;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await widget.onSubmit(schoolClass);
+      AppToast.showSubmissionSuccess(action: action, subject: 'class');
+      if (mounted) Navigator.of(context).pop();
+    } catch (_) {
+      AppToast.showSubmissionFailed(action: action, subject: 'class');
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 
   @override
@@ -163,9 +185,7 @@ class _ClassFormCardState extends State<ClassFormCard> {
                   FilteringTextInputFormatter.allow(RegExp('[a-zA-Z]')),
                   LengthLimitingTextInputFormatter(1),
                   TextInputFormatter.withFunction((oldValue, newValue) {
-                    return newValue.copyWith(
-                      text: newValue.text.toUpperCase(),
-                    );
+                    return newValue.copyWith(text: newValue.text.toUpperCase());
                   }),
                 ],
                 validator: (value) {
@@ -214,13 +234,21 @@ class _ClassFormCardState extends State<ClassFormCard> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: _isSaving
+                        ? null
+                        : () => Navigator.of(context).pop(),
                     child: const Text('Cancel'),
                   ),
                   const SizedBox(width: 12),
                   FilledButton(
-                    onPressed: _submit,
-                    child: Text(isEditing ? 'Update Class' : 'Create Class'),
+                    onPressed: _isSaving ? null : _submit,
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(isEditing ? 'Update Class' : 'Create Class'),
                   ),
                 ],
               ),

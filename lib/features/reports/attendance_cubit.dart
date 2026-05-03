@@ -31,6 +31,7 @@ class AttendanceCubit extends Cubit<AttendanceState> {
       await loadAttendanceSessions();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -40,6 +41,7 @@ class AttendanceCubit extends Cubit<AttendanceState> {
       await loadAttendanceSessions();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -65,6 +67,7 @@ class AttendanceCubit extends Cubit<AttendanceState> {
       await loadStudentAttendances();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -74,6 +77,7 @@ class AttendanceCubit extends Cubit<AttendanceState> {
       await loadStudentAttendances();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 

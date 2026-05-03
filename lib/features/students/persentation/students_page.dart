@@ -7,6 +7,7 @@ import 'package:edukita/features/students/persentation/student_form_dialog.dart'
 import 'package:edukita/features/students/persentation/student_profile_cell.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_table.dart';
+import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/clay_card.dart';
 import 'package:edukita/widgets/multi_filter.dart';
 import 'package:flutter/material.dart';
@@ -38,18 +39,12 @@ class _StudentsPageState extends State<StudentsPage> {
     if (!mounted) return;
 
     if (schools.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Create a school before adding students.'),
-        ),
-      );
+      AppToast.showFailed('Create a school before adding students.');
       return;
     }
 
     if (classes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Create a class before adding students.')),
-      );
+      AppToast.showFailed('Create a class before adding students.');
       return;
     }
 
@@ -61,9 +56,6 @@ class _StudentsPageState extends State<StudentsPage> {
         generatedStudentNo: studentNo,
         onSubmit: (student, schoolId, guardians) async {
           await cubit.addStudent(student, schoolId, guardians);
-          if (dialogContext.mounted) {
-            Navigator.of(dialogContext).pop();
-          }
         },
       ),
     );
@@ -88,9 +80,6 @@ class _StudentsPageState extends State<StudentsPage> {
         initialGuardians: guardians,
         onSubmit: (updatedStudent, schoolId, guardians) async {
           await cubit.updateStudent(updatedStudent, schoolId, guardians);
-          if (dialogContext.mounted) {
-            Navigator.of(dialogContext).pop();
-          }
         },
       ),
     );
@@ -116,7 +105,18 @@ class _StudentsPageState extends State<StudentsPage> {
     );
 
     if (confirmed == true && mounted) {
-      await context.read<StudentPageCubit>().deleteStudent(student.id);
+      try {
+        await context.read<StudentPageCubit>().deleteStudent(student.id);
+        AppToast.showSubmissionSuccess(
+          action: SubmissionAction.delete,
+          subject: 'student',
+        );
+      } catch (_) {
+        AppToast.showSubmissionFailed(
+          action: SubmissionAction.delete,
+          subject: 'student',
+        );
+      }
     }
   }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/form_validation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -90,10 +91,8 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   ),
                   items: _educationLevels
                       .map(
-                        (level) => DropdownMenuItem(
-                          value: level,
-                          child: Text(level),
-                        ),
+                        (level) =>
+                            DropdownMenuItem(value: level, child: Text(level)),
                       )
                       .toList(),
                   onChanged: (value) {
@@ -102,10 +101,8 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                     });
                   },
                   onSaved: (value) => lastEducationType = value,
-                  validator: (value) => AppFormValidation.requiredText(
-                    value,
-                    'Education level',
-                  ),
+                  validator: (value) =>
+                      AppFormValidation.requiredText(value, 'Education level'),
                 ),
                 const SizedBox(height: 16),
                 FormField<String>(
@@ -204,6 +201,9 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final action = widget.teacher == null
+        ? SubmissionAction.create
+        : SubmissionAction.update;
     _formKey.currentState!.save();
     final teacher = Teacher(
       id: widget.teacher?.id,
@@ -221,12 +221,11 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
 
     try {
       await widget.onSave(teacher);
+      AppToast.showSubmissionSuccess(action: action, subject: 'teacher');
       if (mounted) Navigator.pop(context);
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save teacher: $error')),
-      );
+      AppToast.showSubmissionFailed(action: action, subject: 'teacher');
       setState(() {
         _isSaving = false;
       });

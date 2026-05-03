@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:edukita/core/helper/com_enum.dart';
@@ -7,6 +8,7 @@ import 'package:edukita/features/management/guardian_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/form_validation.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
@@ -15,7 +17,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path/path.dart' as p;
 
 typedef StudentFormSubmit =
-    void Function(
+    FutureOr<void> Function(
       Student student,
       String schoolId,
       List<StudentGuardianFormData> guardians,
@@ -67,6 +69,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
   String? _selectedPhotoFileName;
   late Gender _selectedGender;
   late bool _showAdvancedDetail;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -199,6 +202,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
   }
 
   Future<void> _submit() async {
+    if (_isSaving) return;
     if (!_formKey.currentState!.validate()) return;
     if (_selectedSchoolId == null) return;
     if (_selectedClassId == null) return;
@@ -215,39 +219,57 @@ class _StudentFormCardState extends State<StudentFormCard> {
       return;
     }
 
-    final photoPath = await _saveSelectedPhoto();
+    final action = widget.isEditing
+        ? SubmissionAction.update
+        : SubmissionAction.create;
 
-    final student =
-        (widget.initialStudent ??
-                Student(
-                  studentId: '',
-                  classId: '',
-                  fullName: '',
-                  joinAt: '',
-                  id: '',
-                  status: StudentStatus.active,
-                ))
-            .copyWith(
-              studentId: _studentNoController.text.trim(),
-              classId: _selectedClassId!,
-              gender: _selectedGender,
-              status: StudentStatus.active,
-              fullName: _fullNameController.text.trim(),
-              nickName: nullIfEmpty(_nickNameController.text),
-              joinAt: _joinAtController.text.trim(),
-              nis: nullIfEmpty(_nisController.text),
-              birthDate: nullIfEmpty(_birthDateController.text),
-              mobileNo: nullIfEmpty(_mobileNoController.text),
-              emailAddr: nullIfEmpty(_emailAddrController.text),
-              shoeSize: int.tryParse(_shoeSizeController.text),
-              uniformSize: int.tryParse(_uniformSizeController.text),
-              pantsSize: int.tryParse(_pantsSizeController.text),
-              height: double.tryParse(_heightController.text),
-              weight: double.tryParse(_weightController.text),
-              photoPath: photoPath,
-            );
+    setState(() {
+      _isSaving = true;
+    });
 
-    widget.onSubmit(student, _selectedSchoolId!, guardians);
+    try {
+      final photoPath = await _saveSelectedPhoto();
+      final student =
+          (widget.initialStudent ??
+                  Student(
+                    studentId: '',
+                    classId: '',
+                    fullName: '',
+                    joinAt: '',
+                    id: '',
+                    status: StudentStatus.active,
+                  ))
+              .copyWith(
+                studentId: _studentNoController.text.trim(),
+                classId: _selectedClassId!,
+                gender: _selectedGender,
+                status: StudentStatus.active,
+                fullName: _fullNameController.text.trim(),
+                nickName: nullIfEmpty(_nickNameController.text),
+                joinAt: _joinAtController.text.trim(),
+                nis: nullIfEmpty(_nisController.text),
+                birthDate: nullIfEmpty(_birthDateController.text),
+                mobileNo: nullIfEmpty(_mobileNoController.text),
+                emailAddr: nullIfEmpty(_emailAddrController.text),
+                shoeSize: int.tryParse(_shoeSizeController.text),
+                uniformSize: int.tryParse(_uniformSizeController.text),
+                pantsSize: int.tryParse(_pantsSizeController.text),
+                height: double.tryParse(_heightController.text),
+                weight: double.tryParse(_weightController.text),
+                photoPath: photoPath,
+              );
+
+      await widget.onSubmit(student, _selectedSchoolId!, guardians);
+      AppToast.showSubmissionSuccess(action: action, subject: 'student');
+      if (mounted) Navigator.of(context).pop();
+    } catch (_) {
+      AppToast.showSubmissionFailed(action: action, subject: 'student');
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 
   List<StudentGuardianFormData> _buildGuardianData() {
@@ -262,9 +284,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppToast.showFailed(message);
   }
 
   String _compactDate(DateTime date) {
@@ -492,15 +512,25 @@ class _StudentFormCardState extends State<StudentFormCard> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: _isSaving
+                      ? null
+                      : () => Navigator.of(context).pop(),
                   child: const Text('Cancel'),
                 ),
                 const SizedBox(width: 12),
                 FilledButton(
-                  onPressed: _submit,
-                  child: Text(
-                    widget.isEditing ? 'Update Student' : 'Create Student',
-                  ),
+                  onPressed: _isSaving ? null : _submit,
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(
+                          widget.isEditing
+                              ? 'Update Student'
+                              : 'Create Student',
+                        ),
                 ),
               ],
             ),

@@ -1,12 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:edukita/features/management/guardian_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
+import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/form_validation.dart';
 import 'package:flutter/services.dart';
 
 class GuardianFormDialog extends StatefulWidget {
   final Guardian? guardian;
-  final Function(Guardian) onSave;
+  final FutureOr<void> Function(Guardian) onSave;
 
   const GuardianFormDialog({super.key, this.guardian, required this.onSave});
 
@@ -20,6 +23,7 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
   late String? mobileNo;
   late String? occupation;
   late String? address;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -101,27 +105,53 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              _formKey.currentState!.save();
-              final guardian = Guardian(
-                id: widget.guardian?.id,
-                fullName: fullName,
-                mobileNo: mobileNo,
-                occupation: occupation,
-                address: address,
-              );
-              widget.onSave(guardian);
-              Navigator.pop(context);
-            }
-          },
-          child: const Text('Save'),
+          onPressed: _isSaving ? null : _submit,
+          child: _isSaving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Save'),
         ),
       ],
     );
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final action = widget.guardian == null
+        ? SubmissionAction.create
+        : SubmissionAction.update;
+    _formKey.currentState!.save();
+    final guardian = Guardian(
+      id: widget.guardian?.id,
+      fullName: fullName,
+      mobileNo: mobileNo,
+      occupation: occupation,
+      address: address,
+    );
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await widget.onSave(guardian);
+      AppToast.showSubmissionSuccess(action: action, subject: 'guardian');
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      AppToast.showSubmissionFailed(action: action, subject: 'guardian');
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 }

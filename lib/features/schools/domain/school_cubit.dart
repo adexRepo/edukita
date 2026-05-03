@@ -26,6 +26,7 @@ class SchoolCubit extends Cubit<SchoolState> {
       await loadSchools();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -38,6 +39,7 @@ class SchoolCubit extends Cubit<SchoolState> {
       await loadSchools();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -47,6 +49,7 @@ class SchoolCubit extends Cubit<SchoolState> {
       await loadSchools();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -59,6 +62,7 @@ class SchoolCubit extends Cubit<SchoolState> {
       await loadSchools();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -68,6 +72,7 @@ class SchoolCubit extends Cubit<SchoolState> {
       await loadSchools();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -96,6 +101,7 @@ class SchoolCubit extends Cubit<SchoolState> {
       await _repository.linkStudentSchool(studentSchool);
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -104,6 +110,7 @@ class SchoolCubit extends Cubit<SchoolState> {
       await _repository.unlinkStudentSchool(studentSchoolId);
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 }

@@ -1,10 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:edukita/features/strategy/strategy_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
+import 'package:edukita/widgets/app_toast.dart';
 
 class StrategyFormDialog extends StatefulWidget {
   final Strategy? strategy;
-  final Function(Strategy) onSave;
+  final FutureOr<void> Function(Strategy) onSave;
 
   const StrategyFormDialog({super.key, this.strategy, required this.onSave});
 
@@ -17,6 +20,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
   late String? code;
   late String? name;
   late String? rule;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -69,26 +73,52 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              _formKey.currentState!.save();
-              final strategy = Strategy(
-                id: widget.strategy?.id,
-                code: code,
-                name: name,
-                rule: rule,
-              );
-              widget.onSave(strategy);
-              Navigator.pop(context);
-            }
-          },
-          child: const Text('Save'),
+          onPressed: _isSaving ? null : _submit,
+          child: _isSaving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Save'),
         ),
       ],
     );
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final action = widget.strategy == null
+        ? SubmissionAction.create
+        : SubmissionAction.update;
+    _formKey.currentState!.save();
+    final strategy = Strategy(
+      id: widget.strategy?.id,
+      code: code,
+      name: name,
+      rule: rule,
+    );
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await widget.onSave(strategy);
+      AppToast.showSubmissionSuccess(action: action, subject: 'strategy');
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      AppToast.showSubmissionFailed(action: action, subject: 'strategy');
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 }

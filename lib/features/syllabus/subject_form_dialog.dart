@@ -1,10 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:edukita/features/syllabus/subject_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
+import 'package:edukita/widgets/app_toast.dart';
 
 class SubjectFormDialog extends StatefulWidget {
   final Subject? subject;
-  final Function(Subject) onSave;
+  final FutureOr<void> Function(Subject) onSave;
 
   const SubjectFormDialog({super.key, this.subject, required this.onSave});
 
@@ -15,6 +18,7 @@ class SubjectFormDialog extends StatefulWidget {
 class _SubjectFormDialogState extends State<SubjectFormDialog> {
   final _formKey = GlobalKey<FormState>();
   late String name;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -40,29 +44,55 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              _formKey.currentState!.save();
-              final subject = Subject(id: widget.subject?.id, name: name);
-              widget.onSave(subject);
-              Navigator.pop(context);
-            }
-          },
-          child: const Text('Save'),
+          onPressed: _isSaving ? null : _submit,
+          child: _isSaving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Save'),
         ),
       ],
     );
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final action = widget.subject == null
+        ? SubmissionAction.create
+        : SubmissionAction.update;
+    _formKey.currentState!.save();
+    final subject = Subject(id: widget.subject?.id, name: name);
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await widget.onSave(subject);
+      AppToast.showSubmissionSuccess(action: action, subject: 'subject');
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      AppToast.showSubmissionFailed(action: action, subject: 'subject');
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 }
 
 class UnitFormDialog extends StatefulWidget {
   final Unit? unit;
   final List<Subject> subjects;
-  final Function(Unit) onSave;
+  final FutureOr<void> Function(Unit) onSave;
 
   const UnitFormDialog({
     super.key,
@@ -79,6 +109,7 @@ class _UnitFormDialogState extends State<UnitFormDialog> {
   final _formKey = GlobalKey<FormState>();
   late String name;
   late String subjectId;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -129,25 +160,47 @@ class _UnitFormDialogState extends State<UnitFormDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              _formKey.currentState!.save();
-              final unit = Unit(
-                id: widget.unit?.id,
-                subjectId: subjectId,
-                name: name,
-              );
-              widget.onSave(unit);
-              Navigator.pop(context);
-            }
-          },
-          child: const Text('Save'),
+          onPressed: _isSaving ? null : _submit,
+          child: _isSaving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Save'),
         ),
       ],
     );
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final action = widget.unit == null
+        ? SubmissionAction.create
+        : SubmissionAction.update;
+    _formKey.currentState!.save();
+    final unit = Unit(id: widget.unit?.id, subjectId: subjectId, name: name);
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await widget.onSave(unit);
+      AppToast.showSubmissionSuccess(action: action, subject: 'unit');
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      AppToast.showSubmissionFailed(action: action, subject: 'unit');
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 }

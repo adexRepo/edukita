@@ -1,4 +1,5 @@
 import 'package:edukita/features/schools/data/class_model.dart';
+import 'package:edukita/widgets/detail_breadcrumbs.dart';
 import 'package:flutter/material.dart';
 
 class ClassDetailPage extends StatelessWidget {
@@ -10,9 +11,13 @@ class ClassDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          schoolClass.className,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        leadingWidth: 40,
+        leading: const DetailAppBarBackButton(fallbackRoute: '/school'),
+        title: DetailBreadcrumbs(
+          items: [
+            const DetailBreadcrumbItem(label: 'Schools', route: '/school'),
+            DetailBreadcrumbItem(label: schoolClass.className),
+          ],
         ),
       ),
       body: Padding(

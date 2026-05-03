@@ -1,6 +1,7 @@
 import 'package:edukita/features/management/guardian_cubit.dart';
 import 'package:edukita/features/management/guardian_form_dialog.dart';
 import 'package:edukita/features/management/guardian_model.dart';
+import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -61,7 +62,18 @@ class _GuardiansPageState extends State<GuardiansPage> {
     );
 
     if (confirmed == true) {
-      await cubit.deleteGuardian(id);
+      try {
+        await cubit.deleteGuardian(id);
+        AppToast.showSubmissionSuccess(
+          action: SubmissionAction.delete,
+          subject: 'guardian',
+        );
+      } catch (_) {
+        AppToast.showSubmissionFailed(
+          action: SubmissionAction.delete,
+          subject: 'guardian',
+        );
+      }
     }
   }
 

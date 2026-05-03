@@ -27,6 +27,7 @@ class StrategyCubit extends Cubit<StrategyState> {
       await loadStrategies();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -36,6 +37,7 @@ class StrategyCubit extends Cubit<StrategyState> {
       await loadStrategies();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -45,6 +47,7 @@ class StrategyCubit extends Cubit<StrategyState> {
       await loadStrategies();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 }

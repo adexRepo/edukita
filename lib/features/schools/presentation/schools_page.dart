@@ -7,6 +7,7 @@ import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
 import 'package:edukita/features/schools/presentation/school_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_table.dart';
+import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -146,9 +147,21 @@ class _SchoolsPageState extends State<SchoolsPage> {
     );
 
     if (confirmed != true || !mounted) return false;
-    await context.read<ClassCubit>().deleteClass(schoolClass.id);
-    await _refreshClassCounts();
-    return true;
+    try {
+      await context.read<ClassCubit>().deleteClass(schoolClass.id);
+      await _refreshClassCounts();
+      AppToast.showSubmissionSuccess(
+        action: SubmissionAction.delete,
+        subject: 'class',
+      );
+      return true;
+    } catch (_) {
+      AppToast.showSubmissionFailed(
+        action: SubmissionAction.delete,
+        subject: 'class',
+      );
+      return false;
+    }
   }
 
   Future<void> _confirmDeleteSchool(School school) async {
@@ -172,8 +185,19 @@ class _SchoolsPageState extends State<SchoolsPage> {
 
     if (confirmed != true || !mounted) return;
 
-    await context.read<SchoolCubit>().deleteSchool(school.id);
-    await _refreshClassCounts();
+    try {
+      await context.read<SchoolCubit>().deleteSchool(school.id);
+      await _refreshClassCounts();
+      AppToast.showSubmissionSuccess(
+        action: SubmissionAction.delete,
+        subject: 'school',
+      );
+    } catch (_) {
+      AppToast.showSubmissionFailed(
+        action: SubmissionAction.delete,
+        subject: 'school',
+      );
+    }
   }
 
   @override
@@ -336,10 +360,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
                             ),
                             padding: EdgeInsets.zero,
                             color: AppColors.errorDark,
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              size: 16,
-                            ),
+                            icon: const Icon(Icons.delete_outline, size: 16),
                           ),
                         ],
                       ),

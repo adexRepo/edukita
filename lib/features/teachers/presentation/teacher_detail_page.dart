@@ -5,6 +5,8 @@ import 'package:edukita/features/students/persentation/detail/detail_section_car
 import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/teachers/domain/teacher_repository.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/detail_breadcrumbs.dart';
+import 'package:edukita/widgets/detail_tab_bar.dart';
 import 'package:edukita/widgets/detail_tab_scroll.dart';
 import 'package:flutter/material.dart';
 
@@ -21,12 +23,16 @@ class TeacherDetailPage extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
             appBar: AppBar(
-              title: Text(
-                teacher.fullName,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+              leadingWidth: 40,
+              leading: const DetailAppBarBackButton(fallbackRoute: '/teachers'),
+              title: DetailBreadcrumbs(
+                items: [
+                  const DetailBreadcrumbItem(
+                    label: 'Teachers',
+                    route: '/teachers',
+                  ),
+                  DetailBreadcrumbItem(label: teacher.fullName),
+                ],
               ),
             ),
             body: const Center(child: CircularProgressIndicator()),
@@ -36,12 +42,16 @@ class TeacherDetailPage extends StatelessWidget {
         if (snapshot.hasError || snapshot.data == null) {
           return Scaffold(
             appBar: AppBar(
-              title: Text(
-                teacher.fullName,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+              leadingWidth: 40,
+              leading: const DetailAppBarBackButton(fallbackRoute: '/teachers'),
+              title: DetailBreadcrumbs(
+                items: [
+                  const DetailBreadcrumbItem(
+                    label: 'Teachers',
+                    route: '/teachers',
+                  ),
+                  DetailBreadcrumbItem(label: teacher.fullName),
+                ],
               ),
             ),
             body: Center(
@@ -53,9 +63,16 @@ class TeacherDetailPage extends StatelessWidget {
         final data = snapshot.data!;
         return Scaffold(
           appBar: AppBar(
-            title: const Text(
-              "Teacher Detail",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            leadingWidth: 40,
+            leading: const DetailAppBarBackButton(fallbackRoute: '/teachers'),
+            title: DetailBreadcrumbs(
+              items: [
+                const DetailBreadcrumbItem(
+                  label: 'Teachers',
+                  route: '/teachers',
+                ),
+                DetailBreadcrumbItem(label: data.teacher.fullName),
+              ],
             ),
           ),
           body: Padding(
@@ -65,7 +82,16 @@ class TeacherDetailPage extends StatelessWidget {
               child: Column(
                 children: [
                   const SizedBox(height: 8),
-                  const _TeacherDetailTabs(),
+                  const DetailTabBar(
+                    tabs: [
+                      'Overview',
+                      'Impact',
+                      'Classes',
+                      'Notes',
+                      'Risk',
+                      'More',
+                    ],
+                  ),
                   Expanded(
                     child: TabBarView(
                       children: [
@@ -84,33 +110,6 @@ class TeacherDetailPage extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _TeacherDetailTabs extends StatelessWidget {
-  const _TeacherDetailTabs();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.background,
-      alignment: Alignment.bottomCenter,
-      child: const TabBar(
-        isScrollable: false,
-        labelPadding: EdgeInsets.zero,
-        indicatorSize: TabBarIndicatorSize.label,
-        labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-        unselectedLabelStyle: TextStyle(fontSize: 11),
-        tabs: [
-          Tab(text: 'Overview'),
-          Tab(text: 'Impact'),
-          Tab(text: 'Classes'),
-          Tab(text: 'Notes'),
-          Tab(text: 'Risk'),
-          Tab(text: 'More'),
-        ],
-      ),
     );
   }
 }
