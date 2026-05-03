@@ -54,8 +54,9 @@ class _StudentsPageState extends State<StudentsPage> {
         availableSchools: schools,
         availableClasses: classes,
         generatedStudentNo: studentNo,
-        onSubmit: (student, schoolId, guardians) async {
-          await cubit.addStudent(student, schoolId, guardians);
+        onSiblingLookup: cubit.lookupSiblingFamily,
+        onSubmit: (student, schoolId, guardians, advanced) async {
+          await cubit.addStudent(student, schoolId, guardians, advanced);
         },
       ),
     );
@@ -67,6 +68,7 @@ class _StudentsPageState extends State<StudentsPage> {
     final classes = await cubit.loadAvailableClasses();
     final student = await cubit.loadStudent(row.id);
     final guardians = await cubit.loadGuardians(row.id);
+    final advancedData = await cubit.loadAdvancedFormData(row.id);
 
     if (!mounted || student == null) return;
 
@@ -78,8 +80,15 @@ class _StudentsPageState extends State<StudentsPage> {
         generatedStudentNo: student.studentId,
         initialStudent: student,
         initialGuardians: guardians,
-        onSubmit: (updatedStudent, schoolId, guardians) async {
-          await cubit.updateStudent(updatedStudent, schoolId, guardians);
+        initialAdvancedData: advancedData,
+        onSiblingLookup: cubit.lookupSiblingFamily,
+        onSubmit: (updatedStudent, schoolId, guardians, advanced) async {
+          await cubit.updateStudent(
+            updatedStudent,
+            schoolId,
+            guardians,
+            advanced,
+          );
         },
       ),
     );

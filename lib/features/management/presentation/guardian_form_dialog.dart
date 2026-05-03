@@ -84,6 +84,7 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
                   maxLength: 60,
                 ),
                 inputFormatters: [LengthLimitingTextInputFormatter(60)],
+                isRequired: false,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(

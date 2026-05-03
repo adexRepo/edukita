@@ -10,6 +10,7 @@
 
 
 # Flutter repo-specific
+/edukita/
 /bin/cache/
 /bin/internal/bootstrap.bat
 /bin/internal/bootstrap.sh

@@ -1,7 +1,26 @@
+import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class CommonFormWidgets {
+  static Widget requiredLabel(String label) {
+    return Text.rich(
+      TextSpan(
+        text: label,
+        children: const [
+          TextSpan(
+            text: ' *',
+            style: TextStyle(color: AppColors.errorDark),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _fieldLabel(String label, bool isRequired) {
+    return isRequired ? requiredLabel(label) : Text(label);
+  }
+
   // Common text field
   static TextFormField textField({
     required String label,
@@ -16,6 +35,7 @@ class CommonFormWidgets {
     TextEditingController? controller,
     String? hint,
     List<TextInputFormatter>? inputFormatters,
+    bool isRequired = true,
   }) {
     return TextFormField(
       controller: controller,
@@ -36,7 +56,7 @@ class CommonFormWidgets {
       minLines: minLines,
       keyboardType: keyboardType,
       decoration: InputDecoration(
-        labelText: label,
+        label: _fieldLabel(label, isRequired),
         hintText: hint ?? 'Enter $label',
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.all(12.0),
@@ -71,7 +91,7 @@ class CommonFormWidgets {
             return null;
           },
       decoration: InputDecoration(
-        labelText: label,
+        label: _fieldLabel(label, isRequired),
         hintText: hint,
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.all(12.0),
@@ -133,7 +153,7 @@ class CommonFormWidgets {
         return null;
       },
       decoration: InputDecoration(
-        labelText: label,
+        label: _fieldLabel(label, isRequired),
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.all(12.0),
       ),
@@ -146,6 +166,7 @@ class CommonFormWidgets {
     int? value,
     required Function(int?) onSaved,
     String? Function(String?)? validator,
+    bool isRequired = false,
   }) {
     return TextFormField(
       initialValue: value?.toString(),
@@ -165,7 +186,7 @@ class CommonFormWidgets {
           },
       keyboardType: TextInputType.number,
       decoration: InputDecoration(
-        labelText: label,
+        label: _fieldLabel(label, isRequired),
         hintText: 'Enter $label',
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.all(12.0),
@@ -179,6 +200,7 @@ class CommonFormWidgets {
     double? value,
     required Function(double?) onSaved,
     String? Function(String?)? validator,
+    bool isRequired = false,
   }) {
     return TextFormField(
       initialValue: value?.toString(),
@@ -198,7 +220,7 @@ class CommonFormWidgets {
           },
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(
-        labelText: label,
+        label: _fieldLabel(label, isRequired),
         hintText: 'Enter $label',
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.all(12.0),
@@ -213,6 +235,7 @@ class CommonFormWidgets {
     required Function(String?) onSaved,
     String? Function(String?)? validator,
     required BuildContext context,
+    bool isRequired = false,
   }) {
     return TextFormField(
       initialValue: value,
@@ -231,7 +254,7 @@ class CommonFormWidgets {
       onSaved: onSaved,
       validator: validator,
       decoration: InputDecoration(
-        labelText: label,
+        label: _fieldLabel(label, isRequired),
         hintText: 'Select $label (YYYY-MM-DD)',
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.all(12.0),

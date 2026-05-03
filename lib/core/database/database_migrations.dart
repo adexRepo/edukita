@@ -43,6 +43,10 @@ class DatabaseMigrations {
     if (oldVersion < 12) {
       await _ensureTeachingMaterialSchema(db);
     }
+
+    if (oldVersion < 13) {
+      await _ensureStudentAdvancedInputSchema(db);
+    }
   }
 
   static Future<void> _fixUsers(Database db) async {
@@ -239,6 +243,16 @@ class DatabaseMigrations {
       definition: 'TEXT',
     );
 
+    await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _ensureStudentAdvancedInputSchema(Database db) async {
+    await DatabaseTables.studentHealth(db);
+    await DatabaseTables.activities(db);
+    await DatabaseTables.studentActivities(db);
+    await DatabaseTables.extraActivities(db);
+    await DatabaseTables.studentGoals(db);
+    await DatabaseTables.studentRelations(db);
     await DatabaseTables.indexes(db);
   }
 

@@ -68,6 +68,7 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
                 value: version,
                 onSaved: (value) => version = _nullIfBlank(value),
                 validator: (_) => null,
+                isRequired: false,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
@@ -75,6 +76,7 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
                 value: effectiveYear,
                 onSaved: (value) => effectiveYear = _nullIfBlank(value),
                 validator: (_) => null,
+                isRequired: false,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
@@ -83,6 +85,7 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
                 onSaved: (value) => description = _nullIfBlank(value),
                 maxLines: 3,
                 validator: (_) => null,
+                isRequired: false,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.dropdownField(
@@ -232,6 +235,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                 onSaved: (value) => description = _nullIfBlank(value),
                 maxLines: 3,
                 validator: (_) => null,
+                isRequired: false,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
@@ -239,6 +243,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                 value: academicYear,
                 onSaved: (value) => academicYear = _nullIfBlank(value),
                 validator: (_) => null,
+                isRequired: false,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
@@ -246,6 +251,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                 value: level,
                 onSaved: (value) => level = _nullIfBlank(value),
                 validator: (_) => null,
+                isRequired: false,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.dropdownField(
@@ -412,6 +418,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
                 onSaved: (value) => description = _nullIfBlank(value),
                 maxLines: 3,
                 validator: (_) => null,
+                isRequired: false,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.dropdownField(
@@ -558,6 +565,7 @@ class _UnitFormDialogState extends State<UnitFormDialog> {
                 onSaved: (value) => description = _nullIfBlank(value),
                 maxLines: 3,
                 validator: (_) => null,
+                isRequired: false,
               ),
             ],
           ),
@@ -676,6 +684,7 @@ class _CompetencyFormDialogState extends State<CompetencyFormDialog> {
                 value: code,
                 onSaved: (value) => code = _nullIfBlank(value),
                 validator: (_) => null,
+                isRequired: false,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
@@ -683,6 +692,7 @@ class _CompetencyFormDialogState extends State<CompetencyFormDialog> {
                 value: level,
                 onSaved: (value) => level = _nullIfBlank(value),
                 validator: (_) => null,
+                isRequired: false,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(

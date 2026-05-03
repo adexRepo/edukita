@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/features/users/data/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -115,7 +116,9 @@ class _UserFormCardState extends State<UserFormCard> {
                   TextFormField(
                     controller: _usernameController,
                     enabled: !isEditing,
-                    decoration: const InputDecoration(labelText: 'Username'),
+                    decoration: InputDecoration(
+                      label: CommonFormWidgets.requiredLabel('Username'),
+                    ),
                     validator: (value) {
                       return AppFormValidation.requiredText(
                         value,
@@ -131,7 +134,9 @@ class _UserFormCardState extends State<UserFormCard> {
                     controller: _passwordController,
                     enabled: !isEditing,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Password'),
+                    decoration: InputDecoration(
+                      label: CommonFormWidgets.requiredLabel('Password'),
+                    ),
                     validator: (value) {
                       if (!isEditing &&
                           (value == null || value.trim().isEmpty)) {
@@ -151,7 +156,9 @@ class _UserFormCardState extends State<UserFormCard> {
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _nickNameController,
-                    decoration: const InputDecoration(labelText: 'Nickname'),
+                    decoration: InputDecoration(
+                      label: CommonFormWidgets.requiredLabel('Nickname'),
+                    ),
                     validator: (value) => AppFormValidation.requiredText(
                       value,
                       'Nickname',
@@ -163,7 +170,9 @@ class _UserFormCardState extends State<UserFormCard> {
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _fullNameController,
-                    decoration: const InputDecoration(labelText: 'Full Name'),
+                    decoration: InputDecoration(
+                      label: CommonFormWidgets.requiredLabel('Full Name'),
+                    ),
                     validator: (value) => AppFormValidation.requiredText(
                       value,
                       'Full name',

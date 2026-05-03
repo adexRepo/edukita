@@ -55,6 +55,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
                 onSaved: (value) =>
                     code = value?.isEmpty ?? true ? null : value,
                 validator: (_) => null,
+                isRequired: false,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
@@ -77,6 +78,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
                     : value?.trim(),
                 maxLines: 3,
                 validator: (_) => null,
+                isRequired: false,
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
@@ -86,6 +88,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
                     rule = value?.isEmpty ?? true ? null : value,
                 maxLines: 4,
                 validator: (_) => null,
+                isRequired: false,
               ),
             ],
           ),

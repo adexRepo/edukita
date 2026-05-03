@@ -13,6 +13,7 @@ class DatabaseTables {
     await students(db);
 
     await studentGuardians(db);
+    await studentRelations(db);
     await studentSchools(db);
     await studentClasses(db);
     await studentClassHistory(db);
@@ -158,6 +159,22 @@ class DatabaseTables {
         PRIMARY KEY (student_id, guardian_id),
         FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
         FOREIGN KEY(guardian_id) REFERENCES guardians(id) ON DELETE CASCADE
+      )
+    ''');
+  }
+
+  static Future<void> studentRelations(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS student_relations(
+        id TEXT PRIMARY KEY NOT NULL,
+        student_id TEXT NOT NULL,
+        related_student_id TEXT NOT NULL,
+        relation_type TEXT NOT NULL,
+        age_position TEXT NOT NULL,
+        created_at TEXT,
+        UNIQUE(student_id, related_student_id),
+        FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+        FOREIGN KEY(related_student_id) REFERENCES students(id) ON DELETE CASCADE
       )
     ''');
   }
@@ -739,6 +756,20 @@ class DatabaseTables {
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_activities_student_id ON student_activities(student_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_relations',
+      columns: const ['student_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_relations_student_id ON student_relations(student_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_relations',
+      columns: const ['related_student_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_relations_related_student_id ON student_relations(related_student_id)',
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_behavior_student_id ON student_behavior(student_id)',

@@ -1,4 +1,5 @@
 import 'package:edukita/features/management/data/guardian_model.dart';
+import 'package:edukita/features/students/data/student_advanced_form_data.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
 import 'package:edukita/features/students/persentation/detail/detail_data_table.dart';
@@ -18,21 +19,61 @@ class StudentFamilyTab extends StatelessWidget {
     return DetailTabScroll(
       children: [
         _GuardianTable(studentId: student.id),
-        const DetailSectionCard(
+        _RelationsTable(studentId: student.id),
+      ],
+    );
+  }
+}
+
+class _RelationsTable extends StatelessWidget {
+  const _RelationsTable({required this.studentId});
+
+  final String studentId;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<StudentRelationFormData>>(
+      future: context.read<StudentDetailCubit>().loadRelations(studentId),
+      builder: (context, snapshot) {
+        final relations = snapshot.data ?? const <StudentRelationFormData>[];
+
+        return DetailSectionCard(
           title: 'Student Relations',
           icon: Icons.account_tree_outlined,
           wrapChildren: false,
           children: [
-            DetailDataTable(
-              columns: ['Student', 'Relationship', 'Class', 'Status'],
-              rows: [],
-              emptyText:
-                  'Sibling and family relations between students will appear here when relation records are available.',
-            ),
+            if (snapshot.connectionState == ConnectionState.waiting)
+              const DetailEmptySectionText('Loading student relations...')
+            else
+              DetailDataTable(
+                columns: const [
+                  'Student No',
+                  'Name',
+                  'Relation',
+                  'Age Position',
+                ],
+                rows: relations
+                    .where((relation) => relation.hasData)
+                    .map(
+                      (relation) => [
+                        _textOrDash(relation.relatedStudentNo),
+                        _textOrDash(relation.relatedStudentName),
+                        _textOrDash(relation.relationType),
+                        _textOrDash(relation.agePosition),
+                      ],
+                    )
+                    .toList(),
+                emptyText: 'No sibling or student relation has been added yet.',
+              ),
           ],
-        ),
-      ],
+        );
+      },
     );
+  }
+
+  String _textOrDash(String? value) {
+    if (value == null || value.trim().isEmpty) return '-';
+    return value;
   }
 }
 

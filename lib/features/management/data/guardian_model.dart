@@ -107,7 +107,6 @@ class StudentGuardianFormData {
   bool get hasData {
     return [
       fullName,
-      relationship,
       mobileNo,
       email,
       occupation,
@@ -122,6 +121,8 @@ class GuardianRelationshipOptions {
   static const values = [
     'MOTHER',
     'FATHER',
+    'BROTHER',
+    'SISTER',
     'UNCLE',
     'AUNTY',
     'GRANDPA',

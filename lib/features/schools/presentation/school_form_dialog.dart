@@ -593,7 +593,11 @@ class _ClassDraftRow extends StatelessWidget {
               width: fieldWidth,
               child: TextFormField(
                 controller: draft.sectionController,
-                decoration: const InputDecoration(labelText: 'Section'),
+                decoration: InputDecoration(
+                  label: autoName
+                      ? requiredLabel(context, 'Section')
+                      : const Text('Section'),
+                ),
                 textCapitalization: TextCapitalization.characters,
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp('[a-zA-Z]')),

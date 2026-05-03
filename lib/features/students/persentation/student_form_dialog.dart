@@ -2,6 +2,7 @@ import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
+import 'package:edukita/features/students/data/student_advanced_form_data.dart';
 import 'package:edukita/features/students/persentation/student_form_card.dart';
 import 'package:flutter/material.dart';
 
@@ -14,6 +15,8 @@ class StudentFormDialog extends StatelessWidget {
     required this.onSubmit,
     this.initialStudent,
     this.initialGuardians = const [],
+    this.initialAdvancedData = const StudentAdvancedFormData(),
+    this.onSiblingLookup,
   });
 
   final List<School> availableSchools;
@@ -21,7 +24,9 @@ class StudentFormDialog extends StatelessWidget {
   final String generatedStudentNo;
   final Student? initialStudent;
   final List<StudentGuardianFormData> initialGuardians;
+  final StudentAdvancedFormData initialAdvancedData;
   final StudentFormSubmit onSubmit;
+  final StudentSiblingLookupCallback? onSiblingLookup;
 
   @override
   Widget build(BuildContext context) {
@@ -39,8 +44,10 @@ class StudentFormDialog extends StatelessWidget {
             generatedStudentNo: generatedStudentNo,
             initialStudent: initialStudent,
             initialGuardians: initialGuardians,
+            initialAdvancedData: initialAdvancedData,
             isEditing: isEditing,
             onSubmit: onSubmit,
+            onSiblingLookup: onSiblingLookup,
           ),
         ),
       ),

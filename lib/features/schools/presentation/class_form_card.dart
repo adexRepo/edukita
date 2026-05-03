@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
@@ -152,8 +153,8 @@ class _ClassFormCardState extends State<ClassFormCard> {
             children: [
               TextFormField(
                 controller: _levelController,
-                decoration: const InputDecoration(
-                  labelText: 'Level',
+                decoration: InputDecoration(
+                  label: CommonFormWidgets.requiredLabel('Level'),
                   hintText: '1-5',
                 ),
                 keyboardType: TextInputType.number,
@@ -201,17 +202,19 @@ class _ClassFormCardState extends State<ClassFormCard> {
               TextFormField(
                 controller: _generatedClassController,
                 readOnly: true,
-                decoration: const InputDecoration(
-                  labelText: 'Class Name (Auto-generated)',
+                decoration: InputDecoration(
+                  label: CommonFormWidgets.requiredLabel(
+                    'Class Name (Auto-generated)',
+                  ),
                   hintText: 'Generated from Level + Section + Year',
-                  suffixIcon: Icon(Icons.lock),
+                  suffixIcon: const Icon(Icons.lock),
                 ),
               ),
               const SizedBox(height: 14),
               TextFormField(
                 controller: _yearController,
-                decoration: const InputDecoration(
-                  labelText: 'Year',
+                decoration: InputDecoration(
+                  label: CommonFormWidgets.requiredLabel('Year'),
                   hintText: '2026',
                 ),
                 keyboardType: TextInputType.number,

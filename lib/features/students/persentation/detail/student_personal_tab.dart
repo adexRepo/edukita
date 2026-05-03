@@ -1,9 +1,13 @@
+import 'package:edukita/features/students/data/student_advanced_form_data.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
+import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
 import 'package:edukita/features/students/persentation/detail/detail_data_table.dart';
+import 'package:edukita/features/students/persentation/detail/detail_empty_section_text.dart';
 import 'package:edukita/features/students/persentation/detail/detail_section_card.dart';
 import 'package:edukita/widgets/detail_tab_scroll.dart';
 import 'package:edukita/features/students/persentation/detail/student_information_section.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class StudentPersonalTab extends StatelessWidget {
   const StudentPersonalTab({super.key, required this.student});
@@ -15,24 +19,7 @@ class StudentPersonalTab extends StatelessWidget {
     return DetailTabScroll(
       children: [
         StudentInformationSection(student: student),
-        const DetailSectionCard(
-          title: 'Health',
-          icon: Icons.medical_information_outlined,
-          wrapChildren: false,
-          children: [
-            DetailDataTable(
-              columns: [
-                'Blood Type',
-                'Allergies',
-                'Medical Notes',
-                'Disabilities',
-                'Updated At',
-              ],
-              rows: [],
-              emptyText: 'Health records will appear here from student_health.',
-            ),
-          ],
-        ),
+        _HealthTable(studentId: student.id),
         const DetailSectionCard(
           title: 'Learning Profile',
           icon: Icons.psychology_alt_outlined,
@@ -73,5 +60,59 @@ class StudentPersonalTab extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class _HealthTable extends StatelessWidget {
+  const _HealthTable({required this.studentId});
+
+  final String studentId;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<StudentAdvancedFormData>(
+      future: context.read<StudentDetailCubit>().loadAdvancedFormData(
+        studentId,
+      ),
+      builder: (context, snapshot) {
+        final health = snapshot.data?.health ?? const StudentHealthFormData();
+        return DetailSectionCard(
+          title: 'Health',
+          icon: Icons.medical_information_outlined,
+          wrapChildren: false,
+          children: [
+            if (snapshot.connectionState == ConnectionState.waiting)
+              const DetailEmptySectionText('Loading health information...')
+            else
+              DetailDataTable(
+                columns: const [
+                  'Blood Type',
+                  'Allergies',
+                  'Medical Notes',
+                  'Disabilities',
+                  'Updated At',
+                ],
+                rows: health.hasData
+                    ? [
+                        [
+                          _textOrDash(health.bloodType),
+                          _textOrDash(health.allergies),
+                          _textOrDash(health.medicalNotes),
+                          _textOrDash(health.disabilities),
+                          _textOrDash(health.updatedAt),
+                        ],
+                      ]
+                    : const [],
+                emptyText: 'No health information has been added yet.',
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _textOrDash(String? value) {
+    if (value == null || value.trim().isEmpty) return '-';
+    return value;
   }
 }

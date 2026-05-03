@@ -28,7 +28,7 @@ class DatabaseProvider {
 
     final db = await openDatabase(
       path,
-      version: 12,
+      version: 13,
       onConfigure: (db) async => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, version) async {
         await DatabaseTables.createAll(db);

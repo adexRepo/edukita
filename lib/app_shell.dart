@@ -3,47 +3,75 @@ import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-class AppShell extends StatefulWidget {
+class AppShell extends StatelessWidget {
   final Widget child;
 
   const AppShell({super.key, required this.child});
 
-  @override
-  State<AppShell> createState() => _AppShellState();
-}
+  static const List<_SidebarItem> _menuItems = [
+    _SidebarItem(
+      label: 'Dashboard',
+      icon: Icons.dashboard,
+      route: '/dashboard',
+    ),
+    _SidebarItem(label: 'Students', icon: Icons.school, route: '/students'),
+    _SidebarItem(label: 'Schools', icon: Icons.apartment, route: '/school'),
+    _SidebarItem(label: 'Teachers', icon: Icons.person, route: '/teachers'),
+    _SidebarItem(
+      label: 'Curriculum',
+      icon: Icons.menu_book,
+      route: '/curriculum',
+    ),
+    _SidebarItem(
+      label: 'Strategies',
+      icon: Icons.lightbulb,
+      route: '/strategies',
+    ),
+    _SidebarItem(label: 'Schedule', icon: Icons.schedule, route: '/schedules'),
+    _SidebarItem(label: 'Reports', icon: Icons.bar_chart, route: '/reports'),
+  ];
 
-class _AppShellState extends State<AppShell> {
-  late List<(String, IconData, String)> _menuItems;
-
-  @override
-  void initState() {
-    super.initState();
-    _menuItems = [
-      ('Dashboard', Icons.dashboard, '/dashboard'),
-      ('Students', Icons.school, '/students'),
-      ('Schools', Icons.apartment, '/school'),
-      ('Teachers', Icons.badge, '/teachers'),
-      ('Curriculum', Icons.menu_book, '/curriculum'),
-      ('Strategies', Icons.lightbulb, '/strategies'),
-      ('Schedule', Icons.schedule, '/schedules'),
-      ('Reports', Icons.bar_chart, '/reports'),
-    ];
-  }
-
-  int _getSelectedIndex(BuildContext context) {
-    final location = GoRouter.of(context).state.uri.path;
-
+  int _getSelectedIndex(String location) {
     for (int i = 0; i < _menuItems.length; i++) {
-      if (location.startsWith(_menuItems[i].$3)) {
+      if (location.startsWith(_menuItems[i].route)) {
         return i;
       }
     }
     return 0;
   }
 
+  Future<void> _logout(BuildContext context) async {
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Logout?'),
+          content: const Text('You will return to the login screen.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!context.mounted || confirmed != true) return;
+
+    context.go('/login');
+  }
+
   @override
   Widget build(BuildContext context) {
-    final selectedIndex = _getSelectedIndex(context);
+    final location = GoRouter.of(context).state.uri.path;
+    final selectedIndex = _getSelectedIndex(location);
 
     return Scaffold(
       body: Column(
@@ -52,7 +80,7 @@ class _AppShellState extends State<AppShell> {
           Expanded(
             child: Row(
               children: [
-                _buildSidebar(context, selectedIndex),
+                _buildSidebar(context, selectedIndex, location),
                 const VerticalDivider(
                   width: 1,
                   thickness: 1,
@@ -62,7 +90,7 @@ class _AppShellState extends State<AppShell> {
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1200),
-                      child: widget.child,
+                      child: child,
                     ),
                   ),
                 ),
@@ -74,88 +102,82 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  Widget _buildSidebar(BuildContext context, int selectedIndex) {
+  Widget _buildSidebar(
+    BuildContext context,
+    int selectedIndex,
+    String location,
+  ) {
     return Container(
       width: 90,
       color: AppColors.white,
       child: Column(
         children: [
           Expanded(
-            child: ReorderableListView(
+            child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-              buildDefaultDragHandles: false,
-              onReorder: (oldIndex, newIndex) {
-                setState(() {
-                  if (oldIndex < newIndex) {
-                    newIndex -= 1;
-                  }
-                  final item = _menuItems.removeAt(oldIndex);
-                  _menuItems.insert(newIndex, item);
-                });
-              },
-              children: List.generate(_menuItems.length, (index) {
-                final (label, icon, route) = _menuItems[index];
+              itemCount: _menuItems.length,
+              itemExtent: 61,
+              itemBuilder: (context, index) {
+                final item = _menuItems[index];
                 final selected = selectedIndex == index;
                 final color = selected
                     ? AppColors.primary
                     : AppColors.textSecondary;
 
-                return ReorderableDragStartListener(
-                  key: ValueKey(route),
-                  index: index,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Tooltip(
-                      message: label,
-                      waitDuration: const Duration(milliseconds: 500),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(8),
-                        onTap: () => context.go(route),
-                        child: Container(
-                          height: 55,
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? AppColors.primary.withValues(alpha: 0.12)
-                                : AppColors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                            border: selected
-                                ? Border.all(
-                                    color: AppColors.primary.withValues(
-                                      alpha: 0.18,
-                                    ),
-                                  )
-                                : null,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(icon, size: 20, color: color),
-                              const SizedBox(height: 4),
-                              Text(
-                                label,
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: color,
-                                  fontSize: 8,
-                                  fontWeight: selected
-                                      ? FontWeight.w600
-                                      : FontWeight.w500,
-                                ),
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Tooltip(
+                    message: item.label,
+                    waitDuration: const Duration(milliseconds: 500),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: location.startsWith(item.route)
+                          ? null
+                          : () => context.go(item.route),
+                      child: Container(
+                        height: 55,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? AppColors.primary.withValues(alpha: 0.12)
+                              : AppColors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          border: selected
+                              ? Border.all(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.18,
+                                  ),
+                                )
+                              : null,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _SidebarIcon(item: item, selected: selected),
+                            const SizedBox(height: 4),
+                            Text(
+                              item.label,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: color,
+                                fontSize: 8,
+                                fontWeight: selected
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
                 );
-              }),
+              },
             ),
           ),
-          Divider(height: 1, thickness: 1, color: AppColors.border),
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
             child: Tooltip(
@@ -163,10 +185,7 @@ class _AppShellState extends State<AppShell> {
               waitDuration: const Duration(milliseconds: 500),
               child: InkWell(
                 borderRadius: BorderRadius.circular(8),
-                onTap: () {
-                  // TODO: Add logout functionality
-                  // Example: AuthProvider.logout() and navigate to login
-                },
+                onTap: () => _logout(context),
                 child: Container(
                   height: 55,
                   padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -174,7 +193,7 @@ class _AppShellState extends State<AppShell> {
                     color: AppColors.transparent,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Column(
+                  child: const Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
@@ -182,8 +201,8 @@ class _AppShellState extends State<AppShell> {
                         size: 20,
                         color: AppColors.textSecondary,
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
+                      SizedBox(height: 4),
+                      Text(
                         'Logout',
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
@@ -202,6 +221,34 @@ class _AppShellState extends State<AppShell> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SidebarItem {
+  const _SidebarItem({
+    required this.label,
+    required this.icon,
+    required this.route,
+  });
+
+  final String label;
+  final IconData icon;
+  final String route;
+}
+
+class _SidebarIcon extends StatelessWidget {
+  const _SidebarIcon({required this.item, required this.selected});
+
+  final _SidebarItem item;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(
+      item.icon,
+      size: 20,
+      color: selected ? AppColors.primary : AppColors.textSecondary,
     );
   }
 }

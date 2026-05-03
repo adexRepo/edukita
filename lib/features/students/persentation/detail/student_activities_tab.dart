@@ -1,48 +1,112 @@
+import 'package:edukita/features/students/data/student_advanced_form_data.dart';
+import 'package:edukita/features/students/data/student_detail_data.dart';
+import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
 import 'package:edukita/features/students/persentation/detail/detail_data_table.dart';
+import 'package:edukita/features/students/persentation/detail/detail_empty_section_text.dart';
 import 'package:edukita/features/students/persentation/detail/detail_section_card.dart';
 import 'package:edukita/widgets/detail_tab_scroll.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class StudentActivitiesTab extends StatelessWidget {
-  const StudentActivitiesTab({super.key});
+  const StudentActivitiesTab({super.key, required this.student});
+
+  final StudentDetailData student;
 
   @override
   Widget build(BuildContext context) {
-    return const DetailTabScroll(
+    return DetailTabScroll(
       children: [
-        DetailSectionCard(
-          title: 'Extracurricular',
-          icon: Icons.emoji_events_outlined,
-          wrapChildren: false,
-          children: [
-            DetailDataTable(
-              columns: [
-                'Activity',
-                'Role',
-                'Achievement',
-                'Start Date',
-                'End Date',
+        FutureBuilder<List<StudentActivityFormData>>(
+          future: context.read<StudentDetailCubit>().loadActivities(student.id),
+          builder: (context, snapshot) {
+            final activities =
+                snapshot.data ?? const <StudentActivityFormData>[];
+            final extracurricular = activities
+                .where(
+                  (activity) => !StudentActivityTypeOptions.isOtherActivity(
+                    activity.type,
+                  ),
+                )
+                .toList();
+            final otherActivities = activities
+                .where(
+                  (activity) =>
+                      StudentActivityTypeOptions.isOtherActivity(activity.type),
+                )
+                .toList();
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const DetailSectionCard(
+                title: 'Extracurricular',
+                icon: Icons.emoji_events_outlined,
+                wrapChildren: false,
+                children: [DetailEmptySectionText('Loading activities...')],
+              );
+            }
+
+            return Column(
+              children: [
+                DetailSectionCard(
+                  title: 'Extracurricular',
+                  icon: Icons.emoji_events_outlined,
+                  wrapChildren: false,
+                  children: [
+                    DetailDataTable(
+                      columns: const [
+                        'Type',
+                        'Activity',
+                        'Role',
+                        'Achievement',
+                        'Start Date',
+                        'End Date',
+                      ],
+                      rows: extracurricular.map(_activityRow).toList(),
+                      emptyText: 'No extracurricular activity has been added.',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                DetailSectionCard(
+                  title: 'Extra Activity Records',
+                  icon: Icons.event_note_outlined,
+                  wrapChildren: false,
+                  children: [
+                    DetailDataTable(
+                      columns: const [
+                        'Type',
+                        'Activity',
+                        'Role',
+                        'Achievement',
+                        'Start Date',
+                        'End Date',
+                      ],
+                      rows: otherActivities.map(_activityRow).toList(),
+                      emptyText: 'No extra activity has been added.',
+                    ),
+                  ],
+                ),
               ],
-              rows: [],
-              emptyText:
-                  'Extracurricular activities, roles, and achievements will appear here from activities and student_activities.',
-            ),
-          ],
-        ),
-        DetailSectionCard(
-          title: 'Extra Activity Records',
-          icon: Icons.event_note_outlined,
-          wrapChildren: false,
-          children: [
-            DetailDataTable(
-              columns: ['Date', 'Activity', 'Role', 'Achievement'],
-              rows: [],
-              emptyText:
-                  'Additional extra activity records will appear here from extra_activities.',
-            ),
-          ],
+            );
+          },
         ),
       ],
     );
+  }
+
+  List<String> _activityRow(StudentActivityFormData activity) {
+    return [
+      StudentActivityTypeOptions.normalize(activity.type),
+      _textOrDash(activity.name),
+      _textOrDash(activity.role),
+      _textOrDash(activity.achievement),
+      _textOrDash(activity.startDate),
+      _textOrDash(activity.endDate),
+    ];
+  }
+
+  String _textOrDash(String? value) {
+    if (value == null || value.trim().isEmpty) return '-';
+    return value;
   }
 }

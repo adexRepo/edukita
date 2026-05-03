@@ -5,6 +5,7 @@ import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
+import 'package:edukita/features/students/data/student_advanced_form_data.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/data/student_page_data.dart';
 import 'package:edukita/features/students/data/student_table.dart';
@@ -255,6 +256,7 @@ class StudentRepository extends BaseRepository<Student> {
     Student student,
     String schoolId, [
     List<StudentGuardianFormData> guardians = const [],
+    StudentAdvancedFormData advanced = const StudentAdvancedFormData(),
   ]) async {
     final db = await _dbProvider.database;
     await db.transaction((txn) async {
@@ -266,6 +268,7 @@ class StudentRepository extends BaseRepository<Student> {
         'status': 1,
       });
       await _saveGuardians(txn, student.id, guardians);
+      await _saveAdvancedData(txn, student, guardians, advanced);
     });
   }
 
@@ -273,6 +276,7 @@ class StudentRepository extends BaseRepository<Student> {
     Student student,
     String schoolId, [
     List<StudentGuardianFormData> guardians = const [],
+    StudentAdvancedFormData advanced = const StudentAdvancedFormData(),
   ]) async {
     final db = await _dbProvider.database;
     await db.transaction((txn) async {
@@ -294,7 +298,117 @@ class StudentRepository extends BaseRepository<Student> {
         'status': 1,
       });
       await _saveGuardians(txn, student.id, guardians);
+      await _saveAdvancedData(txn, student, guardians, advanced);
     });
+  }
+
+  Future<StudentAdvancedFormData> loadAdvancedFormData(String studentId) async {
+    final db = await _dbProvider.database;
+    final health = await _loadHealth(db, studentId);
+    final relations = await loadRelations(studentId);
+    final activities = await loadActivities(studentId);
+    final goals = await _loadGoalInputs(db, studentId);
+
+    return StudentAdvancedFormData(
+      health: health,
+      relations: relations,
+      activities: activities,
+      hobby: goals.$1,
+      aspiration: goals.$2,
+    );
+  }
+
+  Future<List<StudentRelationFormData>> loadRelations(String studentId) async {
+    final db = await _dbProvider.database;
+    final result = await db.rawQuery(
+      '''
+        SELECT
+          sr.id,
+          sr.related_student_id,
+          sr.relation_type,
+          sr.age_position,
+          s.student_no,
+          s.full_name
+        FROM student_relations sr
+        INNER JOIN students s ON s.id = sr.related_student_id
+        WHERE sr.student_id = ?
+        ORDER BY sr.age_position, s.full_name
+      ''',
+      [studentId],
+    );
+
+    return result.map((row) {
+      return StudentRelationFormData(
+        id: row['id'] as String?,
+        relatedStudentId: row['related_student_id'] as String?,
+        relatedStudentNo: row['student_no'] as String?,
+        relatedStudentName: row['full_name'] as String?,
+        relationType: row['relation_type'] as String?,
+        agePosition: row['age_position'] as String?,
+      );
+    }).toList();
+  }
+
+  Future<List<StudentActivityFormData>> loadActivities(String studentId) async {
+    final db = await _dbProvider.database;
+    final result = await db.rawQuery(
+      '''
+        SELECT
+          sa.id,
+          sa.activity_id,
+          sa.role,
+          sa.achievement,
+          sa.start_date,
+          sa.end_date,
+          a.name,
+          a.type
+        FROM student_activities sa
+        INNER JOIN activities a ON a.id = sa.activity_id
+        WHERE sa.student_id = ?
+        ORDER BY sa.start_date DESC, a.name
+      ''',
+      [studentId],
+    );
+
+    return result.map((row) {
+      return StudentActivityFormData(
+        id: row['id'] as String?,
+        activityId: row['activity_id'] as String?,
+        name: row['name'] as String?,
+        type: row['type'] as String?,
+        role: row['role'] as String?,
+        achievement: row['achievement'] as String?,
+        startDate: row['start_date'] as String?,
+        endDate: row['end_date'] as String?,
+      );
+    }).toList();
+  }
+
+  Future<StudentSiblingLookupResult?> lookupSiblingFamily(String lookup) async {
+    final value = _nullIfBlank(lookup);
+    if (value == null) return null;
+
+    final db = await _dbProvider.database;
+    final result = await db.rawQuery(
+      '''
+        SELECT id, student_no, full_name
+        FROM students
+        WHERE id = ? OR student_no = ?
+        LIMIT 1
+      ''',
+      [value, value],
+    );
+
+    if (result.isEmpty) return null;
+
+    final row = result.first;
+    final studentId = row['id'] as String;
+    return StudentSiblingLookupResult(
+      studentId: studentId,
+      studentNo: row['student_no'] as String?,
+      fullName: row['full_name'] as String?,
+      guardians: await loadGuardians(studentId),
+    );
   }
 
   Future<StudentGuardianFormData?> loadPrimaryGuardian(String studentId) async {
@@ -401,6 +515,335 @@ class StudentRepository extends BaseRepository<Student> {
     }
   }
 
+  Future<void> _saveAdvancedData(
+    Transaction txn,
+    Student student,
+    List<StudentGuardianFormData> guardians,
+    StudentAdvancedFormData advanced,
+  ) async {
+    await _saveHealth(txn, student.id, advanced.health);
+    final resolvedRelations = await _saveRelations(
+      txn,
+      student,
+      advanced.relations,
+    );
+    if (!guardians.any((guardian) => guardian.hasData)) {
+      await _copyGuardiansFromRelations(txn, student.id, resolvedRelations);
+    }
+    await _saveActivities(txn, student.id, advanced.activities);
+    await _saveGoals(txn, student.id, advanced);
+  }
+
+  Future<StudentHealthFormData> _loadHealth(
+    DatabaseExecutor db,
+    String studentId,
+  ) async {
+    final result = await db.query(
+      'student_health',
+      where: 'student_id = ?',
+      whereArgs: [studentId],
+      orderBy: 'updated_at DESC',
+      limit: 1,
+    );
+    if (result.isEmpty) return const StudentHealthFormData();
+
+    final row = result.first;
+    return StudentHealthFormData(
+      id: row['id'] as String?,
+      bloodType: row['blood_type'] as String?,
+      allergies: row['allergies'] as String?,
+      medicalNotes: row['medical_notes'] as String?,
+      disabilities: row['disabilities'] as String?,
+      updatedAt: row['updated_at'] as String?,
+    );
+  }
+
+  Future<void> _saveHealth(
+    Transaction txn,
+    String studentId,
+    StudentHealthFormData health,
+  ) async {
+    await txn.delete(
+      'student_health',
+      where: 'student_id = ?',
+      whereArgs: [studentId],
+    );
+
+    if (!health.hasData) return;
+
+    await txn.insert('student_health', {
+      'id': health.id ?? const Uuid().v4(),
+      'student_id': studentId,
+      'blood_type': _nullIfBlank(health.bloodType),
+      'allergies': _nullIfBlank(health.allergies),
+      'medical_notes': _nullIfBlank(health.medicalNotes),
+      'disabilities': _nullIfBlank(health.disabilities),
+      'updated_at': DateTime.now().toIso8601String().split('T').first,
+    });
+  }
+
+  Future<List<StudentRelationFormData>> _saveRelations(
+    Transaction txn,
+    Student student,
+    List<StudentRelationFormData> relations,
+  ) async {
+    await txn.delete(
+      'student_relations',
+      where: 'student_id = ? OR related_student_id = ?',
+      whereArgs: [student.id, student.id],
+    );
+
+    final validRelations = relations.where((relation) => relation.hasData);
+    final resolved = <StudentRelationFormData>[];
+
+    for (final relation in validRelations) {
+      final related = await _findStudentRelationTarget(txn, student, relation);
+      final relationType = _nullIfBlank(relation.relationType);
+      final agePosition = _nullIfBlank(relation.agePosition);
+      if (relationType == null || agePosition == null) {
+        throw Exception('Sibling relation and age position are required.');
+      }
+
+      final now = DateTime.now().toIso8601String();
+      await txn.insert('student_relations', {
+        'id': relation.id ?? const Uuid().v4(),
+        'student_id': student.id,
+        'related_student_id': related.id,
+        'relation_type': relationType,
+        'age_position': agePosition,
+        'created_at': now,
+      });
+
+      await txn.insert('student_relations', {
+        'id': const Uuid().v4(),
+        'student_id': related.id,
+        'related_student_id': student.id,
+        'relation_type': _relationTypeForStudent(student.gender?.name),
+        'age_position': _oppositeAgePosition(agePosition),
+        'created_at': now,
+      });
+
+      resolved.add(
+        StudentRelationFormData(
+          relatedStudentId: related.id,
+          relatedStudentNo: related.studentNo,
+          relatedStudentName: related.fullName,
+          relationType: relationType,
+          agePosition: agePosition,
+        ),
+      );
+    }
+
+    return resolved;
+  }
+
+  Future<_StudentRelationTarget> _findStudentRelationTarget(
+    Transaction txn,
+    Student student,
+    StudentRelationFormData relation,
+  ) async {
+    final lookup =
+        _nullIfBlank(relation.relatedStudentId) ??
+        _nullIfBlank(relation.relatedStudentNo);
+    if (lookup == null) {
+      throw Exception('Sibling student ID or student number is required.');
+    }
+
+    final result = await txn.rawQuery(
+      '''
+        SELECT id, student_no, full_name
+        FROM students
+        WHERE id = ? OR student_no = ?
+        LIMIT 1
+      ''',
+      [lookup, lookup],
+    );
+
+    if (result.isEmpty) {
+      throw Exception('Sibling student "$lookup" was not found.');
+    }
+
+    final row = result.first;
+    final relatedId = row['id'] as String;
+    if (relatedId == student.id) {
+      throw Exception('Student cannot be related to themself.');
+    }
+
+    return _StudentRelationTarget(
+      id: relatedId,
+      studentNo: row['student_no'] as String?,
+      fullName: row['full_name'] as String?,
+    );
+  }
+
+  Future<void> _copyGuardiansFromRelations(
+    Transaction txn,
+    String studentId,
+    List<StudentRelationFormData> relations,
+  ) async {
+    for (final relation in relations) {
+      final relatedStudentId = relation.relatedStudentId;
+      if (relatedStudentId == null) continue;
+
+      final relatedGuardians = await txn.query(
+        'student_guardians',
+        where: 'student_id = ?',
+        whereArgs: [relatedStudentId],
+        orderBy: 'is_primary DESC, relationship',
+      );
+      if (relatedGuardians.isEmpty) continue;
+
+      for (final guardian in relatedGuardians) {
+        await txn.insert('student_guardians', {
+          'student_id': studentId,
+          'guardian_id': guardian['guardian_id'],
+          'relationship': guardian['relationship'],
+          'is_primary': guardian['is_primary'],
+        });
+      }
+      return;
+    }
+  }
+
+  Future<void> _saveActivities(
+    Transaction txn,
+    String studentId,
+    List<StudentActivityFormData> activities,
+  ) async {
+    await txn.delete(
+      'student_activities',
+      where: 'student_id = ?',
+      whereArgs: [studentId],
+    );
+    await txn.delete(
+      'extra_activities',
+      where: 'student_id = ?',
+      whereArgs: [studentId],
+    );
+
+    for (final activity in activities.where((item) => item.hasData)) {
+      final activityName = _nullIfBlank(activity.name);
+      if (activityName == null) {
+        throw Exception('Activity name is required.');
+      }
+
+      final type = StudentActivityTypeOptions.normalize(activity.type);
+      final activityId = await _findOrCreateActivity(txn, activityName, type);
+
+      await txn.insert('student_activities', {
+        'id': activity.id ?? const Uuid().v4(),
+        'student_id': studentId,
+        'activity_id': activityId,
+        'role': _nullIfBlank(activity.role),
+        'achievement': _nullIfBlank(activity.achievement),
+        'start_date': _nullIfBlank(activity.startDate),
+        'end_date': _nullIfBlank(activity.endDate),
+      });
+
+      if (StudentActivityTypeOptions.isOtherActivity(type)) {
+        await txn.insert('extra_activities', {
+          'id': const Uuid().v4(),
+          'student_id': studentId,
+          'activity_id': activityId,
+          'role': _nullIfBlank(activity.role),
+          'achievement': _nullIfBlank(activity.achievement),
+          'date': _nullIfBlank(activity.startDate),
+        });
+      }
+    }
+  }
+
+  Future<String> _findOrCreateActivity(
+    Transaction txn,
+    String name,
+    String type,
+  ) async {
+    final existing = await txn.rawQuery(
+      '''
+        SELECT id
+        FROM activities
+        WHERE lower(name) = lower(?) AND COALESCE(type, '') = ?
+        LIMIT 1
+      ''',
+      [name, type],
+    );
+
+    if (existing.isNotEmpty) {
+      return existing.first['id'] as String;
+    }
+
+    final id = const Uuid().v4();
+    await txn.insert('activities', {
+      'id': id,
+      'name': name,
+      'type': type,
+      'description': null,
+    });
+    return id;
+  }
+
+  Future<(String?, String?)> _loadGoalInputs(
+    DatabaseExecutor db,
+    String studentId,
+  ) async {
+    final result = await db.query(
+      'student_goals',
+      where: 'student_id = ? AND category IN (?, ?)',
+      whereArgs: [studentId, 'HOBBY', 'ASPIRATION'],
+      orderBy: 'created_at DESC',
+    );
+
+    String? hobby;
+    String? aspiration;
+    for (final row in result) {
+      final category = row['category'] as String?;
+      if (category == 'HOBBY' && hobby == null) {
+        hobby = row['goal'] as String?;
+      }
+      if (category == 'ASPIRATION' && aspiration == null) {
+        aspiration = row['goal'] as String?;
+      }
+    }
+    return (hobby, aspiration);
+  }
+
+  Future<void> _saveGoals(
+    Transaction txn,
+    String studentId,
+    StudentAdvancedFormData advanced,
+  ) async {
+    await txn.delete(
+      'student_goals',
+      where: 'student_id = ? AND category IN (?, ?)',
+      whereArgs: [studentId, 'HOBBY', 'ASPIRATION'],
+    );
+
+    final now = DateTime.now().toIso8601String().split('T').first;
+    final goals = [
+      ('HOBBY', _nullIfBlank(advanced.hobby)),
+      ('ASPIRATION', _nullIfBlank(advanced.aspiration)),
+    ];
+
+    for (final (category, goal) in goals) {
+      if (goal == null) continue;
+      await txn.insert('student_goals', {
+        'id': const Uuid().v4(),
+        'student_id': studentId,
+        'goal': goal,
+        'category': category,
+        'created_at': now,
+      });
+    }
+  }
+
+  String _relationTypeForStudent(String? gender) {
+    return gender == 'female' ? 'SISTER' : 'BROTHER';
+  }
+
+  String _oppositeAgePosition(String agePosition) {
+    return agePosition == 'OLDER' ? 'YOUNGER' : 'OLDER';
+  }
+
   String? _nullIfBlank(String? value) {
     final trimmed = value?.trim();
     if (trimmed == null || trimmed.isEmpty) return null;
@@ -501,4 +944,16 @@ class StudentRepository extends BaseRepository<Student> {
     // print(result.first);
     return StudentDetailData.fromJson(result.first);
   }
+}
+
+class _StudentRelationTarget {
+  const _StudentRelationTarget({
+    required this.id,
+    required this.studentNo,
+    required this.fullName,
+  });
+
+  final String id;
+  final String? studentNo;
+  final String? fullName;
 }

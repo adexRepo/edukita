@@ -644,6 +644,7 @@ class _AssessmentFormDialogState extends State<AssessmentFormDialog> {
                   onSaved: (value) => description = _nullIfBlank(value),
                   maxLines: 3,
                   validator: (_) => null,
+                  isRequired: false,
                 ),
               ],
             ),
@@ -789,6 +790,7 @@ class _StudentAssessmentFormDialogState
                   label: 'Score',
                   value: score,
                   onSaved: (value) => score = value,
+                  isRequired: true,
                   validator: (value) {
                     if (value?.trim().isEmpty ?? true) {
                       return 'Score is required';
@@ -822,6 +824,7 @@ class _StudentAssessmentFormDialogState
                   onSaved: (value) => note = _nullIfBlank(value),
                   maxLines: 3,
                   validator: (_) => null,
+                  isRequired: false,
                 ),
               ],
             ),
