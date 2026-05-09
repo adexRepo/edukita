@@ -34,7 +34,7 @@ dependencies:
   flutter_dotenv: ^5.1.0
   uuid: ^4.5.3
   sqflite_common: ^2.5.6
-  bitsdojo_window: ^0.1.6
+  window_manager: ^0.5.1
   freezed_annotation: ^3.1.0
   json_annotation: ^4.11.0
   get_it: ^9.2.1
