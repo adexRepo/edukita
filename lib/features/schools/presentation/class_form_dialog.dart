@@ -3,14 +3,23 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
+import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
+import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 
 class ClassFormDialog extends StatefulWidget {
   final SchoolClass? schoolClass;
+  final SchoolType? schoolType;
   final FutureOr<void> Function(SchoolClass) onSave;
 
-  const ClassFormDialog({super.key, this.schoolClass, required this.onSave});
+  const ClassFormDialog({
+    super.key,
+    this.schoolClass,
+    this.schoolType,
+    required this.onSave,
+  });
 
   @override
   State<ClassFormDialog> createState() => _ClassFormDialogState();
@@ -23,17 +32,23 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
   late String? section;
   late String year;
   late final TextEditingController _classNameController;
+  late final SchoolType _schoolType;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
+    _schoolType =
+        widget.schoolType ??
+        (widget.schoolClass == null
+            ? SchoolType.sd
+            : SchoolType.fromLevel(widget.schoolClass!.level));
     if (widget.schoolClass != null) {
       level = widget.schoolClass!.level;
       section = widget.schoolClass!.section;
       year = widget.schoolClass!.year;
     } else {
-      level = 1;
+      level = _schoolType.minLevel;
       section = null;
       year = '';
     }
@@ -63,7 +78,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
     bool isAdd = widget.schoolClass == null;
 
     return AlertDialog(
-      title: Text(isAdd ? 'Add Class' : 'Edit Class'),
+      title: AppDialogTitle(isAdd ? 'Add Class' : 'Edit Class'),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
@@ -75,7 +90,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
                 value: className,
                 controller: _classNameController,
                 readOnly: true,
-                hint: 'Auto-generated from Level, Section, and Year',
+                hint: 'Generated from level, section, and year',
                 onSaved: (value) => className = value ?? '',
                 validator: (value) {
                   if (value?.isEmpty ?? true) return 'Class name is required';
@@ -85,21 +100,26 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
               const SizedBox(height: 16),
               CommonFormWidgets.dropdownField(
                 label: 'Level',
-                items: ['1', '2', '3', '4', '5'],
+                items: _schoolType.allowedLevels
+                    .map((level) => level.toString())
+                    .toList(),
                 value: widget.schoolClass != null ? level.toString() : null,
-                hint: 'Select Level',
+                hint:
+                    '${AppFormFieldStyle.select('level')} '
+                    '(${_schoolType.levelHint})',
                 onChanged: (value) {
-                  level = int.parse(value ?? '1');
+                  level = int.parse(value ?? _schoolType.minLevel.toString());
                   _refreshClassName();
                 },
-                onSaved: (value) => level = int.parse(value ?? '1'),
+                onSaved: (value) =>
+                    level = int.parse(value ?? _schoolType.minLevel.toString()),
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.dropdownField(
                 label: 'Section',
                 items: ['A', 'B', 'C', 'D'],
                 value: widget.schoolClass != null ? (section ?? '') : null,
-                hint: 'Select Section',
+                hint: AppFormFieldStyle.select('section'),
                 onChanged: (value) {
                   section = value?.isEmpty ?? true ? '' : value;
                   _refreshClassName();
@@ -112,7 +132,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
               CommonFormWidgets.textField(
                 label: 'Year',
                 value: year,
-                hint: 'Enter Year',
+                hint: AppFormFieldStyle.yearFormat,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,

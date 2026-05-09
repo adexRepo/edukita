@@ -6,6 +6,7 @@ import 'package:edukita/features/reports/assessment_model.dart';
 import 'package:edukita/features/syllabus/data/subject_model.dart';
 import 'package:edukita/features/syllabus/domain/subject_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -76,7 +77,7 @@ class _ReportsPageState extends State<ReportsPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Delete $title'),
+          title: AppDialogTitle('Delete $title'),
           content: Text('Delete this $subject?'),
           actions: [
             TextButton(
@@ -554,7 +555,7 @@ class _AssessmentFormDialogState extends State<AssessmentFormDialog> {
     );
 
     return AlertDialog(
-      title: Text(
+      title: AppDialogTitle(
         widget.assessment == null ? 'Add Assessment' : 'Edit Assessment',
       ),
       content: SizedBox(
@@ -580,6 +581,7 @@ class _AssessmentFormDialogState extends State<AssessmentFormDialog> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   initialValue: selectedCompetency?.id ?? '',
+                  isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Competency'),
                   items: [
                     const DropdownMenuItem(value: '', child: Text('None')),
@@ -756,7 +758,9 @@ class _StudentAssessmentFormDialogState
     );
 
     return AlertDialog(
-      title: Text(widget.result == null ? 'Record Score' : 'Edit Score'),
+      title: AppDialogTitle(
+        widget.result == null ? 'Record Score' : 'Edit Score',
+      ),
       content: SizedBox(
         width: 520,
         child: SingleChildScrollView(
@@ -808,7 +812,7 @@ class _StudentAssessmentFormDialogState
                 CommonFormWidgets.textField(
                   label: 'Assessed At',
                   value: assessedAt,
-                  hint: 'YYYY-MM-DD',
+                  hint: AppFormFieldStyle.dateFormat,
                   onSaved: (value) => assessedAt = _nullIfBlank(value),
                   validator: (value) {
                     if (value?.trim().isEmpty ?? true) {

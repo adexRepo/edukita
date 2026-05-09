@@ -576,17 +576,17 @@ class _StudentFormCardState extends State<StudentFormCard> {
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _nisController,
-                  decoration: InputDecoration(label: _requiredLabel('NIS')),
+                  decoration: InputDecoration(label: _requiredLabel('NISN')),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'NIS is required';
+                      return 'NISN is required';
                     }
-                    if (value.trim().length > 24) {
-                      return 'NIS must be at most 24 characters';
+                    if (value.trim().length > 10) {
+                      return 'NISN must be at most 10 characters';
                     }
                     return null;
                   },
-                  inputFormatters: [LengthLimitingTextInputFormatter(24)],
+                  inputFormatters: [LengthLimitingTextInputFormatter(10)],
                 ),
                 const SizedBox(height: 14),
                 Row(
@@ -606,12 +606,14 @@ class _StudentFormCardState extends State<StudentFormCard> {
               children: [
                 DropdownButtonFormField<String>(
                   initialValue: _selectedSchoolId,
+                  isExpanded: true,
                   items: widget.availableSchools
                       .map(
                         (school) => DropdownMenuItem(
                           value: school.id,
                           child: Text(
                             '${school.name ?? '-'} (${school.type?.label ?? '-'})',
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       )
@@ -631,12 +633,14 @@ class _StudentFormCardState extends State<StudentFormCard> {
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
                   initialValue: _selectedClassId,
+                  isExpanded: true,
                   items: _classesForSelectedSchool
                       .map(
                         (schoolClass) => DropdownMenuItem(
                           value: schoolClass.id,
                           child: Text(
                             '${schoolClass.className} (${schoolClass.year})',
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       )
@@ -941,7 +945,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
       readOnly: true,
       decoration: InputDecoration(
         label: _requiredLabel(label),
-        hintText: 'YYYY-MM-DD',
+        hintText: AppFormFieldStyle.dateFormat,
         suffixIcon: const Icon(Icons.calendar_today_outlined),
       ),
       validator: (value) {
@@ -1363,13 +1367,16 @@ class _SiblingRelationDraftCard extends StatelessWidget {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: draft.relationType,
+                  isExpanded: true,
                   decoration: InputDecoration(
                     label: _requiredFieldLabel(context, 'Relation'),
                   ),
                   items: StudentRelationOptions.relationTypes
                       .map(
-                        (value) =>
-                            DropdownMenuItem(value: value, child: Text(value)),
+                        (value) => DropdownMenuItem(
+                          value: value,
+                          child: Text(value, overflow: TextOverflow.ellipsis),
+                        ),
                       )
                       .toList(),
                   onChanged: (value) {
@@ -1381,13 +1388,16 @@ class _SiblingRelationDraftCard extends StatelessWidget {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: draft.agePosition,
+                  isExpanded: true,
                   decoration: InputDecoration(
                     label: _requiredFieldLabel(context, 'Age Position'),
                   ),
                   items: StudentRelationOptions.agePositions
                       .map(
-                        (value) =>
-                            DropdownMenuItem(value: value, child: Text(value)),
+                        (value) => DropdownMenuItem(
+                          value: value,
+                          child: Text(value, overflow: TextOverflow.ellipsis),
+                        ),
                       )
                       .toList(),
                   onChanged: (value) {
@@ -1450,7 +1460,7 @@ class _ActivityDraftCard extends StatelessWidget {
                 child: EditableDropdownField(
                   controller: draft.typeController,
                   label: _requiredFieldLabel(context, 'Type'),
-                  hintText: 'Select or type',
+                  hintText: AppFormFieldStyle.select('or type'),
                   options: StudentActivityTypeOptions.values,
                   inputFormatters: [LengthLimitingTextInputFormatter(60)],
                   validator: (value) {
@@ -1542,7 +1552,10 @@ class _OptionalDateTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
-      decoration: InputDecoration(labelText: label, hintText: 'YYYY-MM-DD'),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: AppFormFieldStyle.dateFormat,
+      ),
       inputFormatters: [
         FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
         LengthLimitingTextInputFormatter(10),
@@ -1593,11 +1606,15 @@ class _GuardianDraftCard extends StatelessWidget {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: draft.relationship,
+                  isExpanded: true,
                   items: GuardianRelationshipOptions.values
                       .map(
                         (relationship) => DropdownMenuItem(
                           value: relationship,
-                          child: Text(relationship),
+                          child: Text(
+                            relationship,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       )
                       .toList(),

@@ -3,6 +3,7 @@ import 'package:edukita/features/syllabus/data/syllabus_model.dart';
 import 'package:edukita/features/syllabus/domain/subject_cubit.dart';
 import 'package:edukita/features/syllabus/presentation/subject_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -133,7 +134,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Delete $title'),
+          title: AppDialogTitle('Delete $title'),
           content: Text('Delete this $subject?'),
           actions: [
             TextButton(

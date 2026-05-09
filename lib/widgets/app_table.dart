@@ -23,6 +23,7 @@ class AppTable<T> extends StatefulWidget {
   final void Function(T data)? onRowTap;
   final Pageable? pageable;
   final void Function(int page)? onPageChanged;
+  final String emptyMessage;
 
   const AppTable({
     super.key,
@@ -32,6 +33,7 @@ class AppTable<T> extends StatefulWidget {
     this.onRowTap,
     this.onPageChanged,
     this.pageable = const Pageable(page: 0, size: 20, sorts: []),
+    this.emptyMessage = 'No data available',
   });
 
   @override
@@ -172,6 +174,20 @@ class _AppTableState<T> extends State<AppTable<T>> {
   // ================= BODY =================
 
   Widget _buildBody(List<T> data, int startIndex) {
+    if (data.isEmpty) {
+      return Center(
+        child: Text(
+          widget.emptyMessage,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
+
     return ListView.separated(
       itemCount: data.length,
       separatorBuilder: (context, index) => const Divider(height: 1),

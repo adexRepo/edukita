@@ -1,6 +1,7 @@
 import 'package:edukita/features/schools/domain/class_cubit.dart';
 import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -45,7 +46,7 @@ class _ClassesPageState extends State<ClassesPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Delete Class'),
+          title: const AppDialogTitle('Delete Class'),
           content: const Text('Are you sure you want to delete this class?'),
           actions: [
             TextButton(

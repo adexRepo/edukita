@@ -4,6 +4,7 @@ import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/students/data/student_advanced_form_data.dart';
 import 'package:edukita/features/students/persentation/student_form_card.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:flutter/material.dart';
 
 class StudentFormDialog extends StatelessWidget {
@@ -33,10 +34,10 @@ class StudentFormDialog extends StatelessWidget {
     final isEditing = initialStudent != null;
 
     return AlertDialog(
-      title: Text(isEditing ? 'Edit Student' : 'Add Student'),
-      contentPadding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      title: AppDialogTitle(isEditing ? 'Edit Student' : 'Add Student'),
+      contentPadding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
       content: SizedBox(
-        width: 720,
+        width: 640,
         child: SingleChildScrollView(
           child: StudentFormCard(
             availableSchools: availableSchools,

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:edukita/features/strategy/data/strategy_model.dart';
 import 'package:flutter/material.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 
 class StrategyFormDialog extends StatefulWidget {
@@ -42,7 +43,9 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.strategy == null ? 'Add Strategy' : 'Edit Strategy'),
+      title: AppDialogTitle(
+        widget.strategy == null ? 'Add Strategy' : 'Edit Strategy',
+      ),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,

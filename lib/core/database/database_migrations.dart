@@ -47,6 +47,10 @@ class DatabaseMigrations {
     if (oldVersion < 13) {
       await _ensureStudentAdvancedInputSchema(db);
     }
+
+    if (oldVersion < 14) {
+      await _ensureScholarshipSchema(db);
+    }
   }
 
   static Future<void> _fixUsers(Database db) async {
@@ -253,6 +257,14 @@ class DatabaseMigrations {
     await DatabaseTables.extraActivities(db);
     await DatabaseTables.studentGoals(db);
     await DatabaseTables.studentRelations(db);
+    await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _ensureScholarshipSchema(Database db) async {
+    await DatabaseTables.scholarshipPeriods(db);
+    await DatabaseTables.studentScholarshipRules(db);
+    await DatabaseTables.studentScholarshipAssessments(db);
+    await DatabaseTables.scholarshipRecipients(db);
     await DatabaseTables.indexes(db);
   }
 

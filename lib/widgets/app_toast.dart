@@ -202,10 +202,7 @@ class _AppToastState extends State<_AppToast>
   Widget build(BuildContext context) {
     final isSuccess = widget.data.type == AppToastType.success;
     final accent = isSuccess ? AppColors.success : AppColors.error;
-    final background = Color.alphaBlend(
-      AppColors.primary.withValues(alpha: 0.08),
-      AppColors.white,
-    );
+    final background = AppColors.white.withValues(alpha: 0.9);
     final icon = isSuccess ? Icons.check_rounded : Icons.close_rounded;
 
     return Semantics(
@@ -219,25 +216,30 @@ class _AppToastState extends State<_AppToast>
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: DecoratedBox(
-            decoration: BoxDecoration(color: background),
+            decoration: BoxDecoration(
+              color: background,
+              border: Border.all(
+                color: AppColors.border.withValues(alpha: 0.72),
+              ),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 11),
+                  padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Container(
-                        width: 40,
-                        height: 40,
+                        width: 34,
+                        height: 34,
                         decoration: BoxDecoration(
                           color: accent.withValues(alpha: 0.96),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(icon, color: AppColors.white, size: 24),
+                        child: Icon(icon, color: AppColors.white, size: 20),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,23 +251,41 @@ class _AppToastState extends State<_AppToast>
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: AppColors.textPrimary,
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 3),
                             Text(
                               widget.data.message,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: AppColors.textSecondary,
-                                fontSize: 12,
+                                fontSize: 11,
                                 height: 1.3,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Semantics(
+                        button: true,
+                        label: 'Close notification',
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: AppToast.instance.dismiss,
+                          child: const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Icon(
+                              Icons.close_rounded,
+                              size: 16,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
                         ),
                       ),
                     ],

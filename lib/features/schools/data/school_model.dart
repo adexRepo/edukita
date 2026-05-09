@@ -1,9 +1,32 @@
+import 'package:edukita/core/utils/text_case.dart';
 import 'package:uuid/uuid.dart';
 
-enum SchoolType { paud, tk, sd, smp, sma, smk, univ }
+enum SchoolType {
+  paud,
+  tk,
+  sd,
+  smp,
+  sma,
+  smk,
+  univ;
+
+  static List<int> get allAllowedLevels {
+    return const [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+  }
+
+  static SchoolType fromLevel(int level) {
+    if (level == 0) return SchoolType.tk;
+    if (level >= 1 && level <= 6) return SchoolType.sd;
+    if (level >= 7 && level <= 9) return SchoolType.smp;
+    if (level >= 10 && level <= 12) return SchoolType.sma;
+    if (level == 13) return SchoolType.univ;
+    return SchoolType.sd;
+  }
+}
 
 extension SchoolTypeLabel on SchoolType {
-  String get label => name.toUpperCase();
+  String get label => name.titleWords;
+  String get storageValue => name.toUpperCase();
 
   bool get usesAutoClassName {
     return this == SchoolType.sd ||
@@ -81,7 +104,12 @@ class School {
   }
 
   Map<String, Object?> toMap() {
-    return {'id': id, 'type': type?.label, 'name': name, 'address': address};
+    return {
+      'id': id,
+      'type': type?.storageValue,
+      'name': name,
+      'address': address,
+    };
   }
 
   @override

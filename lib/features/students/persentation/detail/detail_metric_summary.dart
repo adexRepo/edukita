@@ -1,3 +1,4 @@
+import 'package:edukita/core/utils/text_case.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/persentation/detail/detail_metric_card.dart';
 import 'package:flutter/material.dart';
@@ -25,7 +26,7 @@ class DetailMetricSummary extends StatelessWidget {
           ),
           DetailMetricCard(
             label: 'Status',
-            value: student.status.name.toUpperCase(),
+            value: student.status.name.titleWords,
             icon: Icons.verified_user_outlined,
           ),
           DetailMetricCard(

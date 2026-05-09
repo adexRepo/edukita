@@ -52,6 +52,40 @@ class AppColors {
   static const Color contentColorCyan = Color(0xFF50E4FF);
 }
 
+class AppFormFieldStyle {
+  AppFormFieldStyle._();
+
+  static const EdgeInsets contentPadding = EdgeInsets.symmetric(
+    horizontal: 12,
+    vertical: 12,
+  );
+
+  static const TextStyle hintStyle = TextStyle(
+    color: AppColors.textHint,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+  );
+
+  static const TextStyle labelStyle = TextStyle(
+    color: AppColors.textSecondary,
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+  );
+
+  static const TextStyle floatingLabelStyle = TextStyle(
+    color: AppColors.primaryDark,
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+  );
+
+  static String enter(String label) => 'Enter $label';
+  static String select(String label) => 'Select $label';
+
+  static const String dateFormat = 'YYYY-MM-DD';
+  static const String timeFormat = 'HH:mm';
+  static const String yearFormat = 'YYYY';
+}
+
 class AppTheme {
   AppTheme._();
 
@@ -115,6 +149,25 @@ class AppTheme {
       foregroundColor: AppColors.textPrimary,
       elevation: 0,
       surfaceTintColor: AppColors.card,
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: AppColors.white,
+      surfaceTintColor: AppColors.white,
+      elevation: 10,
+      shadowColor: AppColors.black.withValues(alpha: 0.16),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      actionsPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      titleTextStyle: const TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 17,
+        fontWeight: FontWeight.w700,
+      ),
+      contentTextStyle: const TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 12,
+        height: 1.35,
+      ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -183,10 +236,13 @@ class AppTheme {
       space: 0,
     ),
     inputDecorationTheme: InputDecorationTheme(
+      isDense: true,
       filled: true,
       fillColor: AppColors.surface,
-      hintStyle: const TextStyle(color: AppColors.textHint),
-      labelStyle: const TextStyle(color: AppColors.textSecondary),
+      contentPadding: AppFormFieldStyle.contentPadding,
+      hintStyle: AppFormFieldStyle.hintStyle,
+      labelStyle: AppFormFieldStyle.labelStyle,
+      floatingLabelStyle: AppFormFieldStyle.floatingLabelStyle,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: AppColors.border),

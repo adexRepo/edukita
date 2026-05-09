@@ -7,6 +7,8 @@ import 'package:edukita/features/reports/assessment_cubit.dart';
 import 'package:edukita/features/reports/reports_page.dart';
 import 'package:edukita/features/schedule/domain/schedule_cubit.dart';
 import 'package:edukita/features/schedule/presentation/schedule_page.dart';
+import 'package:edukita/features/scholarships/domain/scholarship_cubit.dart';
+import 'package:edukita/features/scholarships/presentation/scholarship_page.dart';
 import 'package:edukita/features/schools/domain/class_cubit.dart';
 import 'package:edukita/features/schools/domain/school_cubit.dart';
 import 'package:edukita/features/schools/presentation/schools_page.dart';
@@ -187,6 +189,16 @@ final GoRouter appRouter = GoRouter(
                 ),
               ],
               child: const ReportsPage(),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/scholarships',
+          pageBuilder: (context, state) => _noTransitionPage(
+            state: state,
+            child: withCubit(
+              create: () => getIt<ScholarshipCubit>()..loadModule(),
+              child: const ScholarshipPage(),
             ),
           ),
         ),

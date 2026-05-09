@@ -53,6 +53,10 @@ class DatabaseTables {
     await studentWellBeing(db);
 
     await reports(db);
+    await scholarshipPeriods(db);
+    await studentScholarshipRules(db);
+    await studentScholarshipAssessments(db);
+    await scholarshipRecipients(db);
     await indexes(db);
   }
 
@@ -662,6 +666,105 @@ class DatabaseTables {
     ''');
   }
 
+  static Future<void> scholarshipPeriods(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS scholarship_periods(
+        id TEXT PRIMARY KEY NOT NULL,
+        period_month INTEGER NOT NULL,
+        period_year INTEGER NOT NULL,
+        target_quota INTEGER NOT NULL,
+        fixed_quota INTEGER NOT NULL DEFAULT 0,
+        rolling_quota INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'draft'
+          CHECK(status IN ('draft', 'generated', 'pending_review', 'approved', 'cancelled')),
+        generated_at TEXT,
+        approved_at TEXT,
+        approved_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  static Future<void> studentScholarshipRules(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS student_scholarship_rules(
+        id TEXT PRIMARY KEY NOT NULL,
+        student_id TEXT NOT NULL,
+        scholarship_type TEXT NOT NULL
+          CHECK(scholarship_type IN ('fixed_priority', 'manual_priority', 'temporary_support')),
+        reason TEXT NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
+      )
+    ''');
+  }
+
+  static Future<void> studentScholarshipAssessments(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS student_scholarship_assessments(
+        id TEXT PRIMARY KEY NOT NULL,
+        scholarship_period_id TEXT NOT NULL,
+        student_id TEXT NOT NULL,
+        rule_id TEXT,
+        scholarship_type TEXT NOT NULL
+          CHECK(scholarship_type IN ('fixed_priority', 'attendance_based', 'manual_override')),
+        priority_level INTEGER NOT NULL,
+        priority_reason TEXT,
+        economic_score REAL,
+        academic_score REAL,
+        attendance_score REAL,
+        behavior_score REAL,
+        teacher_recommendation_score REAL,
+        improvement_score REAL,
+        calculation_start_date TEXT,
+        calculation_end_date TEXT,
+        special_case_note TEXT,
+        total_score REAL NOT NULL DEFAULT 0,
+        rank_no INTEGER,
+        decision_status TEXT NOT NULL DEFAULT 'draft'
+          CHECK(decision_status IN ('draft', 'approved', 'waitlist', 'rejected', 'cancelled')),
+        approved_amount_or_support TEXT,
+        review_date TEXT,
+        reviewed_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(scholarship_period_id) REFERENCES scholarship_periods(id) ON DELETE CASCADE,
+        FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+        FOREIGN KEY(rule_id) REFERENCES student_scholarship_rules(id) ON DELETE SET NULL
+      )
+    ''');
+  }
+
+  static Future<void> scholarshipRecipients(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS scholarship_recipients(
+        id TEXT PRIMARY KEY NOT NULL,
+        scholarship_period_id TEXT NOT NULL,
+        student_id TEXT NOT NULL,
+        assessment_id TEXT NOT NULL,
+        scholarship_type TEXT NOT NULL
+          CHECK(scholarship_type IN ('fixed_priority', 'attendance_based', 'manual_override')),
+        final_score REAL NOT NULL DEFAULT 0,
+        rank_no INTEGER,
+        reason TEXT,
+        status TEXT NOT NULL DEFAULT 'approved'
+          CHECK(status IN ('approved', 'paid', 'cancelled')),
+        approved_by TEXT,
+        approved_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(scholarship_period_id) REFERENCES scholarship_periods(id) ON DELETE CASCADE,
+        FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+        FOREIGN KEY(assessment_id) REFERENCES student_scholarship_assessments(id) ON DELETE CASCADE
+      )
+    ''');
+  }
+
   static Future<void> indexes(Database db) async {
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_students_class_id ON students(class_id)',
@@ -782,6 +885,21 @@ class DatabaseTables {
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_wellbeing_student_id ON student_wellbeing(student_id)',
+    );
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_scholarship_periods_month_year ON scholarship_periods(period_month, period_year)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_student_scholarship_rules_student_id ON student_scholarship_rules(student_id)',
+    );
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_scholarship_assessments_period_student ON student_scholarship_assessments(scholarship_period_id, student_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_scholarship_assessments_period_status ON student_scholarship_assessments(scholarship_period_id, decision_status)',
+    );
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_scholarship_recipients_period_student ON scholarship_recipients(scholarship_period_id, student_id)',
     );
   }
 

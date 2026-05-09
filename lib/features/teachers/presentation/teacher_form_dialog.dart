@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/form_validation.dart';
 import 'package:flutter/material.dart';
@@ -48,9 +49,11 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.teacher == null ? 'Add Teacher' : 'Edit Teacher'),
+      title: AppDialogTitle(
+        widget.teacher == null ? 'Add Teacher' : 'Edit Teacher',
+      ),
       content: SizedBox(
-        width: 440,
+        width: 380,
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,
@@ -69,7 +72,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   ),
                   inputFormatters: [LengthLimitingTextInputFormatter(40)],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _textField(
                   label: 'Full Name',
                   value: fullName,
@@ -82,7 +85,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   ),
                   inputFormatters: [LengthLimitingTextInputFormatter(80)],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: lastEducationType,
                   isExpanded: true,
@@ -91,8 +94,10 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   ),
                   items: _educationLevels
                       .map(
-                        (level) =>
-                            DropdownMenuItem(value: level, child: Text(level)),
+                        (level) => DropdownMenuItem(
+                          value: level,
+                          child: Text(level, overflow: TextOverflow.ellipsis),
+                        ),
                       )
                       .toList(),
                   onChanged: (value) {
@@ -104,7 +109,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   validator: (value) =>
                       AppFormValidation.requiredText(value, 'Education level'),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 FormField<String>(
                   initialValue: gender,
                   validator: (value) =>
@@ -155,7 +160,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                     );
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _textField(
                   label: 'Email',
                   value: email,
@@ -164,7 +169,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   validator: AppFormValidation.requiredEmail,
                   inputFormatters: [LengthLimitingTextInputFormatter(120)],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _textField(
                   label: 'Mobile No',
                   value: mobileNo,

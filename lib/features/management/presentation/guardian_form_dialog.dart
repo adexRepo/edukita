@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:flutter/material.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/form_validation.dart';
 import 'package:flutter/services.dart';
@@ -44,7 +45,9 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.guardian == null ? 'Add Guardian' : 'Edit Guardian'),
+      title: AppDialogTitle(
+        widget.guardian == null ? 'Add Guardian' : 'Edit Guardian',
+      ),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,

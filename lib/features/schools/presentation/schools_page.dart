@@ -6,6 +6,7 @@ import 'package:edukita/features/schools/domain/school_cubit.dart';
 import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
 import 'package:edukita/features/schools/presentation/school_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
@@ -114,6 +115,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
       context: context,
       builder: (context) => ClassFormDialog(
         schoolClass: schoolClass,
+        schoolType: school.type,
         onSave: (value) async {
           final classWithSchool = value.copyWith(schoolId: school.id);
           if (schoolClass == null) {
@@ -131,7 +133,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Class'),
+        title: const AppDialogTitle('Delete Class'),
         content: Text('Delete ${schoolClass.name}?'),
         actions: [
           TextButton(
@@ -168,7 +170,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete School'),
+        title: const AppDialogTitle('Delete School'),
         content: Text('Delete ${school.name ?? 'this school'}?'),
         actions: [
           TextButton(
@@ -437,7 +439,7 @@ class _SchoolClassesDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Classes - ${school.name ?? '-'}'),
+      title: AppDialogTitle('Classes - ${school.name ?? '-'}'),
       content: SizedBox(
         width: 720,
         height: 420,

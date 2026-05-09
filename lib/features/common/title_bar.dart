@@ -5,7 +5,11 @@ import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
-Widget buildTitleBar(int selectedIndex, BuildContext context) {
+Widget buildTitleBar(
+  int selectedIndex,
+  BuildContext context, {
+  String? pageTitle,
+}) {
   final isLoginPage = selectedIndex == -1;
   final hasSelectedPage =
       selectedIndex >= 0 && selectedIndex < navigationPageItems.length;
@@ -51,9 +55,9 @@ Widget buildTitleBar(int selectedIndex, BuildContext context) {
                   const SizedBox(width: 12),
                   Container(width: 1, height: 16, color: AppColors.border),
                   const SizedBox(width: 12),
-                  if (!isLoginPage && hasSelectedPage)
+                  if (!isLoginPage && (pageTitle != null || hasSelectedPage))
                     Text(
-                      navigationPageItems[selectedIndex].label,
+                      pageTitle ?? navigationPageItems[selectedIndex].label,
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 13,

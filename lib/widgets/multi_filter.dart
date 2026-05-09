@@ -421,8 +421,14 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
       case FilterInputType.dropdown:
         return DropdownButtonFormField<String>(
           initialValue: controller.text.isEmpty ? null : controller.text,
+          isExpanded: true,
           items: selectedField.options!
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .map(
+                (e) => DropdownMenuItem(
+                  value: e,
+                  child: Text(e, overflow: TextOverflow.ellipsis),
+                ),
+              )
               .toList(),
           onChanged: (val) {
             setState(() {
@@ -441,9 +447,9 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
           controller: controller,
           keyboardType: TextInputType.number,
           validator: (val) => selectedField.validator?.call(val),
-          decoration: const InputDecoration(
-            hintText: "Enter number",
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: AppFormFieldStyle.enter('number'),
+            border: const OutlineInputBorder(),
           ),
         );
 
@@ -454,7 +460,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
           keyboardType: TextInputType.datetime,
           validator: (val) => selectedField.validator?.call(val),
           decoration: const InputDecoration(
-            hintText: "Select date",
+            hintText: AppFormFieldStyle.dateFormat,
             border: OutlineInputBorder(),
             suffixIcon: Icon(Icons.calendar_today),
           ),
@@ -479,9 +485,9 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
           controller: controller,
           keyboardType: TextInputType.text,
           validator: (val) => selectedField.validator?.call(val),
-          decoration: const InputDecoration(
-            hintText: "Value",
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: AppFormFieldStyle.enter('value'),
+            border: const OutlineInputBorder(),
           ),
         );
     }

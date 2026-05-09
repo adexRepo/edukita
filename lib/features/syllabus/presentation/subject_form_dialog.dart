@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/features/syllabus/data/subject_model.dart';
 import 'package:edukita/features/syllabus/data/syllabus_model.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 
@@ -42,7 +43,7 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(
+      title: AppDialogTitle(
         widget.curriculum == null ? 'Add Curriculum' : 'Edit Curriculum',
       ),
       content: SingleChildScrollView(
@@ -199,7 +200,9 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
     );
 
     return AlertDialog(
-      title: Text(widget.syllabus == null ? 'Add Syllabus' : 'Edit Syllabus'),
+      title: AppDialogTitle(
+        widget.syllabus == null ? 'Add Syllabus' : 'Edit Syllabus',
+      ),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
@@ -382,7 +385,9 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
     );
 
     return AlertDialog(
-      title: Text(widget.subject == null ? 'Add Subject' : 'Edit Subject'),
+      title: AppDialogTitle(
+        widget.subject == null ? 'Add Subject' : 'Edit Subject',
+      ),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
@@ -525,7 +530,7 @@ class _UnitFormDialogState extends State<UnitFormDialog> {
     );
 
     return AlertDialog(
-      title: Text(widget.unit == null ? 'Add Unit' : 'Edit Unit'),
+      title: AppDialogTitle(widget.unit == null ? 'Add Unit' : 'Edit Unit'),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
@@ -661,7 +666,7 @@ class _CompetencyFormDialogState extends State<CompetencyFormDialog> {
     );
 
     return AlertDialog(
-      title: Text(
+      title: AppDialogTitle(
         widget.competency == null ? 'Add Competency' : 'Edit Competency',
       ),
       content: SingleChildScrollView(

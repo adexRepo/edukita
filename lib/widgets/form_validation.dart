@@ -4,12 +4,13 @@ class AppFormValidation {
   AppFormValidation._();
 
   static const mobilePlaceholder = '0812345678912';
-  static const mobileLength = 13;
+  static const mobileMinLength = 11;
+  static const mobileMaxLength = 13;
 
   static List<TextInputFormatter> get mobileInputFormatters => [
-        FilteringTextInputFormatter.digitsOnly,
-        LengthLimitingTextInputFormatter(mobileLength),
-      ];
+    FilteringTextInputFormatter.digitsOnly,
+    LengthLimitingTextInputFormatter(mobileMaxLength),
+  ];
 
   static String? requiredText(
     String? value,
@@ -44,8 +45,8 @@ class AppFormValidation {
   static String? requiredMobile(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return 'Mobile no is required';
-    if (!RegExp(r'^\d{13}$').hasMatch(text)) {
-      return 'Mobile no must be exactly 13 digits';
+    if (!RegExp(r'^\d{11,13}$').hasMatch(text)) {
+      return 'Mobile no must be 11 to 13 digits';
     }
     return null;
   }
@@ -53,8 +54,8 @@ class AppFormValidation {
   static String? optionalMobile(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return null;
-    if (!RegExp(r'^\d{13}$').hasMatch(text)) {
-      return 'Mobile no must be exactly 13 digits';
+    if (!RegExp(r'^\d{11,13}$').hasMatch(text)) {
+      return 'Mobile no must be 11 to 13 digits';
     }
     return null;
   }

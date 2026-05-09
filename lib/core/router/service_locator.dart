@@ -1,6 +1,8 @@
 import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
 import 'package:edukita/features/schedule/domain/schedule_cubit.dart';
 import 'package:edukita/features/schedule/domain/schedule_repository.dart';
+import 'package:edukita/features/scholarships/domain/scholarship_cubit.dart';
+import 'package:edukita/features/scholarships/domain/scholarship_repository.dart';
 import 'package:edukita/features/strategy/domain/strategy_cubit.dart';
 import 'package:edukita/features/strategy/domain/strategy_repository.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
@@ -33,6 +35,9 @@ Future<void> setupLocator() async {
   getIt.registerLazySingleton<SubjectRepository>(() => SubjectRepository(db));
   getIt.registerLazySingleton<StrategyRepository>(() => StrategyRepository(db));
   getIt.registerLazySingleton<ScheduleRepository>(() => ScheduleRepository(db));
+  getIt.registerLazySingleton<ScholarshipRepository>(
+    () => ScholarshipRepository(db),
+  );
   getIt.registerLazySingleton<AssessmentRepository>(
     () => AssessmentRepository(db),
   );
@@ -72,5 +77,9 @@ Future<void> setupLocator() async {
 
   getIt.registerFactory<AssessmentCubit>(
     () => AssessmentCubit(getIt<AssessmentRepository>()),
+  );
+
+  getIt.registerFactory<ScholarshipCubit>(
+    () => ScholarshipCubit(getIt<ScholarshipRepository>()),
   );
 }

@@ -1,3 +1,4 @@
+import 'package:edukita/core/utils/text_case.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/persentation/detail/detail_empty_section_text.dart';
 import 'package:edukita/features/students/persentation/detail/detail_info_pill.dart';
@@ -21,11 +22,12 @@ class StudentOverviewTab extends StatelessWidget {
           icon: Icons.dashboard_outlined,
           children: [
             DetailInfoPill(label: 'Name', value: student.fullName),
+            DetailInfoPill(label: 'Student No', value: student.studentNo),
             DetailInfoPill(label: 'Age', value: '${student.age} years'),
             DetailInfoPill(label: 'Class', value: student.className),
             DetailInfoPill(
               label: 'Status',
-              value: student.status.name.toUpperCase(),
+              value: student.status.name.titleWords,
             ),
           ],
         ),

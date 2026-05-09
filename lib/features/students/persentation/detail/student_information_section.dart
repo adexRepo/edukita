@@ -1,3 +1,4 @@
+import 'package:edukita/core/utils/text_case.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/persentation/detail/student_info_item.dart';
 import 'package:edukita/theme/app_theme.dart';
@@ -17,10 +18,9 @@ class StudentInformationSection extends StatelessWidget {
     final items = [
       MapEntry('Full Name', student.fullName),
       MapEntry('Nick Name', student.nickName),
-      MapEntry('Student No', student.studentNo),
       MapEntry('NIS', _textOrDash(student.nis)),
       MapEntry('Birth Date', student.birthDate),
-      MapEntry('Gender', student.gender.name.toUpperCase()),
+      MapEntry('Gender', student.gender.name.titleWords),
       MapEntry('Mobile No', _textOrDash(student.mobileNo)),
       MapEntry('Email', _textOrDash(student.emailAddr)),
     ];

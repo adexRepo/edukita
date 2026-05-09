@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:edukita/features/common/common_form_widgets.dart';
+import 'package:edukita/features/schools/data/school_model.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
@@ -31,10 +33,14 @@ class _ClassFormCardState extends State<ClassFormCard> {
   late final TextEditingController _sectionController;
   late final TextEditingController _yearController;
   bool _isSaving = false;
+  late final SchoolType _schoolType;
 
   @override
   void initState() {
     super.initState();
+    _schoolType = widget.initialClass == null
+        ? SchoolType.sd
+        : SchoolType.fromLevel(widget.initialClass!.level);
     _levelController = TextEditingController(
       text: widget.initialClass?.level.toString() ?? '',
     );
@@ -155,12 +161,12 @@ class _ClassFormCardState extends State<ClassFormCard> {
                 controller: _levelController,
                 decoration: InputDecoration(
                   label: CommonFormWidgets.requiredLabel('Level'),
-                  hintText: '1-5',
+                  hintText: _schoolType.levelHint,
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(1),
+                  LengthLimitingTextInputFormatter(2),
                 ],
                 validator: (value) {
                   final text = value?.trim() ?? '';
@@ -168,8 +174,9 @@ class _ClassFormCardState extends State<ClassFormCard> {
                     return 'Level is required';
                   }
                   final number = int.tryParse(text);
-                  if (number == null || number < 1 || number > 5) {
-                    return 'Level must be between 1 and 5';
+                  if (number == null ||
+                      !_schoolType.allowedLevels.contains(number)) {
+                    return 'Level must be ${_schoolType.levelHint}';
                   }
                   return null;
                 },
@@ -179,7 +186,7 @@ class _ClassFormCardState extends State<ClassFormCard> {
                 controller: _sectionController,
                 decoration: const InputDecoration(
                   labelText: 'Section',
-                  hintText: 'A, B, C',
+                  hintText: 'A',
                 ),
                 textCapitalization: TextCapitalization.characters,
                 inputFormatters: [
@@ -206,7 +213,7 @@ class _ClassFormCardState extends State<ClassFormCard> {
                   label: CommonFormWidgets.requiredLabel(
                     'Class Name (Auto-generated)',
                   ),
-                  hintText: 'Generated from Level + Section + Year',
+                  hintText: 'Generated from level, section, and year',
                   suffixIcon: const Icon(Icons.lock),
                 ),
               ),
@@ -215,7 +222,7 @@ class _ClassFormCardState extends State<ClassFormCard> {
                 controller: _yearController,
                 decoration: InputDecoration(
                   label: CommonFormWidgets.requiredLabel('Year'),
-                  hintText: '2026',
+                  hintText: AppFormFieldStyle.yearFormat,
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [

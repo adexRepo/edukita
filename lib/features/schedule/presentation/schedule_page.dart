@@ -12,6 +12,7 @@ import 'package:edukita/features/syllabus/domain/subject_cubit.dart';
 import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -73,7 +74,7 @@ class _SchedulePageState extends State<SchedulePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Delete Schedule'),
+          title: const AppDialogTitle('Delete Schedule'),
           content: Text('Delete ${schedule.title ?? 'this schedule'}?'),
           actions: [
             TextButton(
@@ -263,7 +264,7 @@ class _SchedulePageState extends State<SchedulePage> {
                 onChanged: (value) => setState(() => _dateFilter = value),
                 decoration: const InputDecoration(
                   labelText: 'Date',
-                  hintText: 'YYYY-MM-DD',
+                  hintText: AppFormFieldStyle.dateFormat,
                   prefixIcon: Icon(Icons.calendar_today),
                 ),
               ),
@@ -425,6 +426,7 @@ class _SchedulePageState extends State<SchedulePage> {
   }) {
     return DropdownButtonFormField<String>(
       initialValue: value ?? '',
+      isExpanded: true,
       decoration: InputDecoration(labelText: label),
       items: [
         const DropdownMenuItem(value: '', child: Text('All')),
@@ -555,7 +557,9 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
     );
 
     return AlertDialog(
-      title: Text(widget.schedule == null ? 'Add Schedule' : 'Edit Schedule'),
+      title: AppDialogTitle(
+        widget.schedule == null ? 'Add Schedule' : 'Edit Schedule',
+      ),
       content: SizedBox(
         width: 520,
         child: SingleChildScrollView(
@@ -616,7 +620,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                       child: CommonFormWidgets.textField(
                         label: 'Date',
                         value: date,
-                        hint: 'YYYY-MM-DD',
+                        hint: AppFormFieldStyle.dateFormat,
                         onSaved: (value) => date = _nullIfBlank(value),
                         validator: (value) {
                           if (value?.trim().isEmpty ?? true) {
@@ -631,7 +635,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                       child: CommonFormWidgets.textField(
                         label: 'Start',
                         value: startAt,
-                        hint: '09:00',
+                        hint: AppFormFieldStyle.timeFormat,
                         onSaved: (value) => startAt = _nullIfBlank(value),
                         validator: (_) => null,
                         isRequired: false,
@@ -642,7 +646,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                       child: CommonFormWidgets.textField(
                         label: 'End',
                         value: endAt,
-                        hint: '10:00',
+                        hint: AppFormFieldStyle.timeFormat,
                         onSaved: (value) => endAt = _nullIfBlank(value),
                         validator: (_) => null,
                         isRequired: false,

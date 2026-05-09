@@ -57,9 +57,9 @@ class CommonFormWidgets {
       keyboardType: keyboardType,
       decoration: InputDecoration(
         label: _fieldLabel(label, isRequired),
-        hintText: hint ?? 'Enter $label',
+        hintText: hint ?? AppFormFieldStyle.enter(label),
         border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.all(12.0),
+        contentPadding: AppFormFieldStyle.contentPadding,
       ),
     );
   }
@@ -77,8 +77,14 @@ class CommonFormWidgets {
   }) {
     return DropdownButtonFormField<String>(
       initialValue: value,
+      isExpanded: true,
       items: items
-          .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+          .map(
+            (item) => DropdownMenuItem(
+              value: item,
+              child: Text(item, overflow: TextOverflow.ellipsis),
+            ),
+          )
           .toList(),
       onChanged: onChanged,
       onSaved: onSaved,
@@ -92,9 +98,9 @@ class CommonFormWidgets {
           },
       decoration: InputDecoration(
         label: _fieldLabel(label, isRequired),
-        hintText: hint,
+        hintText: hint ?? AppFormFieldStyle.select(label),
         border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.all(12.0),
+        contentPadding: AppFormFieldStyle.contentPadding,
       ),
     );
   }
@@ -115,11 +121,12 @@ class CommonFormWidgets {
 
     return DropdownButtonFormField<String>(
       initialValue: valueString,
+      isExpanded: true,
       items: items
           .map(
             (item) => DropdownMenuItem(
               value: valueBuilder(item),
-              child: Text(labelBuilder(item)),
+              child: Text(labelBuilder(item), overflow: TextOverflow.ellipsis),
             ),
           )
           .toList(),
@@ -155,7 +162,7 @@ class CommonFormWidgets {
       decoration: InputDecoration(
         label: _fieldLabel(label, isRequired),
         border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.all(12.0),
+        contentPadding: AppFormFieldStyle.contentPadding,
       ),
     );
   }
@@ -187,9 +194,9 @@ class CommonFormWidgets {
       keyboardType: TextInputType.number,
       decoration: InputDecoration(
         label: _fieldLabel(label, isRequired),
-        hintText: 'Enter $label',
+        hintText: AppFormFieldStyle.enter(label),
         border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.all(12.0),
+        contentPadding: AppFormFieldStyle.contentPadding,
       ),
     );
   }
@@ -221,9 +228,9 @@ class CommonFormWidgets {
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(
         label: _fieldLabel(label, isRequired),
-        hintText: 'Enter $label',
+        hintText: AppFormFieldStyle.enter(label),
         border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.all(12.0),
+        contentPadding: AppFormFieldStyle.contentPadding,
       ),
     );
   }
@@ -255,9 +262,11 @@ class CommonFormWidgets {
       validator: validator,
       decoration: InputDecoration(
         label: _fieldLabel(label, isRequired),
-        hintText: 'Select $label (YYYY-MM-DD)',
+        hintText:
+            '${AppFormFieldStyle.select(label)} '
+            '(${AppFormFieldStyle.dateFormat})',
         border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.all(12.0),
+        contentPadding: AppFormFieldStyle.contentPadding,
         suffixIcon: const Icon(Icons.calendar_today),
       ),
     );

@@ -1,3 +1,4 @@
+import 'package:edukita/core/utils/text_case.dart';
 import 'package:edukita/features/common/feature_state.dart';
 import 'package:edukita/features/students/data/student_page_data.dart';
 import 'package:edukita/features/students/data/student_table.dart';
@@ -6,6 +7,7 @@ import 'package:edukita/features/students/domain/sudent_filter.dart';
 import 'package:edukita/features/students/persentation/student_form_dialog.dart';
 import 'package:edukita/features/students/persentation/student_profile_cell.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/clay_card.dart';
@@ -98,7 +100,7 @@ class _StudentsPageState extends State<StudentsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Student'),
+        title: const AppDialogTitle('Delete Student'),
         content: Text('Delete ${student.fullName}?'),
         actions: [
           TextButton(
@@ -287,7 +289,7 @@ class _StudentsPageState extends State<StudentsPage> {
           flex: 2,
           sortValue: (data) => data.age,
           cell: (s) => Text(
-            '${s.age} y.o\n${s.gender.name.toUpperCase()}',
+            '${s.age} y.o\n${s.gender.name.titleWords}',
             style: const TextStyle(fontSize: 12, height: 1.2),
           ),
         ),
@@ -296,7 +298,7 @@ class _StudentsPageState extends State<StudentsPage> {
           flex: 2,
           sortValue: (data) => data.age,
           cell: (s) => Text(
-            '${s.age}/100\n${s.status.name.toUpperCase()}',
+            '${s.age}/100\n${s.status.name.titleWords}',
             style: const TextStyle(fontSize: 12, height: 1.2),
           ),
         ),

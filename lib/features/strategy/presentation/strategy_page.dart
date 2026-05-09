@@ -3,6 +3,7 @@ import 'package:edukita/features/strategy/data/strategy_model.dart';
 import 'package:edukita/features/strategy/domain/strategy_cubit.dart';
 import 'package:edukita/features/strategy/presentation/strategy_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
@@ -48,7 +49,7 @@ class _StrategyPageState extends State<StrategyPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Delete Strategy'),
+          title: const AppDialogTitle('Delete Strategy'),
           content: const Text('Are you sure you want to delete this strategy?'),
           actions: [
             TextButton(

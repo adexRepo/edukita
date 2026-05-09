@@ -3,6 +3,7 @@ import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:edukita/features/teachers/presentation/teacher_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
@@ -49,7 +50,7 @@ class _TeachersPageState extends State<TeachersPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Delete Teacher'),
+          title: const AppDialogTitle('Delete Teacher'),
           content: Text('Delete ${teacher.fullName}?'),
           actions: [
             TextButton(

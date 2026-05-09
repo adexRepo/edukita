@@ -1,6 +1,7 @@
 import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/management/domain/guardian_cubit.dart';
 import 'package:edukita/features/management/presentation/guardian_form_dialog.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -45,7 +46,7 @@ class _GuardiansPageState extends State<GuardiansPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Delete Guardian'),
+          title: const AppDialogTitle('Delete Guardian'),
           content: const Text('Are you sure you want to delete this guardian?'),
           actions: [
             TextButton(
