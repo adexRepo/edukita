@@ -156,6 +156,10 @@ class SubjectCubit extends Cubit<SubjectState> {
     }
   }
 
+  Future<CurriculumDeleteImpact> getSubjectDeleteImpact(String id) {
+    return _repository.getSubjectDeleteImpact(id);
+  }
+
   Future<void> loadUnits() async {
     emit(state.copyWith(isLoading: true));
     try {
@@ -194,6 +198,10 @@ class SubjectCubit extends Cubit<SubjectState> {
       emit(state.copyWith(error: e.toString()));
       rethrow;
     }
+  }
+
+  Future<CurriculumDeleteImpact> getUnitDeleteImpact(String id) {
+    return _repository.getUnitDeleteImpact(id);
   }
 
   Future<void> loadUnitsBySubject(String subjectId) async {

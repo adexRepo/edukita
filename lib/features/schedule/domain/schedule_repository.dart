@@ -15,6 +15,15 @@ class ScheduleRepository {
     return maps.map((map) => Schedule.fromMap(map)).toList();
   }
 
+  Future<List<ScheduleEvent>> getAllEvents() async {
+    final db = await _dbProvider.database;
+    final maps = await db.query(
+      'schedule_events',
+      orderBy: 'date DESC, start_at, title COLLATE NOCASE',
+    );
+    return maps.map((map) => ScheduleEvent.fromMap(map)).toList();
+  }
+
   Future<Schedule?> getScheduleById(String id) async {
     final db = await _dbProvider.database;
     final maps = await db.query('schedules', where: 'id = ?', whereArgs: [id]);
@@ -42,6 +51,26 @@ class ScheduleRepository {
   Future<int> deleteSchedule(String id) async {
     final db = await _dbProvider.database;
     return db.delete('schedules', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> insertEvent(ScheduleEvent event) async {
+    final db = await _dbProvider.database;
+    return db.insert('schedule_events', event.toMap());
+  }
+
+  Future<int> updateEvent(ScheduleEvent event) async {
+    final db = await _dbProvider.database;
+    return db.update(
+      'schedule_events',
+      event.toMap(),
+      where: 'id = ?',
+      whereArgs: [event.id],
+    );
+  }
+
+  Future<int> deleteEvent(String id) async {
+    final db = await _dbProvider.database;
+    return db.delete('schedule_events', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<List<Schedule>> getSchedulesByClass(String classId) async {

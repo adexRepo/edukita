@@ -73,9 +73,11 @@ class Syllabus {
   Syllabus({
     String? id,
     this.curriculumId,
+    this.subjectId,
     required this.title,
     this.description,
     this.academicYear,
+    this.schoolType,
     this.level,
     this.semester,
     this.status = 'active',
@@ -87,9 +89,11 @@ class Syllabus {
 
   final String id;
   final String? curriculumId;
+  final String? subjectId;
   final String title;
   final String? description;
   final String? academicYear;
+  final String? schoolType;
   final String? level;
   final String? semester;
   final String status;
@@ -101,9 +105,11 @@ class Syllabus {
   Syllabus copyWith({
     String? id,
     String? curriculumId,
+    String? subjectId,
     String? title,
     String? description,
     String? academicYear,
+    String? schoolType,
     String? level,
     String? semester,
     String? status,
@@ -113,9 +119,11 @@ class Syllabus {
     return Syllabus(
       id: id ?? this.id,
       curriculumId: curriculumId ?? this.curriculumId,
+      subjectId: subjectId ?? this.subjectId,
       title: title ?? this.title,
       description: description ?? this.description,
       academicYear: academicYear ?? this.academicYear,
+      schoolType: schoolType ?? this.schoolType,
       level: level ?? this.level,
       semester: semester ?? this.semester,
       status: status ?? this.status,
@@ -128,9 +136,11 @@ class Syllabus {
     return Syllabus(
       id: map['id']?.toString(),
       curriculumId: map['curriculum_id']?.toString(),
+      subjectId: map['subject_id']?.toString(),
       title: map['title']?.toString() ?? '',
       description: map['description']?.toString(),
       academicYear: map['academic_year']?.toString(),
+      schoolType: map['school_type']?.toString(),
       level: map['level']?.toString(),
       semester: map['semester']?.toString(),
       status: map['status']?.toString() ?? 'active',
@@ -143,9 +153,11 @@ class Syllabus {
     return {
       'id': id,
       'curriculum_id': curriculumId,
+      'subject_id': subjectId,
       'title': title,
       'description': description,
       'academic_year': academicYear,
+      'school_type': schoolType,
       'level': level,
       'semester': semester,
       'status': status,
@@ -157,8 +169,10 @@ class Syllabus {
   factory Syllabus.sample() {
     return Syllabus(
       title: 'Mathematics Year 1',
+      subjectId: null,
       description: 'Basic number operations, shapes, and measurement.',
       academicYear: DateTime.now().year.toString(),
+      schoolType: 'SD',
       level: '1',
       semester: '1',
     );

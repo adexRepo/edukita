@@ -51,6 +51,22 @@ class DatabaseMigrations {
     if (oldVersion < 14) {
       await _ensureScholarshipSchema(db);
     }
+
+    if (oldVersion < 15) {
+      await _ensureScheduleEventSchema(db);
+    }
+
+    if (oldVersion < 16) {
+      await _ensureScheduleEventRangeSchema(db);
+    }
+
+    if (oldVersion < 17) {
+      await _ensureSyllabusSchoolTypeSchema(db);
+    }
+
+    if (oldVersion < 18) {
+      await _ensureSyllabusSubjectSchema(db);
+    }
   }
 
   static Future<void> _fixUsers(Database db) async {
@@ -237,7 +253,19 @@ class DatabaseMigrations {
     await _addColumnIfMissing(
       db,
       table: 'syllabus',
+      column: 'subject_id',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'syllabus',
       column: 'level',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'syllabus',
+      column: 'school_type',
       definition: 'TEXT',
     );
     await _addColumnIfMissing(
@@ -248,6 +276,51 @@ class DatabaseMigrations {
     );
 
     await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _ensureSyllabusSchoolTypeSchema(Database db) async {
+    await _addColumnIfMissing(
+      db,
+      table: 'syllabus',
+      column: 'school_type',
+      definition: 'TEXT',
+    );
+  }
+
+  static Future<void> _ensureSyllabusSubjectSchema(Database db) async {
+    await _addColumnIfMissing(
+      db,
+      table: 'syllabus',
+      column: 'subject_id',
+      definition: 'TEXT',
+    );
+    await _backfillSyllabusSubject(db);
+    await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _backfillSyllabusSubject(Database db) async {
+    if (!await _columnExists(db, 'subjects', 'syllabus_id')) return;
+
+    final rows = await db.rawQuery('''
+      SELECT syllabus_id, COUNT(*) AS count, MIN(id) AS subject_id
+      FROM subjects
+      WHERE syllabus_id IS NOT NULL AND syllabus_id <> ''
+      GROUP BY syllabus_id
+    ''');
+
+    for (final row in rows) {
+      final syllabusId = row['syllabus_id']?.toString();
+      final subjectId = row['subject_id']?.toString();
+      final count = (row['count'] as num?)?.toInt() ?? 0;
+      if (syllabusId == null || subjectId == null || count != 1) continue;
+
+      await db.update(
+        'syllabus',
+        {'subject_id': subjectId},
+        where: '(subject_id IS NULL OR subject_id = ?) AND id = ?',
+        whereArgs: ['', syllabusId],
+      );
+    }
   }
 
   static Future<void> _ensureStudentAdvancedInputSchema(Database db) async {
@@ -265,6 +338,28 @@ class DatabaseMigrations {
     await DatabaseTables.studentScholarshipRules(db);
     await DatabaseTables.studentScholarshipAssessments(db);
     await DatabaseTables.scholarshipRecipients(db);
+    await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _ensureScheduleEventSchema(Database db) async {
+    await DatabaseTables.scheduleEvents(db);
+    await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _ensureScheduleEventRangeSchema(Database db) async {
+    await DatabaseTables.scheduleEvents(db);
+    await _addColumnIfMissing(
+      db,
+      table: 'schedule_events',
+      column: 'end_date',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'schedule_events',
+      column: 'whole_day',
+      definition: 'INTEGER NOT NULL DEFAULT 0',
+    );
     await DatabaseTables.indexes(db);
   }
 
@@ -337,9 +432,11 @@ class DatabaseMigrations {
       CREATE TABLE IF NOT EXISTS syllabus_curriculum_migration(
         id TEXT PRIMARY KEY NOT NULL,
         curriculum_id TEXT,
+        subject_id TEXT,
         title TEXT NOT NULL,
         description TEXT,
         academic_year TEXT,
+        school_type TEXT,
         level TEXT,
         semester TEXT,
         status TEXT,
@@ -357,9 +454,11 @@ class DatabaseMigrations {
       await db.insert('syllabus_curriculum_migration', {
         'id': id,
         'curriculum_id': row['curriculum_id']?.toString(),
+        'subject_id': row['subject_id']?.toString(),
         'title': title,
         'description': row['description']?.toString(),
         'academic_year': row['academic_year']?.toString(),
+        'school_type': row['school_type']?.toString(),
         'level': row['level']?.toString(),
         'semester': row['semester']?.toString(),
         'status': row['status']?.toString() ?? 'active',

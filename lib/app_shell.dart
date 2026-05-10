@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
 
@@ -7,7 +8,7 @@ import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:path/path.dart';
+import 'package:path/path.dart' as p;
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.child});
@@ -20,6 +21,7 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   static const double _railWidth = 48;
+  static const Duration _navigationCooldown = Duration(milliseconds: 180);
 
   static const List<_SidebarItem> _menuItems = [
     _SidebarItem(
@@ -39,11 +41,6 @@ class _AppShellState extends State<AppShell> {
       icon: Icons.menu_book_outlined,
       route: '/curriculum',
     ),
-    _SidebarItem(
-      label: 'Strategies',
-      icon: Icons.lightbulb_outline,
-      route: '/strategies',
-    ),
     _SidebarItem(label: 'Schedule', icon: Icons.schedule, route: '/schedules'),
     _SidebarItem(
       label: 'Scholarship',
@@ -58,6 +55,8 @@ class _AppShellState extends State<AppShell> {
   ];
 
   late List<_SidebarItem> _orderedMenuItems = List.of(_menuItems);
+  Timer? _navigationUnlockTimer;
+  bool _navigationLocked = false;
 
   @override
   void initState() {
@@ -144,8 +143,8 @@ class _AppShellState extends State<AppShell> {
 
   Future<io.File> _menuOrderFile() async {
     final dbPath = dotenv.env['DB_PATH'] ?? '../../../../../data';
-    final dir = io.Directory(join(io.Directory.current.path, dbPath));
-    return io.File(join(dir.path, 'sidebar_menu_order.json'));
+    final dir = io.Directory(p.join(io.Directory.current.path, dbPath));
+    return io.File(p.join(dir.path, 'sidebar_menu_order.json'));
   }
 
   void _reorderMenu(int oldIndex, int newIndex) {
@@ -157,6 +156,27 @@ class _AppShellState extends State<AppShell> {
     _saveMenuOrder();
   }
 
+  void _navigateTo(String route) {
+    final currentLocation = GoRouter.of(context).state.uri.path;
+    if (_navigationLocked || currentLocation.startsWith(route)) return;
+
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _navigationLocked = true);
+    context.go(route);
+
+    _navigationUnlockTimer?.cancel();
+    _navigationUnlockTimer = Timer(_navigationCooldown, () {
+      if (!mounted) return;
+      setState(() => _navigationLocked = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _navigationUnlockTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final location = GoRouter.of(context).state.uri.path;
@@ -164,43 +184,39 @@ class _AppShellState extends State<AppShell> {
     final selectedItem = _orderedMenuItems[selectedIndex];
 
     return Scaffold(
-      body: SelectionArea(
-        child: Column(
-          children: [
-            buildTitleBar(
-              selectedIndex,
-              context,
-              pageTitle: selectedItem.label,
-            ),
-            Expanded(
-              child: Row(
-                children: [
-                  _PrimaryRail(
-                    width: _railWidth,
-                    items: _orderedMenuItems,
-                    selectedIndex: selectedIndex,
-                    location: location,
-                    onLogout: () => _logout(context),
-                    onReorder: _reorderMenu,
-                  ),
-                  const VerticalDivider(
-                    width: 1,
-                    thickness: 1,
-                    color: AppColors.border,
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1200),
-                        child: widget.child,
-                      ),
+      body: Column(
+        children: [
+          buildTitleBar(selectedIndex, context, pageTitle: selectedItem.label),
+          Expanded(
+            child: Row(
+              children: [
+                _PrimaryRail(
+                  width: _railWidth,
+                  items: _orderedMenuItems,
+                  selectedIndex: selectedIndex,
+                  location: location,
+                  navigationLocked: _navigationLocked,
+                  onNavigate: _navigateTo,
+                  onLogout: () => _logout(context),
+                  onReorder: _reorderMenu,
+                ),
+                const VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: AppColors.border,
+                ),
+                Expanded(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1200),
+                      child: widget.child,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -212,6 +228,8 @@ class _PrimaryRail extends StatelessWidget {
     required this.items,
     required this.selectedIndex,
     required this.location,
+    required this.navigationLocked,
+    required this.onNavigate,
     required this.onLogout,
     required this.onReorder,
   });
@@ -220,6 +238,8 @@ class _PrimaryRail extends StatelessWidget {
   final List<_SidebarItem> items;
   final int selectedIndex;
   final String location;
+  final bool navigationLocked;
+  final ValueChanged<String> onNavigate;
   final VoidCallback onLogout;
   final ReorderCallback onReorder;
 
@@ -265,9 +285,10 @@ class _PrimaryRail extends StatelessWidget {
                       index: index,
                       child: InkWell(
                         borderRadius: BorderRadius.circular(8),
-                        onTap: location.startsWith(item.route)
+                        onTap:
+                            navigationLocked || location.startsWith(item.route)
                             ? null
-                            : () => context.go(item.route),
+                            : () => onNavigate(item.route),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 140),
                           alignment: Alignment.center,

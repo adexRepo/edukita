@@ -13,7 +13,15 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     emit(state.copyWith(isLoading: true));
     try {
       final schedules = await _repository.getAllSchedules();
-      emit(state.copyWith(isLoading: false, schedules: schedules, error: null));
+      final events = await _repository.getAllEvents();
+      emit(
+        state.copyWith(
+          isLoading: false,
+          schedules: schedules,
+          events: events,
+          error: null,
+        ),
+      );
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
     }
@@ -42,6 +50,36 @@ class ScheduleCubit extends Cubit<ScheduleState> {
   Future<void> deleteSchedule(String id) async {
     try {
       await _repository.deleteSchedule(id);
+      await loadSchedules();
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+      rethrow;
+    }
+  }
+
+  Future<void> addEvent(ScheduleEvent event) async {
+    try {
+      await _repository.insertEvent(event);
+      await loadSchedules();
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+      rethrow;
+    }
+  }
+
+  Future<void> updateEvent(ScheduleEvent event) async {
+    try {
+      await _repository.updateEvent(event);
+      await loadSchedules();
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+      rethrow;
+    }
+  }
+
+  Future<void> deleteEvent(String id) async {
+    try {
+      await _repository.deleteEvent(id);
       await loadSchedules();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));

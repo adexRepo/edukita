@@ -13,7 +13,6 @@ import 'package:edukita/features/schools/domain/class_cubit.dart';
 import 'package:edukita/features/schools/domain/school_cubit.dart';
 import 'package:edukita/features/schools/presentation/schools_page.dart';
 import 'package:edukita/features/strategy/domain/strategy_cubit.dart';
-import 'package:edukita/features/strategy/presentation/strategy_page.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
 import 'package:edukita/features/students/domain/student_feature_cubit.dart';
 import 'package:edukita/features/students/persentation/detail/student_detail_page.dart';
@@ -132,21 +131,22 @@ final GoRouter appRouter = GoRouter(
           path: '/curriculum',
           pageBuilder: (context, state) => _noTransitionPage(
             state: state,
-            child: withCubit(
-              create: () => getIt<SubjectCubit>()..loadCurriculum(),
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<SubjectCubit>(
+                  create: (_) => getIt<SubjectCubit>()..loadCurriculum(),
+                ),
+                BlocProvider<StrategyCubit>(
+                  create: (_) => getIt<StrategyCubit>()..loadStrategies(),
+                ),
+              ],
               child: const SyllabusPage(),
             ),
           ),
         ),
         GoRoute(
           path: '/strategies',
-          pageBuilder: (context, state) => _noTransitionPage(
-            state: state,
-            child: withCubit(
-              create: () => getIt<StrategyCubit>()..loadStrategies(),
-              child: const StrategyPage(),
-            ),
-          ),
+          redirect: (_, _) => '/curriculum',
         ),
         GoRoute(
           path: '/schedules',
@@ -168,6 +168,9 @@ final GoRouter appRouter = GoRouter(
                 ),
                 BlocProvider<TeacherCubit>(
                   create: (_) => getIt<TeacherCubit>()..loadTeachers(),
+                ),
+                BlocProvider<SchoolCubit>(
+                  create: (_) => getIt<SchoolCubit>()..loadSchools(),
                 ),
               ],
               child: const SchedulePage(),

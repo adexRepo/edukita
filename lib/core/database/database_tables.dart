@@ -26,6 +26,7 @@ class DatabaseTables {
     await competencies(db);
     await strategies(db);
     await schedules(db);
+    await scheduleEvents(db);
 
     await assessments(db);
     await studentAssessments(db);
@@ -321,6 +322,26 @@ class DatabaseTables {
         FOREIGN KEY(teacher_id) REFERENCES teachers(id),
         FOREIGN KEY(unit_id) REFERENCES units(id),
         FOREIGN KEY(strategy_id) REFERENCES strategies(id)
+      )
+    ''');
+  }
+
+  static Future<void> scheduleEvents(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS schedule_events(
+        id TEXT PRIMARY KEY NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        date TEXT NOT NULL,
+        end_date TEXT,
+        start_at TEXT,
+        end_at TEXT,
+        school_id TEXT,
+        type TEXT NOT NULL DEFAULT 'Event',
+        whole_day INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT,
+        updated_at TEXT,
+        FOREIGN KEY(school_id) REFERENCES schools(id) ON DELETE SET NULL
       )
     ''');
   }
@@ -642,15 +663,18 @@ class DatabaseTables {
       CREATE TABLE IF NOT EXISTS syllabus(
         id TEXT PRIMARY KEY NOT NULL,
         curriculum_id TEXT,
+        subject_id TEXT,
         title TEXT NOT NULL,
         description TEXT,
         academic_year TEXT,
+        school_type TEXT,
         level TEXT,
         semester TEXT,
         status TEXT,
         created_at TEXT,
         updated_at TEXT,
-        FOREIGN KEY(curriculum_id) REFERENCES curriculums(id) ON DELETE SET NULL
+        FOREIGN KEY(curriculum_id) REFERENCES curriculums(id) ON DELETE SET NULL,
+        FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE SET NULL
       )
     ''');
   }
@@ -790,6 +814,13 @@ class DatabaseTables {
     );
     await _createIndexIfColumnsExist(
       db,
+      table: 'syllabus',
+      columns: const ['subject_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_syllabus_subject_id ON syllabus(subject_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
       table: 'subjects',
       columns: const ['syllabus_id'],
       sql:
@@ -836,6 +867,20 @@ class DatabaseTables {
       columns: const ['strategy_id'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_schedules_strategy_id ON schedules(strategy_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'schedule_events',
+      columns: const ['date'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_schedule_events_date ON schedule_events(date)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'schedule_events',
+      columns: const ['school_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_schedule_events_school_id ON schedule_events(school_id)',
     );
     await _createIndexIfColumnsExist(
       db,

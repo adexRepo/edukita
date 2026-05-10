@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:edukita/features/common/common_form_widgets.dart';
+import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/syllabus/data/subject_model.dart';
 import 'package:edukita/features/syllabus/data/syllabus_model.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
@@ -36,7 +37,7 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
     name = widget.curriculum?.name ?? '';
     version = widget.curriculum?.version;
     description = widget.curriculum?.description;
-    effectiveYear = widget.curriculum?.effectiveYear;
+    effectiveYear = widget.curriculum?.effectiveYear ?? _currentYear();
     status = widget.curriculum?.status ?? 'active';
   }
 
@@ -72,12 +73,12 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
                 isRequired: false,
               ),
               const SizedBox(height: 16),
-              CommonFormWidgets.textField(
+              CommonFormWidgets.dropdownField(
                 label: 'Effective Year',
+                items: _yearOptions(effectiveYear),
                 value: effectiveYear,
-                onSaved: (value) => effectiveYear = _nullIfBlank(value),
-                validator: (_) => null,
-                isRequired: false,
+                onChanged: (value) => setState(() => effectiveYear = value),
+                onSaved: (value) => effectiveYear = value ?? _currentYear(),
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
@@ -154,12 +155,14 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
 class SyllabusFormDialog extends StatefulWidget {
   final Syllabus? syllabus;
   final List<Curriculum> curriculums;
+  final List<Subject> subjects;
   final FutureOr<void> Function(Syllabus) onSave;
 
   const SyllabusFormDialog({
     super.key,
     this.syllabus,
     this.curriculums = const [],
+    this.subjects = const [],
     required this.onSave,
   });
 
@@ -169,10 +172,13 @@ class SyllabusFormDialog extends StatefulWidget {
 
 class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
   final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _titleController;
   late String? curriculumId;
+  late String? subjectId;
   late String title;
   late String? description;
   late String? academicYear;
+  late SchoolType schoolType;
   late String? level;
   late String? semester;
   late String status;
@@ -184,12 +190,32 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
     curriculumId =
         widget.syllabus?.curriculumId ??
         (widget.curriculums.isEmpty ? null : widget.curriculums.first.id);
-    title = widget.syllabus?.title ?? '';
+    subjectId =
+        widget.syllabus?.subjectId ??
+        (widget.subjects.isEmpty ? null : widget.subjects.first.id);
+    title =
+        widget.syllabus?.title ??
+        _firstWhereOrNull(
+          widget.subjects,
+          (subject) => subject.id == subjectId,
+        )?.name ??
+        '';
+    _titleController = TextEditingController(text: title);
     description = widget.syllabus?.description;
-    academicYear = widget.syllabus?.academicYear;
-    level = widget.syllabus?.level;
+    academicYear = widget.syllabus?.academicYear ?? _currentYear();
+    schoolType = _schoolTypeFor(
+      widget.syllabus?.schoolType,
+      widget.syllabus?.level,
+    );
+    level = _levelForSchoolType(widget.syllabus?.level, schoolType);
     semester = widget.syllabus?.semester;
     status = widget.syllabus?.status ?? 'active';
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    super.dispose();
   }
 
   @override
@@ -197,6 +223,10 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
     final selectedCurriculum = _firstWhereOrNull(
       widget.curriculums,
       (curriculum) => curriculum.id == curriculumId,
+    );
+    final selectedSubject = _firstWhereOrNull(
+      widget.subjects,
+      (subject) => subject.id == subjectId,
     );
 
     return AlertDialog(
@@ -220,9 +250,34 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                 ),
                 const SizedBox(height: 16),
               ],
+              if (widget.subjects.isNotEmpty) ...[
+                CommonFormWidgets.dropdownFieldTyped<Subject>(
+                  label: 'Subject',
+                  items: widget.subjects,
+                  labelBuilder: (subject) => subject.name,
+                  valueBuilder: (subject) => subject.id,
+                  value: selectedSubject,
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() {
+                      subjectId = value.id;
+                      final currentTitle = _titleController.text.trim();
+                      if (currentTitle.isEmpty ||
+                          currentTitle == selectedSubject?.name) {
+                        title = value.name;
+                        _titleController.text = value.name;
+                      }
+                    });
+                  },
+                  onSaved: (value) => subjectId = value?.id,
+                ),
+                const SizedBox(height: 16),
+              ],
               CommonFormWidgets.textField(
                 label: 'Title',
                 value: title,
+                controller: _titleController,
+                onChanged: (value) => title = value,
                 onSaved: (value) => title = value?.trim() ?? '',
                 validator: (value) {
                   if (value?.trim().isEmpty ?? true) {
@@ -241,20 +296,39 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                 isRequired: false,
               ),
               const SizedBox(height: 16),
-              CommonFormWidgets.textField(
+              CommonFormWidgets.dropdownField(
                 label: 'Academic Year',
+                items: _yearOptions(academicYear),
                 value: academicYear,
-                onSaved: (value) => academicYear = _nullIfBlank(value),
-                validator: (_) => null,
-                isRequired: false,
+                onChanged: (value) => setState(() => academicYear = value),
+                onSaved: (value) => academicYear = value ?? _currentYear(),
               ),
               const SizedBox(height: 16),
-              CommonFormWidgets.textField(
+              CommonFormWidgets.dropdownFieldTyped<SchoolType>(
+                label: 'School Type',
+                items: SchoolType.values,
+                labelBuilder: (type) => type.label,
+                valueBuilder: (type) => type.storageValue,
+                value: schoolType,
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    schoolType = value;
+                    level = value.minLevel.toString();
+                  });
+                },
+                onSaved: (value) => schoolType = value ?? SchoolType.sd,
+              ),
+              const SizedBox(height: 16),
+              CommonFormWidgets.dropdownField(
                 label: 'Level',
+                items: schoolType.allowedLevels
+                    .map((level) => level.toString())
+                    .toList(),
                 value: level,
-                onSaved: (value) => level = _nullIfBlank(value),
-                validator: (_) => null,
-                isRequired: false,
+                onChanged: (value) => setState(() => level = value),
+                onSaved: (value) =>
+                    level = value ?? schoolType.minLevel.toString(),
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.dropdownField(
@@ -294,9 +368,11 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
     final syllabus = Syllabus(
       id: widget.syllabus?.id,
       curriculumId: curriculumId,
+      subjectId: subjectId,
       title: title,
       description: description,
       academicYear: academicYear,
+      schoolType: schoolType.storageValue,
       level: level,
       semester: semester,
       status: status,
@@ -344,13 +420,11 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
 
 class SubjectFormDialog extends StatefulWidget {
   final Subject? subject;
-  final List<Syllabus> syllabi;
   final FutureOr<void> Function(Subject) onSave;
 
   const SubjectFormDialog({
     super.key,
     this.subject,
-    this.syllabi = const [],
     required this.onSave,
   });
 
@@ -360,7 +434,6 @@ class SubjectFormDialog extends StatefulWidget {
 
 class _SubjectFormDialogState extends State<SubjectFormDialog> {
   final _formKey = GlobalKey<FormState>();
-  late String? syllabusId;
   late String name;
   late String? description;
   late String status;
@@ -369,9 +442,6 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
   @override
   void initState() {
     super.initState();
-    syllabusId =
-        widget.subject?.syllabusId ??
-        (widget.syllabi.isEmpty ? null : widget.syllabi.first.id);
     name = widget.subject?.name ?? '';
     description = widget.subject?.description;
     status = widget.subject?.status ?? 'active';
@@ -379,11 +449,6 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final selectedSyllabus = _firstWhereOrNull(
-      widget.syllabi,
-      (syllabus) => syllabus.id == syllabusId,
-    );
-
     return AlertDialog(
       title: AppDialogTitle(
         widget.subject == null ? 'Add Subject' : 'Edit Subject',
@@ -394,17 +459,6 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (widget.syllabi.isNotEmpty) ...[
-                CommonFormWidgets.dropdownFieldTyped<Syllabus>(
-                  label: 'Syllabus',
-                  items: widget.syllabi,
-                  labelBuilder: (syllabus) => syllabus.title,
-                  valueBuilder: (syllabus) => syllabus.id,
-                  value: selectedSyllabus,
-                  onSaved: (value) => syllabusId = value?.id,
-                ),
-                const SizedBox(height: 16),
-              ],
               CommonFormWidgets.textField(
                 label: 'Subject Name',
                 value: name,
@@ -468,7 +522,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
     _formKey.currentState!.save();
     final subject = Subject(
       id: widget.subject?.id,
-      syllabusId: syllabusId,
+      syllabusId: widget.subject?.syllabusId,
       name: name,
       description: description,
       status: status,
@@ -767,6 +821,42 @@ String? _nullIfBlank(String? value) {
   final trimmed = value?.trim();
   if (trimmed == null || trimmed.isEmpty) return null;
   return trimmed;
+}
+
+String _currentYear() => DateTime.now().year.toString();
+
+List<String> _yearOptions(String? selectedYear) {
+  final currentYear = DateTime.now().year;
+  final years = <String>{
+    for (var year = currentYear - 5; year <= currentYear + 5; year++)
+      year.toString(),
+    if (selectedYear?.trim().isNotEmpty == true) selectedYear!.trim(),
+  }.toList();
+  years.sort();
+  return years;
+}
+
+SchoolType _schoolTypeFor(String? rawType, String? rawLevel) {
+  final normalizedType = rawType?.trim().toLowerCase();
+  if (normalizedType?.isNotEmpty == true) {
+    return SchoolType.values.firstWhere(
+      (type) => type.name == normalizedType,
+      orElse: () => SchoolType.sd,
+    );
+  }
+
+  final level = int.tryParse(rawLevel?.trim() ?? '');
+  if (level != null) return SchoolType.fromLevel(level);
+
+  return SchoolType.sd;
+}
+
+String _levelForSchoolType(String? rawLevel, SchoolType type) {
+  final level = int.tryParse(rawLevel?.trim() ?? '');
+  if (level != null && type.allowedLevels.contains(level)) {
+    return level.toString();
+  }
+  return type.minLevel.toString();
 }
 
 T? _firstWhereOrNull<T>(Iterable<T> items, bool Function(T) test) {
