@@ -424,19 +424,36 @@ class _SchedulePageState extends State<SchedulePage> {
     required String Function(T) labelBuilder,
     required ValueChanged<String?> onChanged,
   }) {
-    return DropdownButtonFormField<String>(
+    final labels = ['All', ...items.map(labelBuilder)];
+    return AppDropdownButtonFormField<String>(
       initialValue: value ?? '',
-      isExpanded: true,
+      isExpanded: false,
       decoration: InputDecoration(labelText: label),
       items: [
-        const DropdownMenuItem(value: '', child: Text('All')),
+        DropdownMenuItem(
+          value: '',
+          child: AppDropdownStyle.menuItemLabel(
+            label: 'All',
+            selected: value == null || value.isEmpty,
+          ),
+        ),
         ...items.map(
           (item) => DropdownMenuItem(
             value: valueBuilder(item),
-            child: Text(labelBuilder(item), overflow: TextOverflow.ellipsis),
+            child: AppDropdownStyle.menuItemLabel(
+              label: labelBuilder(item),
+              selected: valueBuilder(item) == value,
+            ),
           ),
         ),
       ],
+      selectedItemBuilder: (context) => AppDropdownStyle.selectedLabels(labels),
+      dropdownColor: AppColors.white,
+      focusColor: AppColors.transparent,
+      iconEnabledColor: AppColors.primary,
+      borderRadius: AppDropdownStyle.menuBorderRadius,
+      menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+      style: AppDropdownStyle.textStyle,
       onChanged: (newValue) =>
           onChanged(newValue == null || newValue.isEmpty ? null : newValue),
     );

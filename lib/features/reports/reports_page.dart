@@ -579,24 +579,45 @@ class _AssessmentFormDialogState extends State<AssessmentFormDialog> {
                   onSaved: (value) => unitId = value?.id ?? '',
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
+                AppDropdownButtonFormField<String>(
                   initialValue: selectedCompetency?.id ?? '',
-                  isExpanded: true,
+                  isExpanded: false,
                   decoration: const InputDecoration(labelText: 'Competency'),
                   items: [
-                    const DropdownMenuItem(value: '', child: Text('None')),
+                    DropdownMenuItem(
+                      value: '',
+                      child: AppDropdownStyle.menuItemLabel(
+                        label: 'None',
+                        selected: selectedCompetency == null,
+                      ),
+                    ),
                     ...unitCompetencies.map(
                       (item) => DropdownMenuItem(
                         value: item.id,
-                        child: Text(
-                          item.code?.trim().isNotEmpty == true
+                        child: AppDropdownStyle.menuItemLabel(
+                          label: item.code?.trim().isNotEmpty == true
                               ? '${item.code} - ${item.description}'
                               : item.description,
-                          overflow: TextOverflow.ellipsis,
+                          selected: item.id == selectedCompetency?.id,
                         ),
                       ),
                     ),
                   ],
+                  selectedItemBuilder: (context) =>
+                      AppDropdownStyle.selectedLabels([
+                        'None',
+                        ...unitCompetencies.map(
+                          (item) => item.code?.trim().isNotEmpty == true
+                              ? '${item.code} - ${item.description}'
+                              : item.description,
+                        ),
+                      ]),
+                  dropdownColor: AppColors.white,
+                  focusColor: AppColors.transparent,
+                  iconEnabledColor: AppColors.primary,
+                  borderRadius: AppDropdownStyle.menuBorderRadius,
+                  menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                  style: AppDropdownStyle.textStyle,
                   onChanged: (value) => setState(
                     () => competencyId = value == null || value.isEmpty
                         ? null

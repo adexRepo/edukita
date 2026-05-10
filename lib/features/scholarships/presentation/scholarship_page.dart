@@ -1132,37 +1132,59 @@ class _AssessmentTab extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: DropdownButtonFormField<ScholarshipDecisionStatus?>(
+              child: AppDropdownButtonFormField<ScholarshipDecisionStatus?>(
                 initialValue: statusFilter,
-                isExpanded: true,
+                isExpanded: false,
                 decoration: const InputDecoration(labelText: 'Decision Status'),
                 items: [
-                  const DropdownMenuItem<ScholarshipDecisionStatus?>(
+                  DropdownMenuItem<ScholarshipDecisionStatus?>(
                     value: null,
-                    child: Text('All'),
+                    child: AppDropdownStyle.menuItemLabel(
+                      label: 'All',
+                      selected: statusFilter == null,
+                    ),
                   ),
                   ...ScholarshipDecisionStatus.values.map(
                     (status) => DropdownMenuItem<ScholarshipDecisionStatus?>(
                       value: status,
-                      child: Text(status.label),
+                      child: AppDropdownStyle.menuItemLabel(
+                        label: status.label,
+                        selected: status == statusFilter,
+                      ),
                     ),
                   ),
                 ],
+                selectedItemBuilder: (context) =>
+                    AppDropdownStyle.selectedLabels([
+                      'All',
+                      ...ScholarshipDecisionStatus.values.map(
+                        (status) => status.label,
+                      ),
+                    ]),
+                dropdownColor: AppColors.white,
+                focusColor: AppColors.transparent,
+                iconEnabledColor: AppColors.primary,
+                borderRadius: AppDropdownStyle.menuBorderRadius,
+                menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                style: AppDropdownStyle.textStyle,
                 onChanged: onStatusChanged,
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: DropdownButtonFormField<ScholarshipType?>(
+              child: AppDropdownButtonFormField<ScholarshipType?>(
                 initialValue: typeFilter,
-                isExpanded: true,
+                isExpanded: false,
                 decoration: const InputDecoration(
                   labelText: 'Scholarship Type',
                 ),
                 items: [
-                  const DropdownMenuItem<ScholarshipType?>(
+                  DropdownMenuItem<ScholarshipType?>(
                     value: null,
-                    child: Text('All'),
+                    child: AppDropdownStyle.menuItemLabel(
+                      label: 'All',
+                      selected: typeFilter == null,
+                    ),
                   ),
                   ...[
                     ScholarshipType.fixedPriority,
@@ -1171,10 +1193,28 @@ class _AssessmentTab extends StatelessWidget {
                   ].map(
                     (type) => DropdownMenuItem<ScholarshipType?>(
                       value: type,
-                      child: Text(type.label),
+                      child: AppDropdownStyle.menuItemLabel(
+                        label: type.label,
+                        selected: type == typeFilter,
+                      ),
                     ),
                   ),
                 ],
+                selectedItemBuilder: (context) =>
+                    AppDropdownStyle.selectedLabels([
+                      'All',
+                      ...[
+                        ScholarshipType.fixedPriority,
+                        ScholarshipType.attendanceBased,
+                        ScholarshipType.manualOverride,
+                      ].map((type) => type.label),
+                    ]),
+                dropdownColor: AppColors.white,
+                focusColor: AppColors.transparent,
+                iconEnabledColor: AppColors.primary,
+                borderRadius: AppDropdownStyle.menuBorderRadius,
+                menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                style: AppDropdownStyle.textStyle,
                 onChanged: onTypeChanged,
               ),
             ),
@@ -1308,15 +1348,35 @@ class _RecipientsTab extends StatelessWidget {
             PopupMenuButton<_RecipientExportFormat>(
               tooltip: 'Download recipients history',
               enabled: state.recipients.isNotEmpty,
+              color: AppColors.white,
+              surfaceTintColor: AppColors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: AppDropdownStyle.menuBorderRadius,
+                side: const BorderSide(color: AppColors.border),
+              ),
               onSelected: (format) => _exportRecipients(context, format),
-              itemBuilder: (context) => const [
+              itemBuilder: (context) => [
                 PopupMenuItem(
                   value: _RecipientExportFormat.pdf,
-                  child: Text('PDF'),
+                  padding: EdgeInsets.zero,
+                  child: SizedBox(
+                    width: 180,
+                    child: AppDropdownStyle.menuItemLabel(
+                      label: 'PDF',
+                      selected: false,
+                    ),
+                  ),
                 ),
                 PopupMenuItem(
                   value: _RecipientExportFormat.excel,
-                  child: Text('Excel'),
+                  padding: EdgeInsets.zero,
+                  child: SizedBox(
+                    width: 180,
+                    child: AppDropdownStyle.menuItemLabel(
+                      label: 'Excel',
+                      selected: false,
+                    ),
+                  ),
                 ),
               ],
               child: Opacity(
@@ -1596,24 +1656,35 @@ class _PeriodPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<String>(
+    return AppDropdownButtonFormField<String>(
       initialValue:
           state.periods.any((period) => period.id == state.selectedPeriodId)
           ? state.selectedPeriodId
           : null,
-      isExpanded: true,
+      isExpanded: false,
       decoration: const InputDecoration(labelText: 'Scholarship Period'),
       items: state.periods
           .map(
             (period) => DropdownMenuItem(
               value: period.id,
-              child: Text(
-                '${period.label} - ${period.status.label}',
-                overflow: TextOverflow.ellipsis,
+              child: AppDropdownStyle.menuItemLabel(
+                label: '${period.label} - ${period.status.label}',
+                selected: period.id == state.selectedPeriodId,
               ),
             ),
           )
           .toList(),
+      selectedItemBuilder: (context) => AppDropdownStyle.selectedLabels(
+        state.periods.map(
+          (period) => '${period.label} - ${period.status.label}',
+        ),
+      ),
+      dropdownColor: AppColors.white,
+      focusColor: AppColors.transparent,
+      iconEnabledColor: AppColors.primary,
+      borderRadius: AppDropdownStyle.menuBorderRadius,
+      menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+      style: AppDropdownStyle.textStyle,
       onChanged: (value) =>
           context.read<ScholarshipCubit>().selectPeriod(value),
     );
@@ -1816,17 +1887,33 @@ class _ScholarshipPeriodDialogState extends State<_ScholarshipPeriodDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              DropdownButtonFormField<int>(
+              AppDropdownButtonFormField<int>(
                 initialValue: _month,
-                isExpanded: true,
+                isExpanded: false,
                 decoration: const InputDecoration(labelText: 'Month'),
                 items: List.generate(
                   12,
                   (index) => DropdownMenuItem(
                     value: index + 1,
-                    child: Text(ScholarshipPeriod.monthName(index + 1)),
+                    child: AppDropdownStyle.menuItemLabel(
+                      label: ScholarshipPeriod.monthName(index + 1),
+                      selected: index + 1 == _month,
+                    ),
                   ),
                 ),
+                selectedItemBuilder: (context) =>
+                    AppDropdownStyle.selectedLabels(
+                  List.generate(
+                    12,
+                    (index) => ScholarshipPeriod.monthName(index + 1),
+                  ),
+                ),
+                dropdownColor: AppColors.white,
+                focusColor: AppColors.transparent,
+                iconEnabledColor: AppColors.primary,
+                borderRadius: AppDropdownStyle.menuBorderRadius,
+                menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                style: AppDropdownStyle.textStyle,
                 onChanged: (value) {
                   if (value != null) setState(() => _month = value);
                 },
@@ -1961,21 +2048,31 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                DropdownButtonFormField<String>(
+                AppDropdownButtonFormField<String>(
                   initialValue: _studentId,
-                  isExpanded: true,
+                  isExpanded: false,
                   decoration: const InputDecoration(labelText: 'Student'),
                   items: widget.students
                       .map(
                         (student) => DropdownMenuItem(
                           value: student.id,
-                          child: Text(
-                            student.name,
-                            overflow: TextOverflow.ellipsis,
+                          child: AppDropdownStyle.menuItemLabel(
+                            label: student.name,
+                            selected: student.id == _studentId,
                           ),
                         ),
                       )
                       .toList(),
+                  selectedItemBuilder: (context) =>
+                      AppDropdownStyle.selectedLabels(
+                    widget.students.map((student) => student.name),
+                  ),
+                  dropdownColor: AppColors.white,
+                  focusColor: AppColors.transparent,
+                  iconEnabledColor: AppColors.primary,
+                  borderRadius: AppDropdownStyle.menuBorderRadius,
+                  menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                  style: AppDropdownStyle.textStyle,
                   onChanged: (value) => setState(() => _studentId = value),
                   validator: (value) =>
                       value == null ? 'Student is required' : null,
@@ -2420,9 +2517,9 @@ class _AssessmentOverrideDialogState extends State<_AssessmentOverrideDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                DropdownButtonFormField<ScholarshipDecisionStatus>(
+                AppDropdownButtonFormField<ScholarshipDecisionStatus>(
                   initialValue: _status,
-                  isExpanded: true,
+                  isExpanded: false,
                   decoration: const InputDecoration(
                     labelText: 'Decision Status',
                   ),
@@ -2430,10 +2527,25 @@ class _AssessmentOverrideDialogState extends State<_AssessmentOverrideDialog> {
                       .map(
                         (status) => DropdownMenuItem(
                           value: status,
-                          child: Text(status.label),
+                          child: AppDropdownStyle.menuItemLabel(
+                            label: status.label,
+                            selected: status == _status,
+                          ),
                         ),
                       )
                       .toList(),
+                  selectedItemBuilder: (context) =>
+                      AppDropdownStyle.selectedLabels(
+                    ScholarshipDecisionStatus.values.map(
+                      (status) => status.label,
+                    ),
+                  ),
+                  dropdownColor: AppColors.white,
+                  focusColor: AppColors.transparent,
+                  iconEnabledColor: AppColors.primary,
+                  borderRadius: AppDropdownStyle.menuBorderRadius,
+                  menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                  style: AppDropdownStyle.textStyle,
                   onChanged: (value) {
                     if (value != null) setState(() => _status = value);
                   },

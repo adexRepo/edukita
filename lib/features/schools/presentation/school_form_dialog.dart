@@ -394,17 +394,32 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
           ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 10),
-        DropdownButtonFormField<SchoolType>(
+        AppDropdownButtonFormField<SchoolType>(
           key: ValueKey('school-type-$_type-$_typeDropdownVersion'),
           initialValue: _type,
-          isExpanded: true,
+          isExpanded: false,
           decoration: InputDecoration(label: requiredLabel(context, 'Type')),
           items: SchoolType.values
               .map(
-                (type) =>
-                    DropdownMenuItem(value: type, child: Text(type.label)),
+                (type) => DropdownMenuItem(
+                  value: type,
+                  child: AppDropdownStyle.menuItemLabel(
+                    label: type.label,
+                    selected: type == _type,
+                  ),
+                ),
               )
               .toList(),
+          selectedItemBuilder: (context) =>
+              AppDropdownStyle.selectedLabels(SchoolType.values.map(
+            (type) => type.label,
+          )),
+          dropdownColor: AppColors.white,
+          focusColor: AppColors.transparent,
+          iconEnabledColor: AppColors.primary,
+          borderRadius: AppDropdownStyle.menuBorderRadius,
+          menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+          style: AppDropdownStyle.textStyle,
           onChanged: (value) {
             if (value == null) return;
             _changeType(value);
@@ -1007,9 +1022,9 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
                 inputFormatters: [LengthLimitingTextInputFormatter(40)],
               ),
               const SizedBox(height: 10),
-              DropdownButtonFormField<int>(
+              AppDropdownButtonFormField<int>(
                 initialValue: _level,
-                isExpanded: true,
+                isExpanded: false,
                 decoration: InputDecoration(
                   label: requiredLabel(context, 'Level'),
                   hintText: widget.type.levelHint,
@@ -1018,10 +1033,23 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
                     .map(
                       (level) => DropdownMenuItem<int>(
                         value: level,
-                        child: Text(level.toString()),
+                        child: AppDropdownStyle.menuItemLabel(
+                          label: level.toString(),
+                          selected: level == _level,
+                        ),
                       ),
                     )
                     .toList(),
+                selectedItemBuilder: (context) =>
+                    AppDropdownStyle.selectedLabels(
+                  widget.type.allowedLevels.map((level) => level.toString()),
+                ),
+                dropdownColor: AppColors.white,
+                focusColor: AppColors.transparent,
+                iconEnabledColor: AppColors.primary,
+                borderRadius: AppDropdownStyle.menuBorderRadius,
+                menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                style: AppDropdownStyle.textStyle,
                 onChanged: widget.type.allowedLevels.length == 1
                     ? null
                     : (level) {

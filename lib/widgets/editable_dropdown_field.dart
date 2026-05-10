@@ -1,3 +1,4 @@
+import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -31,7 +32,13 @@ class EditableDropdownField extends StatelessWidget {
         suffixIcon: PopupMenuButton<String>(
           tooltip: 'Select option',
           enabled: options.isNotEmpty,
-          icon: const Icon(Icons.arrow_drop_down),
+          icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
+          color: AppColors.white,
+          surfaceTintColor: AppColors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+            side: const BorderSide(color: AppColors.border),
+          ),
           onSelected: (value) {
             controller.text = value;
             onChanged?.call(value);
@@ -41,9 +48,13 @@ class EditableDropdownField extends StatelessWidget {
                 .map(
                   (option) => PopupMenuItem<String>(
                     value: option,
+                    padding: EdgeInsets.zero,
                     child: SizedBox(
                       width: 220,
-                      child: Text(option, overflow: TextOverflow.ellipsis),
+                      child: AppDropdownStyle.menuItemLabel(
+                        label: option,
+                        selected: option == controller.text,
+                      ),
                     ),
                   ),
                 )

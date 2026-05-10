@@ -86,9 +86,9 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   inputFormatters: [LengthLimitingTextInputFormatter(80)],
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
+                AppDropdownButtonFormField<String>(
                   initialValue: lastEducationType,
-                  isExpanded: true,
+                  isExpanded: false,
                   decoration: InputDecoration(
                     label: _requiredLabel(context, 'Education Level'),
                   ),
@@ -96,10 +96,21 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                       .map(
                         (level) => DropdownMenuItem(
                           value: level,
-                          child: Text(level, overflow: TextOverflow.ellipsis),
+                          child: AppDropdownStyle.menuItemLabel(
+                            label: level,
+                            selected: level == lastEducationType,
+                          ),
                         ),
                       )
                       .toList(),
+                  selectedItemBuilder: (context) =>
+                      AppDropdownStyle.selectedLabels(_educationLevels),
+                  dropdownColor: AppColors.white,
+                  focusColor: AppColors.transparent,
+                  iconEnabledColor: AppColors.primary,
+                  borderRadius: AppDropdownStyle.menuBorderRadius,
+                  menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                  style: AppDropdownStyle.textStyle,
                   onChanged: (value) {
                     setState(() {
                       lastEducationType = value;

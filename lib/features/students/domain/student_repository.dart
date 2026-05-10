@@ -267,8 +267,14 @@ class StudentRepository extends BaseRepository<Student> {
         'school_id': schoolId,
         'status': 1,
       });
-      await _saveGuardians(txn, student.id, guardians);
-      await _saveAdvancedData(txn, student, guardians, advanced);
+      final savedGuardians = await _saveGuardians(txn, student.id, guardians);
+      await _saveAdvancedData(
+        txn,
+        student,
+        guardians,
+        savedGuardians,
+        advanced,
+      );
     });
   }
 
@@ -297,8 +303,14 @@ class StudentRepository extends BaseRepository<Student> {
         'school_id': schoolId,
         'status': 1,
       });
-      await _saveGuardians(txn, student.id, guardians);
-      await _saveAdvancedData(txn, student, guardians, advanced);
+      final savedGuardians = await _saveGuardians(txn, student.id, guardians);
+      await _saveAdvancedData(
+        txn,
+        student,
+        guardians,
+        savedGuardians,
+        advanced,
+      );
     });
   }
 
@@ -451,7 +463,7 @@ class StudentRepository extends BaseRepository<Student> {
     }).toList();
   }
 
-  Future<void> _saveGuardians(
+  Future<List<_SavedStudentGuardian>> _saveGuardians(
     Transaction txn,
     String studentId,
     List<StudentGuardianFormData> guardians,
@@ -477,6 +489,7 @@ class StudentRepository extends BaseRepository<Student> {
     );
 
     final validGuardians = guardians.where((guardian) => guardian.hasData);
+    final savedGuardians = <_SavedStudentGuardian>[];
 
     var index = 0;
     for (final guardian in validGuardians) {
@@ -511,14 +524,24 @@ class StudentRepository extends BaseRepository<Student> {
         'relationship': _nullIfBlank(guardian.relationship) ?? '-',
         'is_primary': guardian.isPrimary ? 1 : 0,
       });
+      savedGuardians.add(
+        _SavedStudentGuardian(
+          guardianId: guardianId,
+          relationship: _nullIfBlank(guardian.relationship) ?? '-',
+          isPrimary: guardian.isPrimary,
+        ),
+      );
       index++;
     }
+
+    return savedGuardians;
   }
 
   Future<void> _saveAdvancedData(
     Transaction txn,
     Student student,
     List<StudentGuardianFormData> guardians,
+    List<_SavedStudentGuardian> savedGuardians,
     StudentAdvancedFormData advanced,
   ) async {
     await _saveHealth(txn, student.id, advanced.health);
@@ -529,6 +552,12 @@ class StudentRepository extends BaseRepository<Student> {
     );
     if (!guardians.any((guardian) => guardian.hasData)) {
       await _copyGuardiansFromRelations(txn, student.id, resolvedRelations);
+    } else {
+      await _copyGuardiansToRelations(
+        txn,
+        savedGuardians,
+        resolvedRelations,
+      );
     }
     await _saveActivities(txn, student.id, advanced.activities);
     await _saveGoals(txn, student.id, advanced);
@@ -702,6 +731,72 @@ class StudentRepository extends BaseRepository<Student> {
         });
       }
       return;
+    }
+  }
+
+  Future<void> _copyGuardiansToRelations(
+    Transaction txn,
+    List<_SavedStudentGuardian> guardians,
+    List<StudentRelationFormData> relations,
+  ) async {
+    if (guardians.isEmpty || relations.isEmpty) return;
+
+    final relatedStudentIds = <String>{};
+    for (final relation in relations) {
+      final relatedStudentId = relation.relatedStudentId;
+      if (relatedStudentId == null) continue;
+      relatedStudentIds.add(relatedStudentId);
+    }
+
+    final guardianIds = guardians
+        .map((guardian) => guardian.guardianId)
+        .toList(growable: false);
+    final guardianPlaceholders = List.filled(guardianIds.length, '?').join(', ');
+
+    for (final relatedStudentId in relatedStudentIds) {
+      await txn.delete(
+        'student_guardians',
+        where: 'student_id = ? AND guardian_id NOT IN ($guardianPlaceholders)',
+        whereArgs: [relatedStudentId, ...guardianIds],
+      );
+
+      final hasPrimaryGuardian = guardians.any((guardian) => guardian.isPrimary);
+      if (hasPrimaryGuardian) {
+        await txn.update(
+          'student_guardians',
+          {'is_primary': 0},
+          where: 'student_id = ?',
+          whereArgs: [relatedStudentId],
+        );
+      }
+
+      for (final guardian in guardians) {
+        final existingLink = await txn.query(
+          'student_guardians',
+          where: 'student_id = ? AND guardian_id = ?',
+          whereArgs: [relatedStudentId, guardian.guardianId],
+          limit: 1,
+        );
+
+        final guardianLink = {
+          'student_id': relatedStudentId,
+          'guardian_id': guardian.guardianId,
+          'relationship': guardian.relationship,
+          'is_primary': guardian.isPrimary ? 1 : 0,
+        };
+
+        if (existingLink.isNotEmpty) {
+          await txn.update(
+            'student_guardians',
+            guardianLink,
+            where: 'student_id = ? AND guardian_id = ?',
+            whereArgs: [relatedStudentId, guardian.guardianId],
+          );
+          continue;
+        }
+
+        await txn.insert('student_guardians', guardianLink);
+      }
     }
   }
 
@@ -956,4 +1051,16 @@ class _StudentRelationTarget {
   final String id;
   final String? studentNo;
   final String? fullName;
+}
+
+class _SavedStudentGuardian {
+  const _SavedStudentGuardian({
+    required this.guardianId,
+    required this.relationship,
+    required this.isPrimary,
+  });
+
+  final String guardianId;
+  final String relationship;
+  final bool isPrimary;
 }

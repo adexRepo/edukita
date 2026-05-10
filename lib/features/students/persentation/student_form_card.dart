@@ -9,6 +9,7 @@ import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/students/data/student_advanced_form_data.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/editable_dropdown_field.dart';
 import 'package:edukita/widgets/form_validation.dart';
@@ -277,6 +278,16 @@ class _StudentFormCardState extends State<StudentFormCard> {
     if (_selectedClassId == null) return;
     final guardians = _buildGuardianData();
     final advancedData = _buildAdvancedData();
+    final guardianError = _validateGuardianDrafts();
+    if (guardianError != null) {
+      _showMessage(guardianError);
+      return;
+    }
+    final activityError = _validateActivityDrafts();
+    if (activityError != null) {
+      _showMessage(activityError);
+      return;
+    }
     final primaryGuardianCount = guardians
         .where((guardian) => guardian.isPrimary)
         .length;
@@ -380,8 +391,152 @@ class _StudentFormCardState extends State<StudentFormCard> {
     );
   }
 
-  bool _hasGuardianInput() {
-    return _guardianDrafts.any((draft) => draft.hasInput);
+  List<MapEntry<int, _GuardianDraft>> _visibleGuardianEntries() {
+    return _guardianDrafts.asMap().entries.where((entry) {
+      return entry.value.hasInput;
+    }).toList();
+  }
+
+  List<MapEntry<int, _ActivityDraft>> _visibleActivityEntries() {
+    return _activityDrafts.asMap().entries.where((entry) {
+      return entry.value.hasInput;
+    }).toList();
+  }
+
+  String? _validateGuardianDrafts() {
+    final entries = _visibleGuardianEntries();
+    for (var displayIndex = 0; displayIndex < entries.length; displayIndex++) {
+      final draft = entries[displayIndex].value;
+      final number = displayIndex + 1;
+      final nameError = AppFormValidation.requiredText(
+        draft.nameController.text,
+        'Guardian #$number name',
+        minLength: 3,
+        maxLength: 80,
+      );
+      if (nameError != null) return nameError;
+
+      final mobileError = AppFormValidation.requiredMobile(
+        draft.mobileController.text,
+      );
+      if (mobileError != null) return 'Guardian #$number: $mobileError';
+
+      final emailError = AppFormValidation.optionalEmail(
+        draft.emailController.text,
+      );
+      if (emailError != null) return 'Guardian #$number: $emailError';
+    }
+    return null;
+  }
+
+  String? _validateActivityDrafts() {
+    final entries = _visibleActivityEntries();
+    for (var displayIndex = 0; displayIndex < entries.length; displayIndex++) {
+      final draft = entries[displayIndex].value;
+      final number = displayIndex + 1;
+      final typeError = AppFormValidation.requiredText(
+        draft.typeController.text,
+        'Activity #$number type',
+        maxLength: 60,
+      );
+      if (typeError != null) return typeError;
+
+      final nameError = AppFormValidation.requiredText(
+        draft.nameController.text,
+        'Activity #$number name',
+        minLength: 2,
+        maxLength: 80,
+      );
+      if (nameError != null) return nameError;
+
+      final startDateError = _validateOptionalDate(
+        draft.startDateController.text,
+      );
+      if (startDateError != null) {
+        return 'Activity #$number start date: $startDateError';
+      }
+
+      final endDateError = _validateOptionalDate(draft.endDateController.text);
+      if (endDateError != null) {
+        return 'Activity #$number end date: $endDateError';
+      }
+    }
+    return null;
+  }
+
+  String? _validateOptionalDate(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return null;
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text)) {
+      return 'Use YYYY-MM-DD';
+    }
+    return null;
+  }
+
+  Future<void> _showGuardianDraftDialog({int? index}) async {
+    final result = await showDialog<_GuardianDraft>(
+      context: context,
+      builder: (dialogContext) => _GuardianDraftDialog(
+        initialDraft: index == null ? null : _guardianDrafts[index],
+        defaultPrimary: _visibleGuardianEntries().isEmpty,
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    setState(() {
+      if (result.isPrimary) {
+        for (final draft in _guardianDrafts) {
+          draft.isPrimary = false;
+        }
+      }
+
+      if (index == null) {
+        _guardianDrafts.add(result);
+      } else {
+        final oldDraft = _guardianDrafts[index];
+        _guardianDrafts[index] = result;
+        oldDraft.dispose();
+      }
+
+      _ensureOnePrimaryGuardian();
+    });
+  }
+
+  Future<void> _showActivityDraftDialog({int? index}) async {
+    final result = await showDialog<_ActivityDraft>(
+      context: context,
+      builder: (dialogContext) => _ActivityDraftDialog(
+        initialDraft: index == null ? null : _activityDrafts[index],
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    setState(() {
+      if (index == null) {
+        _activityDrafts.add(result);
+      } else {
+        final oldDraft = _activityDrafts[index];
+        _activityDrafts[index] = result;
+        oldDraft.dispose();
+      }
+    });
+  }
+
+  void _removeGuardianDraft(int index) {
+    setState(() {
+      final oldDraft = _guardianDrafts.removeAt(index);
+      oldDraft.dispose();
+      _ensureOnePrimaryGuardian();
+    });
+  }
+
+  void _removeActivityDraft(int index) {
+    setState(() {
+      final oldDraft = _activityDrafts.removeAt(index);
+      oldDraft.dispose();
+    });
   }
 
   Future<void> _lookupSibling(_SiblingRelationDraft draft) async {
@@ -476,13 +631,22 @@ class _StudentFormCardState extends State<StudentFormCard> {
   }
 
   void _ensureOnePrimaryGuardian() {
-    if (_guardianDrafts.isEmpty) return;
-
-    final primaryIndex = _guardianDrafts.indexWhere((draft) => draft.isPrimary);
-    if (primaryIndex == -1) {
-      _guardianDrafts.first.isPrimary = true;
+    final entries = _visibleGuardianEntries();
+    if (entries.isEmpty) {
+      for (final draft in _guardianDrafts) {
+        draft.isPrimary = false;
+      }
       return;
     }
+
+    int? primaryIndex;
+    for (final entry in entries) {
+      if (entry.value.isPrimary) {
+        primaryIndex = entry.key;
+        break;
+      }
+    }
+    primaryIndex ??= entries.first.key;
 
     for (var index = 0; index < _guardianDrafts.length; index++) {
       _guardianDrafts[index].isPrimary = index == primaryIndex;
@@ -604,20 +768,34 @@ class _StudentFormCardState extends State<StudentFormCard> {
             _FormSection(
               title: 'School',
               children: [
-                DropdownButtonFormField<String>(
+                AppDropdownButtonFormField<String>(
                   initialValue: _selectedSchoolId,
-                  isExpanded: true,
+                  isExpanded: false,
                   items: widget.availableSchools
                       .map(
                         (school) => DropdownMenuItem(
                           value: school.id,
-                          child: Text(
-                            '${school.name ?? '-'} (${school.type?.label ?? '-'})',
-                            overflow: TextOverflow.ellipsis,
+                          child: AppDropdownStyle.menuItemLabel(
+                            label:
+                                '${school.name ?? '-'} (${school.type?.label ?? '-'})',
+                            selected: school.id == _selectedSchoolId,
                           ),
                         ),
                       )
                       .toList(),
+                  selectedItemBuilder: (context) =>
+                      AppDropdownStyle.selectedLabels(
+                        widget.availableSchools.map(
+                          (school) =>
+                              '${school.name ?? '-'} (${school.type?.label ?? '-'})',
+                        ),
+                      ),
+                  dropdownColor: AppColors.white,
+                  focusColor: AppColors.transparent,
+                  iconEnabledColor: AppColors.primary,
+                  borderRadius: AppDropdownStyle.menuBorderRadius,
+                  menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                  style: AppDropdownStyle.textStyle,
                   decoration: InputDecoration(label: _requiredLabel('School')),
                   onChanged: (value) => setState(() {
                     _selectedSchoolId = value;
@@ -631,20 +809,34 @@ class _StudentFormCardState extends State<StudentFormCard> {
                   },
                 ),
                 const SizedBox(height: 14),
-                DropdownButtonFormField<String>(
+                AppDropdownButtonFormField<String>(
                   initialValue: _selectedClassId,
-                  isExpanded: true,
+                  isExpanded: false,
                   items: _classesForSelectedSchool
                       .map(
                         (schoolClass) => DropdownMenuItem(
                           value: schoolClass.id,
-                          child: Text(
-                            '${schoolClass.className} (${schoolClass.year})',
-                            overflow: TextOverflow.ellipsis,
+                          child: AppDropdownStyle.menuItemLabel(
+                            label:
+                                '${schoolClass.className} (${schoolClass.year})',
+                            selected: schoolClass.id == _selectedClassId,
                           ),
                         ),
                       )
                       .toList(),
+                  selectedItemBuilder: (context) =>
+                      AppDropdownStyle.selectedLabels(
+                        _classesForSelectedSchool.map(
+                          (schoolClass) =>
+                              '${schoolClass.className} (${schoolClass.year})',
+                        ),
+                      ),
+                  dropdownColor: AppColors.white,
+                  focusColor: AppColors.transparent,
+                  iconEnabledColor: AppColors.primary,
+                  borderRadius: AppDropdownStyle.menuBorderRadius,
+                  menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                  style: AppDropdownStyle.textStyle,
                   decoration: InputDecoration(
                     label: _requiredLabel('Class'),
                     hintText: _selectedSchoolId == null
@@ -842,34 +1034,17 @@ class _StudentFormCardState extends State<StudentFormCard> {
         const SizedBox(height: 18),
         _InlineSectionTitle('Guardian / Parents'),
         const SizedBox(height: 10),
-        for (var index = 0; index < _guardianDrafts.length; index++) ...[
-          _GuardianDraftCard(
-            draft: _guardianDrafts[index],
-            canRemove: _guardianDrafts.length > 1,
-            isRequired: index == 0,
-            onPrimaryChanged: (isPrimary) => setState(() {
-              if (isPrimary) {
-                for (final draft in _guardianDrafts) {
-                  draft.isPrimary = false;
-                }
-              }
-              _guardianDrafts[index].isPrimary = isPrimary;
-            }),
-            onRemove: () => setState(() {
-              _guardianDrafts.removeAt(index).dispose();
-            }),
-            hasAnyGuardianInput: _hasGuardianInput,
-          ),
-          const SizedBox(height: 14),
-        ],
-        Align(
-          alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
-            onPressed: () => setState(() {
-              _guardianDrafts.add(_GuardianDraft());
-            }),
-            icon: const Icon(Icons.add),
-            label: const Text('Add Parent / Guardian'),
+        _DraftTableToolbar(
+          title: 'Parents / Guardians (${_visibleGuardianEntries().length})',
+          tooltip: 'Add parent / guardian',
+          onAdd: () => _showGuardianDraftDialog(),
+        ),
+        const SizedBox(height: 8),
+        _DraftTableFrame(
+          child: _GuardianDraftTable(
+            entries: _visibleGuardianEntries(),
+            onEdit: (index) => _showGuardianDraftDialog(index: index),
+            onRemove: _removeGuardianDraft,
           ),
         ),
       ],
@@ -880,24 +1055,17 @@ class _StudentFormCardState extends State<StudentFormCard> {
     return _FormSection(
       title: 'Extracurricular / Activity',
       children: [
-        for (var index = 0; index < _activityDrafts.length; index++) ...[
-          _ActivityDraftCard(
-            draft: _activityDrafts[index],
-            canRemove: _activityDrafts.length > 1,
-            onRemove: () => setState(() {
-              _activityDrafts.removeAt(index).dispose();
-            }),
-          ),
-          const SizedBox(height: 14),
-        ],
-        Align(
-          alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
-            onPressed: () => setState(() {
-              _activityDrafts.add(_ActivityDraft());
-            }),
-            icon: const Icon(Icons.add),
-            label: const Text('Add Activity'),
+        _DraftTableToolbar(
+          title: 'Activities (${_visibleActivityEntries().length})',
+          tooltip: 'Add activity',
+          onAdd: () => _showActivityDraftDialog(),
+        ),
+        const SizedBox(height: 8),
+        _DraftTableFrame(
+          child: _ActivityDraftTable(
+            entries: _visibleActivityEntries(),
+            onEdit: (index) => _showActivityDraftDialog(index: index),
+            onRemove: _removeActivityDraft,
           ),
         ),
       ],
@@ -1142,6 +1310,23 @@ class _GuardianDraft {
   _GuardianDraft({String? relationship, this.isPrimary = false})
     : relationship = relationship ?? GuardianRelationshipOptions.values.first;
 
+  _GuardianDraft.fromValues({
+    this.guardianId,
+    required this.relationship,
+    required this.isPrimary,
+    required String fullName,
+    required String mobileNo,
+    required String email,
+    required String occupation,
+    required String address,
+  }) {
+    nameController.text = fullName;
+    mobileController.text = mobileNo;
+    emailController.text = email;
+    occupationController.text = occupation;
+    addressController.text = address;
+  }
+
   _GuardianDraft.fromData(StudentGuardianFormData data)
     : guardianId = data.guardianId,
       isPrimary = data.isPrimary,
@@ -1250,6 +1435,24 @@ class _SiblingRelationDraft {
 class _ActivityDraft {
   _ActivityDraft({String? type}) {
     typeController.text = StudentActivityTypeOptions.normalize(type);
+  }
+
+  _ActivityDraft.fromValues({
+    this.rowId,
+    this.activityId,
+    required String type,
+    required String name,
+    required String role,
+    required String achievement,
+    required String startDate,
+    required String endDate,
+  }) {
+    typeController.text = StudentActivityTypeOptions.normalize(type);
+    nameController.text = name;
+    roleController.text = role;
+    achievementController.text = achievement;
+    startDateController.text = startDate;
+    endDateController.text = endDate;
   }
 
   _ActivityDraft.fromData(StudentActivityFormData data)
@@ -1365,9 +1568,9 @@ class _SiblingRelationDraftCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: DropdownButtonFormField<String>(
+                child: AppDropdownButtonFormField<String>(
                   initialValue: draft.relationType,
-                  isExpanded: true,
+                  isExpanded: false,
                   decoration: InputDecoration(
                     label: _requiredFieldLabel(context, 'Relation'),
                   ),
@@ -1375,10 +1578,23 @@ class _SiblingRelationDraftCard extends StatelessWidget {
                       .map(
                         (value) => DropdownMenuItem(
                           value: value,
-                          child: Text(value, overflow: TextOverflow.ellipsis),
+                          child: AppDropdownStyle.menuItemLabel(
+                            label: value,
+                            selected: value == draft.relationType,
+                          ),
                         ),
                       )
                       .toList(),
+                  selectedItemBuilder: (context) =>
+                      AppDropdownStyle.selectedLabels(
+                        StudentRelationOptions.relationTypes,
+                      ),
+                  dropdownColor: AppColors.white,
+                  focusColor: AppColors.transparent,
+                  iconEnabledColor: AppColors.primary,
+                  borderRadius: AppDropdownStyle.menuBorderRadius,
+                  menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                  style: AppDropdownStyle.textStyle,
                   onChanged: (value) {
                     if (value != null) draft.relationType = value;
                   },
@@ -1386,9 +1602,9 @@ class _SiblingRelationDraftCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: DropdownButtonFormField<String>(
+                child: AppDropdownButtonFormField<String>(
                   initialValue: draft.agePosition,
-                  isExpanded: true,
+                  isExpanded: false,
                   decoration: InputDecoration(
                     label: _requiredFieldLabel(context, 'Age Position'),
                   ),
@@ -1396,10 +1612,23 @@ class _SiblingRelationDraftCard extends StatelessWidget {
                       .map(
                         (value) => DropdownMenuItem(
                           value: value,
-                          child: Text(value, overflow: TextOverflow.ellipsis),
+                          child: AppDropdownStyle.menuItemLabel(
+                            label: value,
+                            selected: value == draft.agePosition,
+                          ),
                         ),
                       )
                       .toList(),
+                  selectedItemBuilder: (context) =>
+                      AppDropdownStyle.selectedLabels(
+                        StudentRelationOptions.agePositions,
+                      ),
+                  dropdownColor: AppColors.white,
+                  focusColor: AppColors.transparent,
+                  iconEnabledColor: AppColors.primary,
+                  borderRadius: AppDropdownStyle.menuBorderRadius,
+                  menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                  style: AppDropdownStyle.textStyle,
                   onChanged: (value) {
                     if (value != null) draft.agePosition = value;
                   },
@@ -1431,113 +1660,833 @@ class _SiblingRelationDraftCard extends StatelessWidget {
   }
 }
 
-class _ActivityDraftCard extends StatelessWidget {
-  const _ActivityDraftCard({
-    required this.draft,
-    required this.canRemove,
-    required this.onRemove,
+class _DraftTableToolbar extends StatelessWidget {
+  const _DraftTableToolbar({
+    required this.title,
+    required this.tooltip,
+    required this.onAdd,
   });
 
-  final _ActivityDraft draft;
-  final bool canRemove;
-  final VoidCallback onRemove;
+  final String title;
+  final String tooltip;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
+        IconButton.filledTonal(
+          onPressed: onAdd,
+          icon: const Icon(Icons.add),
+          tooltip: tooltip,
+          style: IconButton.styleFrom(
+            backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+            foregroundColor: AppColors.primaryDark,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DraftTableFrame extends StatelessWidget {
+  const _DraftTableFrame({required this.child});
+
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: child,
+    );
+  }
+}
+
+class _DraftHeaderText extends StatelessWidget {
+  const _DraftHeaderText(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+        color: AppColors.textSecondary,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+}
+
+class _DraftCellText extends StatelessWidget {
+  const _DraftCellText(this.text, {this.highlight = false});
+
+  final String? text;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = text?.trim();
+    return Text(
+      value == null || value.isEmpty ? '-' : value,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        color: highlight ? AppColors.primaryDark : AppColors.textPrimary,
+        fontSize: 12,
+        fontWeight: highlight ? FontWeight.w700 : FontWeight.w500,
+      ),
+    );
+  }
+}
+
+class _GuardianDraftTable extends StatelessWidget {
+  const _GuardianDraftTable({
+    required this.entries,
+    required this.onEdit,
+    required this.onRemove,
+  });
+
+  final List<MapEntry<int, _GuardianDraft>> entries;
+  final ValueChanged<int> onEdit;
+  final ValueChanged<int> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
             children: [
+              SizedBox(width: 42, child: _DraftHeaderText('No')),
+              Expanded(flex: 2, child: _DraftHeaderText('Relationship')),
+              Expanded(flex: 3, child: _DraftHeaderText('Name')),
+              Expanded(flex: 2, child: _DraftHeaderText('Mobile')),
+              Expanded(child: _DraftHeaderText('Primary')),
+              SizedBox(width: 74, child: _DraftHeaderText('Actions')),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        if (entries.isEmpty)
+          const SizedBox(
+            height: 88,
+            child: Center(
+              child: Text(
+                'No parent / guardian yet',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          )
+        else
+          for (
+            var displayIndex = 0;
+            displayIndex < entries.length;
+            displayIndex++
+          ) ...[
+            _GuardianDraftTableRow(
+              number: displayIndex + 1,
+              draftIndex: entries[displayIndex].key,
+              draft: entries[displayIndex].value,
+              onEdit: onEdit,
+              onRemove: onRemove,
+            ),
+            if (displayIndex != entries.length - 1) const Divider(height: 1),
+          ],
+      ],
+    );
+  }
+}
+
+class _GuardianDraftTableRow extends StatelessWidget {
+  const _GuardianDraftTableRow({
+    required this.number,
+    required this.draftIndex,
+    required this.draft,
+    required this.onEdit,
+    required this.onRemove,
+  });
+
+  final int number;
+  final int draftIndex;
+  final _GuardianDraft draft;
+  final ValueChanged<int> onEdit;
+  final ValueChanged<int> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.transparent,
+      child: InkWell(
+        onTap: () => onEdit(draftIndex),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            children: [
+              SizedBox(width: 42, child: _RowNumber(number)),
+              Expanded(flex: 2, child: _DraftCellText(draft.relationship)),
               Expanded(
-                child: EditableDropdownField(
-                  controller: draft.typeController,
+                flex: 3,
+                child: _DraftCellText(draft.nameController.text),
+              ),
+              Expanded(
+                flex: 2,
+                child: _DraftCellText(draft.mobileController.text),
+              ),
+              Expanded(
+                child: _DraftCellText(
+                  draft.isPrimary ? 'Yes' : 'No',
+                  highlight: draft.isPrimary,
+                ),
+              ),
+              SizedBox(
+                width: 74,
+                child: Row(
+                  children: [
+                    IconButton(
+                      tooltip: 'Edit guardian',
+                      constraints: const BoxConstraints.tightFor(
+                        width: 32,
+                        height: 32,
+                      ),
+                      padding: EdgeInsets.zero,
+                      onPressed: () => onEdit(draftIndex),
+                      icon: const Icon(Icons.edit, size: 16),
+                    ),
+                    IconButton(
+                      tooltip: 'Remove guardian',
+                      constraints: const BoxConstraints.tightFor(
+                        width: 32,
+                        height: 32,
+                      ),
+                      padding: EdgeInsets.zero,
+                      onPressed: () => onRemove(draftIndex),
+                      icon: const Icon(Icons.delete_outline, size: 16),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActivityDraftTable extends StatelessWidget {
+  const _ActivityDraftTable({
+    required this.entries,
+    required this.onEdit,
+    required this.onRemove,
+  });
+
+  final List<MapEntry<int, _ActivityDraft>> entries;
+  final ValueChanged<int> onEdit;
+  final ValueChanged<int> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            children: [
+              SizedBox(width: 42, child: _DraftHeaderText('No')),
+              Expanded(flex: 2, child: _DraftHeaderText('Type')),
+              Expanded(flex: 3, child: _DraftHeaderText('Activity')),
+              Expanded(flex: 2, child: _DraftHeaderText('Role')),
+              Expanded(flex: 2, child: _DraftHeaderText('Period')),
+              SizedBox(width: 74, child: _DraftHeaderText('Actions')),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        if (entries.isEmpty)
+          const SizedBox(
+            height: 88,
+            child: Center(
+              child: Text(
+                'No activity yet',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          )
+        else
+          for (
+            var displayIndex = 0;
+            displayIndex < entries.length;
+            displayIndex++
+          ) ...[
+            _ActivityDraftTableRow(
+              number: displayIndex + 1,
+              draftIndex: entries[displayIndex].key,
+              draft: entries[displayIndex].value,
+              onEdit: onEdit,
+              onRemove: onRemove,
+            ),
+            if (displayIndex != entries.length - 1) const Divider(height: 1),
+          ],
+      ],
+    );
+  }
+}
+
+class _ActivityDraftTableRow extends StatelessWidget {
+  const _ActivityDraftTableRow({
+    required this.number,
+    required this.draftIndex,
+    required this.draft,
+    required this.onEdit,
+    required this.onRemove,
+  });
+
+  final int number;
+  final int draftIndex;
+  final _ActivityDraft draft;
+  final ValueChanged<int> onEdit;
+  final ValueChanged<int> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final start = draft.startDateController.text.trim();
+    final end = draft.endDateController.text.trim();
+    final period = start.isEmpty && end.isEmpty
+        ? '-'
+        : '${start.isEmpty ? '-' : start} - ${end.isEmpty ? '-' : end}';
+
+    return Material(
+      color: AppColors.transparent,
+      child: InkWell(
+        onTap: () => onEdit(draftIndex),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            children: [
+              SizedBox(width: 42, child: _RowNumber(number)),
+              Expanded(
+                flex: 2,
+                child: _DraftCellText(draft.typeController.text),
+              ),
+              Expanded(
+                flex: 3,
+                child: _DraftCellText(draft.nameController.text),
+              ),
+              Expanded(
+                flex: 2,
+                child: _DraftCellText(draft.roleController.text),
+              ),
+              Expanded(flex: 2, child: _DraftCellText(period)),
+              SizedBox(
+                width: 74,
+                child: Row(
+                  children: [
+                    IconButton(
+                      tooltip: 'Edit activity',
+                      constraints: const BoxConstraints.tightFor(
+                        width: 32,
+                        height: 32,
+                      ),
+                      padding: EdgeInsets.zero,
+                      onPressed: () => onEdit(draftIndex),
+                      icon: const Icon(Icons.edit, size: 16),
+                    ),
+                    IconButton(
+                      tooltip: 'Remove activity',
+                      constraints: const BoxConstraints.tightFor(
+                        width: 32,
+                        height: 32,
+                      ),
+                      padding: EdgeInsets.zero,
+                      onPressed: () => onRemove(draftIndex),
+                      icon: const Icon(Icons.delete_outline, size: 16),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RowNumber extends StatelessWidget {
+  const _RowNumber(this.number);
+
+  final int number;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        width: 26,
+        height: 26,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        ),
+        child: Text(
+          '$number',
+          style: const TextStyle(
+            color: AppColors.primaryDark,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GuardianDraftDialog extends StatefulWidget {
+  const _GuardianDraftDialog({
+    required this.defaultPrimary,
+    this.initialDraft,
+  });
+
+  final bool defaultPrimary;
+  final _GuardianDraft? initialDraft;
+
+  @override
+  State<_GuardianDraftDialog> createState() => _GuardianDraftDialogState();
+}
+
+class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _mobileController;
+  late final TextEditingController _emailController;
+  late final TextEditingController _occupationController;
+  late final TextEditingController _addressController;
+  late String _relationship;
+  late bool _isPrimary;
+
+  @override
+  void initState() {
+    super.initState();
+    final draft = widget.initialDraft;
+    _relationship =
+        draft?.relationship ?? GuardianRelationshipOptions.values.first;
+    _isPrimary = draft?.isPrimary ?? widget.defaultPrimary;
+    _nameController = TextEditingController(
+      text: draft?.nameController.text ?? '',
+    );
+    _mobileController = TextEditingController(
+      text: draft?.mobileController.text ?? '',
+    );
+    _emailController = TextEditingController(
+      text: draft?.emailController.text ?? '',
+    );
+    _occupationController = TextEditingController(
+      text: draft?.occupationController.text ?? '',
+    );
+    _addressController = TextEditingController(
+      text: draft?.addressController.text ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _mobileController.dispose();
+    _emailController.dispose();
+    _occupationController.dispose();
+    _addressController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+
+    Navigator.of(context).pop(
+      _GuardianDraft.fromValues(
+        guardianId: widget.initialDraft?.guardianId,
+        relationship: _relationship,
+        isPrimary: _isPrimary,
+        fullName: _nameController.text.trim(),
+        mobileNo: _mobileController.text.trim(),
+        email: _emailController.text.trim(),
+        occupation: _occupationController.text.trim(),
+        address: _addressController.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.initialDraft != null;
+
+    return AlertDialog(
+      title: AppDialogTitle(isEditing ? 'Edit Guardian' : 'Add Guardian'),
+      content: SizedBox(
+        width: 520,
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppDropdownButtonFormField<String>(
+                  initialValue: _relationship,
+                  isExpanded: false,
+                  items: GuardianRelationshipOptions.values
+                      .map(
+                        (relationship) => DropdownMenuItem(
+                          value: relationship,
+                          child: AppDropdownStyle.menuItemLabel(
+                            label: relationship,
+                            selected: relationship == _relationship,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  selectedItemBuilder: (context) =>
+                      AppDropdownStyle.selectedLabels(
+                    GuardianRelationshipOptions.values,
+                  ),
+                  dropdownColor: AppColors.white,
+                  focusColor: AppColors.transparent,
+                  iconEnabledColor: AppColors.primary,
+                  borderRadius: AppDropdownStyle.menuBorderRadius,
+                  menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                  style: AppDropdownStyle.textStyle,
+                  decoration: InputDecoration(
+                    label: _requiredFieldLabel(context, 'Relationship'),
+                  ),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _relationship = value);
+                  },
+                ),
+                const SizedBox(height: 14),
+                InputDecorator(
+                  decoration: InputDecoration(
+                    label: _requiredFieldLabel(context, 'Primary Guardian'),
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<bool>(
+                      expandedInsets: EdgeInsets.zero,
+                      showSelectedIcon: false,
+                      segments: const [
+                        ButtonSegment(value: true, label: Text('Primary')),
+                        ButtonSegment(
+                          value: false,
+                          label: Text('Not Primary'),
+                        ),
+                      ],
+                      selected: {_isPrimary},
+                      onSelectionChanged: (selection) {
+                        setState(() => _isPrimary = selection.first);
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    label: _requiredFieldLabel(
+                      context,
+                      'Parent / Guardian Name',
+                    ),
+                  ),
+                  validator: (value) => AppFormValidation.requiredText(
+                    value,
+                    'Guardian name',
+                    minLength: 3,
+                    maxLength: 80,
+                  ),
+                  inputFormatters: [LengthLimitingTextInputFormatter(80)],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _mobileController,
+                        decoration: InputDecoration(
+                          label: _requiredFieldLabel(context, 'Mobile No'),
+                          hintText: AppFormValidation.mobilePlaceholder,
+                        ),
+                        keyboardType: TextInputType.phone,
+                        inputFormatters:
+                            AppFormValidation.mobileInputFormatters,
+                        validator: AppFormValidation.requiredMobile,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _emailController,
+                        decoration: const InputDecoration(
+                          labelText: 'Email Address',
+                        ),
+                        validator: AppFormValidation.optionalEmail,
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(120),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _occupationController,
+                        decoration: const InputDecoration(
+                          labelText: 'Occupation',
+                        ),
+                        validator: (value) => AppFormValidation.optionalText(
+                          value,
+                          'Occupation',
+                          maxLength: 60,
+                        ),
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(60),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _addressController,
+                        decoration: const InputDecoration(labelText: 'Address'),
+                        validator: (value) => AppFormValidation.optionalText(
+                          value,
+                          'Address',
+                          maxLength: 160,
+                        ),
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(160),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Save')),
+      ],
+    );
+  }
+}
+
+class _ActivityDraftDialog extends StatefulWidget {
+  const _ActivityDraftDialog({this.initialDraft});
+
+  final _ActivityDraft? initialDraft;
+
+  @override
+  State<_ActivityDraftDialog> createState() => _ActivityDraftDialogState();
+}
+
+class _ActivityDraftDialogState extends State<_ActivityDraftDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _typeController;
+  late final TextEditingController _nameController;
+  late final TextEditingController _roleController;
+  late final TextEditingController _achievementController;
+  late final TextEditingController _startDateController;
+  late final TextEditingController _endDateController;
+
+  @override
+  void initState() {
+    super.initState();
+    final draft = widget.initialDraft;
+    _typeController = TextEditingController(
+      text: draft?.typeController.text ??
+          StudentActivityTypeOptions.schoolExtracurricular,
+    );
+    _nameController = TextEditingController(
+      text: draft?.nameController.text ?? '',
+    );
+    _roleController = TextEditingController(
+      text: draft?.roleController.text ?? '',
+    );
+    _achievementController = TextEditingController(
+      text: draft?.achievementController.text ?? '',
+    );
+    _startDateController = TextEditingController(
+      text: draft?.startDateController.text ?? '',
+    );
+    _endDateController = TextEditingController(
+      text: draft?.endDateController.text ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _typeController.dispose();
+    _nameController.dispose();
+    _roleController.dispose();
+    _achievementController.dispose();
+    _startDateController.dispose();
+    _endDateController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+
+    Navigator.of(context).pop(
+      _ActivityDraft.fromValues(
+        rowId: widget.initialDraft?.rowId,
+        activityId: widget.initialDraft?.activityId,
+        type: _typeController.text.trim(),
+        name: _nameController.text.trim(),
+        role: _roleController.text.trim(),
+        achievement: _achievementController.text.trim(),
+        startDate: _startDateController.text.trim(),
+        endDate: _endDateController.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.initialDraft != null;
+
+    return AlertDialog(
+      title: AppDialogTitle(isEditing ? 'Edit Activity' : 'Add Activity'),
+      content: SizedBox(
+        width: 520,
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                EditableDropdownField(
+                  controller: _typeController,
                   label: _requiredFieldLabel(context, 'Type'),
                   hintText: AppFormFieldStyle.select('or type'),
                   options: StudentActivityTypeOptions.values,
                   inputFormatters: [LengthLimitingTextInputFormatter(60)],
                   validator: (value) {
-                    if (!draft.hasInput) return null;
                     if (value == null || value.trim().isEmpty) {
                       return 'Type is required';
                     }
                     return null;
                   },
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: TextFormField(
-                  controller: draft.nameController,
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _nameController,
                   decoration: InputDecoration(
                     label: _requiredFieldLabel(context, 'Activity Name'),
                   ),
-                  validator: (value) {
-                    if (!draft.hasInput) return null;
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Activity name is required';
-                    }
-                    return null;
-                  },
+                  validator: (value) => AppFormValidation.requiredText(
+                    value,
+                    'Activity name',
+                    minLength: 2,
+                    maxLength: 80,
+                  ),
                   inputFormatters: [LengthLimitingTextInputFormatter(80)],
                 ),
-              ),
-              const SizedBox(width: 12),
-              IconButton(
-                onPressed: canRemove ? onRemove : null,
-                icon: const Icon(Icons.delete_outline),
-                tooltip: 'Remove activity',
-              ),
-            ],
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _roleController,
+                        decoration: const InputDecoration(labelText: 'Role'),
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(60),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _achievementController,
+                        decoration: const InputDecoration(
+                          labelText: 'Achievement',
+                        ),
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(120),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _OptionalDateTextField(
+                        controller: _startDateController,
+                        label: 'Start Date',
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _OptionalDateTextField(
+                        controller: _endDateController,
+                        label: 'End Date',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: draft.roleController,
-                  decoration: const InputDecoration(labelText: 'Role'),
-                  inputFormatters: [LengthLimitingTextInputFormatter(60)],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextFormField(
-                  controller: draft.achievementController,
-                  decoration: const InputDecoration(labelText: 'Achievement'),
-                  inputFormatters: [LengthLimitingTextInputFormatter(120)],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _OptionalDateTextField(
-                  controller: draft.startDateController,
-                  label: 'Start Date',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _OptionalDateTextField(
-                  controller: draft.endDateController,
-                  label: 'End Date',
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Save')),
+      ],
     );
   }
 }
@@ -1568,194 +2517,6 @@ class _OptionalDateTextField extends StatelessWidget {
         }
         return null;
       },
-    );
-  }
-}
-
-class _GuardianDraftCard extends StatelessWidget {
-  const _GuardianDraftCard({
-    required this.draft,
-    required this.canRemove,
-    required this.isRequired,
-    required this.onRemove,
-    required this.onPrimaryChanged,
-    required this.hasAnyGuardianInput,
-  });
-
-  final _GuardianDraft draft;
-  final bool canRemove;
-  final bool isRequired;
-  final VoidCallback onRemove;
-  final ValueChanged<bool> onPrimaryChanged;
-  final bool Function() hasAnyGuardianInput;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  initialValue: draft.relationship,
-                  isExpanded: true,
-                  items: GuardianRelationshipOptions.values
-                      .map(
-                        (relationship) => DropdownMenuItem(
-                          value: relationship,
-                          child: Text(
-                            relationship,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  decoration: InputDecoration(
-                    label: _requiredLabel(context, 'Relationship'),
-                  ),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    draft.relationship = value;
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              IconButton(
-                onPressed: canRemove ? onRemove : null,
-                icon: const Icon(Icons.delete_outline),
-                tooltip: 'Remove guardian',
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          InputDecorator(
-            decoration: InputDecoration(
-              label: _requiredLabel(context, 'Primary Guardian'),
-              border: const OutlineInputBorder(),
-              contentPadding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<bool>(
-                expandedInsets: EdgeInsets.zero,
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(value: true, label: Text('Primary')),
-                  ButtonSegment(value: false, label: Text('Not Primary')),
-                ],
-                selected: {draft.isPrimary},
-                onSelectionChanged: (selection) {
-                  onPrimaryChanged(selection.first);
-                },
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          TextFormField(
-            controller: draft.nameController,
-            decoration: InputDecoration(
-              label: _requiredLabel(context, 'Parent / Guardian Name'),
-            ),
-            validator: (value) {
-              final shouldValidate =
-                  draft.hasInput || (isRequired && !hasAnyGuardianInput());
-              if (!shouldValidate) return null;
-              return AppFormValidation.requiredText(
-                value,
-                'Guardian name',
-                minLength: 3,
-                maxLength: 80,
-              );
-            },
-            inputFormatters: [LengthLimitingTextInputFormatter(80)],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: draft.mobileController,
-                  decoration: InputDecoration(
-                    label: _requiredLabel(context, 'Mobile No'),
-                    hintText: AppFormValidation.mobilePlaceholder,
-                  ),
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: AppFormValidation.mobileInputFormatters,
-                  validator: (value) {
-                    final shouldValidate =
-                        draft.hasInput ||
-                        (isRequired && !hasAnyGuardianInput());
-                    if (!shouldValidate) return null;
-                    return AppFormValidation.requiredMobile(value);
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextFormField(
-                  controller: draft.emailController,
-                  decoration: const InputDecoration(labelText: 'Email Address'),
-                  validator: AppFormValidation.optionalEmail,
-                  inputFormatters: [LengthLimitingTextInputFormatter(120)],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: draft.occupationController,
-                  decoration: const InputDecoration(labelText: 'Occupation'),
-                  validator: (value) => AppFormValidation.optionalText(
-                    value,
-                    'Occupation',
-                    maxLength: 60,
-                  ),
-                  inputFormatters: [LengthLimitingTextInputFormatter(60)],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextFormField(
-                  controller: draft.addressController,
-                  decoration: const InputDecoration(labelText: 'Address'),
-                  validator: (value) => AppFormValidation.optionalText(
-                    value,
-                    'Address',
-                    maxLength: 160,
-                  ),
-                  inputFormatters: [LengthLimitingTextInputFormatter(160)],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _requiredLabel(BuildContext context, String label) {
-    return RichText(
-      text: TextSpan(
-        text: label,
-        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-        children: const [
-          TextSpan(
-            text: ' *',
-            style: TextStyle(color: AppColors.errorDark),
-          ),
-        ],
-      ),
     );
   }
 }

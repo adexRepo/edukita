@@ -65,7 +65,7 @@ class CommonFormWidgets {
   }
 
   // Common dropdown field
-  static DropdownButtonFormField<String> dropdownField({
+  static AppDropdownButtonFormField<String> dropdownField({
     required String label,
     required List<String> items,
     String? value,
@@ -75,19 +75,48 @@ class CommonFormWidgets {
     ValueChanged<String?>? onChanged,
     String? hint,
   }) {
-    return DropdownButtonFormField<String>(
-      initialValue: value,
-      isExpanded: true,
-      items: items
-          .map(
-            (item) => DropdownMenuItem(
-              value: item,
-              child: Text(item, overflow: TextOverflow.ellipsis),
-            ),
-          )
-          .toList(),
-      onChanged: onChanged,
-      onSaved: onSaved,
+    final allowEmptySelection = !isRequired;
+    final initialValue = allowEmptySelection && (value == null || value.isEmpty)
+        ? ''
+        : value;
+    final dropdownItems = <DropdownMenuItem<String>>[
+      if (allowEmptySelection)
+        DropdownMenuItem(
+          value: '',
+          child: AppDropdownStyle.menuItemLabel(
+            label: 'Select',
+            selected: initialValue == '',
+          ),
+        ),
+      ...items.map(
+        (item) => DropdownMenuItem(
+          value: item,
+          child: AppDropdownStyle.menuItemLabel(
+            label: item,
+            selected: item == initialValue,
+          ),
+        ),
+      ),
+    ];
+    final labels = [
+      if (allowEmptySelection) 'Select',
+      ...items,
+    ];
+
+    return AppDropdownButtonFormField<String>(
+      initialValue: initialValue,
+      isExpanded: false,
+      items: dropdownItems,
+      selectedItemBuilder: (context) => AppDropdownStyle.selectedLabels(labels),
+      onChanged: (value) =>
+          onChanged?.call(value?.isEmpty == true ? null : value),
+      onSaved: (value) => onSaved(value?.isEmpty == true ? null : value),
+      dropdownColor: AppColors.white,
+      focusColor: AppColors.transparent,
+      iconEnabledColor: AppColors.primary,
+      borderRadius: AppDropdownStyle.menuBorderRadius,
+      menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+      style: AppDropdownStyle.textStyle,
       validator:
           validator ??
           (value) {
@@ -106,7 +135,7 @@ class CommonFormWidgets {
   }
 
   // Common dropdown with objects
-  static DropdownButtonFormField<String> dropdownFieldTyped<T>({
+  static AppDropdownButtonFormField<String> dropdownFieldTyped<T>({
     required String label,
     required List<T> items,
     required String Function(T) labelBuilder,
@@ -118,21 +147,43 @@ class CommonFormWidgets {
     bool isRequired = true,
   }) {
     final valueString = value != null ? valueBuilder(value) : null;
+    final allowEmptySelection = !isRequired;
+    final initialValue =
+        allowEmptySelection && (valueString == null || valueString.isEmpty)
+        ? ''
+        : valueString;
+    final labels = [
+      if (allowEmptySelection) 'Select',
+      ...items.map(labelBuilder),
+    ];
+    final dropdownItems = <DropdownMenuItem<String>>[
+      if (allowEmptySelection)
+        DropdownMenuItem(
+          value: '',
+          child: AppDropdownStyle.menuItemLabel(
+            label: 'Select',
+            selected: initialValue == '',
+          ),
+        ),
+      ...items.map(
+        (item) => DropdownMenuItem(
+          value: valueBuilder(item),
+          child: AppDropdownStyle.menuItemLabel(
+            label: labelBuilder(item),
+            selected: valueBuilder(item) == initialValue,
+          ),
+        ),
+      ),
+    ];
 
-    return DropdownButtonFormField<String>(
-      initialValue: valueString,
-      isExpanded: true,
-      items: items
-          .map(
-            (item) => DropdownMenuItem(
-              value: valueBuilder(item),
-              child: Text(labelBuilder(item), overflow: TextOverflow.ellipsis),
-            ),
-          )
-          .toList(),
+    return AppDropdownButtonFormField<String>(
+      initialValue: initialValue,
+      isExpanded: false,
+      items: dropdownItems,
+      selectedItemBuilder: (context) => AppDropdownStyle.selectedLabels(labels),
       onChanged: (newValue) {
         if (onChanged == null) return;
-        if (newValue == null) {
+        if (newValue == null || newValue.isEmpty) {
           onChanged(null);
           return;
         }
@@ -143,7 +194,7 @@ class CommonFormWidgets {
         onChanged(selectedItem);
       },
       onSaved: (newValue) {
-        if (newValue == null) {
+        if (newValue == null || newValue.isEmpty) {
           onSaved(null);
         } else {
           final selectedItem = items.firstWhere(
@@ -153,6 +204,12 @@ class CommonFormWidgets {
           onSaved(selectedItem);
         }
       },
+      dropdownColor: AppColors.white,
+      focusColor: AppColors.transparent,
+      iconEnabledColor: AppColors.primary,
+      borderRadius: AppDropdownStyle.menuBorderRadius,
+      menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+      style: AppDropdownStyle.textStyle,
       validator: (value) {
         if (isRequired && (value?.isEmpty ?? true)) {
           return 'Please select $label';

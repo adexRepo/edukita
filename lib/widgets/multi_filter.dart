@@ -264,16 +264,33 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
       padding: const EdgeInsets.all(14),
       child: Column(
         children: [
-          DropdownButtonFormField<FilterField>(
+          AppDropdownButtonFormField<FilterField>(
             initialValue: selectedField,
-            isExpanded: true,
+            isExpanded: false,
             items: widget.fields.map((f) {
-              return DropdownMenuItem(value: f, child: Text(f.label));
+              return DropdownMenuItem(
+                value: f,
+                child: AppDropdownStyle.menuItemLabel(
+                  label: f.label,
+                  selected: f.code == selectedField.code,
+                ),
+              );
             }).toList(),
+            selectedItemBuilder: (context) {
+              return AppDropdownStyle.selectedLabels(
+                widget.fields.map((field) => field.label),
+              );
+            },
             onChanged: (val) => setState(() {
               selectedField = val!;
               controller.clear();
             }),
+            dropdownColor: AppColors.white,
+            focusColor: AppColors.transparent,
+            iconEnabledColor: AppColors.primary,
+            borderRadius: AppDropdownStyle.menuBorderRadius,
+            menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+            style: AppDropdownStyle.textStyle,
             decoration: const InputDecoration(labelText: "Field"),
           ),
           const SizedBox(height: 10),
@@ -419,23 +436,35 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
   Widget _buildInputField() {
     switch (selectedField.inputType) {
       case FilterInputType.dropdown:
-        return DropdownButtonFormField<String>(
+        return AppDropdownButtonFormField<String>(
           initialValue: controller.text.isEmpty ? null : controller.text,
-          isExpanded: true,
+          isExpanded: false,
           items: selectedField.options!
               .map(
                 (e) => DropdownMenuItem(
                   value: e,
-                  child: Text(e, overflow: TextOverflow.ellipsis),
+                  child: AppDropdownStyle.menuItemLabel(
+                    label: e,
+                    selected: e == controller.text,
+                  ),
                 ),
               )
               .toList(),
+          selectedItemBuilder: (context) {
+            return AppDropdownStyle.selectedLabels(selectedField.options!);
+          },
           onChanged: (val) {
             setState(() {
               controller.text = val ?? "";
             });
           },
           validator: (val) => selectedField.validator?.call(val),
+          dropdownColor: AppColors.white,
+          focusColor: AppColors.transparent,
+          iconEnabledColor: AppColors.primary,
+          borderRadius: AppDropdownStyle.menuBorderRadius,
+          menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+          style: AppDropdownStyle.textStyle,
           decoration: const InputDecoration(
             labelText: "Value",
             border: OutlineInputBorder(),

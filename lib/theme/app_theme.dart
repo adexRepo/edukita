@@ -86,6 +86,252 @@ class AppFormFieldStyle {
   static const String yearFormat = 'YYYY';
 }
 
+class AppDropdownStyle {
+  AppDropdownStyle._();
+
+  static final BorderRadius menuBorderRadius = BorderRadius.circular(6);
+  static const double menuMaxHeight = 320;
+  static const double menuMinWidth = 120;
+  static const double menuMaxWidth = 560;
+
+  static const TextStyle textStyle = TextStyle(
+    color: AppColors.textPrimary,
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+  );
+
+  static Widget menuItemLabel({required String label, required bool selected}) {
+    return _AppDropdownMenuItemLabel(label: label, selected: selected);
+  }
+
+  static List<Widget> selectedLabels(Iterable<String> labels) {
+    return labels
+        .map((label) => Text(label, overflow: TextOverflow.ellipsis))
+        .toList();
+  }
+
+  static double menuWidthForItems<T>(
+    BuildContext context,
+    List<DropdownMenuItem<T>>? items,
+  ) {
+    if (items == null || items.isEmpty) return 180;
+
+    final labels = <String>[];
+    for (final item in items) {
+      final child = item.child;
+      if (child is _AppDropdownMenuItemLabel) {
+        labels.add(child.label);
+      } else if (child is Text && child.data != null) {
+        labels.add(child.data!);
+      }
+    }
+
+    if (labels.isEmpty) return 180;
+
+    final painter = TextPainter(
+      maxLines: 1,
+      textDirection: Directionality.of(context),
+    );
+    var widest = 0.0;
+    for (final label in labels) {
+      painter.text = TextSpan(text: label, style: textStyle);
+      painter.layout();
+      if (painter.width > widest) widest = painter.width;
+    }
+
+    final maxWidth = (MediaQuery.sizeOf(context).width - 48)
+        .clamp(menuMinWidth, menuMaxWidth)
+        .toDouble();
+    final estimatedWidth = widest + 96;
+    return estimatedWidth.clamp(menuMinWidth, maxWidth).toDouble();
+  }
+}
+
+class AppDropdownButtonFormField<T> extends StatelessWidget {
+  const AppDropdownButtonFormField({
+    super.key,
+    required this.items,
+    required this.onChanged,
+    this.selectedItemBuilder,
+    this.initialValue,
+    this.hint,
+    this.disabledHint,
+    this.style,
+    this.icon,
+    this.iconDisabledColor,
+    this.iconEnabledColor,
+    this.isDense = true,
+    this.isExpanded = false,
+    this.itemHeight,
+    this.focusColor,
+    this.dropdownColor,
+    this.decoration,
+    this.onSaved,
+    this.validator,
+    this.autovalidateMode,
+    this.menuMaxHeight,
+    this.menuWidth,
+    this.borderRadius,
+    this.alignment = AlignmentDirectional.centerStart,
+  });
+
+  final List<DropdownMenuItem<T>>? items;
+  final DropdownButtonBuilder? selectedItemBuilder;
+  final T? initialValue;
+  final Widget? hint;
+  final Widget? disabledHint;
+  final ValueChanged<T?>? onChanged;
+  final FormFieldSetter<T>? onSaved;
+  final FormFieldValidator<T>? validator;
+  final AutovalidateMode? autovalidateMode;
+  final TextStyle? style;
+  final Widget? icon;
+  final Color? iconDisabledColor;
+  final Color? iconEnabledColor;
+  final bool isDense;
+  final bool isExpanded;
+  final double? itemHeight;
+  final Color? focusColor;
+  final Color? dropdownColor;
+  final InputDecoration? decoration;
+  final double? menuMaxHeight;
+  final double? menuWidth;
+  final BorderRadius? borderRadius;
+  final AlignmentGeometry alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return FormField<T>(
+      initialValue: initialValue,
+      onSaved: onSaved,
+      validator: validator,
+      autovalidateMode: autovalidateMode ?? AutovalidateMode.disabled,
+      builder: (field) {
+        var effectiveDecoration = (decoration ?? const InputDecoration())
+            .applyDefaults(Theme.of(field.context).inputDecorationTheme);
+        final decorationHintText = effectiveDecoration.hintText;
+        final hasLabel =
+            effectiveDecoration.label != null ||
+            effectiveDecoration.labelText != null;
+        final selectedExists =
+            items?.any((item) => item.value == field.value) ?? false;
+        final value = selectedExists ? field.value : null;
+
+        effectiveDecoration = effectiveDecoration.copyWith(
+          errorText: field.errorText,
+          hintText: decorationHintText == null ? null : '',
+          floatingLabelBehavior: hasLabel && decorationHintText != null
+              ? FloatingLabelBehavior.always
+              : effectiveDecoration.floatingLabelBehavior,
+        );
+
+        return InputDecorator(
+          decoration: effectiveDecoration,
+          isEmpty: value == null,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              focusColor: AppColors.transparent,
+              highlightColor: AppColors.transparent,
+              hoverColor: AppColors.primaryLight.withValues(alpha: 0.16),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<T>(
+                items: items,
+                selectedItemBuilder: selectedItemBuilder,
+                value: value,
+                hint:
+                    hint ??
+                    (decorationHintText == null
+                        ? null
+                        : Text(
+                            decorationHintText,
+                            overflow: TextOverflow.ellipsis,
+                          )),
+                disabledHint: disabledHint,
+                onChanged: onChanged == null
+                    ? null
+                    : (value) {
+                        field.didChange(value);
+                        onChanged!(value);
+                      },
+                style: style,
+                icon: icon,
+                iconDisabledColor: iconDisabledColor,
+                iconEnabledColor: iconEnabledColor,
+                isDense: isDense,
+                isExpanded: isExpanded,
+                itemHeight: itemHeight,
+                focusColor: focusColor ?? AppColors.transparent,
+                dropdownColor: dropdownColor,
+                menuMaxHeight: menuMaxHeight,
+                menuWidth:
+                    menuWidth ??
+                    AppDropdownStyle.menuWidthForItems(context, items),
+                borderRadius: borderRadius,
+                alignment: alignment,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AppDropdownMenuItemLabel extends StatelessWidget {
+  const _AppDropdownMenuItemLabel({
+    required this.label,
+    required this.selected,
+  });
+
+  final String label;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 44,
+      width: double.infinity,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: AppColors.divider, width: 1),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 22,
+                child: selected
+                    ? const Icon(
+                        Icons.check,
+                        size: 18,
+                        color: AppColors.primaryDark,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class AppTheme {
   AppTheme._();
 
@@ -142,6 +388,9 @@ class AppTheme {
     canvasColor: AppColors.background,
     cardColor: AppColors.card,
     dividerColor: AppColors.divider,
+    focusColor: AppColors.primary,
+    hoverColor: AppColors.primaryLight.withValues(alpha: 0.12),
+    highlightColor: AppColors.primaryLight.withValues(alpha: 0.18),
     iconTheme: const IconThemeData(color: AppColors.textPrimary),
     textTheme: textTheme,
     appBarTheme: const AppBarTheme(
@@ -262,6 +511,62 @@ class AppTheme {
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: AppColors.error),
+      ),
+    ),
+    dropdownMenuTheme: DropdownMenuThemeData(
+      textStyle: const TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+      menuStyle: MenuStyle(
+        backgroundColor: WidgetStateProperty.all(AppColors.white),
+        surfaceTintColor: WidgetStateProperty.all(AppColors.white),
+        elevation: WidgetStateProperty.all(8),
+        padding: WidgetStateProperty.all(EdgeInsets.zero),
+        shape: WidgetStateProperty.all(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+            side: const BorderSide(color: AppColors.border),
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        isDense: true,
+        filled: true,
+        fillColor: AppColors.surface,
+        contentPadding: AppFormFieldStyle.contentPadding,
+        hintStyle: AppFormFieldStyle.hintStyle,
+        labelStyle: AppFormFieldStyle.labelStyle,
+        floatingLabelStyle: AppFormFieldStyle.floatingLabelStyle,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary),
+        ),
+      ),
+    ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: AppColors.white,
+      surfaceTintColor: AppColors.white,
+      elevation: 8,
+      menuPadding: EdgeInsets.zero,
+      shadowColor: AppColors.black.withValues(alpha: 0.18),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      textStyle: const TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
       ),
     ),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
