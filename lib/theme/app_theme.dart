@@ -295,70 +295,52 @@ class AppDropdownButtonFormField<T> extends StatelessWidget {
             return MouseRegion(
               onEnter: (_) => setHoverState(() => hovered = true),
               onExit: (_) => setHoverState(() => hovered = false),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final fieldWidth = constraints.hasBoundedWidth
-                      ? constraints.maxWidth
-                      : null;
-
-                  return InputDecorator(
-                    decoration: hoverDecoration,
-                    isEmpty:
-                        value == null &&
-                        hint == null &&
-                        decorationHintText == null,
-                    child: Theme(
-                      data: Theme.of(context).copyWith(
-                        focusColor: AppColors.transparent,
-                        highlightColor: AppColors.transparent,
-                        hoverColor: AppColors.primaryLight.withValues(
-                          alpha: 0.16,
-                        ),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<T>(
-                          items: items,
-                          selectedItemBuilder: selectedItemBuilder,
-                          value: value,
-                          hint:
-                              hint ??
-                              (decorationHintText == null
-                                  ? null
-                                  : Text(
-                                      decorationHintText,
-                                      overflow: TextOverflow.ellipsis,
-                                    )),
-                          disabledHint: disabledHint,
-                          onChanged: onChanged == null
+              child: InputDecorator(
+                decoration: hoverDecoration,
+                isEmpty:
+                    value == null && hint == null && decorationHintText == null,
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    focusColor: AppColors.transparent,
+                    highlightColor: AppColors.transparent,
+                    hoverColor: AppColors.primaryLight.withValues(alpha: 0.16),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<T>(
+                      items: items,
+                      selectedItemBuilder: selectedItemBuilder,
+                      value: value,
+                      hint:
+                          hint ??
+                          (decorationHintText == null
                               ? null
-                              : (value) {
-                                  field.didChange(value);
-                                  onChanged!(value);
-                                },
-                          style: style,
-                          icon: icon,
-                          iconDisabledColor: iconDisabledColor,
-                          iconEnabledColor: iconEnabledColor,
-                          isDense: isDense,
-                          isExpanded: isExpanded,
-                          itemHeight: itemHeight,
-                          focusColor: focusColor ?? AppColors.transparent,
-                          dropdownColor: dropdownColor,
-                          menuMaxHeight: menuMaxHeight,
-                          menuWidth:
-                              menuWidth ??
-                              AppDropdownStyle.menuWidthForItems(
-                                context,
-                                items,
-                                minWidth: fieldWidth,
-                              ),
-                          borderRadius: borderRadius,
-                          alignment: alignment,
-                        ),
-                      ),
+                              : Text(
+                                  decorationHintText,
+                                  overflow: TextOverflow.ellipsis,
+                                )),
+                      disabledHint: disabledHint,
+                      onChanged: onChanged == null
+                          ? null
+                          : (value) {
+                              field.didChange(value);
+                              onChanged!(value);
+                            },
+                      style: style,
+                      icon: icon,
+                      iconDisabledColor: iconDisabledColor,
+                      iconEnabledColor: iconEnabledColor,
+                      isDense: isDense,
+                      isExpanded: isExpanded,
+                      itemHeight: itemHeight,
+                      focusColor: focusColor ?? AppColors.transparent,
+                      dropdownColor: dropdownColor,
+                      menuMaxHeight: menuMaxHeight,
+                      menuWidth: menuWidth,
+                      borderRadius: borderRadius,
+                      alignment: alignment,
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             );
           },

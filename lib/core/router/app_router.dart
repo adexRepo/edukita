@@ -148,10 +148,7 @@ final GoRouter appRouter = GoRouter(
             ),
           ),
         ),
-        GoRoute(
-          path: '/strategies',
-          redirect: (_, _) => '/curriculum',
-        ),
+        GoRoute(path: '/strategies', redirect: (_, _) => '/curriculum'),
         GoRoute(
           path: '/schedules',
           pageBuilder: (context, state) => _noTransitionPage(

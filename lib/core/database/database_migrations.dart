@@ -82,11 +82,16 @@ class DatabaseMigrations {
       await _ensureScholarshipPlanSchema(db);
     }
 
+    if (oldVersion < 22) {
+      await _ensureStrategySampleFileSchema(db);
+    }
+
     await ensureCriticalSchema(db);
   }
 
   static Future<void> ensureCriticalSchema(Database db) async {
     await DatabaseTables.createAll(db);
+    await _ensureStrategySampleFileSchema(db);
     await _ensureScholarshipPlanSchema(db);
   }
 
@@ -218,6 +223,12 @@ class DatabaseMigrations {
       column: 'description',
       definition: 'TEXT',
     );
+    await _addColumnIfMissing(
+      db,
+      table: 'strategies',
+      column: 'sample_file_path',
+      definition: 'TEXT',
+    );
 
     await _addColumnIfMissing(
       db,
@@ -259,6 +270,16 @@ class DatabaseMigrations {
 
     await _ensureCurriculumStrategies(db);
     await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _ensureStrategySampleFileSchema(Database db) async {
+    await DatabaseTables.strategies(db);
+    await _addColumnIfMissing(
+      db,
+      table: 'strategies',
+      column: 'sample_file_path',
+      definition: 'TEXT',
+    );
   }
 
   static Future<void> _ensureTeachingMaterialSchema(Database db) async {
@@ -446,7 +467,9 @@ class DatabaseMigrations {
       return;
     }
 
-    await db.execute('DROP TABLE IF EXISTS student_scholarship_rules_migration');
+    await db.execute(
+      'DROP TABLE IF EXISTS student_scholarship_rules_migration',
+    );
     await db.execute('''
       CREATE TABLE student_scholarship_rules_migration(
         id TEXT PRIMARY KEY NOT NULL,
@@ -478,7 +501,8 @@ class DatabaseMigrations {
         'rule_name': row['rule_name']?.toString(),
         'reason': row['reason']?.toString() ?? '',
         'score_override': row['score_override'],
-        'start_date': row['start_date']?.toString() ?? _dateOnly(DateTime.now()),
+        'start_date':
+            row['start_date']?.toString() ?? _dateOnly(DateTime.now()),
         'end_date': row['end_date']?.toString(),
         'is_active': (row['is_active'] as num?)?.toInt() ?? 1,
         'created_at':
@@ -546,7 +570,8 @@ class DatabaseMigrations {
       final scholarshipType = _normalizeScholarshipType(
         row['rule_type']?.toString() ?? row['scholarship_type']?.toString(),
       );
-      final priority = (row['priority_order'] as num?)?.toInt() ??
+      final priority =
+          (row['priority_order'] as num?)?.toInt() ??
           (row['priority_level'] as num?)?.toInt() ??
           0;
       await db.insert('student_scholarship_assessments_migration', {
@@ -556,8 +581,8 @@ class DatabaseMigrations {
         'rule_id': row['rule_id']?.toString(),
         'student_rule_id':
             row['student_rule_id']?.toString() ?? row['rule_id']?.toString(),
-        'scholarship_period_rule_id':
-            row['scholarship_period_rule_id']?.toString(),
+        'scholarship_period_rule_id': row['scholarship_period_rule_id']
+            ?.toString(),
         'rule_candidate_id': row['rule_candidate_id']?.toString(),
         'scholarship_type': scholarshipType,
         'rule_type': scholarshipType,
@@ -581,9 +606,10 @@ class DatabaseMigrations {
         'total_score': row['total_score'] ?? 0,
         'rank_no': row['rank_no'],
         'decision_status': row['decision_status']?.toString() ?? 'draft',
-        'eligibility_status': row['eligibility_status']?.toString() ?? 'eligible',
-        'approved_amount_or_support':
-            row['approved_amount_or_support']?.toString(),
+        'eligibility_status':
+            row['eligibility_status']?.toString() ?? 'eligible',
+        'approved_amount_or_support': row['approved_amount_or_support']
+            ?.toString(),
         'review_date': row['review_date']?.toString(),
         'reviewed_by': row['reviewed_by']?.toString(),
         'created_at':
@@ -637,8 +663,8 @@ class DatabaseMigrations {
         'scholarship_period_id': row['scholarship_period_id']?.toString(),
         'student_id': row['student_id']?.toString(),
         'assessment_id': row['assessment_id']?.toString(),
-        'scholarship_period_rule_id':
-            row['scholarship_period_rule_id']?.toString(),
+        'scholarship_period_rule_id': row['scholarship_period_rule_id']
+            ?.toString(),
         'scholarship_type': scholarshipType,
         'rule_type': scholarshipType,
         'rule_name': row['rule_name']?.toString(),
@@ -729,7 +755,12 @@ class DatabaseMigrations {
         'teacher_recommendation',
         'manual',
       ),
-      ('rolling-attendance', 'Rolling Attendance', 'rolling_attendance', 'auto'),
+      (
+        'rolling-attendance',
+        'Rolling Attendance',
+        'rolling_attendance',
+        'auto',
+      ),
       ('manual-override', 'Manual Override', 'manual_override', 'manual'),
     ];
 

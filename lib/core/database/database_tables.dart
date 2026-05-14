@@ -309,7 +309,8 @@ class DatabaseTables {
         code TEXT,
         name TEXT NOT NULL,
         description TEXT,
-        rule TEXT
+        rule TEXT,
+        sample_file_path TEXT
       )
     ''');
   }

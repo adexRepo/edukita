@@ -1,3 +1,5 @@
+import 'dart:io' as io;
+
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/syllabus/data/subject_model.dart';
@@ -13,8 +15,10 @@ import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path/path.dart' as p;
 
 class SyllabusPage extends StatefulWidget {
   const SyllabusPage({super.key});
@@ -24,6 +28,16 @@ class SyllabusPage extends StatefulWidget {
 }
 
 class _SyllabusPageState extends State<SyllabusPage> {
+  static const _allowedStrategySampleExtensions = [
+    'xls',
+    'xlsx',
+    'doc',
+    'docx',
+    'txt',
+    'md',
+    'pdf',
+  ];
+
   String _searchQuery = '';
   _CurriculumView _selectedView = _CurriculumView.curriculums;
   double _navigatorWidth = 232;
@@ -204,6 +218,41 @@ class _SyllabusPageState extends State<SyllabusPage> {
     }
   }
 
+  Future<void> _downloadStrategySample(Strategy strategy) async {
+    final sourcePath = strategy.sampleFilePath?.trim();
+    if (sourcePath == null || sourcePath.isEmpty) {
+      AppToast.showFailed('No sample file is attached to this strategy.');
+      return;
+    }
+
+    final sourceFile = io.File(sourcePath);
+    if (!await sourceFile.exists()) {
+      AppToast.showFailed('Sample file was not found in storage.');
+      return;
+    }
+
+    final fileName = strategy.sampleFileName ?? p.basename(sourcePath);
+    final location = await getSaveLocation(
+      suggestedName: fileName,
+      acceptedTypeGroups: const [
+        XTypeGroup(
+          label: 'Strategy sample file',
+          extensions: _allowedStrategySampleExtensions,
+        ),
+      ],
+    );
+    if (location == null) return;
+
+    try {
+      if (p.normalize(sourceFile.path) != p.normalize(location.path)) {
+        await sourceFile.copy(location.path);
+      }
+      AppToast.showSuccess('Sample file downloaded.');
+    } catch (_) {
+      AppToast.showFailed('Failed to download sample file.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -227,11 +276,8 @@ class _SyllabusPageState extends State<SyllabusPage> {
               children: [
                 _CurriculumCompactNavigator(
                   selectedView: _selectedView,
-                  countForView: (view) => _countForView(
-                    view,
-                    state,
-                    strategyState,
-                  ),
+                  countForView: (view) =>
+                      _countForView(view, state, strategyState),
                   onSelect: (view) {
                     setState(() {
                       _selectedView = view;
@@ -345,7 +391,12 @@ class _SyllabusPageState extends State<SyllabusPage> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(children: [Expanded(child: title), refresh]),
+              Row(
+                children: [
+                  Expanded(child: title),
+                  refresh,
+                ],
+              ),
               const SizedBox(height: 10),
               search,
               const SizedBox(height: 10),
@@ -373,18 +424,16 @@ class _SyllabusPageState extends State<SyllabusPage> {
         _CurriculumView.curriculums => () => _showCurriculumForm(),
         _CurriculumView.syllabus =>
           state.curriculums.isEmpty || state.subjects.isEmpty
-            ? null
-            : () => _showSyllabusForm(
-                state.curriculums,
-                subjects: state.subjects,
-              ),
+              ? null
+              : () => _showSyllabusForm(
+                  state.curriculums,
+                  subjects: state.subjects,
+                ),
         _CurriculumView.subjects => () => _showSubjectForm(),
-        _CurriculumView.units => state.subjects.isEmpty
-            ? null
-            : () => _showUnitForm(state.subjects),
-        _CurriculumView.competencies => state.units.isEmpty
-            ? null
-            : () => _showCompetencyForm(state.units),
+        _CurriculumView.units =>
+          state.subjects.isEmpty ? null : () => _showUnitForm(state.subjects),
+        _CurriculumView.competencies =>
+          state.units.isEmpty ? null : () => _showCompetencyForm(state.units),
         _CurriculumView.strategies => () => _showStrategyForm(),
       },
       icon: const Icon(Icons.add),
@@ -392,10 +441,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
     );
   }
 
-  Widget _buildSelectedTable(
-    SubjectState state,
-    StrategyState strategyState,
-  ) {
+  Widget _buildSelectedTable(SubjectState state, StrategyState strategyState) {
     return switch (_selectedView) {
       _CurriculumView.curriculums => _buildCurriculumTable(state),
       _CurriculumView.syllabus => _buildSyllabusTable(state),
@@ -427,10 +473,8 @@ class _SyllabusPageState extends State<SyllabusPage> {
         AppTableColumn(
           title: 'Curriculum',
           flex: 2,
-          cell: (curriculum) => _titleCell(
-            curriculum.name,
-            subtitle: curriculum.description,
-          ),
+          cell: (curriculum) =>
+              _titleCell(curriculum.name, subtitle: curriculum.description),
         ),
         AppTableColumn(
           title: 'Version',
@@ -438,9 +482,8 @@ class _SyllabusPageState extends State<SyllabusPage> {
         ),
         AppTableColumn(
           title: 'Effective Year',
-          sortValue: (curriculum) => int.tryParse(
-            curriculum.effectiveYear ?? '',
-          ),
+          sortValue: (curriculum) =>
+              int.tryParse(curriculum.effectiveYear ?? ''),
           cell: (curriculum) => _textCell(_dash(curriculum.effectiveYear)),
         ),
         AppTableColumn(
@@ -465,7 +508,10 @@ class _SyllabusPageState extends State<SyllabusPage> {
 
   Widget _buildSyllabusTable(SubjectState state) {
     final rows = state.syllabi.where((syllabus) {
-      final curriculum = _findCurriculum(state.curriculums, syllabus.curriculumId);
+      final curriculum = _findCurriculum(
+        state.curriculums,
+        syllabus.curriculumId,
+      );
       final subject = _findSubject(state.subjects, syllabus.subjectId);
       final query = _searchQuery.trim().toLowerCase();
       if (query.isEmpty) return true;
@@ -492,50 +538,43 @@ class _SyllabusPageState extends State<SyllabusPage> {
       columns: [
         AppTableColumn(
           title: 'Syllabus',
-          flex: 2,
-          cell: (syllabus) => _titleCell(
-            syllabus.title,
-            subtitle: syllabus.description,
-          ),
+          flex: 4,
+          cell: (syllabus) =>
+              _titleCell(syllabus.title, subtitle: syllabus.description),
         ),
         AppTableColumn(
-          title: 'Curriculum',
-          flex: 2,
+          title: 'Curriculum\nSubject',
+          flex: 3,
           cell: (syllabus) => _textCell(
-            _findCurriculum(state.curriculums, syllabus.curriculumId)?.name ??
-                '-',
+            '${_findCurriculum(state.curriculums, syllabus.curriculumId)?.name ?? '-'}\n${_findSubject(state.subjects, syllabus.subjectId)?.name ?? '-'}',
+            maxLines: 2,
           ),
         ),
         AppTableColumn(
-          title: 'Subject',
+          title: 'Academic\nSemester',
           flex: 2,
-          cell: (syllabus) => _textCell(
-            _findSubject(state.subjects, syllabus.subjectId)?.name ?? '-',
-          ),
-        ),
-        AppTableColumn(
-          title: 'Academic Year',
           sortValue: (syllabus) => int.tryParse(syllabus.academicYear ?? ''),
-          cell: (syllabus) => _textCell(_dash(syllabus.academicYear)),
+          cell: (syllabus) => _textCell(
+            '${_dash(syllabus.academicYear)}\nSemester ${_dash(syllabus.semester)}',
+            maxLines: 2,
+          ),
         ),
         AppTableColumn(
-          title: 'School Type',
-          cell: (syllabus) => _textCell(_schoolTypeLabel(syllabus.schoolType)),
-        ),
-        AppTableColumn(
-          title: 'Level',
-          cell: (syllabus) => _textCell(_dash(syllabus.level)),
-        ),
-        AppTableColumn(
-          title: 'Semester',
-          cell: (syllabus) => _textCell(_dash(syllabus.semester)),
+          title: 'School Type\nLevel',
+          flex: 2,
+          cell: (syllabus) => _textCell(
+            '${_schoolTypeLabel(syllabus.schoolType).toUpperCase()}\nLevel ${_dash(syllabus.level)}',
+            maxLines: 2,
+          ),
         ),
         AppTableColumn(
           title: 'Status',
+          flex: 1,
           cell: (syllabus) => _StatusChip(label: syllabus.status),
         ),
         AppTableColumn(
           title: 'Actions',
+          flex: 1,
           cell: (syllabus) => _actionCell(
             onEdit: () => _showSyllabusForm(
               state.curriculums,
@@ -572,10 +611,8 @@ class _SyllabusPageState extends State<SyllabusPage> {
         AppTableColumn(
           title: 'Subject',
           flex: 2,
-          cell: (subject) => _titleCell(
-            subject.name,
-            subtitle: subject.description,
-          ),
+          cell: (subject) =>
+              _titleCell(subject.name, subtitle: subject.description),
         ),
         AppTableColumn(
           title: 'Status',
@@ -588,10 +625,9 @@ class _SyllabusPageState extends State<SyllabusPage> {
             onDelete: () => _confirmDelete(
               title: 'Subject',
               subject: 'subject',
-              impactLoader: () =>
-                  context.read<SubjectCubit>().getSubjectDeleteImpact(
-                    subject.id,
-                  ),
+              impactLoader: () => context
+                  .read<SubjectCubit>()
+                  .getSubjectDeleteImpact(subject.id),
               onDelete: () =>
                   context.read<SubjectCubit>().deleteSubject(subject.id),
             ),
@@ -667,10 +703,8 @@ class _SyllabusPageState extends State<SyllabusPage> {
       data: rows,
       pageable: _pageableFor(rows.length),
       emptyMessage: 'No competencies found',
-      onRowTap: (competency) => _showCompetencyForm(
-        state.units,
-        existingCompetency: competency,
-      ),
+      onRowTap: (competency) =>
+          _showCompetencyForm(state.units, existingCompetency: competency),
       columns: [
         AppTableColumn(
           title: 'Code',
@@ -684,9 +718,8 @@ class _SyllabusPageState extends State<SyllabusPage> {
         AppTableColumn(
           title: 'Unit',
           flex: 2,
-          cell: (competency) => _textCell(
-            _findUnit(state.units, competency.unitId)?.name ?? '-',
-          ),
+          cell: (competency) =>
+              _textCell(_findUnit(state.units, competency.unitId)?.name ?? '-'),
         ),
         AppTableColumn(
           title: 'Level',
@@ -702,9 +735,8 @@ class _SyllabusPageState extends State<SyllabusPage> {
             onDelete: () => _confirmDelete(
               title: 'Competency',
               subject: 'competency',
-              onDelete: () => context.read<SubjectCubit>().deleteCompetency(
-                competency.id,
-              ),
+              onDelete: () =>
+                  context.read<SubjectCubit>().deleteCompetency(competency.id),
             ),
           ),
         ),
@@ -719,7 +751,8 @@ class _SyllabusPageState extends State<SyllabusPage> {
       return strategy.name.toLowerCase().contains(query) ||
           (strategy.code ?? '').toLowerCase().contains(query) ||
           (strategy.description ?? '').toLowerCase().contains(query) ||
-          (strategy.rule ?? '').toLowerCase().contains(query);
+          (strategy.rule ?? '').toLowerCase().contains(query) ||
+          (strategy.sampleFileName ?? '').toLowerCase().contains(query);
     }).toList();
 
     return AppTable<Strategy>(
@@ -735,10 +768,8 @@ class _SyllabusPageState extends State<SyllabusPage> {
         AppTableColumn(
           title: 'Strategy',
           flex: 2,
-          cell: (strategy) => _titleCell(
-            strategy.name,
-            subtitle: strategy.description,
-          ),
+          cell: (strategy) =>
+              _titleCell(strategy.name, subtitle: strategy.description),
         ),
         AppTableColumn(
           title: 'Rule',
@@ -746,8 +777,17 @@ class _SyllabusPageState extends State<SyllabusPage> {
           cell: (strategy) => _textCell(_dash(strategy.rule), maxLines: 2),
         ),
         AppTableColumn(
+          title: 'Sample',
+          flex: 2,
+          cell: (strategy) => _textCell(_dash(strategy.sampleFileName)),
+        ),
+        AppTableColumn(
           title: 'Actions',
+          flex: 2,
           cell: (strategy) => _actionCell(
+            onDownload: strategy.sampleFilePath?.trim().isNotEmpty == true
+                ? () => _downloadStrategySample(strategy)
+                : null,
             onEdit: () => _showStrategyForm(existingStrategy: strategy),
             onDelete: () => _confirmDelete(
               title: 'Strategy',
@@ -833,14 +873,23 @@ class _SyllabusPageState extends State<SyllabusPage> {
   }
 
   Widget _actionCell({
+    Future<void> Function()? onDownload,
     required VoidCallback onEdit,
     required VoidCallback onDelete,
   }) {
     return Align(
-      alignment: Alignment.centerRight,
+      alignment: Alignment.centerLeft,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (onDownload != null)
+            IconButton(
+              tooltip: 'Download sample',
+              onPressed: onDownload,
+              constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.download_outlined, size: 17),
+            ),
           IconButton(
             tooltip: 'Edit',
             onPressed: onEdit,
@@ -897,14 +946,10 @@ class _SyllabusPageState extends State<SyllabusPage> {
     }
     return null;
   }
-
 }
 
 class _DeleteImpactContent extends StatelessWidget {
-  const _DeleteImpactContent({
-    required this.subject,
-    required this.impact,
-  });
+  const _DeleteImpactContent({required this.subject, required this.impact});
 
   final String subject;
   final CurriculumDeleteImpact? impact;
@@ -920,16 +965,16 @@ class _DeleteImpactContent extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Delete this $subject? This record is connected to other data.',
-        ),
+        Text('Delete this $subject? This record is connected to other data.'),
         const SizedBox(height: 12),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: AppColors.warning.withValues(alpha: 0.12),
-            border: Border.all(color: AppColors.warning.withValues(alpha: 0.28)),
+            border: Border.all(
+              color: AppColors.warning.withValues(alpha: 0.28),
+            ),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
@@ -1017,12 +1062,7 @@ enum _CurriculumView {
     Icons.lightbulb_outline,
   );
 
-  const _CurriculumView(
-    this.label,
-    this.description,
-    this.addLabel,
-    this.icon,
-  );
+  const _CurriculumView(this.label, this.description, this.addLabel, this.icon);
 
   final String label;
   final String description;

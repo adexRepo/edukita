@@ -1,3 +1,5 @@
+import 'dart:io' as io;
+
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/features/strategy/data/strategy_model.dart';
 import 'package:edukita/features/strategy/domain/strategy_cubit.dart';
@@ -6,8 +8,10 @@ import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path/path.dart' as p;
 
 class StrategyPage extends StatefulWidget {
   const StrategyPage({super.key});
@@ -17,6 +21,16 @@ class StrategyPage extends StatefulWidget {
 }
 
 class _StrategyPageState extends State<StrategyPage> {
+  static const _allowedSampleExtensions = [
+    'xls',
+    'xlsx',
+    'doc',
+    'docx',
+    'txt',
+    'md',
+    'pdf',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -78,6 +92,41 @@ class _StrategyPageState extends State<StrategyPage> {
           subject: 'strategy',
         );
       }
+    }
+  }
+
+  Future<void> _downloadStrategySample(Strategy strategy) async {
+    final sourcePath = strategy.sampleFilePath?.trim();
+    if (sourcePath == null || sourcePath.isEmpty) {
+      AppToast.showFailed('No sample file is attached to this strategy.');
+      return;
+    }
+
+    final sourceFile = io.File(sourcePath);
+    if (!await sourceFile.exists()) {
+      AppToast.showFailed('Sample file was not found in storage.');
+      return;
+    }
+
+    final fileName = strategy.sampleFileName ?? p.basename(sourcePath);
+    final location = await getSaveLocation(
+      suggestedName: fileName,
+      acceptedTypeGroups: const [
+        XTypeGroup(
+          label: 'Strategy sample file',
+          extensions: _allowedSampleExtensions,
+        ),
+      ],
+    );
+    if (location == null) return;
+
+    try {
+      if (p.normalize(sourceFile.path) != p.normalize(location.path)) {
+        await sourceFile.copy(location.path);
+      }
+      AppToast.showSuccess('Sample file downloaded.');
+    } catch (_) {
+      AppToast.showFailed('Failed to download sample file.');
     }
   }
 
@@ -174,13 +223,38 @@ class _StrategyPageState extends State<StrategyPage> {
           ),
         ),
         AppTableColumn(
+          title: 'Sample',
+          flex: 3,
+          sortValue: (strategy) => _sortValue(strategy.sampleFileName),
+          cell: (strategy) => Text(
+            strategy.sampleFileName ?? '-',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+        AppTableColumn(
           title: 'Actions',
-          flex: 2,
+          flex: 3,
           cell: (strategy) => Align(
             alignment: Alignment.centerLeft,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                IconButton(
+                  tooltip: strategy.sampleFilePath?.trim().isNotEmpty == true
+                      ? 'Download sample'
+                      : 'No sample file',
+                  onPressed: strategy.sampleFilePath?.trim().isNotEmpty == true
+                      ? () => _downloadStrategySample(strategy)
+                      : null,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 28,
+                    height: 28,
+                  ),
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.download_outlined, size: 16),
+                ),
                 IconButton(
                   tooltip: 'Edit strategy',
                   onPressed: () => _showStrategyFormDialog(

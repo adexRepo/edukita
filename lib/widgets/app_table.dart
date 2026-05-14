@@ -97,10 +97,8 @@ class _AppTableState<T> extends State<AppTable<T>> {
               .clamp(0, double.infinity)
               .toDouble();
           _ensureColumnWidths(contentWidth);
-          final tableWidth = _columnWidths.fold<double>(
-                0,
-                (total, width) => total + width,
-              ) +
+          final tableWidth =
+              _columnWidths.fold<double>(0, (total, width) => total + width) +
               _horizontalPadding;
 
           return Column(
@@ -179,7 +177,23 @@ class _AppTableState<T> extends State<AppTable<T>> {
     if (_columnWidths.isEmpty) return;
 
     if (delta > 0) {
-      _columnWidths[_columnWidths.length - 1] += delta;
+      final flexTotal = widget.columns.fold<int>(
+        0,
+        (total, column) => total + column.flex,
+      );
+      if (flexTotal == 0) {
+        _columnWidths[_columnWidths.length - 1] += delta;
+        return;
+      }
+
+      var assigned = 0.0;
+      for (var i = 0; i < _columnWidths.length; i++) {
+        final share = i == _columnWidths.length - 1
+            ? delta - assigned
+            : delta * widget.columns[i].flex / flexTotal;
+        _columnWidths[i] += share;
+        assigned += share;
+      }
       return;
     }
 
@@ -225,6 +239,16 @@ class _AppTableState<T> extends State<AppTable<T>> {
     setState(() {
       _columnWidths[index] += effectiveDelta;
       _columnWidths[index + 1] -= effectiveDelta;
+    });
+  }
+
+  void _handleRowTap(T item) {
+    final onRowTap = widget.onRowTap;
+    if (onRowTap == null) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      onRowTap(item);
     });
   }
 
@@ -348,25 +372,11 @@ class _AppTableState<T> extends State<AppTable<T>> {
       itemBuilder: (context, index) {
         final item = data[index];
 
-        return InkWell(
-          onTap: widget.onRowTap != null ? () => widget.onRowTap!(item) : null,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            child: Row(
-              children: List.generate(widget.columns.length, (i) {
-                final col = widget.columns[i];
-                return SizedBox(
-                  width: _columnWidths[i],
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      right: i == widget.columns.length - 1 ? 0 : 12,
-                    ),
-                    child: col.cell(item),
-                  ),
-                );
-              }),
-            ),
-          ),
+        return _AppTableRow<T>(
+          item: item,
+          columns: widget.columns,
+          columnWidths: _columnWidths,
+          onTap: widget.onRowTap != null ? () => _handleRowTap(item) : null,
         );
       },
     );
@@ -422,6 +432,72 @@ class _AppTableState<T> extends State<AppTable<T>> {
   }
 }
 
+class _AppTableRow<T> extends StatefulWidget {
+  const _AppTableRow({
+    required this.item,
+    required this.columns,
+    required this.columnWidths,
+    this.onTap,
+  });
+
+  final T item;
+  final List<AppTableColumn<T>> columns;
+  final List<double> columnWidths;
+  final VoidCallback? onTap;
+
+  @override
+  State<_AppTableRow<T>> createState() => _AppTableRowState<T>();
+}
+
+class _AppTableRowState<T> extends State<_AppTableRow<T>> {
+  bool _hovered = false;
+
+  void _setHovered(bool value) {
+    if (!mounted || _hovered == value) return;
+    setState(() => _hovered = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: widget.onTap == null
+          ? SystemMouseCursors.basic
+          : SystemMouseCursors.click,
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          color: _hovered
+              ? AppColors.primaryLight.withValues(alpha: 0.10)
+              : Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          child: Row(
+            children: List.generate(widget.columns.length, (i) {
+              final col = widget.columns[i];
+              return SizedBox(
+                width: widget.columnWidths[i],
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    right: i == widget.columns.length - 1 ? 0 : 12,
+                  ),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: col.cell(widget.item),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ColumnResizeHandle extends StatefulWidget {
   const _ColumnResizeHandle({required this.onDrag});
 
@@ -435,6 +511,16 @@ class _ColumnResizeHandleState extends State<_ColumnResizeHandle> {
   bool _hovered = false;
   bool _dragging = false;
 
+  void _setHovered(bool value) {
+    if (!mounted || _hovered == value) return;
+    setState(() => _hovered = value);
+  }
+
+  void _setDragging(bool value) {
+    if (!mounted || _dragging == value) return;
+    setState(() => _dragging = value);
+  }
+
   @override
   Widget build(BuildContext context) {
     final active = _hovered || _dragging;
@@ -446,14 +532,14 @@ class _ColumnResizeHandleState extends State<_ColumnResizeHandle> {
       width: 10,
       child: MouseRegion(
         cursor: SystemMouseCursors.resizeColumn,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
         child: GestureDetector(
           behavior: HitTestBehavior.translucent,
-          onHorizontalDragStart: (_) => setState(() => _dragging = true),
+          onHorizontalDragStart: (_) => _setDragging(true),
           onHorizontalDragUpdate: (details) => widget.onDrag(details.delta.dx),
-          onHorizontalDragEnd: (_) => setState(() => _dragging = false),
-          onHorizontalDragCancel: () => setState(() => _dragging = false),
+          onHorizontalDragEnd: (_) => _setDragging(false),
+          onHorizontalDragCancel: () => _setDragging(false),
           child: Align(
             alignment: Alignment.centerRight,
             child: AnimatedContainer(

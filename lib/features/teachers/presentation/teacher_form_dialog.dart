@@ -87,7 +87,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                 ),
                 const SizedBox(height: 12),
                 AppDropdownButtonFormField<String>(
-                  initialValue: lastEducationType,
+                  initialValue: lastEducationType ?? _educationLevels.first,
                   isExpanded: false,
                   decoration: InputDecoration(
                     label: _requiredLabel(context, 'Education Level'),

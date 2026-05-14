@@ -98,10 +98,7 @@ class CommonFormWidgets {
         ),
       ),
     ];
-    final labels = [
-      if (allowEmptySelection) 'Select',
-      ...items,
-    ];
+    final labels = [if (allowEmptySelection) 'Select', ...items];
 
     return AppDropdownButtonFormField<String>(
       initialValue: initialValue,
@@ -249,6 +246,7 @@ class CommonFormWidgets {
             }
           },
       keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       decoration: InputDecoration(
         label: _fieldLabel(label, isRequired),
         hintText: AppFormFieldStyle.enter(label),

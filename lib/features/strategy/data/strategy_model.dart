@@ -7,6 +7,7 @@ class Strategy {
     required this.name,
     this.description,
     this.rule,
+    this.sampleFilePath,
   }) : id = id ?? const Uuid().v4();
 
   final String id;
@@ -14,6 +15,13 @@ class Strategy {
   final String name;
   final String? description;
   final String? rule;
+  final String? sampleFilePath;
+
+  String? get sampleFileName {
+    final path = sampleFilePath?.trim();
+    if (path == null || path.isEmpty) return null;
+    return path.split(RegExp(r'[\\/]')).last;
+  }
 
   Strategy copyWith({
     String? id,
@@ -21,6 +29,7 @@ class Strategy {
     String? name,
     String? description,
     String? rule,
+    String? sampleFilePath,
   }) {
     return Strategy(
       id: id ?? this.id,
@@ -28,6 +37,7 @@ class Strategy {
       name: name ?? this.name,
       description: description ?? this.description,
       rule: rule ?? this.rule,
+      sampleFilePath: sampleFilePath ?? this.sampleFilePath,
     );
   }
 
@@ -38,6 +48,7 @@ class Strategy {
       name: map['name']?.toString() ?? '',
       description: map['description']?.toString(),
       rule: map['rule']?.toString(),
+      sampleFilePath: map['sample_file_path']?.toString(),
     );
   }
 
@@ -48,6 +59,7 @@ class Strategy {
       'name': name,
       'description': description,
       'rule': rule,
+      'sample_file_path': sampleFilePath,
     };
   }
 
@@ -57,6 +69,7 @@ class Strategy {
       name: 'Game-based Learning',
       description: 'Uses play and clear goals to keep young learners active.',
       rule: 'Suitable for young learners and active participation sessions.',
+      sampleFilePath: null,
     );
   }
 }

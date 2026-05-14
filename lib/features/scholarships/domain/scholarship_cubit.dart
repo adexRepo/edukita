@@ -9,11 +9,19 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
 
   final ScholarshipRepository _repository;
 
+  void _emitIfOpen(ScholarshipState state) {
+    if (isClosed) return;
+    emit(state);
+  }
+
   Future<void> loadModule({String? selectedPeriodId}) async {
-    emit(state.copyWith(isLoading: true, error: null));
+    if (isClosed) return;
+    _emitIfOpen(state.copyWith(isLoading: true, error: null));
     try {
       final periods = await _repository.getPeriods();
       final scholarshipRules = await _repository.getScholarshipRules();
+      if (isClosed) return;
+
       final selectedId =
           selectedPeriodId ??
           state.selectedPeriodId ??
@@ -31,8 +39,9 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
         periodId: selectedId,
       );
       final summary = await _repository.getSummary(selectedId);
+      if (isClosed) return;
 
-      emit(
+      _emitIfOpen(
         state.copyWith(
           isLoading: false,
           periods: periods,
@@ -49,13 +58,14 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
         ),
       );
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      _emitIfOpen(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
   Future<void> selectPeriod(String? periodId) async {
+    if (isClosed) return;
     if (periodId == state.selectedPeriodId) return;
-    emit(state.copyWith(selectedPeriodId: periodId, error: null));
+    _emitIfOpen(state.copyWith(selectedPeriodId: periodId, error: null));
     try {
       final assessments = await _repository.getAssessments(periodId: periodId);
       final periodRules = periodId == null
@@ -66,7 +76,9 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
         periodId: periodId,
       );
       final summary = await _repository.getSummary(periodId);
-      emit(
+      if (isClosed) return;
+
+      _emitIfOpen(
         state.copyWith(
           periodRules: periodRules,
           assessments: assessments,
@@ -77,7 +89,7 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
         ),
       );
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _emitIfOpen(state.copyWith(error: e.toString()));
     }
   }
 
