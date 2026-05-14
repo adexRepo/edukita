@@ -7,6 +7,7 @@ import 'package:edukita/features/syllabus/data/subject_model.dart';
 import 'package:edukita/features/syllabus/domain/subject_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -117,12 +118,12 @@ class _ReportsPageState extends State<ReportsPage> {
       body: BlocBuilder<AssessmentCubit, AssessmentState>(
         builder: (context, state) {
           return Padding(
-            padding: const EdgeInsets.all(16),
+            padding: AppPageHeaderStyle.pagePadding,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(context, state),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppPageHeaderStyle.bottomGap),
                 _buildToolbar(
                   state: state,
                   units: curriculum.units,
@@ -145,33 +146,15 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   Widget _buildHeader(BuildContext context, AssessmentState state) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Assessments & Results',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '${state.assessments.length} assessments, ${state.studentAssessments.length} recorded results',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
-        ),
-        IconButton(
-          tooltip: 'Refresh assessments',
-          onPressed: () =>
-              context.read<AssessmentCubit>().loadAssessmentModule(),
-          icon: const Icon(Icons.refresh),
-        ),
-      ],
+    return AppPageHeader(
+      title: 'Assessments & Results',
+      subtitle:
+          '${state.assessments.length} assessments, ${state.studentAssessments.length} recorded results',
+      trailing: IconButton(
+        tooltip: 'Refresh assessments',
+        onPressed: () => context.read<AssessmentCubit>().loadAssessmentModule(),
+        icon: const Icon(Icons.refresh),
+      ),
     );
   }
 

@@ -15,6 +15,7 @@ import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -229,12 +230,12 @@ class _SchedulePageState extends State<SchedulePage> {
       body: BlocBuilder<ScheduleCubit, ScheduleState>(
         builder: (context, scheduleState) {
           return Padding(
-            padding: const EdgeInsets.all(16),
+            padding: AppPageHeaderStyle.pagePadding,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(context, scheduleState),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppPageHeaderStyle.bottomGap),
                 _buildToolbar(
                   state: scheduleState,
                   classes: classState.classes,
@@ -265,32 +266,15 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 
   Widget _buildHeader(BuildContext context, ScheduleState state) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Schedule Calendar',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '${state.schedules.length} teaching schedules, ${state.events.length} events',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
-        ),
-        IconButton(
-          tooltip: 'Refresh schedules',
-          onPressed: () => context.read<ScheduleCubit>().loadSchedules(),
-          icon: const Icon(Icons.refresh),
-        ),
-      ],
+    return AppPageHeader(
+      title: 'Schedule Calendar',
+      subtitle:
+          '${state.schedules.length} teaching schedules, ${state.events.length} events',
+      trailing: IconButton(
+        tooltip: 'Refresh schedules',
+        onPressed: () => context.read<ScheduleCubit>().loadSchedules(),
+        icon: const Icon(Icons.refresh),
+      ),
     );
   }
 

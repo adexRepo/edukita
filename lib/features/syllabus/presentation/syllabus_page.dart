@@ -10,6 +10,7 @@ import 'package:edukita/features/strategy/domain/strategy_cubit.dart';
 import 'package:edukita/features/strategy/presentation/strategy_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
@@ -220,7 +221,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
       builder: (context, constraints) {
         if (constraints.maxWidth < 760) {
           return Padding(
-            padding: const EdgeInsets.all(12),
+            padding: AppPageHeaderStyle.pagePadding,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -269,7 +270,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: AppPageHeaderStyle.pagePadding,
                 child: _buildContent(state, strategyState),
               ),
             ),
@@ -294,7 +295,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildContentHeader(state),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppPageHeaderStyle.bottomGap),
         Expanded(child: _buildSelectedTable(state, strategyState)),
       ],
     );
@@ -335,21 +336,9 @@ class _SyllabusPageState extends State<SyllabusPage> {
           },
           icon: const Icon(Icons.refresh),
         );
-        final title = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _selectedView.label,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              _selectedView.description,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
+        final title = AppPageHeader(
+          title: _selectedView.label,
+          subtitle: _selectedView.description,
         );
 
         if (compact) {

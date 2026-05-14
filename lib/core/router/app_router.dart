@@ -24,6 +24,10 @@ import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:edukita/features/teachers/domain/teacher_repository.dart';
 import 'package:edukita/features/teachers/presentation/teacher_detail_page.dart';
 import 'package:edukita/features/teachers/presentation/teachers_page.dart';
+import 'package:edukita/features/teaching_activity/domain/teaching_activity_cubit.dart';
+import 'package:edukita/features/teaching_activity/domain/teaching_activity_detail_cubit.dart';
+import 'package:edukita/features/teaching_activity/presentation/teaching_activity_detail_page.dart';
+import 'package:edukita/features/teaching_activity/presentation/teaching_activity_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -176,6 +180,41 @@ final GoRouter appRouter = GoRouter(
               child: const SchedulePage(),
             ),
           ),
+        ),
+        GoRoute(
+          path: '/teaching-activities',
+          pageBuilder: (context, state) => _noTransitionPage(
+            state: state,
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<TeachingActivityCubit>(
+                  create: (_) => getIt<TeachingActivityCubit>(),
+                ),
+                BlocProvider<ClassCubit>(
+                  create: (_) => getIt<ClassCubit>()..loadClasses(),
+                ),
+                BlocProvider<TeacherCubit>(
+                  create: (_) => getIt<TeacherCubit>()..loadTeachers(),
+                ),
+              ],
+              child: const TeachingActivityPage(),
+            ),
+          ),
+          routes: [
+            GoRoute(
+              path: ':id',
+              pageBuilder: (context, state) {
+                final id = state.pathParameters['id']!;
+                return _noTransitionPage(
+                  state: state,
+                  child: withCubit(
+                    create: () => getIt<TeachingActivityDetailCubit>(),
+                    child: TeachingActivityDetailPage(activityId: id),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
         GoRoute(
           path: '/reports',

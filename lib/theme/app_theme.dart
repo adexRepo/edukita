@@ -86,6 +86,37 @@ class AppFormFieldStyle {
   static const String yearFormat = 'YYYY';
 }
 
+class AppPageHeaderStyle {
+  AppPageHeaderStyle._();
+
+  static const EdgeInsets pagePadding = EdgeInsets.all(16);
+  static const double titleSubtitleGap = 4;
+  static const double bottomGap = 12;
+
+  static TextStyle titleStyle(BuildContext context) {
+    return Theme.of(context).textTheme.headlineSmall?.copyWith(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w600,
+        ) ??
+        const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+        );
+  }
+
+  static TextStyle subtitleStyle(BuildContext context) {
+    return Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary) ??
+        const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+        );
+  }
+}
+
 class AppDropdownStyle {
   AppDropdownStyle._();
 
@@ -112,21 +143,45 @@ class AppDropdownStyle {
 
   static double menuWidthForItems<T>(
     BuildContext context,
-    List<DropdownMenuItem<T>>? items,
-  ) {
-    if (items == null || items.isEmpty) return 180;
-
+    List<DropdownMenuItem<T>>? items, {
+    double? minWidth,
+  }) {
     final labels = <String>[];
-    for (final item in items) {
-      final child = item.child;
-      if (child is _AppDropdownMenuItemLabel) {
-        labels.add(child.label);
-      } else if (child is Text && child.data != null) {
-        labels.add(child.data!);
+    if (items != null) {
+      for (final item in items) {
+        final child = item.child;
+        if (child is _AppDropdownMenuItemLabel) {
+          labels.add(child.label);
+        } else if (child is Text && child.data != null) {
+          labels.add(child.data!);
+        }
       }
     }
 
-    if (labels.isEmpty) return 180;
+    return menuWidthForLabels(context, labels, minWidth: minWidth);
+  }
+
+  static double menuWidthForLabels(
+    BuildContext context,
+    Iterable<String> labels, {
+    double? minWidth,
+  }) {
+    final screenMaxWidth = (MediaQuery.sizeOf(context).width - 48)
+        .clamp(menuMinWidth, double.infinity)
+        .toDouble();
+    final safeMinWidth = minWidth == null || !minWidth.isFinite
+        ? menuMinWidth
+        : minWidth.clamp(menuMinWidth, screenMaxWidth).toDouble();
+    final maxWidthLimit = menuMaxWidth < safeMinWidth
+        ? safeMinWidth
+        : menuMaxWidth;
+    final maxWidth = screenMaxWidth < maxWidthLimit
+        ? screenMaxWidth
+        : maxWidthLimit;
+
+    if (labels.isEmpty) {
+      return safeMinWidth.clamp(menuMinWidth, maxWidth).toDouble();
+    }
 
     final painter = TextPainter(
       maxLines: 1,
@@ -139,11 +194,8 @@ class AppDropdownStyle {
       if (painter.width > widest) widest = painter.width;
     }
 
-    final maxWidth = (MediaQuery.sizeOf(context).width - 48)
-        .clamp(menuMinWidth, menuMaxWidth)
-        .toDouble();
     final estimatedWidth = widest + 96;
-    return estimatedWidth.clamp(menuMinWidth, maxWidth).toDouble();
+    return estimatedWidth.clamp(safeMinWidth, maxWidth).toDouble();
   }
 }
 
@@ -209,10 +261,10 @@ class AppDropdownButtonFormField<T> extends StatelessWidget {
       builder: (field) {
         var effectiveDecoration = (decoration ?? const InputDecoration())
             .applyDefaults(Theme.of(field.context).inputDecorationTheme);
-        final decorationHintText = effectiveDecoration.hintText;
         final hasLabel =
             effectiveDecoration.label != null ||
             effectiveDecoration.labelText != null;
+        final decorationHintText = effectiveDecoration.hintText;
         final selectedExists =
             items?.any((item) => item.value == field.value) ?? false;
         final value = selectedExists ? field.value : null;
@@ -220,58 +272,96 @@ class AppDropdownButtonFormField<T> extends StatelessWidget {
         effectiveDecoration = effectiveDecoration.copyWith(
           errorText: field.errorText,
           hintText: decorationHintText == null ? null : '',
-          floatingLabelBehavior: hasLabel && decorationHintText != null
+          floatingLabelBehavior: hasLabel
               ? FloatingLabelBehavior.always
               : effectiveDecoration.floatingLabelBehavior,
         );
 
-        return InputDecorator(
-          decoration: effectiveDecoration,
-          isEmpty: value == null,
-          child: Theme(
-            data: Theme.of(context).copyWith(
-              focusColor: AppColors.transparent,
-              highlightColor: AppColors.transparent,
-              hoverColor: AppColors.primaryLight.withValues(alpha: 0.16),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<T>(
-                items: items,
-                selectedItemBuilder: selectedItemBuilder,
-                value: value,
-                hint:
-                    hint ??
-                    (decorationHintText == null
-                        ? null
-                        : Text(
-                            decorationHintText,
-                            overflow: TextOverflow.ellipsis,
-                          )),
-                disabledHint: disabledHint,
-                onChanged: onChanged == null
-                    ? null
-                    : (value) {
-                        field.didChange(value);
-                        onChanged!(value);
-                      },
-                style: style,
-                icon: icon,
-                iconDisabledColor: iconDisabledColor,
-                iconEnabledColor: iconEnabledColor,
-                isDense: isDense,
-                isExpanded: isExpanded,
-                itemHeight: itemHeight,
-                focusColor: focusColor ?? AppColors.transparent,
-                dropdownColor: dropdownColor,
-                menuMaxHeight: menuMaxHeight,
-                menuWidth:
-                    menuWidth ??
-                    AppDropdownStyle.menuWidthForItems(context, items),
-                borderRadius: borderRadius,
-                alignment: alignment,
+        var hovered = false;
+        return StatefulBuilder(
+          builder: (context, setHoverState) {
+            final hoverDecoration = hovered && onChanged != null
+                ? effectiveDecoration.copyWith(
+                    fillColor: AppColors.primaryLight.withValues(alpha: 0.08),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  )
+                : effectiveDecoration;
+
+            return MouseRegion(
+              onEnter: (_) => setHoverState(() => hovered = true),
+              onExit: (_) => setHoverState(() => hovered = false),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final fieldWidth = constraints.hasBoundedWidth
+                      ? constraints.maxWidth
+                      : null;
+
+                  return InputDecorator(
+                    decoration: hoverDecoration,
+                    isEmpty:
+                        value == null &&
+                        hint == null &&
+                        decorationHintText == null,
+                    child: Theme(
+                      data: Theme.of(context).copyWith(
+                        focusColor: AppColors.transparent,
+                        highlightColor: AppColors.transparent,
+                        hoverColor: AppColors.primaryLight.withValues(
+                          alpha: 0.16,
+                        ),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<T>(
+                          items: items,
+                          selectedItemBuilder: selectedItemBuilder,
+                          value: value,
+                          hint:
+                              hint ??
+                              (decorationHintText == null
+                                  ? null
+                                  : Text(
+                                      decorationHintText,
+                                      overflow: TextOverflow.ellipsis,
+                                    )),
+                          disabledHint: disabledHint,
+                          onChanged: onChanged == null
+                              ? null
+                              : (value) {
+                                  field.didChange(value);
+                                  onChanged!(value);
+                                },
+                          style: style,
+                          icon: icon,
+                          iconDisabledColor: iconDisabledColor,
+                          iconEnabledColor: iconEnabledColor,
+                          isDense: isDense,
+                          isExpanded: isExpanded,
+                          itemHeight: itemHeight,
+                          focusColor: focusColor ?? AppColors.transparent,
+                          dropdownColor: dropdownColor,
+                          menuMaxHeight: menuMaxHeight,
+                          menuWidth:
+                              menuWidth ??
+                              AppDropdownStyle.menuWidthForItems(
+                                context,
+                                items,
+                                minWidth: fieldWidth,
+                              ),
+                          borderRadius: borderRadius,
+                          alignment: alignment,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );

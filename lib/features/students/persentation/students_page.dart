@@ -8,6 +8,7 @@ import 'package:edukita/features/students/persentation/student_form_dialog.dart'
 import 'package:edukita/features/students/persentation/student_profile_cell.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/clay_card.dart';
@@ -139,7 +140,7 @@ class _StudentsPageState extends State<StudentsPage> {
         builder: (context, state) {
           return Column(
             children: [
-              _buildTopBar(context),
+              _buildTopBar(),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -166,21 +167,10 @@ class _StudentsPageState extends State<StudentsPage> {
   }
 
   // ================= TOP BAR =================
-  Widget _buildTopBar(BuildContext context) {
+  Widget _buildTopBar() {
     return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'Students',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
+      padding: AppPageHeaderStyle.pagePadding,
+      child: const AppPageHeader(title: 'Students'),
     );
   }
 

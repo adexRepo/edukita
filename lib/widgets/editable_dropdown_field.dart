@@ -24,47 +24,60 @@ class EditableDropdownField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        label: label,
-        hintText: hintText,
-        suffixIcon: PopupMenuButton<String>(
-          tooltip: 'Select option',
-          enabled: options.isNotEmpty,
-          icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
-          color: AppColors.white,
-          surfaceTintColor: AppColors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
-            side: const BorderSide(color: AppColors.border),
-          ),
-          onSelected: (value) {
-            controller.text = value;
-            onChanged?.call(value);
-          },
-          itemBuilder: (context) {
-            return options
-                .map(
-                  (option) => PopupMenuItem<String>(
-                    value: option,
-                    padding: EdgeInsets.zero,
-                    child: SizedBox(
-                      width: 220,
-                      child: AppDropdownStyle.menuItemLabel(
-                        label: option,
-                        selected: option == controller.text,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fieldWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : null;
+        final menuWidth = AppDropdownStyle.menuWidthForLabels(
+          context,
+          options,
+          minWidth: fieldWidth,
+        );
+
+        return TextFormField(
+          controller: controller,
+          decoration: InputDecoration(
+            label: label,
+            hintText: hintText,
+            suffixIcon: PopupMenuButton<String>(
+              tooltip: 'Select option',
+              enabled: options.isNotEmpty,
+              icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
+              color: AppColors.white,
+              surfaceTintColor: AppColors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+                side: const BorderSide(color: AppColors.border),
+              ),
+              onSelected: (value) {
+                controller.text = value;
+                onChanged?.call(value);
+              },
+              itemBuilder: (context) {
+                return options
+                    .map(
+                      (option) => PopupMenuItem<String>(
+                        value: option,
+                        padding: EdgeInsets.zero,
+                        child: SizedBox(
+                          width: menuWidth,
+                          child: AppDropdownStyle.menuItemLabel(
+                            label: option,
+                            selected: option == controller.text,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                )
-                .toList();
-          },
-        ),
-      ),
-      inputFormatters: inputFormatters,
-      validator: validator,
-      onChanged: onChanged,
+                    )
+                    .toList();
+              },
+            ),
+          ),
+          inputFormatters: inputFormatters,
+          validator: validator,
+          onChanged: onChanged,
+        );
+      },
     );
   }
 }

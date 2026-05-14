@@ -7,6 +7,7 @@ import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
 import 'package:edukita/features/schools/presentation/school_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
@@ -209,7 +210,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
         builder: (context, state) {
           return Column(
             children: [
-              _buildTopBar(context),
+              _buildTopBar(),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -223,22 +224,10 @@ class _SchoolsPageState extends State<SchoolsPage> {
     );
   }
 
-  Widget _buildTopBar(BuildContext context) {
+  Widget _buildTopBar() {
     return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'Schools',
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
+      padding: AppPageHeaderStyle.pagePadding,
+      child: const AppPageHeader(title: 'Schools'),
     );
   }
 

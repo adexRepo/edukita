@@ -8,6 +8,8 @@ class DatabaseMigrations {
     int oldVersion,
     int newVersion,
   ) async {
+    await ensureCriticalSchema(db);
+
     if (oldVersion < 2) {
       await _fixUsers(db);
     }
@@ -67,6 +69,25 @@ class DatabaseMigrations {
     if (oldVersion < 18) {
       await _ensureSyllabusSubjectSchema(db);
     }
+
+    if (oldVersion < 19) {
+      await _ensureRuleBasedScholarshipSchema(db);
+    }
+
+    if (oldVersion < 20) {
+      await _ensureTeachingActivitySchema(db);
+    }
+
+    if (oldVersion < 21) {
+      await _ensureScholarshipPlanSchema(db);
+    }
+
+    await ensureCriticalSchema(db);
+  }
+
+  static Future<void> ensureCriticalSchema(Database db) async {
+    await DatabaseTables.createAll(db);
+    await _ensureScholarshipPlanSchema(db);
   }
 
   static Future<void> _fixUsers(Database db) async {
@@ -335,10 +356,427 @@ class DatabaseMigrations {
 
   static Future<void> _ensureScholarshipSchema(Database db) async {
     await DatabaseTables.scholarshipPeriods(db);
+    await DatabaseTables.scholarshipPeriodRules(db);
     await DatabaseTables.studentScholarshipRules(db);
+    await DatabaseTables.studentScholarshipRuleCandidates(db);
     await DatabaseTables.studentScholarshipAssessments(db);
     await DatabaseTables.scholarshipRecipients(db);
     await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _ensureRuleBasedScholarshipSchema(Database db) async {
+    await DatabaseTables.scholarshipPeriods(db);
+    await _addColumnIfMissing(
+      db,
+      table: 'scholarship_periods',
+      column: 'calculation_window_months',
+      definition: 'INTEGER NOT NULL DEFAULT 3',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'scholarship_periods',
+      column: 'minimum_attendance_percentage',
+      definition: 'REAL NOT NULL DEFAULT 75',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'scholarship_periods',
+      column: 'allow_manual_override_below_attendance',
+      definition: 'INTEGER NOT NULL DEFAULT 1',
+    );
+
+    await DatabaseTables.scholarshipPeriodRules(db);
+    await DatabaseTables.studentScholarshipRuleCandidates(db);
+
+    await _rebuildScholarshipRecipients(db);
+    await _rebuildStudentScholarshipAssessments(db);
+    await _rebuildStudentScholarshipRules(db);
+    await _backfillScholarshipPeriodRules(db);
+    await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _ensureScholarshipPlanSchema(Database db) async {
+    await DatabaseTables.scholarshipRules(db);
+    await DatabaseTables.scholarshipPeriods(db);
+    await DatabaseTables.scholarshipPeriodRules(db);
+    await DatabaseTables.scholarshipRuleTargets(db);
+    await DatabaseTables.scholarshipApprovalDocuments(db);
+    await DatabaseTables.scholarshipRecipients(db);
+
+    await _addColumnIfMissing(
+      db,
+      table: 'scholarship_periods',
+      column: 'targeted_at',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'scholarship_periods',
+      column: 'submitted_at',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'scholarship_period_rules',
+      column: 'scholarship_rule_id',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'scholarship_recipients',
+      column: 'scholarship_rule_target_id',
+      definition: 'TEXT',
+    );
+
+    await _preloadDefaultScholarshipRules(db);
+    await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _ensureTeachingActivitySchema(Database db) async {
+    await DatabaseTables.teachingActivities(db);
+    await DatabaseTables.teachingAttendances(db);
+    await DatabaseTables.teachingAssessments(db);
+    await DatabaseTables.studentSessionNotes(db);
+    await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _rebuildStudentScholarshipRules(Database db) async {
+    if (!await _tableExists(db, 'student_scholarship_rules')) {
+      await DatabaseTables.studentScholarshipRules(db);
+      return;
+    }
+
+    await db.execute('DROP TABLE IF EXISTS student_scholarship_rules_migration');
+    await db.execute('''
+      CREATE TABLE student_scholarship_rules_migration(
+        id TEXT PRIMARY KEY NOT NULL,
+        student_id TEXT NOT NULL,
+        scholarship_type TEXT NOT NULL,
+        rule_type TEXT,
+        rule_name TEXT,
+        reason TEXT NOT NULL,
+        score_override REAL,
+        start_date TEXT NOT NULL,
+        end_date TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    final rows = await db.query('student_scholarship_rules');
+    for (final row in rows) {
+      final rawScholarshipType = row['rule_type']?.toString().isNotEmpty == true
+          ? row['rule_type']?.toString()
+          : row['scholarship_type']?.toString();
+      final scholarshipType = _normalizeScholarshipType(rawScholarshipType);
+      await db.insert('student_scholarship_rules_migration', {
+        'id': row['id']?.toString(),
+        'student_id': row['student_id']?.toString(),
+        'scholarship_type': scholarshipType,
+        'rule_type': scholarshipType,
+        'rule_name': row['rule_name']?.toString(),
+        'reason': row['reason']?.toString() ?? '',
+        'score_override': row['score_override'],
+        'start_date': row['start_date']?.toString() ?? _dateOnly(DateTime.now()),
+        'end_date': row['end_date']?.toString(),
+        'is_active': (row['is_active'] as num?)?.toInt() ?? 1,
+        'created_at':
+            row['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+        'updated_at':
+            row['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
+      });
+    }
+
+    await db.execute('DROP TABLE student_scholarship_rules');
+    await db.execute(
+      'ALTER TABLE student_scholarship_rules_migration RENAME TO student_scholarship_rules',
+    );
+  }
+
+  static Future<void> _rebuildStudentScholarshipAssessments(Database db) async {
+    if (!await _tableExists(db, 'student_scholarship_assessments')) {
+      await DatabaseTables.studentScholarshipAssessments(db);
+      return;
+    }
+
+    await db.execute(
+      'DROP TABLE IF EXISTS student_scholarship_assessments_migration',
+    );
+    await db.execute('''
+      CREATE TABLE student_scholarship_assessments_migration(
+        id TEXT PRIMARY KEY NOT NULL,
+        scholarship_period_id TEXT NOT NULL,
+        student_id TEXT NOT NULL,
+        rule_id TEXT,
+        student_rule_id TEXT,
+        scholarship_period_rule_id TEXT,
+        rule_candidate_id TEXT,
+        scholarship_type TEXT NOT NULL,
+        rule_type TEXT,
+        rule_name TEXT,
+        selection_mode TEXT NOT NULL DEFAULT 'auto',
+        priority_level INTEGER NOT NULL,
+        priority_order INTEGER,
+        priority_reason TEXT,
+        economic_score REAL,
+        academic_score REAL,
+        attendance_score REAL,
+        behavior_score REAL,
+        teacher_recommendation_score REAL,
+        improvement_score REAL,
+        rotation_bonus REAL,
+        calculation_start_date TEXT,
+        calculation_end_date TEXT,
+        special_case_note TEXT,
+        total_score REAL NOT NULL DEFAULT 0,
+        rank_no INTEGER,
+        decision_status TEXT NOT NULL DEFAULT 'draft',
+        eligibility_status TEXT NOT NULL DEFAULT 'eligible',
+        approved_amount_or_support TEXT,
+        review_date TEXT,
+        reviewed_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    final rows = await db.query('student_scholarship_assessments');
+    for (final row in rows) {
+      final scholarshipType = _normalizeScholarshipType(
+        row['rule_type']?.toString() ?? row['scholarship_type']?.toString(),
+      );
+      final priority = (row['priority_order'] as num?)?.toInt() ??
+          (row['priority_level'] as num?)?.toInt() ??
+          0;
+      await db.insert('student_scholarship_assessments_migration', {
+        'id': row['id']?.toString(),
+        'scholarship_period_id': row['scholarship_period_id']?.toString(),
+        'student_id': row['student_id']?.toString(),
+        'rule_id': row['rule_id']?.toString(),
+        'student_rule_id':
+            row['student_rule_id']?.toString() ?? row['rule_id']?.toString(),
+        'scholarship_period_rule_id':
+            row['scholarship_period_rule_id']?.toString(),
+        'rule_candidate_id': row['rule_candidate_id']?.toString(),
+        'scholarship_type': scholarshipType,
+        'rule_type': scholarshipType,
+        'rule_name': row['rule_name']?.toString(),
+        'selection_mode':
+            row['selection_mode']?.toString() ??
+            (scholarshipType == 'rolling_attendance' ? 'auto' : 'manual'),
+        'priority_level': priority,
+        'priority_order': priority,
+        'priority_reason': row['priority_reason']?.toString(),
+        'economic_score': row['economic_score'],
+        'academic_score': row['academic_score'],
+        'attendance_score': row['attendance_score'],
+        'behavior_score': row['behavior_score'],
+        'teacher_recommendation_score': row['teacher_recommendation_score'],
+        'improvement_score': row['improvement_score'],
+        'rotation_bonus': row['rotation_bonus'],
+        'calculation_start_date': row['calculation_start_date']?.toString(),
+        'calculation_end_date': row['calculation_end_date']?.toString(),
+        'special_case_note': row['special_case_note']?.toString(),
+        'total_score': row['total_score'] ?? 0,
+        'rank_no': row['rank_no'],
+        'decision_status': row['decision_status']?.toString() ?? 'draft',
+        'eligibility_status': row['eligibility_status']?.toString() ?? 'eligible',
+        'approved_amount_or_support':
+            row['approved_amount_or_support']?.toString(),
+        'review_date': row['review_date']?.toString(),
+        'reviewed_by': row['reviewed_by']?.toString(),
+        'created_at':
+            row['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+        'updated_at':
+            row['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
+      });
+    }
+
+    await db.execute('DROP TABLE student_scholarship_assessments');
+    await db.execute(
+      'ALTER TABLE student_scholarship_assessments_migration RENAME TO student_scholarship_assessments',
+    );
+  }
+
+  static Future<void> _rebuildScholarshipRecipients(Database db) async {
+    if (!await _tableExists(db, 'scholarship_recipients')) {
+      await DatabaseTables.scholarshipRecipients(db);
+      return;
+    }
+
+    await db.execute('DROP TABLE IF EXISTS scholarship_recipients_migration');
+    await db.execute('''
+      CREATE TABLE scholarship_recipients_migration(
+        id TEXT PRIMARY KEY NOT NULL,
+        scholarship_period_id TEXT NOT NULL,
+        student_id TEXT NOT NULL,
+        assessment_id TEXT NOT NULL,
+        scholarship_period_rule_id TEXT,
+        scholarship_type TEXT NOT NULL,
+        rule_type TEXT,
+        rule_name TEXT,
+        final_score REAL NOT NULL DEFAULT 0,
+        rank_no INTEGER,
+        reason TEXT,
+        status TEXT NOT NULL DEFAULT 'approved',
+        approved_by TEXT,
+        approved_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    final rows = await db.query('scholarship_recipients');
+    for (final row in rows) {
+      final scholarshipType = _normalizeScholarshipType(
+        row['rule_type']?.toString() ?? row['scholarship_type']?.toString(),
+      );
+      await db.insert('scholarship_recipients_migration', {
+        'id': row['id']?.toString(),
+        'scholarship_period_id': row['scholarship_period_id']?.toString(),
+        'student_id': row['student_id']?.toString(),
+        'assessment_id': row['assessment_id']?.toString(),
+        'scholarship_period_rule_id':
+            row['scholarship_period_rule_id']?.toString(),
+        'scholarship_type': scholarshipType,
+        'rule_type': scholarshipType,
+        'rule_name': row['rule_name']?.toString(),
+        'final_score': row['final_score'] ?? 0,
+        'rank_no': row['rank_no'],
+        'reason': row['reason']?.toString(),
+        'status': row['status']?.toString() ?? 'approved',
+        'approved_by': row['approved_by']?.toString(),
+        'approved_at': row['approved_at']?.toString(),
+        'created_at':
+            row['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+        'updated_at':
+            row['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
+      });
+    }
+
+    await db.execute('DROP TABLE scholarship_recipients');
+    await db.execute(
+      'ALTER TABLE scholarship_recipients_migration RENAME TO scholarship_recipients',
+    );
+  }
+
+  static Future<void> _backfillScholarshipPeriodRules(Database db) async {
+    if (!await _tableExists(db, 'scholarship_periods')) return;
+
+    final periods = await db.query('scholarship_periods');
+    for (final period in periods) {
+      final periodId = period['id']?.toString();
+      if (periodId == null || periodId.isEmpty) continue;
+
+      final existing = await db.query(
+        'scholarship_period_rules',
+        where: 'scholarship_period_id = ?',
+        whereArgs: [periodId],
+        limit: 1,
+      );
+      if (existing.isNotEmpty) continue;
+
+      final now = DateTime.now().toIso8601String();
+      final targetQuota = (period['target_quota'] as num?)?.toInt() ?? 0;
+      final fixedQuota = (period['fixed_quota'] as num?)?.toInt() ?? 0;
+      final rollingQuota =
+          (period['rolling_quota'] as num?)?.toInt() ??
+          (targetQuota - fixedQuota).clamp(0, targetQuota).toInt();
+
+      await db.insert('scholarship_period_rules', {
+        'id': const Uuid().v4(),
+        'scholarship_period_id': periodId,
+        'rule_type': 'fixed_priority',
+        'rule_name': 'Fixed Priority',
+        'quota': fixedQuota,
+        'priority_order': 0,
+        'selection_mode': 'manual',
+        'allow_quota_carry_over': 1,
+        'is_active': 1,
+        'created_at': now,
+        'updated_at': now,
+      });
+      await db.insert('scholarship_period_rules', {
+        'id': const Uuid().v4(),
+        'scholarship_period_id': periodId,
+        'rule_type': 'rolling_attendance',
+        'rule_name': 'Rolling Attendance',
+        'quota': rollingQuota,
+        'priority_order': 1,
+        'selection_mode': 'auto',
+        'allow_quota_carry_over': 1,
+        'is_active': 1,
+        'created_at': now,
+        'updated_at': now,
+      });
+    }
+  }
+
+  static Future<void> _preloadDefaultScholarshipRules(Database db) async {
+    if (!await _tableExists(db, 'scholarship_rules')) return;
+
+    final now = DateTime.now().toIso8601String();
+    const defaults = [
+      ('fixed-priority', 'Fixed Priority', 'fixed_priority', 'manual'),
+      ('need-based', 'Need-Based', 'need_based', 'manual'),
+      ('merit-based', 'Merit-Based', 'merit_based', 'auto'),
+      ('growth-based', 'Growth-Based', 'growth_based', 'auto'),
+      ('special-case', 'Special Case', 'special_case', 'manual'),
+      (
+        'teacher-recommendation',
+        'Teacher Recommendation',
+        'teacher_recommendation',
+        'manual',
+      ),
+      ('rolling-attendance', 'Rolling Attendance', 'rolling_attendance', 'auto'),
+      ('manual-override', 'Manual Override', 'manual_override', 'manual'),
+    ];
+
+    for (final rule in defaults) {
+      final id = 'system-${rule.$1}';
+      final existing = await db.query(
+        'scholarship_rules',
+        where: 'id = ? OR rule_type = ?',
+        whereArgs: [id, rule.$3],
+        limit: 1,
+      );
+      final values = {
+        'id': id,
+        'rule_name': rule.$2,
+        'rule_type': rule.$3,
+        'selection_mode': rule.$4,
+        'description': '${rule.$2} scholarship rule.',
+        'is_system_default': 1,
+        'is_active': 1,
+        'created_at': now,
+        'updated_at': now,
+      };
+      if (existing.isEmpty) {
+        await db.insert('scholarship_rules', values);
+      } else {
+        await db.update(
+          'scholarship_rules',
+          {
+            'rule_name': rule.$2,
+            'selection_mode': rule.$4,
+            'is_system_default': 1,
+            'updated_at': now,
+          },
+          where: 'id = ?',
+          whereArgs: [existing.first['id']],
+        );
+      }
+    }
+  }
+
+  static String _normalizeScholarshipType(String? value) {
+    if (value == 'attendance_based') return 'rolling_attendance';
+    if (value == 'manual_priority' || value == 'temporary_support') {
+      return 'custom_rule';
+    }
+    if (value == null || value.trim().isEmpty) return 'rolling_attendance';
+    return value;
   }
 
   static Future<void> _ensureScheduleEventSchema(Database db) async {
@@ -554,5 +992,9 @@ class DatabaseMigrations {
       }
     }
     return null;
+  }
+
+  static String _dateOnly(DateTime value) {
+    return value.toIso8601String().split('T').first;
   }
 }

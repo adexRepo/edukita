@@ -4,11 +4,11 @@ import 'package:uuid/uuid.dart';
 
 class DatabaseSeed {
   static Future<void> seed(Database db) async {
-    await _ensureAdmin(db);
+    await ensureAdmin(db);
     await _ensureStrategies(db);
   }
 
-  static Future<void> _ensureAdmin(Database db) async {
+  static Future<void> ensureAdmin(Database db) async {
     final result = await db.rawQuery(
       "SELECT COUNT(*) as count FROM users WHERE username = 'admin'",
     );
@@ -21,6 +21,17 @@ class DatabaseSeed {
         'nick_name': 'Admin',
         'full_name': 'Administrator',
       });
+    } else {
+      await db.update(
+        'users',
+        {
+          'password': 'admin',
+          'nick_name': 'Admin',
+          'full_name': 'Administrator',
+        },
+        where: 'username = ?',
+        whereArgs: ['admin'],
+      );
     }
   }
 

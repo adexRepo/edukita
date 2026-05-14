@@ -1,5 +1,6 @@
 import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_page_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -12,26 +13,18 @@ class DashboardPage extends StatelessWidget {
     return BlocBuilder<DashboardCubit, DashboardStat>(
       builder: (context, state) {
         return Padding(
-          padding: const EdgeInsets.all(20),
+          padding: AppPageHeaderStyle.pagePadding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 🔹 Header
-              Text(
-                'Dashboard',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Overview of education management for the foundation.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+              const AppPageHeader(
+                title: 'Dashboard',
+                subtitle:
+                    'Overview of education management for the foundation.',
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: AppPageHeaderStyle.bottomGap),
 
               // 🔹 Grid Content
               Expanded(

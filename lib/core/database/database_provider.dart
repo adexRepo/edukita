@@ -28,13 +28,17 @@ class DatabaseProvider {
 
     final db = await openDatabase(
       path,
-      version: 18,
+      version: 21,
       onConfigure: (db) async => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, version) async {
         await DatabaseTables.createAll(db);
         await DatabaseSeed.seed(db);
       },
       onUpgrade: DatabaseMigrations.upgrade,
+      onOpen: (db) async {
+        await DatabaseMigrations.ensureCriticalSchema(db);
+        await DatabaseSeed.seed(db);
+      },
     );
 
     return db;
@@ -96,10 +100,11 @@ class DatabaseProvider {
     String password,
   ) async {
     final db = await database;
+    await DatabaseSeed.ensureAdmin(db);
     final result = await db.query(
       'users',
       where: 'username = ? AND password = ?',
-      whereArgs: [username, password],
+      whereArgs: [username.trim(), password.trim()],
       limit: 1,
     );
     return result.isEmpty ? null : result.first;

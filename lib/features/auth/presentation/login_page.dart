@@ -15,6 +15,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final FocusNode _passwordFocusNode = FocusNode();
   String? _errorMessage;
   bool _loading = false;
 
@@ -22,6 +23,7 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
@@ -144,6 +146,9 @@ class _LoginPageState extends State<LoginPage> {
                               const SizedBox(height: 24),
                               TextField(
                                 controller: _usernameController,
+                                textInputAction: TextInputAction.next,
+                                onSubmitted: (_) =>
+                                    _passwordFocusNode.requestFocus(),
                                 decoration: const InputDecoration(
                                   labelText: 'Username',
                                   border: OutlineInputBorder(),
@@ -152,6 +157,11 @@ class _LoginPageState extends State<LoginPage> {
                               const SizedBox(height: 16),
                               TextField(
                                 controller: _passwordController,
+                                focusNode: _passwordFocusNode,
+                                textInputAction: TextInputAction.done,
+                                onSubmitted: (_) {
+                                  if (!_loading) _login();
+                                },
                                 decoration: const InputDecoration(
                                   labelText: 'Password',
                                   border: OutlineInputBorder(),
