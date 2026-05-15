@@ -17,10 +17,7 @@ Widget buildTitleBar(
   return Container(
     height: 50,
     padding: const EdgeInsets.symmetric(horizontal: 12),
-    decoration: const BoxDecoration(
-      color: AppColors.white,
-      border: Border(bottom: BorderSide(color: AppColors.border)),
-    ),
+    decoration: const BoxDecoration(color: AppColors.surface),
     child: Row(
       children: [
         Expanded(
