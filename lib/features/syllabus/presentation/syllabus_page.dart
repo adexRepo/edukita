@@ -12,6 +12,7 @@ import 'package:edukita/features/strategy/domain/strategy_cubit.dart';
 import 'package:edukita/features/strategy/presentation/strategy_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
@@ -327,9 +328,6 @@ class _SyllabusPageState extends State<SyllabusPage> {
   }
 
   Widget _buildContent(SubjectState state, StrategyState strategyState) {
-    if (state.isLoading || strategyState.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
     if (state.error != null) {
       return Center(child: Text('Error: ${state.error}'));
     }
@@ -341,6 +339,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildContentHeader(state),
+        AppLoadingStrip(isLoading: state.isLoading || strategyState.isLoading),
         const SizedBox(height: AppPageHeaderStyle.bottomGap),
         Expanded(child: _buildSelectedTable(state, strategyState)),
       ],

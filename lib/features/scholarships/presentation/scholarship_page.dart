@@ -8,6 +8,7 @@ import 'package:edukita/features/scholarships/data/scholarship_models.dart';
 import 'package:edukita/features/scholarships/domain/scholarship_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
@@ -42,18 +43,10 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
     return Scaffold(
       body: BlocBuilder<ScholarshipCubit, ScholarshipState>(
         builder: (context, state) {
-          final showInitialLoading =
-              state.isLoading &&
-              state.periods.isEmpty &&
-              state.rules.isEmpty &&
-              state.assessments.isEmpty &&
-              state.recipients.isEmpty;
           return Column(
             children: [
               Expanded(
-                child: showInitialLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : state.error != null
+                child: state.error != null
                     ? Center(child: Text('Error: ${state.error}'))
                     : Row(
                         children: [
@@ -102,6 +95,7 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
                                         .read<ScholarshipCubit>()
                                         .loadModule(),
                                   ),
+                                  AppLoadingStrip(isLoading: state.isLoading),
                                   const SizedBox(
                                     height: AppPageHeaderStyle.bottomGap,
                                   ),

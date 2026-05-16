@@ -2,6 +2,7 @@ import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/management/domain/guardian_cubit.dart';
 import 'package:edukita/features/management/presentation/guardian_form_dialog.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -82,9 +83,7 @@ class _GuardiansPageState extends State<GuardiansPage> {
   Widget build(BuildContext context) {
     return BlocBuilder<GuardianCubit, GuardianState>(
       builder: (context, state) {
-        if (state.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (state.error != null) {
+        if (state.error != null) {
           return Center(child: Text('Error: ${state.error}'));
         } else {
           final guardians = state.guardians;
@@ -98,35 +97,46 @@ class _GuardiansPageState extends State<GuardiansPage> {
                 ),
               ],
             ),
-            body: guardians.isEmpty
-                ? const Center(child: Text('No guardians yet. Add a guardian.'))
-                : ListView.builder(
-                    itemCount: guardians.length,
-                    itemBuilder: (context, index) {
-                      final guardian = guardians[index];
-                      return ListTile(
-                        title: Text(guardian.fullName),
-                        subtitle: Text('Phone: ${guardian.mobileNo ?? 'N/A'}'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit),
-                              onPressed: () => _showGuardianFormDialog(
-                                context,
-                                existingGuardian: guardian,
+            body: Column(
+              children: [
+                AppLoadingStrip(isLoading: state.isLoading, topPadding: 0),
+                Expanded(
+                  child: guardians.isEmpty
+                      ? const Center(
+                          child: Text('No guardians yet. Add a guardian.'),
+                        )
+                      : ListView.builder(
+                          itemCount: guardians.length,
+                          itemBuilder: (context, index) {
+                            final guardian = guardians[index];
+                            return ListTile(
+                              title: Text(guardian.fullName),
+                              subtitle: Text(
+                                'Phone: ${guardian.mobileNo ?? 'N/A'}',
                               ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () =>
-                                  _confirmDelete(context, guardian.id),
-                            ),
-                          ],
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit),
+                                    onPressed: () => _showGuardianFormDialog(
+                                      context,
+                                      existingGuardian: guardian,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete),
+                                    onPressed: () =>
+                                        _confirmDelete(context, guardian.id),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
+                ),
+              ],
+            ),
           );
         }
       },

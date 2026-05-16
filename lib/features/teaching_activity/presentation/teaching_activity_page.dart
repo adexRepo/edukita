@@ -4,6 +4,7 @@ import 'package:edukita/features/teaching_activity/data/teaching_activity_data.d
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
@@ -46,16 +47,16 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
               subtitle:
                   'Open scheduled classes, record attendance, notes, and teaching results.',
             ),
+            BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
+              builder: (context, state) =>
+                  AppLoadingStrip(isLoading: state.isLoading),
+            ),
             const SizedBox(height: AppPageHeaderStyle.bottomGap),
             const _TeachingActivityFilters(),
             const SizedBox(height: 16),
             Expanded(
               child: BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
                 builder: (context, state) {
-                  if (state.isLoading) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
                   return AppTable<TeachingActivityListItem>(
                     data: state.activities,
                     emptyMessage: 'No teaching sessions for this filter.',

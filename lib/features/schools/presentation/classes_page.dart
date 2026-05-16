@@ -2,6 +2,7 @@ import 'package:edukita/features/schools/domain/class_cubit.dart';
 import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -82,9 +83,7 @@ class _ClassesPageState extends State<ClassesPage> {
   Widget build(BuildContext context) {
     return BlocBuilder<ClassCubit, ClassState>(
       builder: (context, state) {
-        if (state.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (state.error != null) {
+        if (state.error != null) {
           return Center(child: Text('Error: ${state.error}'));
         } else {
           final classes = state.classes;
@@ -101,7 +100,11 @@ class _ClassesPageState extends State<ClassesPage> {
                 ),
               ],
             ),
-            body: classes.isEmpty
+            body: Column(
+              children: [
+                AppLoadingStrip(isLoading: state.isLoading, topPadding: 0),
+                Expanded(
+                  child: classes.isEmpty
                 ? const Center(child: Text('No classes yet. Add a class.'))
                 : ListView.builder(
                     itemCount: classes.length,
@@ -133,6 +136,9 @@ class _ClassesPageState extends State<ClassesPage> {
                       );
                     },
                   ),
+                ),
+              ],
+            ),
           );
         }
       },

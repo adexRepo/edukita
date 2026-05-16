@@ -9,6 +9,7 @@ import 'package:edukita/features/students/persentation/student_profile_cell.dart
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_page_header.dart';
+import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/clay_card.dart';
@@ -141,6 +142,7 @@ class _StudentsPageState extends State<StudentsPage> {
           return Column(
             children: [
               _buildTopBar(),
+              AppLoadingStrip(isLoading: state.loading),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -249,10 +251,6 @@ class _StudentsPageState extends State<StudentsPage> {
   }
 
   Widget _buildTableSection(FeatureState<StudentPageData> state) {
-    if (state.loading && state.data == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
     return AppTable<StudentTable>(
       data: state.data?.students ?? [],
       pageable: state.data?.pageable,

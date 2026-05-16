@@ -15,6 +15,7 @@ import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
@@ -235,6 +236,7 @@ class _SchedulePageState extends State<SchedulePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(context, scheduleState),
+                AppLoadingStrip(isLoading: scheduleState.isLoading),
                 const SizedBox(height: AppPageHeaderStyle.bottomGap),
                 _buildToolbar(
                   state: scheduleState,
@@ -640,9 +642,6 @@ class _SchedulePageState extends State<SchedulePage> {
     required List<Strategy> strategies,
     required List<School> schools,
   }) {
-    if (state.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
     if (state.error != null) {
       return Center(child: Text('Error: ${state.error}'));
     }

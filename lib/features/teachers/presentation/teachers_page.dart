@@ -4,6 +4,7 @@ import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:edukita/features/teachers/presentation/teacher_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
@@ -91,6 +92,7 @@ class _TeachersPageState extends State<TeachersPage> {
           return Column(
             children: [
               _buildTopBar(),
+              AppLoadingStrip(isLoading: state.isLoading),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -112,9 +114,6 @@ class _TeachersPageState extends State<TeachersPage> {
   }
 
   Widget _buildContent(TeacherState state) {
-    if (state.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
     if (state.error != null) {
       return Center(child: Text('Error: ${state.error}'));
     }

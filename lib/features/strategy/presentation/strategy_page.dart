@@ -6,6 +6,7 @@ import 'package:edukita/features/strategy/domain/strategy_cubit.dart';
 import 'package:edukita/features/strategy/presentation/strategy_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:file_selector/file_selector.dart';
@@ -134,9 +135,7 @@ class _StrategyPageState extends State<StrategyPage> {
   Widget build(BuildContext context) {
     return BlocBuilder<StrategyCubit, StrategyState>(
       builder: (context, state) {
-        if (state.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (state.error != null) {
+        if (state.error != null) {
           return Center(child: Text('Error: ${state.error}'));
         } else {
           final strategies = state.strategies;
@@ -150,14 +149,21 @@ class _StrategyPageState extends State<StrategyPage> {
                 ),
               ],
             ),
-            body: strategies.isEmpty
-                ? const Center(
-                    child: Text('No strategies yet. Add a strategy.'),
-                  )
-                : Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: _buildStrategyTable(context, strategies),
+            body: Column(
+              children: [
+                AppLoadingStrip(isLoading: state.isLoading, topPadding: 0),
+                Expanded(
+                  child: strategies.isEmpty
+                      ? const Center(
+                          child: Text('No strategies yet. Add a strategy.'),
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: _buildStrategyTable(context, strategies),
+                        ),
                   ),
+              ],
+            ),
           );
         }
       },

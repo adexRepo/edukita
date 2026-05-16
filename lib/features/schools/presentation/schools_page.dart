@@ -7,6 +7,7 @@ import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
 import 'package:edukita/features/schools/presentation/school_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
@@ -211,6 +212,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
           return Column(
             children: [
               _buildTopBar(),
+              AppLoadingStrip(isLoading: state.isLoading),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -232,9 +234,6 @@ class _SchoolsPageState extends State<SchoolsPage> {
   }
 
   Widget _buildContent(SchoolState state) {
-    if (state.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
     if (state.error != null) {
       return Center(child: Text('Error: ${state.error}'));
     }

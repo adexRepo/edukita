@@ -338,7 +338,9 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: AppDialogTitle(widget.school == null ? 'Add School' : 'Edit School'),
+      title: AppDialogTitle(
+        widget.school == null ? 'Add School' : 'Edit School',
+      ),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 620),
         child: SizedBox(
@@ -410,10 +412,9 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
                 ),
               )
               .toList(),
-          selectedItemBuilder: (context) =>
-              AppDropdownStyle.selectedLabels(SchoolType.values.map(
-            (type) => type.label,
-          )),
+          selectedItemBuilder: (context) => AppDropdownStyle.selectedLabels(
+            SchoolType.values.map((type) => type.label),
+          ),
           dropdownColor: AppColors.white,
           focusColor: AppColors.transparent,
           iconEnabledColor: AppColors.primary,
@@ -1042,8 +1043,10 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
                     .toList(),
                 selectedItemBuilder: (context) =>
                     AppDropdownStyle.selectedLabels(
-                  widget.type.allowedLevels.map((level) => level.toString()),
-                ),
+                      widget.type.allowedLevels.map(
+                        (level) => level.toString(),
+                      ),
+                    ),
                 dropdownColor: AppColors.white,
                 focusColor: AppColors.transparent,
                 iconEnabledColor: AppColors.primary,

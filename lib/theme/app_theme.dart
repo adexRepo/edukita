@@ -465,6 +465,11 @@ class AppTheme {
     highlightColor: AppColors.primaryLight.withValues(alpha: 0.18),
     iconTheme: const IconThemeData(color: AppColors.textPrimary),
     textTheme: textTheme,
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: AppColors.primary,
+      linearTrackColor: AppColors.white,
+      circularTrackColor: AppColors.white,
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.card,
       foregroundColor: AppColors.textPrimary,
