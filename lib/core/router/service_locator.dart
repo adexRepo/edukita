@@ -1,4 +1,6 @@
 import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
+import 'package:edukita/features/assistance_programs/domain/assistance_program_cubit.dart';
+import 'package:edukita/features/assistance_programs/domain/assistance_program_repository.dart';
 import 'package:edukita/features/schedule/domain/schedule_cubit.dart';
 import 'package:edukita/features/schedule/domain/schedule_repository.dart';
 import 'package:edukita/features/scholarships/domain/scholarship_cubit.dart';
@@ -37,6 +39,9 @@ Future<void> setupLocator() async {
   getIt.registerLazySingleton<TeacherRepository>(() => TeacherRepository(db));
   getIt.registerLazySingleton<SubjectRepository>(() => SubjectRepository(db));
   getIt.registerLazySingleton<StrategyRepository>(() => StrategyRepository(db));
+  getIt.registerLazySingleton<AssistanceProgramRepository>(
+    () => AssistanceProgramRepository(db),
+  );
   getIt.registerLazySingleton<ScheduleRepository>(() => ScheduleRepository(db));
   getIt.registerLazySingleton<ScholarshipRepository>(
     () => ScholarshipRepository(db),
@@ -75,6 +80,10 @@ Future<void> setupLocator() async {
 
   getIt.registerFactory<StrategyCubit>(
     () => StrategyCubit(getIt<StrategyRepository>()),
+  );
+
+  getIt.registerFactory<AssistanceProgramCubit>(
+    () => AssistanceProgramCubit(getIt<AssistanceProgramRepository>()),
   );
 
   getIt.registerFactory<ScheduleCubit>(

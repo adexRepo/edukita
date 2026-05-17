@@ -15,7 +15,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class SchoolsPage extends StatefulWidget {
-  const SchoolsPage({super.key});
+  const SchoolsPage({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<SchoolsPage> createState() => _SchoolsPageState();
@@ -206,30 +208,35 @@ class _SchoolsPageState extends State<SchoolsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: BlocBuilder<SchoolCubit, SchoolState>(
-        builder: (context, state) {
-          return Column(
-            children: [
-              _buildTopBar(),
-              AppLoadingStrip(isLoading: state.isLoading),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: _buildContent(state),
-                ),
+    final content = BlocBuilder<SchoolCubit, SchoolState>(
+      builder: (context, state) {
+        return Column(
+          children: [
+            if (!widget.embedded) _buildTopBar(),
+            if (!widget.embedded) AppLoadingStrip(isLoading: state.isLoading),
+            Expanded(
+              child: Padding(
+                padding: widget.embedded
+                    ? EdgeInsets.zero
+                    : const EdgeInsets.all(12),
+                child: _buildContent(state),
               ),
-            ],
-          );
-        },
-      ),
+            ),
+          ],
+        );
+      },
     );
+    if (widget.embedded) return content;
+    return Scaffold(body: content);
   }
 
   Widget _buildTopBar() {
     return Padding(
       padding: AppPageHeaderStyle.pagePadding,
-      child: const AppPageHeader(title: 'Schools'),
+      child: const AppPageHeader(
+        title: 'Schools',
+        subtitle: 'Manage school profiles and their class structures.',
+      ),
     );
   }
 
@@ -248,7 +255,9 @@ class _SchoolsPageState extends State<SchoolsPage> {
     return Column(
       children: [
         _buildTableHeader(),
-        const SizedBox(height: 12),
+        if (widget.embedded)
+          AppLoadingStrip(isLoading: state.isLoading, topPadding: 0),
+        const SizedBox(height: AppPageHeaderStyle.bottomGap),
         Expanded(
           child: FutureBuilder<Map<String, int>>(
             future: _classCountsFuture,
@@ -368,7 +377,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
   Widget _buildTableHeader() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 560;
+        final compact = constraints.maxWidth < 760;
         final search = TextField(
           onChanged: (value) {
             setState(() {
@@ -385,6 +394,49 @@ class _SchoolsPageState extends State<SchoolsPage> {
           icon: const Icon(Icons.add),
           label: const Text('Add School'),
         );
+
+        if (widget.embedded) {
+          final title = AppPageHeader(
+            title: 'Schools',
+            subtitle: 'Manage school profiles and their class structures.',
+          );
+          final refresh = IconButton(
+            tooltip: 'Refresh schools',
+            onPressed: () {
+              context.read<SchoolCubit>().loadSchools();
+              _refreshClassCounts();
+            },
+            icon: const Icon(Icons.refresh),
+          );
+
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: title),
+                    refresh,
+                  ],
+                ),
+                const SizedBox(height: 10),
+                search,
+                const SizedBox(height: 10),
+                Align(alignment: Alignment.centerLeft, child: addButton),
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: title),
+              SizedBox(width: 320, child: search),
+              const SizedBox(width: 8),
+              addButton,
+              refresh,
+            ],
+          );
+        }
 
         if (compact) {
           return Column(

@@ -30,16 +30,15 @@ class _AppShellState extends State<AppShell> {
       route: '/dashboard',
     ),
     _SidebarItem(label: 'Students', icon: Icons.school, route: '/students'),
-    _SidebarItem(label: 'Schools', icon: Icons.apartment, route: '/school'),
     _SidebarItem(
       label: 'Teachers',
       icon: Icons.person_outline,
       route: '/teachers',
     ),
     _SidebarItem(
-      label: 'Curriculum',
-      icon: Icons.menu_book_outlined,
-      route: '/curriculum',
+      label: 'Parameter',
+      icon: Icons.tune_outlined,
+      route: '/parameters',
     ),
     _SidebarItem(label: 'Schedule', icon: Icons.schedule, route: '/schedules'),
     _SidebarItem(
@@ -48,9 +47,9 @@ class _AppShellState extends State<AppShell> {
       route: '/teaching-activities',
     ),
     _SidebarItem(
-      label: 'Scholarship',
-      icon: Icons.volunteer_activism_outlined,
-      route: '/scholarships',
+      label: 'Assistance Programs',
+      icon: Icons.handshake_outlined,
+      route: '/assistance-programs',
     ),
     _SidebarItem(
       label: 'Reports',
@@ -186,13 +185,15 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final location = GoRouter.of(context).state.uri.path;
     final selectedIndex = _getSelectedIndex(location);
-    final selectedItem = _orderedMenuItems[selectedIndex];
+    final pageTitle = location.startsWith('/settings')
+        ? 'Settings'
+        : _orderedMenuItems[selectedIndex].label;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: Column(
         children: [
-          buildTitleBar(selectedIndex, context, pageTitle: selectedItem.label),
+          buildTitleBar(selectedIndex, context, pageTitle: pageTitle),
           Expanded(
             child: Row(
               children: [
@@ -333,7 +334,44 @@ class _PrimaryRail extends StatelessWidget {
           ),
           const Divider(height: 1, thickness: 1, color: AppColors.border),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+            padding: const EdgeInsets.fromLTRB(6, 8, 6, 4),
+            child: Tooltip(
+              message: 'Settings',
+              waitDuration: const Duration(milliseconds: 450),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap:
+                    navigationLocked || location.startsWith('/settings')
+                    ? null
+                    : () => onNavigate('/settings'),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 140),
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: location.startsWith('/settings')
+                        ? AppColors.primary.withValues(alpha: 0.14)
+                        : AppColors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: location.startsWith('/settings')
+                        ? Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.22),
+                          )
+                        : null,
+                  ),
+                  child: Icon(
+                    Icons.settings_outlined,
+                    size: 18,
+                    color: location.startsWith('/settings')
+                        ? AppColors.primaryDark
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(6, 4, 6, 8),
             child: Tooltip(
               message: 'Logout',
               waitDuration: const Duration(milliseconds: 450),

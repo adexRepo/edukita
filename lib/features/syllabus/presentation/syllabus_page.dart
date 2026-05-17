@@ -22,7 +22,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 
 class SyllabusPage extends StatefulWidget {
-  const SyllabusPage({super.key});
+  const SyllabusPage({
+    super.key,
+    this.parameterMenu,
+    this.embedded = false,
+  });
+
+  final String? parameterMenu;
+  final bool embedded;
 
   @override
   State<SyllabusPage> createState() => _SyllabusPageState();
@@ -47,8 +54,22 @@ class _SyllabusPageState extends State<SyllabusPage> {
   @override
   void initState() {
     super.initState();
+    _selectedView = _viewForParameterMenu(widget.parameterMenu);
     context.read<SubjectCubit>().loadCurriculum();
     context.read<StrategyCubit>().loadStrategies();
+  }
+
+  @override
+  void didUpdateWidget(covariant SyllabusPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.parameterMenu == widget.parameterMenu) return;
+    final nextView = _viewForParameterMenu(widget.parameterMenu);
+    if (nextView == _selectedView) return;
+    setState(() {
+      _selectedView = nextView;
+      _searchQuery = '';
+      _searchController.clear();
+    });
   }
 
   @override
@@ -256,17 +277,21 @@ class _SyllabusPageState extends State<SyllabusPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: BlocBuilder<SubjectCubit, SubjectState>(
-        builder: (context, state) {
-          final strategyState = context.watch<StrategyCubit>().state;
-          return _buildShell(state, strategyState);
-        },
-      ),
+    final content = BlocBuilder<SubjectCubit, SubjectState>(
+      builder: (context, state) {
+        final strategyState = context.watch<StrategyCubit>().state;
+        return _buildShell(state, strategyState);
+      },
     );
+    if (widget.embedded) return content;
+    return Scaffold(body: content);
   }
 
   Widget _buildShell(SubjectState state, StrategyState strategyState) {
+    if (widget.embedded) {
+      return _buildContent(state, strategyState);
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 760) {
@@ -325,6 +350,18 @@ class _SyllabusPageState extends State<SyllabusPage> {
         );
       },
     );
+  }
+
+  _CurriculumView _viewForParameterMenu(String? menu) {
+    return switch (menu) {
+      'Curriculum' => _CurriculumView.curriculums,
+      'Subjects' => _CurriculumView.subjects,
+      'Syllabus' => _CurriculumView.syllabus,
+      'Units' => _CurriculumView.units,
+      'Competencies' => _CurriculumView.competencies,
+      'Strategies' => _CurriculumView.strategies,
+      _ => _CurriculumView.curriculums,
+    };
   }
 
   Widget _buildContent(SubjectState state, StrategyState strategyState) {
@@ -1025,38 +1062,38 @@ class _DeleteImpactContent extends StatelessWidget {
 
 enum _CurriculumView {
   curriculums(
-    'Curriculums',
-    'Top-level curriculum versions and effective years',
+    'Curriculum',
+    'Manage curriculum versions, effective years, and active learning frameworks.',
     'Curriculum',
     Icons.account_tree_outlined,
   ),
   subjects(
     'Subjects',
-    'Master subjects before learning plans',
+    'Maintain subject master data before it is used in syllabus and schedules.',
     'Subject',
     Icons.library_books_outlined,
   ),
   syllabus(
     'Syllabus',
-    'Learning plans by curriculum, school type, level, and semester',
+    'Define learning plans by curriculum, school type, level, and semester.',
     'Syllabus',
     Icons.menu_book_outlined,
   ),
   units(
     'Units',
-    'Ordered learning units under each subject',
+    'Organize ordered learning units under each subject.',
     'Unit',
     Icons.view_agenda_outlined,
   ),
   competencies(
     'Competencies',
-    'Competency targets attached to units',
+    'Maintain measurable competency targets for each learning unit.',
     'Competency',
     Icons.checklist_outlined,
   ),
   strategies(
     'Strategies',
-    'Teaching strategies used by schedule planning',
+    'Maintain teaching strategies used by schedule and lesson planning.',
     'Strategy',
     Icons.lightbulb_outline,
   );

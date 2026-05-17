@@ -1,4 +1,5 @@
 import 'package:edukita/core/database/database_tables.dart';
+import 'package:edukita/core/database/database_seed.dart';
 import 'package:sqflite_common/sqlite_api.dart';
 import 'package:uuid/uuid.dart';
 
@@ -86,13 +87,76 @@ class DatabaseMigrations {
       await _ensureStrategySampleFileSchema(db);
     }
 
+    if (oldVersion < 23) {
+      await _ensureAssistanceProgramSchema(db);
+    }
+
+    if (oldVersion < 24) {
+      await _renameScholarshipTablesToAssistance(db);
+    }
+
+    if (oldVersion < 25) {
+      await _ensureAssistancePeriodProgramSchema(db);
+    }
+
     await ensureCriticalSchema(db);
   }
 
   static Future<void> ensureCriticalSchema(Database db) async {
+    await _renameScholarshipTablesToAssistance(db);
     await DatabaseTables.createAll(db);
+    await _copyLegacyScholarshipTablesIfNeeded(db);
     await _ensureStrategySampleFileSchema(db);
     await _ensureScholarshipPlanSchema(db);
+    await _ensureAssistanceProgramSchema(db);
+    await _ensureAssistancePeriodProgramSchema(db);
+  }
+
+  static const List<(String oldName, String newName)> _assistanceTableRenames =
+      [
+        ('scholarship_periods', 'assistance_periods'),
+        ('scholarship_rules', 'assistance_rules'),
+        ('scholarship_period_rules', 'assistance_period_rules'),
+        ('student_scholarship_rules', 'student_assistance_rules'),
+        (
+          'student_scholarship_rule_candidates',
+          'student_assistance_rule_candidates',
+        ),
+        ('student_scholarship_assessments', 'student_assistance_assessments'),
+        ('scholarship_rule_targets', 'assistance_rule_targets'),
+        ('scholarship_approval_documents', 'assistance_approval_documents'),
+        ('scholarship_recipients', 'assistance_recipients'),
+      ];
+
+  static Future<void> _renameScholarshipTablesToAssistance(Database db) async {
+    for (final rename in _assistanceTableRenames) {
+      final oldName = rename.$1;
+      final newName = rename.$2;
+      final oldExists = await _tableExists(db, oldName);
+      if (!oldExists) continue;
+
+      final newExists = await _tableExists(db, newName);
+      if (!newExists) {
+        await db.execute('ALTER TABLE $oldName RENAME TO $newName');
+      }
+    }
+  }
+
+  static Future<void> _copyLegacyScholarshipTablesIfNeeded(Database db) async {
+    for (final rename in _assistanceTableRenames) {
+      final oldName = rename.$1;
+      final newName = rename.$2;
+      final oldExists = await _tableExists(db, oldName);
+      final newExists = await _tableExists(db, newName);
+      if (!oldExists || !newExists) continue;
+
+      try {
+        await db.execute('INSERT OR IGNORE INTO $newName SELECT * FROM $oldName');
+      } catch (_) {
+        // If a legacy table shape differs, keep both tables and let the
+        // current schema continue on the assistance_* table.
+      }
+    }
   }
 
   static Future<void> _fixUsers(Database db) async {
@@ -282,6 +346,77 @@ class DatabaseMigrations {
     );
   }
 
+  static Future<void> _ensureAssistanceProgramSchema(Database db) async {
+    await DatabaseTables.assistancePrograms(db);
+    await DatabaseTables.indexes(db);
+    await DatabaseSeed.ensureAssistancePrograms(db);
+  }
+
+  static Future<void> _ensureAssistancePeriodProgramSchema(Database db) async {
+    await DatabaseTables.assistancePrograms(db);
+    await DatabaseTables.scholarshipPeriods(db);
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_periods',
+      column: 'assistance_program_id',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_periods',
+      column: 'period_name',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_periods',
+      column: 'start_date',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_periods',
+      column: 'end_date',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_periods',
+      column: 'benefit_amount',
+      definition: 'REAL',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_periods',
+      column: 'benefit_item_description',
+      definition: 'TEXT',
+    );
+    await _rebuildAssistanceRecipientsForDistributionStatus(db);
+    await db.execute('DROP INDEX IF EXISTS idx_assistance_periods_month_year');
+    await db.execute('DROP INDEX IF EXISTS idx_scholarship_periods_month_year');
+    await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _rebuildAssistanceRecipientsForDistributionStatus(
+    Database db,
+  ) async {
+    if (!await _tableExists(db, 'assistance_recipients')) return;
+
+    final sql = await db.rawQuery(
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'assistance_recipients'",
+    );
+    final createSql = sql.isEmpty ? '' : sql.first['sql']?.toString() ?? '';
+    if (createSql.contains("'distributed'")) return;
+
+    await db.execute('ALTER TABLE assistance_recipients RENAME TO assistance_recipients_old');
+    await DatabaseTables.scholarshipRecipients(db);
+    await db.execute('''
+      INSERT OR IGNORE INTO assistance_recipients
+      SELECT * FROM assistance_recipients_old
+    ''');
+    await db.execute('DROP TABLE assistance_recipients_old');
+  }
+
   static Future<void> _ensureTeachingMaterialSchema(Database db) async {
     await DatabaseTables.curriculums(db);
     await DatabaseTables.syllabus(db);
@@ -389,19 +524,19 @@ class DatabaseMigrations {
     await DatabaseTables.scholarshipPeriods(db);
     await _addColumnIfMissing(
       db,
-      table: 'scholarship_periods',
+      table: 'assistance_periods',
       column: 'calculation_window_months',
       definition: 'INTEGER NOT NULL DEFAULT 3',
     );
     await _addColumnIfMissing(
       db,
-      table: 'scholarship_periods',
+      table: 'assistance_periods',
       column: 'minimum_attendance_percentage',
       definition: 'REAL NOT NULL DEFAULT 75',
     );
     await _addColumnIfMissing(
       db,
-      table: 'scholarship_periods',
+      table: 'assistance_periods',
       column: 'allow_manual_override_below_attendance',
       definition: 'INTEGER NOT NULL DEFAULT 1',
     );
@@ -426,25 +561,25 @@ class DatabaseMigrations {
 
     await _addColumnIfMissing(
       db,
-      table: 'scholarship_periods',
+      table: 'assistance_periods',
       column: 'targeted_at',
       definition: 'TEXT',
     );
     await _addColumnIfMissing(
       db,
-      table: 'scholarship_periods',
+      table: 'assistance_periods',
       column: 'submitted_at',
       definition: 'TEXT',
     );
     await _addColumnIfMissing(
       db,
-      table: 'scholarship_period_rules',
+      table: 'assistance_period_rules',
       column: 'scholarship_rule_id',
       definition: 'TEXT',
     );
     await _addColumnIfMissing(
       db,
-      table: 'scholarship_recipients',
+      table: 'assistance_recipients',
       column: 'scholarship_rule_target_id',
       definition: 'TEXT',
     );
@@ -462,16 +597,16 @@ class DatabaseMigrations {
   }
 
   static Future<void> _rebuildStudentScholarshipRules(Database db) async {
-    if (!await _tableExists(db, 'student_scholarship_rules')) {
+    if (!await _tableExists(db, 'student_assistance_rules')) {
       await DatabaseTables.studentScholarshipRules(db);
       return;
     }
 
     await db.execute(
-      'DROP TABLE IF EXISTS student_scholarship_rules_migration',
+      'DROP TABLE IF EXISTS student_assistance_rules_migration',
     );
     await db.execute('''
-      CREATE TABLE student_scholarship_rules_migration(
+      CREATE TABLE student_assistance_rules_migration(
         id TEXT PRIMARY KEY NOT NULL,
         student_id TEXT NOT NULL,
         scholarship_type TEXT NOT NULL,
@@ -487,13 +622,13 @@ class DatabaseMigrations {
       )
     ''');
 
-    final rows = await db.query('student_scholarship_rules');
+    final rows = await db.query('student_assistance_rules');
     for (final row in rows) {
       final rawScholarshipType = row['rule_type']?.toString().isNotEmpty == true
           ? row['rule_type']?.toString()
           : row['scholarship_type']?.toString();
       final scholarshipType = _normalizeScholarshipType(rawScholarshipType);
-      await db.insert('student_scholarship_rules_migration', {
+      await db.insert('student_assistance_rules_migration', {
         'id': row['id']?.toString(),
         'student_id': row['student_id']?.toString(),
         'scholarship_type': scholarshipType,
@@ -512,23 +647,23 @@ class DatabaseMigrations {
       });
     }
 
-    await db.execute('DROP TABLE student_scholarship_rules');
+    await db.execute('DROP TABLE student_assistance_rules');
     await db.execute(
-      'ALTER TABLE student_scholarship_rules_migration RENAME TO student_scholarship_rules',
+      'ALTER TABLE student_assistance_rules_migration RENAME TO student_assistance_rules',
     );
   }
 
   static Future<void> _rebuildStudentScholarshipAssessments(Database db) async {
-    if (!await _tableExists(db, 'student_scholarship_assessments')) {
+    if (!await _tableExists(db, 'student_assistance_assessments')) {
       await DatabaseTables.studentScholarshipAssessments(db);
       return;
     }
 
     await db.execute(
-      'DROP TABLE IF EXISTS student_scholarship_assessments_migration',
+      'DROP TABLE IF EXISTS student_assistance_assessments_migration',
     );
     await db.execute('''
-      CREATE TABLE student_scholarship_assessments_migration(
+      CREATE TABLE student_assistance_assessments_migration(
         id TEXT PRIMARY KEY NOT NULL,
         scholarship_period_id TEXT NOT NULL,
         student_id TEXT NOT NULL,
@@ -565,7 +700,7 @@ class DatabaseMigrations {
       )
     ''');
 
-    final rows = await db.query('student_scholarship_assessments');
+    final rows = await db.query('student_assistance_assessments');
     for (final row in rows) {
       final scholarshipType = _normalizeScholarshipType(
         row['rule_type']?.toString() ?? row['scholarship_type']?.toString(),
@@ -574,7 +709,7 @@ class DatabaseMigrations {
           (row['priority_order'] as num?)?.toInt() ??
           (row['priority_level'] as num?)?.toInt() ??
           0;
-      await db.insert('student_scholarship_assessments_migration', {
+      await db.insert('student_assistance_assessments_migration', {
         'id': row['id']?.toString(),
         'scholarship_period_id': row['scholarship_period_id']?.toString(),
         'student_id': row['student_id']?.toString(),
@@ -619,21 +754,21 @@ class DatabaseMigrations {
       });
     }
 
-    await db.execute('DROP TABLE student_scholarship_assessments');
+    await db.execute('DROP TABLE student_assistance_assessments');
     await db.execute(
-      'ALTER TABLE student_scholarship_assessments_migration RENAME TO student_scholarship_assessments',
+      'ALTER TABLE student_assistance_assessments_migration RENAME TO student_assistance_assessments',
     );
   }
 
   static Future<void> _rebuildScholarshipRecipients(Database db) async {
-    if (!await _tableExists(db, 'scholarship_recipients')) {
+    if (!await _tableExists(db, 'assistance_recipients')) {
       await DatabaseTables.scholarshipRecipients(db);
       return;
     }
 
-    await db.execute('DROP TABLE IF EXISTS scholarship_recipients_migration');
+    await db.execute('DROP TABLE IF EXISTS assistance_recipients_migration');
     await db.execute('''
-      CREATE TABLE scholarship_recipients_migration(
+      CREATE TABLE assistance_recipients_migration(
         id TEXT PRIMARY KEY NOT NULL,
         scholarship_period_id TEXT NOT NULL,
         student_id TEXT NOT NULL,
@@ -653,12 +788,12 @@ class DatabaseMigrations {
       )
     ''');
 
-    final rows = await db.query('scholarship_recipients');
+    final rows = await db.query('assistance_recipients');
     for (final row in rows) {
       final scholarshipType = _normalizeScholarshipType(
         row['rule_type']?.toString() ?? row['scholarship_type']?.toString(),
       );
-      await db.insert('scholarship_recipients_migration', {
+      await db.insert('assistance_recipients_migration', {
         'id': row['id']?.toString(),
         'scholarship_period_id': row['scholarship_period_id']?.toString(),
         'student_id': row['student_id']?.toString(),
@@ -681,22 +816,22 @@ class DatabaseMigrations {
       });
     }
 
-    await db.execute('DROP TABLE scholarship_recipients');
+    await db.execute('DROP TABLE assistance_recipients');
     await db.execute(
-      'ALTER TABLE scholarship_recipients_migration RENAME TO scholarship_recipients',
+      'ALTER TABLE assistance_recipients_migration RENAME TO assistance_recipients',
     );
   }
 
   static Future<void> _backfillScholarshipPeriodRules(Database db) async {
-    if (!await _tableExists(db, 'scholarship_periods')) return;
+    if (!await _tableExists(db, 'assistance_periods')) return;
 
-    final periods = await db.query('scholarship_periods');
+    final periods = await db.query('assistance_periods');
     for (final period in periods) {
       final periodId = period['id']?.toString();
       if (periodId == null || periodId.isEmpty) continue;
 
       final existing = await db.query(
-        'scholarship_period_rules',
+        'assistance_period_rules',
         where: 'scholarship_period_id = ?',
         whereArgs: [periodId],
         limit: 1,
@@ -710,7 +845,7 @@ class DatabaseMigrations {
           (period['rolling_quota'] as num?)?.toInt() ??
           (targetQuota - fixedQuota).clamp(0, targetQuota).toInt();
 
-      await db.insert('scholarship_period_rules', {
+      await db.insert('assistance_period_rules', {
         'id': const Uuid().v4(),
         'scholarship_period_id': periodId,
         'rule_type': 'fixed_priority',
@@ -723,7 +858,7 @@ class DatabaseMigrations {
         'created_at': now,
         'updated_at': now,
       });
-      await db.insert('scholarship_period_rules', {
+      await db.insert('assistance_period_rules', {
         'id': const Uuid().v4(),
         'scholarship_period_id': periodId,
         'rule_type': 'rolling_attendance',
@@ -740,7 +875,7 @@ class DatabaseMigrations {
   }
 
   static Future<void> _preloadDefaultScholarshipRules(Database db) async {
-    if (!await _tableExists(db, 'scholarship_rules')) return;
+    if (!await _tableExists(db, 'assistance_rules')) return;
 
     final now = DateTime.now().toIso8601String();
     const defaults = [
@@ -767,7 +902,7 @@ class DatabaseMigrations {
     for (final rule in defaults) {
       final id = 'system-${rule.$1}';
       final existing = await db.query(
-        'scholarship_rules',
+        'assistance_rules',
         where: 'id = ? OR rule_type = ?',
         whereArgs: [id, rule.$3],
         limit: 1,
@@ -784,10 +919,10 @@ class DatabaseMigrations {
         'updated_at': now,
       };
       if (existing.isEmpty) {
-        await db.insert('scholarship_rules', values);
+        await db.insert('assistance_rules', values);
       } else {
         await db.update(
-          'scholarship_rules',
+          'assistance_rules',
           {
             'rule_name': rule.$2,
             'selection_mode': rule.$4,

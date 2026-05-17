@@ -17,7 +17,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class ScholarshipPage extends StatefulWidget {
-  const ScholarshipPage({super.key});
+  const ScholarshipPage({
+    super.key,
+    this.embedded = false,
+    this.initialSection,
+  });
+
+  final bool embedded;
+  final String? initialSection;
 
   @override
   State<ScholarshipPage> createState() => _ScholarshipPageState();
@@ -35,20 +42,69 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
   @override
   void initState() {
     super.initState();
-    context.read<ScholarshipCubit>().loadModule();
+    _selectedView = _viewForSection(widget.initialSection);
+    final cubit = context.read<ScholarshipCubit>();
+    final state = cubit.state;
+    if (widget.embedded && _selectedView == _ScholarshipView.rules) {
+      if (state.scholarshipRules.isEmpty && !state.isLoading) {
+        cubit.loadScholarshipRulesOnly();
+      }
+      return;
+    }
+
+    if (state.periods.isEmpty && !state.isLoading) {
+      cubit.loadModule();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ScholarshipPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialSection == widget.initialSection) return;
+    final nextView = _viewForSection(widget.initialSection);
+    if (nextView == _selectedView) return;
+    setState(() => _selectedView = nextView);
+    if (widget.embedded && nextView == _ScholarshipView.rules) {
+      context.read<ScholarshipCubit>().loadScholarshipRulesOnly();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: BlocBuilder<ScholarshipCubit, ScholarshipState>(
-        builder: (context, state) {
+    final content = BlocBuilder<ScholarshipCubit, ScholarshipState>(
+      builder: (context, state) {
+        if (widget.embedded) {
+          if (state.error != null) {
+            return Center(child: Text('Error: ${state.error}'));
+          }
           return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: state.error != null
-                    ? Center(child: Text('Error: ${state.error}'))
-                    : Row(
+              _ScholarshipContentHeader(
+                view: _selectedView,
+                onRefresh: () => context
+                    .read<ScholarshipCubit>()
+                    .loadScholarshipRulesOnly(),
+                primaryAction: _selectedView == _ScholarshipView.rules
+                    ? FilledButton.icon(
+                        onPressed: () => _showRuleDialog(context),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Custom Rule'),
+                      )
+                    : null,
+              ),
+              const SizedBox(height: AppPageHeaderStyle.bottomGap),
+              Expanded(child: _buildSelectedContent(state)),
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            Expanded(
+              child: state.error != null
+                  ? Center(child: Text('Error: ${state.error}'))
+                  : Row(
                         children: [
                           _ScholarshipNavigator(
                             width: _navigatorWidth,
@@ -105,19 +161,35 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
                             ),
                           ),
                         ],
-                      ),
-              ),
-            ],
-          );
-        },
-      ),
+                    ),
+            ),
+          ],
+        );
+      },
     );
+    if (widget.embedded) return content;
+    return Scaffold(body: content);
+  }
+
+  _ScholarshipView _viewForSection(String? section) {
+    return switch (section) {
+      'rules' => _ScholarshipView.rules,
+      'studentRules' => _ScholarshipView.fixedPriority,
+      'targetCandidates' => _ScholarshipView.generate,
+      'review' => _ScholarshipView.assessments,
+      'approvalDocument' => _ScholarshipView.approvalDocument,
+      'recipients' => _ScholarshipView.recipients,
+      _ => _ScholarshipView.periods,
+    };
   }
 
   Widget _buildSelectedContent(ScholarshipState state) {
     return switch (_selectedView) {
       _ScholarshipView.periods => _PeriodsTab(state: state),
-      _ScholarshipView.rules => _ScholarshipRulesTab(state: state),
+      _ScholarshipView.rules => _ScholarshipRulesTab(
+        state: state,
+        showAddButton: !widget.embedded,
+      ),
       _ScholarshipView.fixedPriority => _FixedPriorityTab(state: state),
       _ScholarshipView.generate => _GenerateTab(state: state),
       _ScholarshipView.assessments => _AssessmentTab(
@@ -139,11 +211,25 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
       _ScholarshipView.recipients => _RecipientsTab(state: state),
     };
   }
+
+  Future<void> _showRuleDialog(
+    BuildContext context, {
+    ScholarshipRule? rule,
+  }) async {
+    final cubit = context.read<ScholarshipCubit>();
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _ScholarshipRuleDialog(
+        rule: rule,
+        onSave: cubit.saveScholarshipRule,
+      ),
+    );
+  }
 }
 
 enum _ScholarshipView {
   periods('Scholarship Periods', Icons.calendar_month_outlined),
-  rules('Scholarship Rules', Icons.rule_folder_outlined),
+  rules('Assistance Rules', Icons.rule_folder_outlined),
   fixedPriority('Student Rules', Icons.star_border),
   generate('Target Candidates', Icons.group_add_outlined),
   assessments('Review & Export', Icons.fact_check_outlined),
@@ -160,7 +246,7 @@ enum _ScholarshipView {
       _ScholarshipView.periods =>
         'Manage monthly scholarship periods and eligibility settings.',
       _ScholarshipView.rules =>
-        'Manage scholarship rule master and custom manual rules.',
+        'Maintain assistance rule master data and custom manual rules.',
       _ScholarshipView.fixedPriority =>
         'Maintain long-term student scholarship rules.',
       _ScholarshipView.generate =>
@@ -210,6 +296,14 @@ class _ScholarshipNavigator extends StatelessWidget {
   final VoidCallback onToggleWidth;
 
   bool get _compact => width < 96;
+  static const _visibleViews = [
+    _ScholarshipView.periods,
+    _ScholarshipView.fixedPriority,
+    _ScholarshipView.generate,
+    _ScholarshipView.assessments,
+    _ScholarshipView.approvalDocument,
+    _ScholarshipView.recipients,
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -275,7 +369,7 @@ class _ScholarshipNavigator extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        ..._ScholarshipView.values.map(
+        ..._visibleViews.map(
           (view) => Padding(
             padding: const EdgeInsets.only(bottom: 7),
             child: Tooltip(
@@ -355,7 +449,6 @@ class _ScholarshipNavigator extends StatelessWidget {
                 onToggle: onToggleSetup,
                 items: const [
                   _ScholarshipView.periods,
-                  _ScholarshipView.rules,
                   _ScholarshipView.fixedPriority,
                 ],
                 selectedView: selectedView,
@@ -510,20 +603,31 @@ class _ScholarshipContentHeader extends StatelessWidget {
   const _ScholarshipContentHeader({
     required this.view,
     required this.onRefresh,
+    this.primaryAction,
   });
 
   final _ScholarshipView view;
   final VoidCallback onRefresh;
+  final Widget? primaryAction;
 
   @override
   Widget build(BuildContext context) {
     return AppPageHeader(
       title: view.label,
       subtitle: view.description,
-      trailing: IconButton(
-        tooltip: 'Refresh',
-        onPressed: onRefresh,
-        icon: const Icon(Icons.refresh),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (primaryAction != null) ...[
+            primaryAction!,
+            const SizedBox(width: 8),
+          ],
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: onRefresh,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
     );
   }
@@ -757,9 +861,13 @@ class _PeriodsTab extends StatelessWidget {
 }
 
 class _ScholarshipRulesTab extends StatelessWidget {
-  const _ScholarshipRulesTab({required this.state});
+  const _ScholarshipRulesTab({
+    required this.state,
+    this.showAddButton = true,
+  });
 
   final ScholarshipState state;
+  final bool showAddButton;
 
   Future<void> _showRuleDialog(
     BuildContext context, {
@@ -779,15 +887,17 @@ class _ScholarshipRulesTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton.icon(
-            onPressed: () => _showRuleDialog(context),
-            icon: const Icon(Icons.add),
-            label: const Text('Add Custom Rule'),
+        if (showAddButton) ...[
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: () => _showRuleDialog(context),
+              icon: const Icon(Icons.add),
+              label: const Text('Add Custom Rule'),
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
+          const SizedBox(height: 12),
+        ],
         Expanded(
           child: AppTable<ScholarshipRule>(
             data: state.scholarshipRules,

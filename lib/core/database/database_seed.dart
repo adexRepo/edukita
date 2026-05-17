@@ -6,6 +6,7 @@ class DatabaseSeed {
   static Future<void> seed(Database db) async {
     await ensureAdmin(db);
     await _ensureStrategies(db);
+    await ensureAssistancePrograms(db);
   }
 
   static Future<void> ensureAdmin(Database db) async {
@@ -77,6 +78,86 @@ class DatabaseSeed {
 
     for (final strategy in strategies) {
       await db.insert('strategies', {'id': const Uuid().v4(), ...strategy});
+    }
+  }
+
+  static Future<void> ensureAssistancePrograms(Database db) async {
+    final table = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'assistance_programs'",
+    );
+    if (table.isEmpty) return;
+
+    final now = DateTime.now().toIso8601String();
+    final programs = [
+      {
+        'code': 'EDU_SUPPORT',
+        'name': 'Education Support',
+        'category': 'education',
+        'benefit_type': 'cash',
+        'frequency': 'monthly',
+        'default_amount': 50.0,
+      },
+      {
+        'code': 'RAMADHAN_AID',
+        'name': 'Ramadhan Aid',
+        'category': 'seasonal',
+        'benefit_type': 'goods',
+        'frequency': 'yearly',
+        'default_item_description': 'Food package and clothing support',
+      },
+      {
+        'code': 'UNIFORM_SUPPORT',
+        'name': 'Uniform Support',
+        'category': 'uniform',
+        'benefit_type': 'goods',
+        'frequency': 'yearly',
+        'default_item_description': 'School uniform package',
+      },
+      {
+        'code': 'TRANSPORT_SUPPORT',
+        'name': 'Transport Support',
+        'category': 'transport',
+        'benefit_type': 'cash',
+        'frequency': 'monthly',
+        'default_amount': 30.0,
+      },
+      {
+        'code': 'EMERGENCY_SUPPORT',
+        'name': 'Emergency Support',
+        'category': 'emergency',
+        'benefit_type': 'mixed',
+        'frequency': 'as_needed',
+        'default_item_description':
+            'Cash or goods depending on emergency case',
+      },
+      {
+        'code': 'FOOD_PACKAGE_SUPPORT',
+        'name': 'Food Package Support',
+        'category': 'food',
+        'benefit_type': 'goods',
+        'frequency': 'as_needed',
+        'default_item_description': 'Food package',
+      },
+    ];
+
+    for (final program in programs) {
+      final existing = await db.query(
+        'assistance_programs',
+        columns: const ['id'],
+        where: 'code = ?',
+        whereArgs: [program['code']],
+        limit: 1,
+      );
+      if (existing.isNotEmpty) continue;
+
+      await db.insert('assistance_programs', {
+        'id': const Uuid().v4(),
+        ...program,
+        'description': null,
+        'is_active': 1,
+        'created_at': now,
+        'updated_at': now,
+      });
     }
   }
 }

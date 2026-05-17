@@ -14,6 +14,7 @@ class AppToastData {
     required this.title,
     required this.message,
     required this.duration,
+    this.onTap,
   });
 
   final int id;
@@ -21,6 +22,7 @@ class AppToastData {
   final String title;
   final String message;
   final Duration duration;
+  final ValueChanged<BuildContext>? onTap;
 }
 
 class AppToast extends ChangeNotifier {
@@ -35,12 +37,30 @@ class AppToast extends ChangeNotifier {
 
   AppToastData? get current => _current;
 
-  static void showSuccess(String message, {String title = 'Success'}) {
-    instance.show(type: AppToastType.success, title: title, message: message);
+  static void showSuccess(
+    String message, {
+    String title = 'Success',
+    ValueChanged<BuildContext>? onTap,
+  }) {
+    instance.show(
+      type: AppToastType.success,
+      title: title,
+      message: message,
+      onTap: onTap,
+    );
   }
 
-  static void showFailed(String message, {String title = 'Failed'}) {
-    instance.show(type: AppToastType.failed, title: title, message: message);
+  static void showFailed(
+    String message, {
+    String title = 'Failed',
+    ValueChanged<BuildContext>? onTap,
+  }) {
+    instance.show(
+      type: AppToastType.failed,
+      title: title,
+      message: message,
+      onTap: onTap,
+    );
   }
 
   static void showSubmissionSuccess({
@@ -62,6 +82,7 @@ class AppToast extends ChangeNotifier {
     required String title,
     required String message,
     Duration duration = defaultDuration,
+    ValueChanged<BuildContext>? onTap,
   }) {
     _timer?.cancel();
     _current = AppToastData(
@@ -70,6 +91,7 @@ class AppToast extends ChangeNotifier {
       title: title,
       message: message,
       duration: duration,
+      onTap: onTap,
     );
     notifyListeners();
     _timer = Timer(duration, dismiss);
@@ -204,105 +226,119 @@ class _AppToastState extends State<_AppToast>
     final accent = isSuccess ? AppColors.success : AppColors.error;
     final background = AppColors.white.withValues(alpha: 0.9);
     final icon = isSuccess ? Icons.check_rounded : Icons.close_rounded;
+    final onTap = widget.data.onTap;
 
     return Semantics(
       liveRegion: true,
       label: '${widget.data.title}: ${widget.data.message}',
-      child: Material(
-        color: AppColors.transparent,
-        elevation: 12,
-        shadowColor: AppColors.black.withValues(alpha: 0.24),
-        borderRadius: BorderRadius.circular(8),
-        child: ClipRRect(
+      child: MouseRegion(
+        cursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+        child: Material(
+          color: AppColors.transparent,
+          elevation: 12,
+          shadowColor: AppColors.black.withValues(alpha: 0.24),
           borderRadius: BorderRadius.circular(8),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: background,
-              border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.72),
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.96),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(icon, color: AppColors.white, size: 20),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              widget.data.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              widget.data.message,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 11,
-                                height: 1.3,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Semantics(
-                        button: true,
-                        label: 'Close notification',
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: AppToast.instance.dismiss,
-                          child: const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: Icon(
-                              Icons.close_rounded,
-                              size: 16,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onTap == null
+                ? null
+                : () {
+                    final callback = onTap;
+                    AppToast.instance.dismiss();
+                    callback(context);
+                  },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: background,
+                  border: Border.all(
+                    color: AppColors.border.withValues(alpha: 0.72),
                   ),
                 ),
-                AnimatedBuilder(
-                  animation: _progressController,
-                  builder: (context, _) {
-                    return LinearProgressIndicator(
-                      minHeight: 3,
-                      value: 1 - _progressController.value,
-                      color: accent,
-                      backgroundColor: accent.withValues(alpha: 0.2),
-                    );
-                  },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.96),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(icon, color: AppColors.white, size: 20),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  widget.data.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  widget.data.message,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 11,
+                                    height: 1.3,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Semantics(
+                            button: true,
+                            label: 'Close notification',
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(14),
+                              onTap: AppToast.instance.dismiss,
+                              child: const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  size: 16,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    AnimatedBuilder(
+                      animation: _progressController,
+                      builder: (context, _) {
+                        return LinearProgressIndicator(
+                          minHeight: 3,
+                          value: 1 - _progressController.value,
+                          color: accent,
+                          backgroundColor: accent.withValues(alpha: 0.2),
+                        );
+                      },
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

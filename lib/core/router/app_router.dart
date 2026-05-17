@@ -1,24 +1,25 @@
 import 'package:edukita/app_shell.dart';
 import 'package:edukita/core/router/service_locator.dart';
+import 'package:edukita/features/assistance_program/presentation/assistance_program_page.dart';
+import 'package:edukita/features/assistance_programs/domain/assistance_program_cubit.dart';
 import 'package:edukita/features/auth/presentation/login_page.dart';
 import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
 import 'package:edukita/features/dashboard/presentation/dashboard_page.dart';
+import 'package:edukita/features/parameters/presentation/parameter_page.dart';
 import 'package:edukita/features/reports/assessment_cubit.dart';
 import 'package:edukita/features/reports/reports_page.dart';
 import 'package:edukita/features/schedule/domain/schedule_cubit.dart';
 import 'package:edukita/features/schedule/presentation/schedule_page.dart';
 import 'package:edukita/features/scholarships/domain/scholarship_cubit.dart';
-import 'package:edukita/features/scholarships/presentation/scholarship_page.dart';
 import 'package:edukita/features/schools/domain/class_cubit.dart';
 import 'package:edukita/features/schools/domain/school_cubit.dart';
-import 'package:edukita/features/schools/presentation/schools_page.dart';
+import 'package:edukita/features/settings/presentation/settings_page.dart';
 import 'package:edukita/features/strategy/domain/strategy_cubit.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
 import 'package:edukita/features/students/domain/student_feature_cubit.dart';
 import 'package:edukita/features/students/persentation/detail/student_detail_page.dart';
 import 'package:edukita/features/students/persentation/students_page.dart';
 import 'package:edukita/features/syllabus/domain/subject_cubit.dart';
-import 'package:edukita/features/syllabus/presentation/syllabus_page.dart';
 import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:edukita/features/teachers/domain/teacher_repository.dart';
@@ -91,21 +92,7 @@ final GoRouter appRouter = GoRouter(
             ),
           ],
         ),
-        GoRoute(
-          path: '/school',
-          pageBuilder: (context, state) => _noTransitionPage(
-            state: state,
-            child: MultiBlocProvider(
-              providers: [
-                BlocProvider<SchoolCubit>(
-                  create: (_) => getIt<SchoolCubit>()..loadSchools(),
-                ),
-                BlocProvider<ClassCubit>(create: (_) => getIt<ClassCubit>()),
-              ],
-              child: const SchoolsPage(),
-            ),
-          ),
-        ),
+        GoRoute(path: '/school', redirect: (_, _) => '/parameters'),
         GoRoute(
           path: '/teachers',
           pageBuilder: (context, state) => _noTransitionPage(
@@ -131,24 +118,36 @@ final GoRouter appRouter = GoRouter(
             ),
           ],
         ),
+        GoRoute(path: '/curriculum', redirect: (_, _) => '/parameters'),
+        GoRoute(path: '/strategies', redirect: (_, _) => '/parameters'),
         GoRoute(
-          path: '/curriculum',
+          path: '/parameters',
           pageBuilder: (context, state) => _noTransitionPage(
             state: state,
             child: MultiBlocProvider(
               providers: [
+                BlocProvider<SchoolCubit>(
+                  create: (_) => getIt<SchoolCubit>()..loadSchools(),
+                ),
+                BlocProvider<ClassCubit>(create: (_) => getIt<ClassCubit>()),
                 BlocProvider<SubjectCubit>(
                   create: (_) => getIt<SubjectCubit>()..loadCurriculum(),
                 ),
                 BlocProvider<StrategyCubit>(
                   create: (_) => getIt<StrategyCubit>()..loadStrategies(),
                 ),
+                BlocProvider<ScholarshipCubit>(
+                  create: (_) => getIt<ScholarshipCubit>(),
+                ),
+                BlocProvider<AssistanceProgramCubit>(
+                  create: (_) =>
+                      getIt<AssistanceProgramCubit>()..loadPrograms(),
+                ),
               ],
-              child: const SyllabusPage(),
+              child: const ParameterPage(),
             ),
           ),
         ),
-        GoRoute(path: '/strategies', redirect: (_, _) => '/curriculum'),
         GoRoute(
           path: '/schedules',
           pageBuilder: (context, state) => _noTransitionPage(
@@ -214,6 +213,30 @@ final GoRouter appRouter = GoRouter(
           ],
         ),
         GoRoute(
+          path: '/assistance-programs',
+          redirect: (_, _) => '/assistance-programs/periods',
+          routes: [
+            GoRoute(
+              path: 'periods',
+              pageBuilder: (context, state) => _noTransitionPage(
+                state: state,
+                child: MultiBlocProvider(
+                  providers: [
+                    BlocProvider<ScholarshipCubit>(
+                      create: (_) => getIt<ScholarshipCubit>()..loadModule(),
+                    ),
+                    BlocProvider<AssistanceProgramCubit>(
+                      create: (_) =>
+                          getIt<AssistanceProgramCubit>()..loadPrograms(),
+                    ),
+                  ],
+                  child: const AssistanceProgramPage(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        GoRoute(
           path: '/reports',
           pageBuilder: (context, state) => _noTransitionPage(
             state: state,
@@ -233,12 +256,13 @@ final GoRouter appRouter = GoRouter(
         ),
         GoRoute(
           path: '/scholarships',
+          redirect: (_, _) => '/assistance-programs/periods',
+        ),
+        GoRoute(
+          path: '/settings',
           pageBuilder: (context, state) => _noTransitionPage(
             state: state,
-            child: withCubit(
-              create: () => getIt<ScholarshipCubit>()..loadModule(),
-              child: const ScholarshipPage(),
-            ),
+            child: const SettingsPage(),
           ),
         ),
       ],

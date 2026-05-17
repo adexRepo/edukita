@@ -124,8 +124,12 @@ enum ScholarshipPeriodStatus {
   final String label;
 
   static ScholarshipPeriodStatus fromValue(String? value) {
-    if (value == 'targeted') return ScholarshipPeriodStatus.generated;
-    if (value == 'submitted') return ScholarshipPeriodStatus.pendingReview;
+    if (value == 'targeted' || value == 'generated') {
+      return ScholarshipPeriodStatus.generated;
+    }
+    if (value == 'submitted' || value == 'pending_review') {
+      return ScholarshipPeriodStatus.pendingReview;
+    }
     return ScholarshipPeriodStatus.values.firstWhere(
       (item) => item.value == value,
       orElse: () => ScholarshipPeriodStatus.draft,
@@ -175,6 +179,7 @@ enum ScholarshipEligibilityStatus {
 enum ScholarshipRecipientStatus {
   approved('approved', 'Approved'),
   paid('paid', 'Paid'),
+  distributed('distributed', 'Distributed'),
   cancelled('cancelled', 'Cancelled');
 
   const ScholarshipRecipientStatus(this.value, this.label);
@@ -284,6 +289,12 @@ class ScholarshipRule {
 class ScholarshipPeriod {
   ScholarshipPeriod({
     String? id,
+    this.assistanceProgramId,
+    this.periodName,
+    this.startDate,
+    this.endDate,
+    this.benefitAmount,
+    this.benefitItemDescription,
     required this.periodMonth,
     required this.periodYear,
     required this.targetQuota,
@@ -300,11 +311,17 @@ class ScholarshipPeriod {
     this.approvedBy,
     String? createdAt,
     String? updatedAt,
-  }) : id = id ?? periodId(periodYear, periodMonth),
+  }) : id = id ?? const Uuid().v4(),
        createdAt = createdAt ?? DateTime.now().toIso8601String(),
        updatedAt = updatedAt ?? DateTime.now().toIso8601String();
 
   final String id;
+  final String? assistanceProgramId;
+  final String? periodName;
+  final String? startDate;
+  final String? endDate;
+  final double? benefitAmount;
+  final String? benefitItemDescription;
   final int periodMonth;
   final int periodYear;
   final int targetQuota;
@@ -326,7 +343,11 @@ class ScholarshipPeriod {
     return 'sch-$year-${month.toString().padLeft(2, '0')}';
   }
 
-  String get label => '${monthName(periodMonth)} $periodYear';
+  String get label {
+    final name = periodName?.trim();
+    if (name != null && name.isNotEmpty) return name;
+    return '${monthName(periodMonth)} $periodYear';
+  }
 
   static String monthName(int month) {
     const names = [
@@ -349,6 +370,12 @@ class ScholarshipPeriod {
 
   ScholarshipPeriod copyWith({
     String? id,
+    String? assistanceProgramId,
+    String? periodName,
+    String? startDate,
+    String? endDate,
+    double? benefitAmount,
+    String? benefitItemDescription,
     int? periodMonth,
     int? periodYear,
     int? targetQuota,
@@ -368,6 +395,13 @@ class ScholarshipPeriod {
   }) {
     return ScholarshipPeriod(
       id: id ?? this.id,
+      assistanceProgramId: assistanceProgramId ?? this.assistanceProgramId,
+      periodName: periodName ?? this.periodName,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      benefitAmount: benefitAmount ?? this.benefitAmount,
+      benefitItemDescription:
+          benefitItemDescription ?? this.benefitItemDescription,
       periodMonth: periodMonth ?? this.periodMonth,
       periodYear: periodYear ?? this.periodYear,
       targetQuota: targetQuota ?? this.targetQuota,
@@ -393,6 +427,12 @@ class ScholarshipPeriod {
   factory ScholarshipPeriod.fromMap(Map<String, Object?> map) {
     return ScholarshipPeriod(
       id: map['id']?.toString(),
+      assistanceProgramId: map['assistance_program_id']?.toString(),
+      periodName: map['period_name']?.toString(),
+      startDate: map['start_date']?.toString(),
+      endDate: map['end_date']?.toString(),
+      benefitAmount: (map['benefit_amount'] as num?)?.toDouble(),
+      benefitItemDescription: map['benefit_item_description']?.toString(),
       periodMonth: (map['period_month'] as num).toInt(),
       periodYear: (map['period_year'] as num).toInt(),
       targetQuota: (map['target_quota'] as num).toInt(),
@@ -421,6 +461,12 @@ class ScholarshipPeriod {
   Map<String, Object?> toMap() {
     return {
       'id': id,
+      'assistance_program_id': assistanceProgramId,
+      'period_name': periodName,
+      'start_date': startDate,
+      'end_date': endDate,
+      'benefit_amount': benefitAmount,
+      'benefit_item_description': benefitItemDescription,
       'period_month': periodMonth,
       'period_year': periodYear,
       'target_quota': targetQuota,

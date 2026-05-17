@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
+typedef StepProcessContinueGuard = Future<bool> Function(int currentIndex);
+
 class ProcessStepItem {
   final String title;
   final Widget content;
@@ -15,6 +17,7 @@ class StepProcessCard extends StatefulWidget {
   final VoidCallback? onClose;
   final VoidCallback? onCompleted;
   final void Function(int index)? onStepChanged;
+  final StepProcessContinueGuard? onContinueRequested;
 
   final String continueText;
   final String completedText;
@@ -27,6 +30,7 @@ class StepProcessCard extends StatefulWidget {
     this.onClose,
     this.onCompleted,
     this.onStepChanged,
+    this.onContinueRequested,
     this.continueText = 'Continue',
     this.completedText = 'Completed',
     this.backText = 'Back',
@@ -42,7 +46,11 @@ class _StepProcessCardState extends State<StepProcessCard> {
   bool get isFirstStep => currentIndex == 0;
   bool get isLastStep => currentIndex == widget.steps.length - 1;
 
-  void _next() {
+  Future<void> _next() async {
+    final canContinue =
+        await widget.onContinueRequested?.call(currentIndex) ?? true;
+    if (!canContinue) return;
+
     if (isLastStep) {
       widget.onCompleted?.call();
       return;
@@ -68,11 +76,18 @@ class _StepProcessCardState extends State<StepProcessCard> {
   @override
   Widget build(BuildContext context) {
     final currentStep = widget.steps[currentIndex];
+    final viewport = MediaQuery.sizeOf(context);
+    final cardWidth = math.min(820.0, viewport.width - 48);
+    final cardHeight = math.min(680.0, viewport.height - 48);
 
     return Center(
       child: Container(
-        width: 720,
-        padding: const EdgeInsets.all(32),
+        width: cardWidth,
+        constraints: BoxConstraints(
+          maxHeight: cardHeight,
+          minHeight: math.min(520.0, cardHeight),
+        ),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
@@ -90,23 +105,25 @@ class _StepProcessCardState extends State<StepProcessCard> {
           children: [
             _Header(title: widget.title, onClose: widget.onClose),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             _StepIndicator(steps: widget.steps, currentIndex: currentIndex),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
 
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              child: KeyedSubtree(
-                key: ValueKey(currentIndex),
-                child: currentStep.content,
+            Flexible(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: KeyedSubtree(
+                  key: ValueKey(currentIndex),
+                  child: currentStep.content,
+                ),
               ),
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
 
             _FooterButtons(
               showBack: !isFirstStep,
@@ -115,7 +132,9 @@ class _StepProcessCardState extends State<StepProcessCard> {
                   ? widget.completedText
                   : widget.continueText,
               onBack: _back,
-              onNext: _next,
+              onNext: () {
+                _next();
+              },
               isCompletedStep: isLastStep,
             ),
           ],
