@@ -59,6 +59,8 @@ class DatabaseTables {
 
     await reports(db);
     await assistancePrograms(db);
+    await assistanceProgramBenefits(db);
+    await assistanceProgramBenefitItems(db);
     await scholarshipRules(db);
     await scholarshipPeriods(db);
     await scholarshipPeriodRules(db);
@@ -359,6 +361,57 @@ class DatabaseTables {
     ''');
   }
 
+  static Future<void> assistanceProgramBenefits(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS assistance_program_benefits(
+        id TEXT PRIMARY KEY NOT NULL,
+        assistance_program_id TEXT NOT NULL,
+        school_type TEXT NOT NULL DEFAULT 'ALL'
+          CHECK(school_type IN (
+            'ALL',
+            'PAUD',
+            'TK',
+            'SD',
+            'SMP',
+            'SMA',
+            'SMK',
+            'UNIV'
+          )),
+        benefit_type TEXT NOT NULL
+          CHECK(benefit_type IN (
+            'cash',
+            'goods',
+            'voucher',
+            'service',
+            'mixed'
+          )),
+        amount REAL,
+        description TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(assistance_program_id) REFERENCES assistance_programs(id) ON DELETE CASCADE
+      )
+    ''');
+  }
+
+  static Future<void> assistanceProgramBenefitItems(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS assistance_program_benefit_items(
+        id TEXT PRIMARY KEY NOT NULL,
+        program_benefit_id TEXT NOT NULL,
+        item_name TEXT NOT NULL,
+        quantity REAL NOT NULL DEFAULT 1,
+        unit TEXT,
+        estimated_value REAL,
+        description TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(program_benefit_id) REFERENCES assistance_program_benefits(id) ON DELETE CASCADE
+      )
+    ''');
+  }
+
   static Future<void> schedules(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS schedules(
@@ -539,6 +592,7 @@ class DatabaseTables {
         teaching_challenges TEXT,
         follow_up_plan TEXT,
         session_notes TEXT,
+        assessment_type TEXT,
         cancelled_at TEXT,
         cancellation_reason TEXT,
         cancellation_notes TEXT,
@@ -584,6 +638,9 @@ class DatabaseTables {
         competency_id TEXT,
         assessment_type TEXT,
         result TEXT,
+        score_mode TEXT,
+        raw_score REAL,
+        normalized_score REAL,
         score REAL,
         notes TEXT,
         created_at TEXT NOT NULL,
@@ -603,6 +660,9 @@ class DatabaseTables {
         student_id TEXT NOT NULL,
         note_type TEXT NOT NULL,
         comment TEXT NOT NULL,
+        score_mode TEXT,
+        raw_score REAL,
+        normalized_score REAL,
         follow_up_needed INTEGER NOT NULL DEFAULT 0,
         follow_up_notes TEXT,
         created_at TEXT NOT NULL,
@@ -1070,6 +1130,11 @@ class DatabaseTables {
         final_score REAL NOT NULL DEFAULT 0,
         rank_no INTEGER,
         reason TEXT,
+        benefit_school_type TEXT,
+        benefit_type TEXT,
+        benefit_amount REAL,
+        benefit_description TEXT,
+        benefit_items_json TEXT,
         status TEXT NOT NULL DEFAULT 'approved'
           CHECK(status IN ('approved', 'paid', 'distributed', 'cancelled')),
         approved_by TEXT,
@@ -1338,6 +1403,27 @@ class DatabaseTables {
       columns: const ['is_active'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_assistance_programs_active ON assistance_programs(is_active)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'assistance_program_benefits',
+      columns: const ['assistance_program_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_assistance_program_benefits_program_id ON assistance_program_benefits(assistance_program_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'assistance_program_benefits',
+      columns: const ['assistance_program_id', 'school_type'],
+      sql:
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_assistance_program_benefits_program_school ON assistance_program_benefits(assistance_program_id, school_type)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'assistance_program_benefit_items',
+      columns: const ['program_benefit_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_assistance_program_benefit_items_benefit_id ON assistance_program_benefit_items(program_benefit_id)',
     );
     await _createIndexIfColumnsExist(
       db,

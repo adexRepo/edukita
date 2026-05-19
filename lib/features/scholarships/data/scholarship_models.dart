@@ -1045,6 +1045,11 @@ class ScholarshipRecipient {
     this.finalScore = 0,
     this.rankNo,
     this.reason,
+    this.benefitSchoolType,
+    this.benefitType,
+    this.benefitAmount,
+    this.benefitDescription,
+    this.benefitItemsJson,
     this.status = ScholarshipRecipientStatus.approved,
     this.approvedBy,
     this.approvedAt,
@@ -1068,6 +1073,11 @@ class ScholarshipRecipient {
   final double finalScore;
   final int? rankNo;
   final String? reason;
+  final String? benefitSchoolType;
+  final String? benefitType;
+  final double? benefitAmount;
+  final String? benefitDescription;
+  final String? benefitItemsJson;
   final ScholarshipRecipientStatus status;
   final String? approvedBy;
   final String? approvedAt;
@@ -1085,6 +1095,13 @@ class ScholarshipRecipient {
     return scholarshipType.label;
   }
 
+  String get benefitSummary {
+    final description = benefitDescription?.trim();
+    if (description != null && description.isNotEmpty) return description;
+    if (benefitAmount != null) return _formatRupiah(benefitAmount!);
+    return '-';
+  }
+
   factory ScholarshipRecipient.fromMap(Map<String, Object?> map) {
     return ScholarshipRecipient(
       id: map['id']?.toString(),
@@ -1100,6 +1117,11 @@ class ScholarshipRecipient {
       finalScore: (map['final_score'] as num?)?.toDouble() ?? 0,
       rankNo: (map['rank_no'] as num?)?.toInt(),
       reason: map['reason'] as String?,
+      benefitSchoolType: map['benefit_school_type'] as String?,
+      benefitType: map['benefit_type'] as String?,
+      benefitAmount: (map['benefit_amount'] as num?)?.toDouble(),
+      benefitDescription: map['benefit_description'] as String?,
+      benefitItemsJson: map['benefit_items_json'] as String?,
       status: ScholarshipRecipientStatus.fromValue(map['status']?.toString()),
       approvedBy: map['approved_by'] as String?,
       approvedAt: map['approved_at'] as String?,
@@ -1125,6 +1147,11 @@ class ScholarshipRecipient {
       'final_score': finalScore,
       'rank_no': rankNo,
       'reason': reason,
+      'benefit_school_type': benefitSchoolType,
+      'benefit_type': benefitType,
+      'benefit_amount': benefitAmount,
+      'benefit_description': benefitDescription,
+      'benefit_items_json': benefitItemsJson,
       'status': status.value,
       'approved_by': approvedBy,
       'approved_at': approvedAt,
@@ -1132,6 +1159,25 @@ class ScholarshipRecipient {
       'updated_at': updatedAt,
     };
   }
+}
+
+String _formatRupiah(double amount) {
+  final rounded = amount.round();
+  final value = rounded == amount ? rounded.toString() : amount.toStringAsFixed(2);
+  final parts = value.split('.');
+  final whole = parts.first;
+  final buffer = StringBuffer();
+  for (var i = 0; i < whole.length; i++) {
+    final remaining = whole.length - i;
+    buffer.write(whole[i]);
+    if (remaining > 1 && remaining % 3 == 1) {
+      buffer.write('.');
+    }
+  }
+  if (parts.length > 1 && parts.last != '00') {
+    buffer.write(',${parts.last}');
+  }
+  return 'Rp ${buffer.toString()}';
 }
 
 class ScholarshipApprovalDocument {

@@ -51,6 +51,7 @@ class TeachingActivityRepository {
         ta.teaching_challenges,
         ta.follow_up_plan,
         ta.session_notes,
+        ta.assessment_type,
         ta.cancelled_at,
         ta.cancellation_reason,
         ta.cancellation_notes,
@@ -249,6 +250,7 @@ class TeachingActivityRepository {
         ta.teaching_challenges,
         ta.follow_up_plan,
         ta.session_notes,
+        ta.assessment_type,
         ta.cancelled_at,
         ta.cancellation_reason,
         ta.cancellation_notes,
@@ -357,6 +359,7 @@ class TeachingActivityRepository {
     required String? teachingChallenges,
     required String? followUpPlan,
     required String? sessionNotes,
+    required String? assessmentType,
   }) async {
     final db = await _databaseProvider.database;
     final now = DateTime.now().toIso8601String();
@@ -369,6 +372,7 @@ class TeachingActivityRepository {
         'teaching_challenges': teachingChallenges,
         'follow_up_plan': followUpPlan,
         'session_notes': sessionNotes,
+        'assessment_type': assessmentType,
         'updated_at': now,
       },
       where: 'id = ? AND status <> ?',
@@ -382,6 +386,9 @@ class TeachingActivityRepository {
     String? competencyId,
     required String assessmentType,
     required String result,
+    required String scoreMode,
+    double? rawScore,
+    double? normalizedScore,
     double? score,
     String? notes,
   }) async {
@@ -395,6 +402,9 @@ class TeachingActivityRepository {
       'competency_id': competencyId,
       'assessment_type': assessmentType,
       'result': result,
+      'score_mode': scoreMode,
+      'raw_score': rawScore,
+      'normalized_score': normalizedScore,
       'score': score,
       'notes': notes,
       'created_at': now,
@@ -408,6 +418,9 @@ class TeachingActivityRepository {
     String? competencyId,
     required String assessmentType,
     required String result,
+    required String scoreMode,
+    double? rawScore,
+    double? normalizedScore,
     double? score,
     String? notes,
   }) async {
@@ -428,6 +441,9 @@ class TeachingActivityRepository {
         'competency_id': competencyId,
         'assessment_type': assessmentType,
         'result': result,
+        'score_mode': scoreMode,
+        'raw_score': rawScore,
+        'normalized_score': normalizedScore,
         'score': score,
         'notes': notes,
         'updated_at': DateTime.now().toIso8601String(),
@@ -435,6 +451,80 @@ class TeachingActivityRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  Future<void> saveBulkAssessments({
+    required String activityId,
+    String? competencyId,
+    required String assessmentType,
+    required List<TeachingAssessmentBulkInput> records,
+  }) async {
+    if (records.isEmpty) return;
+    final db = await _databaseProvider.database;
+    final now = DateTime.now().toIso8601String();
+
+    await db.transaction((txn) async {
+      await _ensureEditable(txn, activityId);
+      final batch = txn.batch();
+      for (final record in records) {
+        final where = competencyId == null || competencyId.isEmpty
+            ? '''
+              teaching_activity_id = ?
+              AND student_id = ?
+              AND assessment_type = ?
+              AND (competency_id IS NULL OR competency_id = '')
+              '''
+            : '''
+              teaching_activity_id = ?
+              AND student_id = ?
+              AND assessment_type = ?
+              AND competency_id = ?
+              ''';
+        final whereArgs = <Object?>[
+          activityId,
+          record.studentId,
+          assessmentType,
+          if (competencyId != null && competencyId.isNotEmpty) competencyId,
+        ];
+        final existing = await txn.query(
+          'teaching_assessments',
+          columns: const ['id', 'created_at'],
+          where: where,
+          whereArgs: whereArgs,
+          orderBy: 'created_at DESC',
+          limit: 1,
+        );
+        final values = {
+          'student_id': record.studentId,
+          'competency_id':
+              competencyId == null || competencyId.isEmpty ? null : competencyId,
+          'assessment_type': assessmentType,
+          'result': record.result,
+          'score_mode': record.scoreMode,
+          'raw_score': record.rawScore,
+          'normalized_score': record.normalizedScore,
+          'score': record.score,
+          'notes': record.notes,
+          'updated_at': now,
+        };
+        if (existing.isEmpty) {
+          batch.insert('teaching_assessments', {
+            'id': _uuid.v4(),
+            'teaching_activity_id': activityId,
+            ...values,
+            'created_at': now,
+          });
+        } else {
+          batch.update(
+            'teaching_assessments',
+            values,
+            where: 'id = ?',
+            whereArgs: [existing.first['id']],
+          );
+        }
+      }
+      await batch.commit(noResult: true);
+    });
   }
 
   Future<void> deleteAssessment(String id) async {
@@ -457,6 +547,9 @@ class TeachingActivityRepository {
     required String studentId,
     required String noteType,
     required String comment,
+    required String scoreMode,
+    double? rawScore,
+    double? normalizedScore,
     required bool followUpNeeded,
     String? followUpNotes,
   }) async {
@@ -469,6 +562,9 @@ class TeachingActivityRepository {
       'student_id': studentId,
       'note_type': noteType,
       'comment': comment,
+      'score_mode': scoreMode,
+      'raw_score': rawScore,
+      'normalized_score': normalizedScore,
       'follow_up_needed': followUpNeeded ? 1 : 0,
       'follow_up_notes': followUpNotes,
       'created_at': now,
@@ -481,6 +577,9 @@ class TeachingActivityRepository {
     required String studentId,
     required String noteType,
     required String comment,
+    required String scoreMode,
+    double? rawScore,
+    double? normalizedScore,
     required bool followUpNeeded,
     String? followUpNotes,
   }) async {
@@ -500,6 +599,9 @@ class TeachingActivityRepository {
         'student_id': studentId,
         'note_type': noteType,
         'comment': comment,
+        'score_mode': scoreMode,
+        'raw_score': rawScore,
+        'normalized_score': normalizedScore,
         'follow_up_needed': followUpNeeded ? 1 : 0,
         'follow_up_notes': followUpNotes,
         'updated_at': DateTime.now().toIso8601String(),
@@ -645,7 +747,7 @@ class TeachingActivityRepository {
     return id;
   }
 
-  Future<void> _ensureEditable(Database db, String activityId) async {
+  Future<void> _ensureEditable(DatabaseExecutor db, String activityId) async {
     final activity = await _activityById(db, activityId);
     if (activity == null) throw Exception('Teaching activity not found.');
     if (activity['status'] == TeachingActivityStatus.cancelled) {

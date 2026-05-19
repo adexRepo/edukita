@@ -20,7 +20,17 @@ class AssistanceProgramCubit extends Cubit<AssistanceProgramState> {
         frequency: state.frequency,
         isActive: state.isActive,
       );
-      emit(state.copyWith(isLoading: false, programs: programs, error: null));
+      final benefitsByProgramId = await _repository.getBenefitsForPrograms(
+        programs.map((program) => program.id),
+      );
+      emit(
+        state.copyWith(
+          isLoading: false,
+          programs: programs,
+          benefitsByProgramId: benefitsByProgramId,
+          error: null,
+        ),
+      );
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
     }
@@ -69,9 +79,12 @@ class AssistanceProgramCubit extends Cubit<AssistanceProgramState> {
     await loadPrograms();
   }
 
-  Future<void> saveProgram(AssistanceProgram program) async {
+  Future<void> saveProgram(
+    AssistanceProgram program, {
+    List<AssistanceProgramBenefit>? benefits,
+  }) async {
     try {
-      await _repository.saveProgram(program);
+      await _repository.saveProgram(program, benefits: benefits);
       await loadPrograms();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/features/assistance_programs/data/assistance_program_model.dart';
 import 'package:edukita/features/assistance_programs/domain/assistance_program_cubit.dart';
@@ -22,6 +24,7 @@ class AssistanceProgramsPage extends StatefulWidget {
 
 class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
   late final TextEditingController _searchController;
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -35,6 +38,7 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -53,7 +57,7 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
             _buildHeader(context, state),
             AppLoadingStrip(isLoading: state.isLoading, topPadding: 0),
             const SizedBox(height: AppPageHeaderStyle.bottomGap),
-            Expanded(child: _buildTable(context, state.programs)),
+            Expanded(child: _buildTable(context, state)),
           ],
         );
 
@@ -106,7 +110,7 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
               width: 260,
               child: TextField(
                 controller: _searchController,
-                onChanged: cubit.setSearch,
+                onChanged: (value) => _debouncedSearch(cubit, value),
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.search, size: 18),
                   suffixIcon: state.query.trim().isEmpty
@@ -115,6 +119,7 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
                           tooltip: 'Clear search',
                           onPressed: () {
                             _searchController.clear();
+                            _searchDebounce?.cancel();
                             cubit.setSearch('');
                           },
                           icon: const Icon(Icons.close, size: 18),
@@ -173,6 +178,7 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
               TextButton.icon(
                 onPressed: () {
                   _searchController.clear();
+                  _searchDebounce?.cancel();
                   cubit.clearFilters();
                 },
                 icon: const Icon(Icons.filter_alt_off_outlined, size: 17),
@@ -204,10 +210,12 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
     );
   }
 
-  Widget _buildTable(BuildContext context, List<AssistanceProgram> programs) {
+  Widget _buildTable(BuildContext context, AssistanceProgramState state) {
+    final programs = state.programs;
     return AppTable<AssistanceProgram>(
       data: programs,
       emptyMessage: 'No assistance programs found',
+      deferRowTap: false,
       pageable: Pageable(
         page: 0,
         size: programs.length,
@@ -270,7 +278,10 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
           minWidth: 200,
           sortValue: (program) => _sortValue(program.defaultBenefit),
           cell: (program) => Text(
-            program.defaultBenefit,
+            _benefitSummary(
+              program,
+              state.benefitsByProgramId[program.id] ?? const [],
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 12, height: 1.25),
@@ -324,6 +335,14 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
     );
   }
 
+  void _debouncedSearch(AssistanceProgramCubit cubit, String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 250),
+      () => cubit.setSearch(value),
+    );
+  }
+
   Widget _pill(String label, {bool muted = false}) {
     return Align(
       alignment: Alignment.centerLeft,
@@ -353,14 +372,21 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
     BuildContext context, {
     AssistanceProgram? program,
   }) async {
+    _searchDebounce?.cancel();
     final cubit = context.read<AssistanceProgramCubit>();
+    final benefits = program == null
+        ? const <AssistanceProgramBenefit>[]
+        : cubit.state.benefitsByProgramId[program.id] ??
+              const <AssistanceProgramBenefit>[];
     await showDialog<void>(
       context: context,
       builder: (_) => BlocProvider.value(
         value: cubit,
         child: AssistanceProgramFormDialog(
           program: program,
-          onSave: cubit.saveProgram,
+          initialBenefits: benefits,
+          onSave: (program, benefits) =>
+              cubit.saveProgram(program, benefits: benefits),
         ),
       ),
     );
@@ -388,6 +414,17 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
     final normalized = value?.trim().toLowerCase();
     if (normalized == null || normalized.isEmpty) return 0;
     return normalized.codeUnitAt(0);
+  }
+
+  String _benefitSummary(
+    AssistanceProgram program,
+    List<AssistanceProgramBenefit> benefits,
+  ) {
+    final active = benefits.where((benefit) => benefit.isActive).toList();
+    if (active.isEmpty) return program.defaultBenefit;
+    return active
+        .map((benefit) => '${benefit.schoolType.label}: ${benefit.summary}')
+        .join('\n');
   }
 }
 

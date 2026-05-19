@@ -26,6 +26,7 @@ class AppTable<T> extends StatefulWidget {
   final Pageable? pageable;
   final void Function(int page)? onPageChanged;
   final String emptyMessage;
+  final bool deferRowTap;
 
   const AppTable({
     super.key,
@@ -36,6 +37,7 @@ class AppTable<T> extends StatefulWidget {
     this.onPageChanged,
     this.pageable = const Pageable(page: 0, size: 20, sorts: []),
     this.emptyMessage = 'No data available',
+    this.deferRowTap = true,
   });
 
   @override
@@ -245,6 +247,11 @@ class _AppTableState<T> extends State<AppTable<T>> {
   void _handleRowTap(T item) {
     final onRowTap = widget.onRowTap;
     if (onRowTap == null) return;
+
+    if (!widget.deferRowTap) {
+      onRowTap(item);
+      return;
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;

@@ -348,8 +348,41 @@ class DatabaseMigrations {
 
   static Future<void> _ensureAssistanceProgramSchema(Database db) async {
     await DatabaseTables.assistancePrograms(db);
+    await DatabaseTables.assistanceProgramBenefits(db);
+    await DatabaseTables.assistanceProgramBenefitItems(db);
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_recipients',
+      column: 'benefit_school_type',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_recipients',
+      column: 'benefit_type',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_recipients',
+      column: 'benefit_amount',
+      definition: 'REAL',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_recipients',
+      column: 'benefit_description',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_recipients',
+      column: 'benefit_items_json',
+      definition: 'TEXT',
+    );
     await DatabaseTables.indexes(db);
     await DatabaseSeed.ensureAssistancePrograms(db);
+    await DatabaseSeed.ensureAssistanceProgramBenefits(db);
   }
 
   static Future<void> _ensureAssistancePeriodProgramSchema(Database db) async {
@@ -408,12 +441,21 @@ class DatabaseMigrations {
     final createSql = sql.isEmpty ? '' : sql.first['sql']?.toString() ?? '';
     if (createSql.contains("'distributed'")) return;
 
+    final oldColumns = await _tableColumnNames(db, 'assistance_recipients');
     await db.execute('ALTER TABLE assistance_recipients RENAME TO assistance_recipients_old');
     await DatabaseTables.scholarshipRecipients(db);
-    await db.execute('''
-      INSERT OR IGNORE INTO assistance_recipients
-      SELECT * FROM assistance_recipients_old
-    ''');
+    final newColumns = await _tableColumnNames(db, 'assistance_recipients');
+    final commonColumns = [
+      for (final column in oldColumns)
+        if (newColumns.contains(column)) column,
+    ];
+    if (commonColumns.isNotEmpty) {
+      final columns = commonColumns.join(', ');
+      await db.execute('''
+        INSERT OR IGNORE INTO assistance_recipients($columns)
+        SELECT $columns FROM assistance_recipients_old
+      ''');
+    }
     await db.execute('DROP TABLE assistance_recipients_old');
   }
 
@@ -593,6 +635,48 @@ class DatabaseMigrations {
     await DatabaseTables.teachingAttendances(db);
     await DatabaseTables.teachingAssessments(db);
     await DatabaseTables.studentSessionNotes(db);
+    await _addColumnIfMissing(
+      db,
+      table: 'teaching_activities',
+      column: 'assessment_type',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'teaching_assessments',
+      column: 'score_mode',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'teaching_assessments',
+      column: 'raw_score',
+      definition: 'REAL',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'teaching_assessments',
+      column: 'normalized_score',
+      definition: 'REAL',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'student_session_notes',
+      column: 'score_mode',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'student_session_notes',
+      column: 'raw_score',
+      definition: 'REAL',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'student_session_notes',
+      column: 'normalized_score',
+      definition: 'REAL',
+    );
     await DatabaseTables.indexes(db);
   }
 
@@ -1144,6 +1228,17 @@ class DatabaseMigrations {
   ) async {
     final result = await db.rawQuery('PRAGMA table_info($table)');
     return result.any((row) => row['name'] == column);
+  }
+
+  static Future<Set<String>> _tableColumnNames(
+    Database db,
+    String table,
+  ) async {
+    final result = await db.rawQuery('PRAGMA table_info($table)');
+    return result
+        .map((row) => row['name']?.toString())
+        .whereType<String>()
+        .toSet();
   }
 
   static Future<String?> _columnType(

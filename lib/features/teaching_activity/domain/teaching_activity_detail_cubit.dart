@@ -92,6 +92,7 @@ class TeachingActivityDetailCubit
     required String? teachingChallenges,
     required String? followUpPlan,
     required String? sessionNotes,
+    required String? assessmentType,
   }) async {
     final activityId = _activityId;
     if (activityId == null) return;
@@ -105,6 +106,7 @@ class TeachingActivityDetailCubit
         teachingChallenges: teachingChallenges,
         followUpPlan: followUpPlan,
         sessionNotes: sessionNotes,
+        assessmentType: assessmentType,
       );
       emit(state.copyWith(isSaving: false));
       await loadDetail(activityId);
@@ -119,6 +121,9 @@ class TeachingActivityDetailCubit
     String? competencyId,
     required String assessmentType,
     required String result,
+    required String scoreMode,
+    double? rawScore,
+    double? normalizedScore,
     double? score,
     String? notes,
   }) async {
@@ -132,6 +137,9 @@ class TeachingActivityDetailCubit
         competencyId: competencyId,
         assessmentType: assessmentType,
         result: result,
+        scoreMode: scoreMode,
+        rawScore: rawScore,
+        normalizedScore: normalizedScore,
         score: score,
         notes: notes,
       );
@@ -149,6 +157,9 @@ class TeachingActivityDetailCubit
     String? competencyId,
     required String assessmentType,
     required String result,
+    required String scoreMode,
+    double? rawScore,
+    double? normalizedScore,
     double? score,
     String? notes,
   }) async {
@@ -162,8 +173,34 @@ class TeachingActivityDetailCubit
         competencyId: competencyId,
         assessmentType: assessmentType,
         result: result,
+        scoreMode: scoreMode,
+        rawScore: rawScore,
+        normalizedScore: normalizedScore,
         score: score,
         notes: notes,
+      );
+      emit(state.copyWith(isSaving: false));
+      await loadDetail(activityId);
+    } catch (e) {
+      emit(state.copyWith(isSaving: false, error: e.toString()));
+      rethrow;
+    }
+  }
+
+  Future<void> saveBulkAssessments({
+    String? competencyId,
+    required String assessmentType,
+    required List<TeachingAssessmentBulkInput> records,
+  }) async {
+    final activityId = _activityId;
+    if (activityId == null) return;
+    emit(state.copyWith(isSaving: true, clearError: true));
+    try {
+      await _repository.saveBulkAssessments(
+        activityId: activityId,
+        competencyId: competencyId,
+        assessmentType: assessmentType,
+        records: records,
       );
       emit(state.copyWith(isSaving: false));
       await loadDetail(activityId);
@@ -191,6 +228,9 @@ class TeachingActivityDetailCubit
     required String studentId,
     required String noteType,
     required String comment,
+    required String scoreMode,
+    double? rawScore,
+    double? normalizedScore,
     required bool followUpNeeded,
     String? followUpNotes,
   }) async {
@@ -203,6 +243,9 @@ class TeachingActivityDetailCubit
         studentId: studentId,
         noteType: noteType,
         comment: comment,
+        scoreMode: scoreMode,
+        rawScore: rawScore,
+        normalizedScore: normalizedScore,
         followUpNeeded: followUpNeeded,
         followUpNotes: followUpNotes,
       );
@@ -219,6 +262,9 @@ class TeachingActivityDetailCubit
     required String studentId,
     required String noteType,
     required String comment,
+    required String scoreMode,
+    double? rawScore,
+    double? normalizedScore,
     required bool followUpNeeded,
     String? followUpNotes,
   }) async {
@@ -231,6 +277,9 @@ class TeachingActivityDetailCubit
         studentId: studentId,
         noteType: noteType,
         comment: comment,
+        scoreMode: scoreMode,
+        rawScore: rawScore,
+        normalizedScore: normalizedScore,
         followUpNeeded: followUpNeeded,
         followUpNotes: followUpNotes,
       );

@@ -3,6 +3,7 @@ part of 'assistance_program_cubit.dart';
 class AssistanceProgramState {
   const AssistanceProgramState({
     this.programs = const [],
+    this.benefitsByProgramId = const {},
     this.isLoading = false,
     this.error,
     this.query = '',
@@ -13,6 +14,7 @@ class AssistanceProgramState {
   });
 
   final List<AssistanceProgram> programs;
+  final Map<String, List<AssistanceProgramBenefit>> benefitsByProgramId;
   final bool isLoading;
   final String? error;
   final String query;
@@ -30,6 +32,7 @@ class AssistanceProgramState {
 
   AssistanceProgramState copyWith({
     List<AssistanceProgram>? programs,
+    Map<String, List<AssistanceProgramBenefit>>? benefitsByProgramId,
     bool? isLoading,
     String? error,
     String? query,
@@ -44,6 +47,7 @@ class AssistanceProgramState {
   }) {
     return AssistanceProgramState(
       programs: programs ?? this.programs,
+      benefitsByProgramId: benefitsByProgramId ?? this.benefitsByProgramId,
       isLoading: isLoading ?? this.isLoading,
       error: error,
       query: query ?? this.query,

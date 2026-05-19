@@ -15,14 +15,26 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final FocusNode _usernameFocusNode = FocusNode();
   final FocusNode _passwordFocusNode = FocusNode();
   String? _errorMessage;
   bool _loading = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _usernameFocusNode.requestFocus();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _usernameFocusNode.dispose();
     _passwordFocusNode.dispose();
     super.dispose();
   }
@@ -146,6 +158,8 @@ class _LoginPageState extends State<LoginPage> {
                               const SizedBox(height: 24),
                               TextField(
                                 controller: _usernameController,
+                                focusNode: _usernameFocusNode,
+                                autofocus: true,
                                 textInputAction: TextInputAction.next,
                                 onSubmitted: (_) =>
                                     _passwordFocusNode.requestFocus(),

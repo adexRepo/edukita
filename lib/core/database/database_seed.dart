@@ -159,5 +159,61 @@ class DatabaseSeed {
         'updated_at': now,
       });
     }
+
+    await ensureAssistanceProgramBenefits(db);
+  }
+
+  static Future<void> ensureAssistanceProgramBenefits(Database db) async {
+    final benefitsTable = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'assistance_program_benefits'",
+    );
+    final itemsTable = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'assistance_program_benefit_items'",
+    );
+    if (benefitsTable.isEmpty || itemsTable.isEmpty) return;
+
+    final programs = await db.query('assistance_programs');
+    final now = DateTime.now().toIso8601String();
+    for (final program in programs) {
+      final programId = program['id']?.toString();
+      if (programId == null || programId.isEmpty) continue;
+
+      final existing = await db.query(
+        'assistance_program_benefits',
+        columns: const ['id'],
+        where: 'assistance_program_id = ?',
+        whereArgs: [programId],
+        limit: 1,
+      );
+      if (existing.isNotEmpty) continue;
+
+      final benefitId = const Uuid().v4();
+      final description = program['default_item_description']?.toString();
+      await db.insert('assistance_program_benefits', {
+        'id': benefitId,
+        'assistance_program_id': programId,
+        'school_type': 'ALL',
+        'benefit_type': program['benefit_type']?.toString() ?? 'cash',
+        'amount': program['default_amount'],
+        'description': description,
+        'is_active': 1,
+        'created_at': now,
+        'updated_at': now,
+      });
+
+      if (description != null && description.trim().isNotEmpty) {
+        await db.insert('assistance_program_benefit_items', {
+          'id': const Uuid().v4(),
+          'program_benefit_id': benefitId,
+          'item_name': description.trim(),
+          'quantity': 1,
+          'unit': null,
+          'estimated_value': null,
+          'description': null,
+          'created_at': now,
+          'updated_at': now,
+        });
+      }
+    }
   }
 }

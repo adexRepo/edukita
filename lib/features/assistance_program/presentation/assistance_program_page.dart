@@ -528,7 +528,7 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
                     ),
                     const SizedBox(height: AppPageHeaderStyle.titleSubtitleGap),
                     Text(
-                      '${widget.period.label} | ${widget.period.startDate ?? '-'} - ${widget.period.endDate ?? '-'} | Target: ${widget.period.targetQuota}\nMin Attendance: ${widget.period.minimumAttendancePercentage.toStringAsFixed(0)}% | Calculation: ${_calculationRange(widget.period)}',
+                      '${widget.period.label} | ${_periodDateRange(widget.period)} | Target: ${widget.period.targetQuota}\nMin Attendance: ${widget.period.minimumAttendancePercentage.toStringAsFixed(0)}% | Calculation: ${_calculationRange(widget.period)}',
                       style: AppPageHeaderStyle.subtitleStyle(context),
                     ),
                   ],
@@ -672,9 +672,9 @@ class _SetupTab extends StatelessWidget {
                     ),
                     _SetupInfoTile(
                       label: 'Date Range',
-                      value:
-                          '${period.startDate ?? '-'} - ${period.endDate ?? '-'}',
+                      value: _periodDateRange(period),
                       icon: Icons.date_range_outlined,
+                      wide: true,
                     ),
                     _SetupInfoTile(
                       label: 'Target Quota',
@@ -766,7 +766,7 @@ class _SetupInfoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: wide ? 340 : 210,
+      width: wide ? 430 : 210,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -805,7 +805,7 @@ class _SetupInfoTile extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       value,
-                      maxLines: 1,
+                      maxLines: wide ? 2 : 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.textPrimary,
@@ -1459,7 +1459,7 @@ class _ApprovalTabState extends State<_ApprovalTab> {
   }
 }
 
-class _RecipientsTab extends StatelessWidget {
+class _RecipientsTab extends StatefulWidget {
   const _RecipientsTab({
     required this.period,
     required this.state,
@@ -1471,55 +1471,208 @@ class _RecipientsTab extends StatelessWidget {
   final AssistanceProgram program;
 
   @override
+  State<_RecipientsTab> createState() => _RecipientsTabState();
+}
+
+class _RecipientsTabState extends State<_RecipientsTab> {
+  final TextEditingController _searchController = TextEditingController();
+  ScholarshipRecipientStatus? _statusFilter;
+  ScholarshipType? _ruleFilter;
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return AppTable<ScholarshipRecipient>(
-      data: state.recipients,
-      emptyMessage: 'No recipients yet. Upload approval document first.',
-      pageable: Pageable(
-        page: 0,
-        size: state.recipients.length,
-        totalItems: state.recipients.length,
-        totalPages: state.recipients.isEmpty ? 0 : 1,
-      ),
-      columns: [
-        AppTableColumn(title: 'Student', flex: 3, cell: (item) => _text(item.studentName ?? item.studentId, bold: true)),
-        AppTableColumn(title: 'Program', flex: 2, cell: (_) => _text(program.name)),
-        AppTableColumn(title: 'Rule', flex: 2, cell: (item) => _text(item.ruleName ?? item.scholarshipType.label)),
-        AppTableColumn(title: 'Benefit', cell: (_) => _text(program.defaultBenefit)),
-        AppTableColumn(title: 'Status', cell: (item) => _text(item.status.label)),
-        AppTableColumn(
-          title: 'Action',
-          flex: 2,
-          cell: (item) {
-            final nextStatus = program.benefitType == AssistanceBenefitType.cash
-                ? ScholarshipRecipientStatus.paid
-                : ScholarshipRecipientStatus.distributed;
-            final label = nextStatus == ScholarshipRecipientStatus.paid
-                ? 'Mark Paid'
-                : 'Mark Distributed';
-            final done = item.status == nextStatus;
-            return TextButton(
-              onPressed: done
-                  ? null
-                  : () async {
-                      try {
-                        await context
-                            .read<ScholarshipCubit>()
-                            .updateRecipientStatus(
-                              recipientId: item.id,
-                              status: nextStatus,
-                            );
-                        AppToast.showSuccess('Recipient status updated.');
-                      } catch (e) {
-                        AppToast.showFailed(e.toString());
-                      }
-                    },
-              child: Text(done ? item.status.label : label),
-            );
-          },
+    final recipients = _filteredRecipients();
+    final ruleOptions = widget.state.recipients
+        .map((item) => item.scholarshipType)
+        .toSet()
+        .toList()
+      ..sort((a, b) => a.label.compareTo(b.label));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                SizedBox(
+                  width: 280,
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) => setState(() => _query = value),
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search),
+                      hintText: 'Search recipient or rule',
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 170,
+                  child: CommonFormWidgets.dropdownFieldTyped<ScholarshipRecipientStatus>(
+                    label: 'Status',
+                    items: ScholarshipRecipientStatus.values,
+                    labelBuilder: (status) => status.label,
+                    valueBuilder: (status) => status.value,
+                    value: _statusFilter,
+                    isRequired: false,
+                    onChanged: (status) => setState(() {
+                      _statusFilter = status;
+                    }),
+                    onSaved: (_) {},
+                  ),
+                ),
+                SizedBox(
+                  width: 220,
+                  child: CommonFormWidgets.dropdownFieldTyped<ScholarshipType>(
+                    label: 'Rule',
+                    items: ruleOptions,
+                    labelBuilder: (rule) => rule.label,
+                    valueBuilder: (rule) => rule.value,
+                    value: _ruleFilter,
+                    isRequired: false,
+                    onChanged: (rule) => setState(() {
+                      _ruleFilter = rule;
+                    }),
+                    onSaved: (_) {},
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _hasFilter
+                      ? () {
+                          setState(() {
+                            _query = '';
+                            _searchController.clear();
+                            _statusFilter = null;
+                            _ruleFilter = null;
+                          });
+                        }
+                      : null,
+                  icon: const Icon(Icons.filter_alt_off, size: 18),
+                  label: const Text('Clear'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: recipients.isEmpty
+                      ? null
+                      : () => _exportRecipients(
+                            period: widget.period,
+                            program: widget.program,
+                            recipients: recipients,
+                            format: _AssistanceExportFormat.excel,
+                          ),
+                  icon: const Icon(Icons.table_view, size: 18),
+                  label: const Text('Excel'),
+                ),
+                FilledButton.icon(
+                  onPressed: recipients.isEmpty
+                      ? null
+                      : () => _exportRecipients(
+                            period: widget.period,
+                            program: widget.program,
+                            recipients: recipients,
+                            format: _AssistanceExportFormat.pdf,
+                          ),
+                  icon: const Icon(Icons.picture_as_pdf, size: 18),
+                  label: const Text('PDF'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: AppTable<ScholarshipRecipient>(
+            data: recipients,
+            emptyMessage: widget.state.recipients.isEmpty
+                ? 'No recipients yet. Upload approval document first.'
+                : 'No recipients match the current filter.',
+            pageable: Pageable(
+              page: 0,
+              size: recipients.length,
+              totalItems: recipients.length,
+              totalPages: recipients.isEmpty ? 0 : 1,
+            ),
+            columns: [
+              AppTableColumn(title: 'Student', flex: 3, cell: (item) => _text(item.studentName ?? item.studentId, bold: true)),
+              AppTableColumn(title: 'Program', flex: 2, cell: (_) => _text(widget.program.name)),
+              AppTableColumn(title: 'Rule', flex: 2, cell: (item) => _text(item.ruleName ?? item.scholarshipType.label)),
+              AppTableColumn(title: 'Benefit', cell: (item) => _text(_recipientBenefit(item, widget.program))),
+              AppTableColumn(title: 'Status', cell: (item) => _text(item.status.label)),
+              AppTableColumn(
+                title: 'Action',
+                flex: 2,
+                cell: (item) {
+                  final benefitType = AssistanceBenefitType.fromValue(
+                    item.benefitType ?? widget.program.benefitType.value,
+                  );
+                  final nextStatus = benefitType == AssistanceBenefitType.cash
+                      ? ScholarshipRecipientStatus.paid
+                      : ScholarshipRecipientStatus.distributed;
+                  final label = nextStatus == ScholarshipRecipientStatus.paid
+                      ? 'Mark Paid'
+                      : 'Mark Distributed';
+                  final done = item.status == nextStatus;
+                  return TextButton(
+                    onPressed: done
+                        ? null
+                        : () async {
+                            try {
+                              await context
+                                  .read<ScholarshipCubit>()
+                                  .updateRecipientStatus(
+                                    recipientId: item.id,
+                                    status: nextStatus,
+                                  );
+                              AppToast.showSuccess('Recipient status updated.');
+                            } catch (e) {
+                              AppToast.showFailed(e.toString());
+                            }
+                          },
+                    child: Text(done ? item.status.label : label),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ],
     );
+  }
+
+  bool get _hasFilter =>
+      _query.trim().isNotEmpty || _statusFilter != null || _ruleFilter != null;
+
+  List<ScholarshipRecipient> _filteredRecipients() {
+    final query = _query.trim().toLowerCase();
+    return widget.state.recipients.where((item) {
+      if (_statusFilter != null && item.status != _statusFilter) {
+        return false;
+      }
+      if (_ruleFilter != null && item.scholarshipType != _ruleFilter) {
+        return false;
+      }
+      if (query.isEmpty) return true;
+      final student = item.studentName ?? item.studentId;
+      final rule = item.ruleName ?? item.scholarshipType.label;
+      return student.toLowerCase().contains(query) ||
+          rule.toLowerCase().contains(query) ||
+          item.status.label.toLowerCase().contains(query);
+    }).toList();
   }
 }
 
@@ -1863,7 +2016,7 @@ class _CreateAssistancePeriodDialogState
   Widget _dateField(String label, DateTime value, ValueChanged<DateTime> onSaved) {
     return TextFormField(
       readOnly: true,
-      controller: TextEditingController(text: _dateOnly(value)),
+      controller: TextEditingController(text: _formatDisplayDate(value)),
       decoration: InputDecoration(
         labelText: label,
         suffixIcon: const Icon(Icons.calendar_month),
@@ -2139,7 +2292,7 @@ class _CreateAssistancePeriodDialogState
             _reviewBadge('Period', _periodName),
             _reviewBadge(
               'Date',
-              '${_dateOnly(_startDate)} to ${_dateOnly(_endDate)}',
+              _dateRange(_startDate, _endDate),
             ),
             _reviewBadge('Target', '$_targetQuota'),
             _reviewBadge(
@@ -2259,7 +2412,7 @@ class _CreateAssistancePeriodDialogState
     Color valueColor = AppColors.textPrimary,
   }) {
     return Container(
-      constraints: const BoxConstraints(minWidth: 150, maxWidth: 280),
+      constraints: const BoxConstraints(minWidth: 150, maxWidth: 360),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -2281,7 +2434,7 @@ class _CreateAssistancePeriodDialogState
           const SizedBox(height: 3),
           Text(
             value,
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: valueColor,
@@ -2437,7 +2590,7 @@ class _CreateAssistancePeriodDialogState
   String _calculationRangeDraft() {
     final end = DateTime(_startDate.year, _startDate.month, 0);
     final start = DateTime(end.year, end.month - _calculationWindow + 1, 1);
-    return '${_dateOnly(start)} - ${_dateOnly(end)}';
+    return _dateRange(start, end);
   }
 }
 
@@ -2480,6 +2633,36 @@ Future<void> _exportPlan({
   }
 }
 
+Future<void> _exportRecipients({
+  required ScholarshipPeriod period,
+  required AssistanceProgram program,
+  required List<ScholarshipRecipient> recipients,
+  required _AssistanceExportFormat format,
+}) async {
+  final isPdf = format == _AssistanceExportFormat.pdf;
+  final safeName = period.label
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+      .replaceAll(RegExp(r'^-|-$'), '');
+  final location = await getSaveLocation(
+    suggestedName: 'assistance-recipients-$safeName.${isPdf ? 'pdf' : 'xls'}',
+    acceptedTypeGroups: [
+      XTypeGroup(
+        label: isPdf ? 'PDF' : 'Excel',
+        extensions: [isPdf ? 'pdf' : 'xls'],
+      ),
+    ],
+  );
+  if (location == null) return;
+
+  final lines = _recipientExportLines(period, program, recipients);
+  final bytes = isPdf
+      ? _simplePdfBytes(lines)
+      : utf8.encode(_recipientExportHtml(period, program, recipients));
+  await io.File(location.path).writeAsBytes(bytes);
+  AppToast.showSuccess('Recipient list exported.');
+}
+
 List<String> _planExportLines(
   ScholarshipPeriod period,
   ScholarshipState state,
@@ -2487,7 +2670,7 @@ List<String> _planExportLines(
   return [
     'Assistance Plan',
     'Period: ${period.label}',
-    'Date: ${period.startDate ?? '-'} to ${period.endDate ?? '-'}',
+    'Date: ${_periodDateRange(period)}',
     'Target Quota: ${period.targetQuota}',
     'Minimum Attendance: ${period.minimumAttendancePercentage.toStringAsFixed(0)}%',
     'Calculation Range: ${_calculationRange(period)}',
@@ -2521,7 +2704,7 @@ String _planExportHtml(ScholarshipPeriod period, ScholarshipState state) {
       <body>
         <h2>Assistance Plan</h2>
         <p><b>Period:</b> ${escape(period.label)}</p>
-        <p><b>Date:</b> ${escape(period.startDate ?? '-')} to ${escape(period.endDate ?? '-')}</p>
+        <p><b>Date:</b> ${escape(_periodDateRange(period))}</p>
         <p><b>Target Quota:</b> ${period.targetQuota}</p>
         <p><b>Minimum Attendance:</b> ${period.minimumAttendancePercentage.toStringAsFixed(0)}%</p>
         <p><b>Calculation Range:</b> ${escape(_calculationRange(period))}</p>
@@ -2537,6 +2720,64 @@ String _planExportHtml(ScholarshipPeriod period, ScholarshipState state) {
           <tr><td>Prepared by: ______________________</td><td>Date: ______________________</td></tr>
           <tr><td>Reviewed by: ______________________</td><td>Date: ______________________</td></tr>
           <tr><td>Approved by: ______________________</td><td>Date: ______________________</td></tr>
+        </table>
+      </body>
+    </html>
+  ''';
+}
+
+List<String> _recipientExportLines(
+  ScholarshipPeriod period,
+  AssistanceProgram program,
+  List<ScholarshipRecipient> recipients,
+) {
+  return [
+    'Assistance Recipients',
+    'Period: ${period.label}',
+    'Program: ${program.name}',
+    'Date: ${_periodDateRange(period)}',
+    'Benefit: ${program.defaultBenefit}',
+    'Total Recipients: ${recipients.length}',
+    '',
+    'Student | Rule | Benefit | Score | Status | Approved At',
+    for (final item in recipients)
+      '${item.studentName ?? item.studentId} | ${item.ruleName ?? item.scholarshipType.label} | ${_recipientBenefit(item, program)} | ${item.finalScore.toStringAsFixed(0)} | ${item.status.label} | ${_formatDateTimeValue(item.approvedAt)}',
+  ];
+}
+
+String _recipientExportHtml(
+  ScholarshipPeriod period,
+  AssistanceProgram program,
+  List<ScholarshipRecipient> recipients,
+) {
+  String escape(String value) => const HtmlEscape().convert(value);
+  final rows = recipients.map((item) {
+    return '''
+      <tr>
+        <td>${escape(item.studentName ?? item.studentId)}</td>
+        <td>${escape(item.ruleName ?? item.scholarshipType.label)}</td>
+        <td>${escape(_recipientBenefit(item, program))}</td>
+        <td>${item.finalScore.toStringAsFixed(0)}</td>
+        <td>${escape(item.status.label)}</td>
+        <td>${escape(_formatDateTimeValue(item.approvedAt))}</td>
+      </tr>
+    ''';
+  }).join();
+  return '''
+    <html>
+      <body>
+        <h2>Assistance Recipients</h2>
+        <p><b>Period:</b> ${escape(period.label)}</p>
+        <p><b>Program:</b> ${escape(program.name)}</p>
+        <p><b>Date:</b> ${escape(_periodDateRange(period))}</p>
+        <p><b>Benefit:</b> ${escape(program.defaultBenefit)}</p>
+        <p><b>Total Recipients:</b> ${recipients.length}</p>
+        <table border="1" cellspacing="0" cellpadding="6">
+          <tr>
+            <th>Student</th><th>Rule</th><th>Benefit</th>
+            <th>Score</th><th>Status</th><th>Approved At</th>
+          </tr>
+          $rows
         </table>
       </body>
     </html>
@@ -2651,16 +2892,58 @@ Widget _text(String text, {bool bold = false}) {
   );
 }
 
+String _recipientBenefit(
+  ScholarshipRecipient recipient,
+  AssistanceProgram program,
+) {
+  final snapshot = recipient.benefitSummary;
+  if (snapshot != '-') return snapshot;
+  return program.defaultBenefit;
+}
+
 String _dateOnly(DateTime value) {
   return value.toIso8601String().split('T').first;
 }
 
+DateTime? _parseDateValue(String? value) {
+  if (value == null || value.trim().isEmpty) return null;
+  return DateTime.tryParse(value.trim());
+}
+
+String _formatDisplayDate(DateTime value) {
+  return '${value.day} ${ScholarshipPeriod.monthName(value.month)} ${value.year}';
+}
+
+String _formatDateTimeValue(String? value) {
+  final parsed = _parseDateValue(value);
+  if (parsed == null) return value?.trim().isNotEmpty == true ? value! : '-';
+  final hour = parsed.hour.toString().padLeft(2, '0');
+  final minute = parsed.minute.toString().padLeft(2, '0');
+  return '${_formatDisplayDate(parsed)} $hour:$minute';
+}
+
+String _dateRange(DateTime start, DateTime end) {
+  return '${_formatDisplayDate(start)} - ${_formatDisplayDate(end)}';
+}
+
+String _periodDateRange(ScholarshipPeriod period) {
+  final start = _parseDateValue(period.startDate);
+  final end = _parseDateValue(period.endDate);
+  if (start != null && end != null) return _dateRange(start, end);
+  if (start != null) return '${_formatDisplayDate(start)} -';
+  if (end != null) return '- ${_formatDisplayDate(end)}';
+  return '-';
+}
+
 String _calculationRange(ScholarshipPeriod period) {
-  final endDate = DateTime(period.periodYear, period.periodMonth, 0);
+  final baseDate =
+      _parseDateValue(period.startDate) ??
+      DateTime(period.periodYear, period.periodMonth);
+  final endDate = DateTime(baseDate.year, baseDate.month, 0);
   final startDate = DateTime(
     endDate.year,
     endDate.month - period.calculationWindowMonths + 1,
     1,
   );
-  return '${_dateOnly(startDate)} - ${_dateOnly(endDate)}';
+  return _dateRange(startDate, endDate);
 }

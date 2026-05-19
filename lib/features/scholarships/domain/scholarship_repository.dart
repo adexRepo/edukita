@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:collection';
 import 'dart:io' as io;
 
 import 'package:edukita/core/database/database_provider.dart';
@@ -1323,6 +1325,11 @@ class ScholarshipRepository {
       );
 
       for (final target in approvedTargets) {
+        final benefit = await _benefitSnapshotForStudent(
+          txn,
+          period: period,
+          studentId: target.studentId,
+        );
         final recipient = ScholarshipRecipient(
           scholarshipPeriodId: scholarshipPeriodId,
           studentId: target.studentId,
@@ -1334,6 +1341,11 @@ class ScholarshipRepository {
           finalScore: target.totalScore,
           rankNo: target.rankNo,
           reason: target.priorityReason,
+          benefitSchoolType: benefit.schoolType,
+          benefitType: benefit.benefitType,
+          benefitAmount: benefit.amount,
+          benefitDescription: benefit.description,
+          benefitItemsJson: benefit.itemsJson,
           approvedBy: uploadedBy,
           approvedAt: now,
           createdAt: now,
@@ -1500,6 +1512,7 @@ class ScholarshipRepository {
             priorityReason: candidate.priorityReason,
             economicScore: candidate.economicScore,
             academicScore: candidate.academicScore,
+            behaviorScore: candidate.behaviorScore,
             attendanceScore: candidate.attendanceScore,
             teacherRecommendationScore: candidate.teacherRecommendationScore,
             improvementScore: candidate.improvementScore,
@@ -1651,6 +1664,152 @@ class ScholarshipRepository {
     };
   }
 
+  Future<
+    ({
+      String? schoolType,
+      String? benefitType,
+      double? amount,
+      String? description,
+      String? itemsJson,
+    })
+  >
+  _benefitSnapshotForStudent(
+    DatabaseExecutor db, {
+    required ScholarshipPeriod period,
+    required String studentId,
+  }) async {
+    final programId = period.assistanceProgramId;
+    if (programId == null || programId.trim().isEmpty) {
+      return _periodBenefitFallback(period);
+    }
+
+    final schoolType = await _studentSchoolType(db, studentId);
+    final benefitRows = await db.rawQuery(
+      '''
+      SELECT *
+      FROM assistance_program_benefits
+      WHERE assistance_program_id = ?
+        AND is_active = 1
+        AND school_type IN (?, 'ALL')
+      ORDER BY CASE
+        WHEN school_type = ? THEN 0
+        WHEN school_type = 'ALL' THEN 1
+        ELSE 2
+      END
+      LIMIT 1
+      ''',
+      [programId, schoolType, schoolType],
+    );
+    if (benefitRows.isEmpty) return _periodBenefitFallback(period);
+
+    final benefit = benefitRows.first;
+    final benefitId = benefit['id']?.toString();
+    final itemRows = benefitId == null
+        ? const <Map<String, Object?>>[]
+        : await db.query(
+            'assistance_program_benefit_items',
+            where: 'program_benefit_id = ?',
+            whereArgs: [benefitId],
+            orderBy: 'item_name COLLATE NOCASE',
+          );
+    final amount = (benefit['amount'] as num?)?.toDouble();
+    final itemSummaries = itemRows.map(_benefitItemSummary).toList();
+    final parts = <String>[
+      if (amount != null) _formatRupiah(amount),
+      if (itemSummaries.isNotEmpty) itemSummaries.join(', '),
+    ];
+    final note = benefit['description']?.toString().trim();
+    final description = parts.isNotEmpty
+        ? parts.join(' / ')
+        : note?.isNotEmpty == true
+        ? note
+        : null;
+
+    return (
+      schoolType: benefit['school_type']?.toString(),
+      benefitType: benefit['benefit_type']?.toString(),
+      amount: amount,
+      description: description,
+      itemsJson: itemRows.isEmpty ? null : jsonEncode(itemRows),
+    );
+  }
+
+  ({String? schoolType, String? benefitType, double? amount, String? description, String? itemsJson})
+  _periodBenefitFallback(ScholarshipPeriod period) {
+    final parts = <String>[
+      if (period.benefitAmount != null) _formatRupiah(period.benefitAmount!),
+      if ((period.benefitItemDescription ?? '').trim().isNotEmpty)
+        period.benefitItemDescription!.trim(),
+    ];
+    return (
+      schoolType: null,
+      benefitType: null,
+      amount: period.benefitAmount,
+      description: parts.isEmpty ? null : parts.join(' / '),
+      itemsJson: null,
+    );
+  }
+
+  Future<String> _studentSchoolType(
+    DatabaseExecutor db,
+    String studentId,
+  ) async {
+    final rows = await db.rawQuery(
+      '''
+      SELECT sc.type AS school_type, c.level
+      FROM students s
+      LEFT JOIN classes c ON c.id = s.class_id
+      LEFT JOIN schools sc ON sc.id = c.school_id
+      WHERE s.id = ?
+      LIMIT 1
+      ''',
+      [studentId],
+    );
+    if (rows.isEmpty) return 'ALL';
+    final rawType = rows.first['school_type']?.toString().trim().toUpperCase();
+    const validTypes = {'PAUD', 'TK', 'SD', 'SMP', 'SMA', 'SMK', 'UNIV'};
+    if (rawType != null && validTypes.contains(rawType)) return rawType;
+
+    final level = (rows.first['level'] as num?)?.toInt();
+    if (level == 0) return 'TK';
+    if (level != null && level >= 1 && level <= 6) return 'SD';
+    if (level != null && level >= 7 && level <= 9) return 'SMP';
+    if (level != null && level >= 10 && level <= 12) return 'SMA';
+    if (level == 13) return 'UNIV';
+    return 'ALL';
+  }
+
+  String _benefitItemSummary(Map<String, Object?> row) {
+    final quantity = (row['quantity'] as num?)?.toDouble() ?? 1;
+    final quantityText = quantity == quantity.roundToDouble()
+        ? quantity.round().toString()
+        : quantity.toStringAsFixed(2);
+    final unit = row['unit']?.toString().trim();
+    final itemName = row['item_name']?.toString() ?? '-';
+    return '$quantityText${unit == null || unit.isEmpty ? '' : ' $unit'} $itemName';
+  }
+
+  String _formatRupiah(double amount) {
+    final rounded = amount.round();
+    final value = rounded == amount
+        ? rounded.toString()
+        : amount.toStringAsFixed(2);
+    final parts = value.split('.');
+    final whole = parts.first;
+    final buffer = StringBuffer();
+    for (var i = 0; i < whole.length; i++) {
+      final remaining = whole.length - i;
+      buffer.write(whole[i]);
+      if (remaining > 1 && remaining % 3 == 1) {
+        buffer.write('.');
+      }
+    }
+    if (parts.length > 1 && parts.last != '00') {
+      buffer.write(',${parts.last}');
+    }
+    return 'Rp ${buffer.toString()}';
+  }
+
   Future<void> approveScholarshipPeriod(
     String scholarshipPeriodId,
     String approvedBy,
@@ -1676,6 +1835,11 @@ class ScholarshipRepository {
 
     await db.transaction((txn) async {
       for (final assessment in approvedAssessments) {
+        final benefit = await _benefitSnapshotForStudent(
+          txn,
+          period: period,
+          studentId: assessment.studentId,
+        );
         final recipient = ScholarshipRecipient(
           scholarshipPeriodId: scholarshipPeriodId,
           studentId: assessment.studentId,
@@ -1687,6 +1851,11 @@ class ScholarshipRepository {
           finalScore: assessment.totalScore,
           rankNo: assessment.rankNo,
           reason: assessment.priorityReason,
+          benefitSchoolType: benefit.schoolType,
+          benefitType: benefit.benefitType,
+          benefitAmount: benefit.amount,
+          benefitDescription: benefit.description,
+          benefitItemsJson: benefit.itemsJson,
           approvedBy: approvedBy,
           approvedAt: now,
           createdAt: now,
@@ -1819,22 +1988,32 @@ class ScholarshipRepository {
 
     return switch (rule.ruleType) {
       ScholarshipType.rollingAttendance ||
-      ScholarshipType.attendanceBased => _rollingCandidatesForRule(
-        rule: rule,
-        period: period,
-        students: students,
-        attendanceScores: attendanceScores,
-        scholarshipHistory: scholarshipHistory,
-        selectedStudentIds: selectedStudentIds,
+      ScholarshipType.attendanceBased => Future.value(
+        _rollingCandidatesForRule(
+          rule: rule,
+          period: period,
+          students: students,
+          attendanceScores: attendanceScores,
+          scholarshipHistory: scholarshipHistory,
+          selectedStudentIds: selectedStudentIds,
+        ),
       ),
       ScholarshipType.growthBased => _growthCandidatesForRule(
         rule: rule,
         period: period,
+        calculation: calculation,
         students: students,
         attendanceScores: attendanceScores,
         selectedStudentIds: selectedStudentIds,
       ),
-      ScholarshipType.meritBased => const <_RuleCandidate>[],
+      ScholarshipType.meritBased => _meritCandidatesForRule(
+        rule: rule,
+        period: period,
+        calculation: calculation,
+        students: students,
+        attendanceScores: attendanceScores,
+        selectedStudentIds: selectedStudentIds,
+      ),
       _ => _manualCandidatesForRule(
         rule: rule,
         period: period,
@@ -2027,14 +2206,182 @@ class ScholarshipRepository {
     return candidates;
   }
 
-  List<_RuleCandidate> _growthCandidatesForRule({
+  Future<List<_RuleCandidate>> _meritCandidatesForRule({
     required ScholarshipPeriodRule rule,
     required ScholarshipPeriod period,
+    required ({String start, String end}) calculation,
     required Map<String, _StudentRow> students,
     required Map<String, double> attendanceScores,
     required Set<String> selectedStudentIds,
-  }) {
-    return const <_RuleCandidate>[];
+  }) async {
+    final academicScores = await _averageTeachingScores(
+      calculation.start,
+      calculation.end,
+      'teaching_assessments',
+    );
+    final behaviorScores = await _averageTeachingScores(
+      calculation.start,
+      calculation.end,
+      'student_session_notes',
+    );
+    final candidates = <_RuleCandidate>[];
+
+    for (final student in students.values) {
+      if (selectedStudentIds.contains(student.id)) continue;
+      final academic = academicScores[student.id];
+      final behavior = behaviorScores[student.id];
+      if (academic == null && behavior == null) continue;
+      final combined = academic == null
+          ? behavior!
+          : behavior == null
+              ? academic
+              : (academic * 0.75) + (behavior * 0.25);
+      final attendance = attendanceScores[student.id] ?? 0;
+      final eligible = attendance >= period.minimumAttendancePercentage;
+      candidates.add(
+        _RuleCandidate(
+          studentId: student.id,
+          studentName: student.name,
+          attendanceScore: attendance,
+          academicScore: academic,
+          behaviorScore: behavior,
+          totalScore: (combined * 0.70) + (attendance * 0.30),
+          priorityReason: 'Average session score ${combined.toStringAsFixed(1)}',
+          eligibilityStatus: eligible
+              ? ScholarshipEligibilityStatus.eligible
+              : ScholarshipEligibilityStatus.ineligible,
+        ),
+      );
+    }
+
+    candidates.sort((a, b) {
+      final total = b.totalScore.compareTo(a.totalScore);
+      if (total != 0) return total;
+      final attendance = b.attendanceScore.compareTo(a.attendanceScore);
+      if (attendance != 0) return attendance;
+      return a.studentName.compareTo(b.studentName);
+    });
+    return candidates;
+  }
+
+  Future<List<_RuleCandidate>> _growthCandidatesForRule({
+    required ScholarshipPeriodRule rule,
+    required ScholarshipPeriod period,
+    required ({String start, String end}) calculation,
+    required Map<String, _StudentRow> students,
+    required Map<String, double> attendanceScores,
+    required Set<String> selectedStudentIds,
+  }) async {
+    final monthlyScores = await _monthlyTeachingScores(
+      calculation.start,
+      calculation.end,
+    );
+    final candidates = <_RuleCandidate>[];
+
+    for (final student in students.values) {
+      if (selectedStudentIds.contains(student.id)) continue;
+      final scores = monthlyScores[student.id];
+      if (scores == null || scores.length < 2) continue;
+      final first = scores.entries.first.value;
+      final latest = scores.entries.last.value;
+      final improvement = latest - first;
+      final attendance = attendanceScores[student.id] ?? 0;
+      final eligible = attendance >= period.minimumAttendancePercentage;
+      candidates.add(
+        _RuleCandidate(
+          studentId: student.id,
+          studentName: student.name,
+          attendanceScore: attendance,
+          academicScore: latest,
+          improvementScore: improvement,
+          totalScore: (improvement * 0.70) + (attendance * 0.30),
+          priorityReason:
+              'Score growth ${improvement >= 0 ? '+' : ''}${improvement.toStringAsFixed(1)}',
+          eligibilityStatus: eligible
+              ? ScholarshipEligibilityStatus.eligible
+              : ScholarshipEligibilityStatus.ineligible,
+        ),
+      );
+    }
+
+    candidates.sort((a, b) {
+      final improvement = (b.improvementScore ?? 0).compareTo(
+        a.improvementScore ?? 0,
+      );
+      if (improvement != 0) return improvement;
+      final total = b.totalScore.compareTo(a.totalScore);
+      if (total != 0) return total;
+      return a.studentName.compareTo(b.studentName);
+    });
+    return candidates;
+  }
+
+  Future<Map<String, double>> _averageTeachingScores(
+    String start,
+    String end,
+    String table,
+  ) async {
+    final db = await _dbProvider.database;
+    final scoreExpression = table == 'teaching_assessments'
+        ? 'COALESCE(score_source.normalized_score, score_source.score)'
+        : 'score_source.normalized_score';
+    final rows = await db.rawQuery('''
+      SELECT score_source.student_id, AVG($scoreExpression) AS avg_score
+      FROM $table score_source
+      INNER JOIN teaching_activities ta
+        ON ta.id = score_source.teaching_activity_id
+      WHERE ta.activity_date BETWEEN ? AND ?
+        AND $scoreExpression IS NOT NULL
+      GROUP BY score_source.student_id
+    ''', [start, end]);
+    return {
+      for (final row in rows)
+        row['student_id'].toString(): (row['avg_score'] as num).toDouble(),
+    };
+  }
+
+  Future<Map<String, SplayTreeMap<String, double>>> _monthlyTeachingScores(
+    String start,
+    String end,
+  ) async {
+    final db = await _dbProvider.database;
+    final rows = await db.rawQuery('''
+      SELECT student_id, period, AVG(score) AS avg_score
+      FROM (
+        SELECT
+          ta_scores.student_id AS student_id,
+          substr(ta.activity_date, 1, 7) AS period,
+          COALESCE(ta_scores.normalized_score, ta_scores.score) AS score
+        FROM teaching_assessments ta_scores
+        INNER JOIN teaching_activities ta
+          ON ta.id = ta_scores.teaching_activity_id
+        WHERE ta.activity_date BETWEEN ? AND ?
+          AND COALESCE(ta_scores.normalized_score, ta_scores.score) IS NOT NULL
+        UNION ALL
+        SELECT
+          notes.student_id AS student_id,
+          substr(ta.activity_date, 1, 7) AS period,
+          notes.normalized_score AS score
+        FROM student_session_notes notes
+        INNER JOIN teaching_activities ta
+          ON ta.id = notes.teaching_activity_id
+        WHERE ta.activity_date BETWEEN ? AND ?
+          AND notes.normalized_score IS NOT NULL
+      )
+      GROUP BY student_id, period
+      ORDER BY student_id ASC, period ASC
+    ''', [start, end, start, end]);
+    final result = <String, SplayTreeMap<String, double>>{};
+    for (final row in rows) {
+      final studentId = row['student_id'].toString();
+      final period = row['period'].toString();
+      final score = (row['avg_score'] as num).toDouble();
+      result.putIfAbsent(
+        studentId,
+        () => SplayTreeMap<String, double>(),
+      )[period] = score;
+    }
+    return result;
   }
 
   double _manualTotalScore(
@@ -2300,6 +2647,7 @@ class _RuleCandidate {
     required this.attendanceScore,
     this.economicScore,
     this.academicScore,
+    this.behaviorScore,
     this.teacherRecommendationScore,
     this.improvementScore,
     this.rotationBonus,
@@ -2317,6 +2665,7 @@ class _RuleCandidate {
   final double attendanceScore;
   final double? economicScore;
   final double? academicScore;
+  final double? behaviorScore;
   final double? teacherRecommendationScore;
   final double? improvementScore;
   final double? rotationBonus;

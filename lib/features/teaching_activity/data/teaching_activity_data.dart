@@ -24,14 +24,38 @@ class TeachingAttendanceStatus {
 class TeachingAssessmentType {
   TeachingAssessmentType._();
 
+  static const observation = 'observation';
+  static const exercise = 'exercise';
+  static const quiz = 'quiz';
+  static const oral = 'oral';
+  static const practical = 'practical';
+  static const assignment = 'assignment';
+  static const participation = 'participation';
+  static const memorization = 'memorization';
+  static const reading = 'reading';
+  static const other = 'other';
+
   static const values = [
-    'observation',
-    'exercise',
-    'quiz',
-    'oral',
-    'practical',
-    'other',
+    quiz,
+    observation,
+    practical,
+    exercise,
+    assignment,
+    oral,
+    participation,
+    memorization,
+    reading,
+    other,
   ];
+
+  static bool usesNumericScore(String? value) => value == quiz;
+}
+
+class TeachingScoreMode {
+  TeachingScoreMode._();
+
+  static const numeric100 = 'numeric_100';
+  static const star5 = 'star_5';
 }
 
 class TeachingAssessmentResult {
@@ -96,6 +120,7 @@ class TeachingActivityListItem {
     this.teachingChallenges,
     this.followUpPlan,
     this.sessionNotes,
+    this.assessmentType,
     this.cancelledAt,
     this.cancellationReason,
     this.cancellationNotes,
@@ -127,6 +152,7 @@ class TeachingActivityListItem {
   final String? teachingChallenges;
   final String? followUpPlan;
   final String? sessionNotes;
+  final String? assessmentType;
   final String? cancelledAt;
   final String? cancellationReason;
   final String? cancellationNotes;
@@ -176,6 +202,7 @@ class TeachingActivityListItem {
       teachingChallenges: map['teaching_challenges']?.toString(),
       followUpPlan: map['follow_up_plan']?.toString(),
       sessionNotes: map['session_notes']?.toString(),
+      assessmentType: map['assessment_type']?.toString(),
       cancelledAt: map['cancelled_at']?.toString(),
       cancellationReason: map['cancellation_reason']?.toString(),
       cancellationNotes: map['cancellation_notes']?.toString(),
@@ -329,6 +356,9 @@ class TeachingAssessmentRecord {
     this.competencyLabel,
     required this.assessmentType,
     required this.result,
+    this.scoreMode,
+    this.rawScore,
+    this.normalizedScore,
     this.score,
     this.notes,
     this.createdAt,
@@ -343,6 +373,9 @@ class TeachingAssessmentRecord {
   final String? competencyLabel;
   final String assessmentType;
   final String result;
+  final String? scoreMode;
+  final double? rawScore;
+  final double? normalizedScore;
   final double? score;
   final String? notes;
   final String? createdAt;
@@ -350,6 +383,8 @@ class TeachingAssessmentRecord {
 
   factory TeachingAssessmentRecord.fromMap(Map<String, Object?> map) {
     final score = map['score'];
+    final rawScore = map['raw_score'];
+    final normalizedScore = map['normalized_score'];
     return TeachingAssessmentRecord(
       id: map['id']?.toString(),
       teachingActivityId: map['teaching_activity_id'].toString(),
@@ -360,12 +395,39 @@ class TeachingAssessmentRecord {
       assessmentType:
           map['assessment_type']?.toString() ?? TeachingAssessmentType.values.first,
       result: map['result']?.toString() ?? TeachingAssessmentResult.values.first,
+      scoreMode: map['score_mode']?.toString(),
+      rawScore: rawScore is num
+          ? rawScore.toDouble()
+          : double.tryParse('$rawScore'),
+      normalizedScore: normalizedScore is num
+          ? normalizedScore.toDouble()
+          : double.tryParse('$normalizedScore'),
       score: score is num ? score.toDouble() : double.tryParse('$score'),
       notes: map['notes']?.toString(),
       createdAt: map['created_at']?.toString(),
       updatedAt: map['updated_at']?.toString(),
     );
   }
+}
+
+class TeachingAssessmentBulkInput {
+  const TeachingAssessmentBulkInput({
+    required this.studentId,
+    required this.result,
+    required this.scoreMode,
+    this.rawScore,
+    this.normalizedScore,
+    this.score,
+    this.notes,
+  });
+
+  final String studentId;
+  final String result;
+  final String scoreMode;
+  final double? rawScore;
+  final double? normalizedScore;
+  final double? score;
+  final String? notes;
 }
 
 class StudentSessionNoteRecord {
@@ -377,6 +439,9 @@ class StudentSessionNoteRecord {
     required this.noteType,
     required this.comment,
     required this.followUpNeeded,
+    this.scoreMode,
+    this.rawScore,
+    this.normalizedScore,
     this.followUpNotes,
     this.createdAt,
     this.updatedAt,
@@ -389,6 +454,9 @@ class StudentSessionNoteRecord {
   final String noteType;
   final String comment;
   final bool followUpNeeded;
+  final String? scoreMode;
+  final double? rawScore;
+  final double? normalizedScore;
   final String? followUpNotes;
   final String? createdAt;
   final String? updatedAt;
@@ -402,6 +470,9 @@ class StudentSessionNoteRecord {
       noteType: map['note_type']?.toString() ?? StudentSessionNoteType.values.first,
       comment: map['comment']?.toString() ?? '',
       followUpNeeded: ((map['follow_up_needed'] as num?)?.toInt() ?? 0) == 1,
+      scoreMode: map['score_mode']?.toString(),
+      rawScore: (map['raw_score'] as num?)?.toDouble(),
+      normalizedScore: (map['normalized_score'] as num?)?.toDouble(),
       followUpNotes: map['follow_up_notes']?.toString(),
       createdAt: map['created_at']?.toString(),
       updatedAt: map['updated_at']?.toString(),
