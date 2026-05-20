@@ -14,6 +14,7 @@ class TeachingActivityRepository {
     required String date,
     String? teacherId,
     String? classId,
+    int? classLevel,
     String? status,
   }) async {
     final db = await _databaseProvider.database;
@@ -27,6 +28,10 @@ class TeachingActivityRepository {
     if (classId != null && classId.isNotEmpty) {
       where.add('s.class_id = ?');
       args.add(classId);
+    }
+    if (classLevel != null) {
+      where.add('COALESCE(s.class_level, c.level) = ?');
+      args.add(classLevel);
     }
     if (status != null && status.isNotEmpty) {
       if (status == TeachingActivityStatus.scheduled) {
@@ -59,6 +64,7 @@ class TeachingActivityRepository {
         s.id AS schedule_id,
         s.teacher_id,
         s.class_id,
+        COALESCE(s.class_level, c.level) AS class_level,
         s.unit_id,
         s.strategy_id,
         s.date AS schedule_date,
@@ -83,6 +89,60 @@ class TeachingActivityRepository {
     ''', args);
 
     return rows.map(TeachingActivityListItem.fromMap).toList();
+  }
+
+  Future<Set<String>> getSessionDateKeysForMonth({
+    required DateTime month,
+    String? teacherId,
+    String? classId,
+    int? classLevel,
+    String? status,
+  }) async {
+    final db = await _databaseProvider.database;
+    final start = DateTime(month.year, month.month);
+    final end = DateTime(month.year, month.month + 1, 0);
+    final where = <String>['s.date BETWEEN ? AND ?'];
+    final args = <Object?>[_dateOnly(start), _dateOnly(end)];
+
+    if (teacherId != null && teacherId.isNotEmpty) {
+      where.add('s.teacher_id = ?');
+      args.add(teacherId);
+    }
+    if (classId != null && classId.isNotEmpty) {
+      where.add('s.class_id = ?');
+      args.add(classId);
+    }
+    if (classLevel != null) {
+      where.add('COALESCE(s.class_level, c.level) = ?');
+      args.add(classLevel);
+    }
+    if (status != null && status.isNotEmpty) {
+      if (status == TeachingActivityStatus.scheduled) {
+        where.add('(ta.status IS NULL OR ta.status = ?)');
+        args.add(status);
+      } else {
+        where.add('ta.status = ?');
+        args.add(status);
+      }
+    }
+
+    final rows = await db.rawQuery(
+      '''
+      SELECT DISTINCT s.date
+      FROM schedules s
+      LEFT JOIN teaching_activities ta ON ta.schedule_id = s.id
+      LEFT JOIN classes c ON c.id = s.class_id
+      WHERE ${where.join(' AND ')}
+      ORDER BY s.date ASC
+      ''',
+      args,
+    );
+
+    return rows
+        .map((row) => row['date']?.toString())
+        .whereType<String>()
+        .where((date) => date.isNotEmpty)
+        .toSet();
   }
 
   Future<String> startClass(String scheduleId) async {
@@ -182,26 +242,40 @@ class TeachingActivityRepository {
     final now = DateTime.now().toIso8601String();
 
     await db.transaction((txn) async {
-      final activity = await _activityById(txn, activityId);
+      final activity = await _activityWithScheduleById(txn, activityId);
       if (activity == null) throw Exception('Teaching activity not found.');
       if (activity['status'] == TeachingActivityStatus.cancelled) {
         throw Exception('Cancelled sessions cannot be completed.');
       }
 
+      final classLevel = _intValue(activity['class_level']);
       final classId = activity['class_id']?.toString();
-      final activeStudents = classId == null
-          ? 0
-          : Sqflite.firstIntValue(
+      final activeStudents = classLevel != null
+          ? Sqflite.firstIntValue(
                 await txn.rawQuery(
                   '''
                   SELECT COUNT(*)
-                  FROM students
-                  WHERE class_id = ? AND status = 'active'
+                  FROM students st
+                  INNER JOIN classes c ON c.id = st.class_id
+                  WHERE c.level = ? AND st.status = 'active'
                   ''',
-                  [classId],
+                  [classLevel],
                 ),
               ) ??
-              0;
+              0
+          : classId == null
+              ? 0
+              : Sqflite.firstIntValue(
+                    await txn.rawQuery(
+                      '''
+                      SELECT COUNT(*)
+                      FROM students
+                      WHERE class_id = ? AND status = 'active'
+                      ''',
+                      [classId],
+                    ),
+                  ) ??
+                  0;
 
       final submittedAttendance = Sqflite.firstIntValue(
             await txn.rawQuery(
@@ -240,6 +314,7 @@ class TeachingActivityRepository {
         ta.schedule_id,
         ta.teacher_id,
         ta.class_id,
+        COALESCE(ta.class_level, s.class_level, c.level) AS class_level,
         ta.activity_date,
         ta.status AS activity_status,
         ta.started_at,
@@ -269,7 +344,7 @@ class TeachingActivityRepository {
         st.name AS strategy_name
       FROM teaching_activities ta
       JOIN schedules s ON s.id = ta.schedule_id
-      LEFT JOIN classes c ON c.id = ta.class_id
+      LEFT JOIN classes c ON c.id = COALESCE(ta.class_id, s.class_id)
       LEFT JOIN teachers t ON t.id = ta.teacher_id
       LEFT JOIN units u ON u.id = s.unit_id
       LEFT JOIN subjects sub ON sub.id = u.subject_id
@@ -283,7 +358,11 @@ class TeachingActivityRepository {
     }
 
     final activity = TeachingActivityListItem.fromMap(activityRows.first);
-    final students = await _loadStudents(db, activity.classId);
+    final students = await _loadStudents(
+      db,
+      classId: activity.classId,
+      classLevel: activity.classLevel,
+    );
     final attendances = await db
         .query(
           'teaching_attendances',
@@ -627,9 +706,24 @@ class TeachingActivityRepository {
   }
 
   Future<List<ClassStudentOption>> _loadStudents(
-    DatabaseExecutor db,
+    DatabaseExecutor db, {
     String? classId,
-  ) async {
+    int? classLevel,
+  }) async {
+    if (classLevel != null) {
+      final rows = await db.rawQuery(
+        '''
+        SELECT st.id, st.student_no, st.full_name, st.nick_name
+        FROM students st
+        INNER JOIN classes c ON c.id = st.class_id
+        WHERE c.level = ? AND st.status = 'active'
+        ORDER BY st.full_name ASC
+        ''',
+        [classLevel],
+      );
+      return rows.map(ClassStudentOption.fromMap).toList();
+    }
+
     if (classId == null || classId.isEmpty) return const [];
     final rows = await db.query(
       'students',
@@ -716,6 +810,26 @@ class TeachingActivityRepository {
     return rows.isEmpty ? null : rows.first;
   }
 
+  Future<Map<String, Object?>?> _activityWithScheduleById(
+    DatabaseExecutor db,
+    String activityId,
+  ) async {
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        ta.*,
+        COALESCE(ta.class_level, s.class_level, c.level) AS class_level
+      FROM teaching_activities ta
+      LEFT JOIN schedules s ON s.id = ta.schedule_id
+      LEFT JOIN classes c ON c.id = COALESCE(ta.class_id, s.class_id)
+      WHERE ta.id = ?
+      LIMIT 1
+      ''',
+      [activityId],
+    );
+    return rows.isEmpty ? null : rows.first;
+  }
+
   Future<String> _createActivity(
     DatabaseExecutor db, {
     required String scheduleId,
@@ -738,6 +852,7 @@ class TeachingActivityRepository {
       'schedule_id': scheduleId,
       'teacher_id': schedule['teacher_id']?.toString(),
       'class_id': schedule['class_id']?.toString(),
+      'class_level': _intValue(schedule['class_level']),
       'activity_date': schedule['date']?.toString() ?? _dateOnly(DateTime.now()),
       'status': status,
       'started_at': startedAt,
@@ -756,4 +871,9 @@ class TeachingActivityRepository {
   }
 
   String _dateOnly(DateTime value) => value.toIso8601String().split('T').first;
+
+  int? _intValue(Object? value) {
+    if (value is num) return value.toInt();
+    return int.tryParse('$value');
+  }
 }

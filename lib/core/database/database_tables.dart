@@ -416,7 +416,8 @@ class DatabaseTables {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS schedules(
         id TEXT PRIMARY KEY NOT NULL,
-        class_id TEXT NOT NULL,
+        class_id TEXT,
+        class_level INTEGER,
         teacher_id TEXT,
         unit_id TEXT NOT NULL,
         strategy_id TEXT,
@@ -581,6 +582,7 @@ class DatabaseTables {
         schedule_id TEXT NOT NULL UNIQUE,
         teacher_id TEXT,
         class_id TEXT,
+        class_level INTEGER,
         activity_date TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'scheduled'
           CHECK(status IN ('scheduled', 'in_progress', 'completed', 'cancelled')),
@@ -1211,6 +1213,13 @@ class DatabaseTables {
     await _createIndexIfColumnsExist(
       db,
       table: 'schedules',
+      columns: const ['class_level'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_schedules_class_level ON schedules(class_level)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'schedules',
       columns: const ['teacher_id'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_schedules_teacher_id ON schedules(teacher_id)',
@@ -1290,6 +1299,13 @@ class DatabaseTables {
       columns: const ['class_id'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_teaching_activities_class_id ON teaching_activities(class_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'teaching_activities',
+      columns: const ['class_level'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_teaching_activities_class_level ON teaching_activities(class_level)',
     );
     await _createIndexIfColumnsExist(
       db,

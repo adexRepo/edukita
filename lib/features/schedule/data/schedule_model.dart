@@ -3,7 +3,8 @@ import 'package:uuid/uuid.dart';
 class Schedule {
   Schedule({
     String? id,
-    required this.classId,
+    this.classId,
+    this.classLevel,
     this.teacherId,
     required this.unitId,
     this.strategyId,
@@ -15,7 +16,8 @@ class Schedule {
   }) : id = id ?? const Uuid().v4();
 
   final String id;
-  final String classId;
+  final String? classId;
+  final int? classLevel;
   final String? teacherId;
   final String unitId;
   final String? strategyId;
@@ -28,6 +30,7 @@ class Schedule {
   Schedule copyWith({
     String? id,
     String? classId,
+    int? classLevel,
     String? teacherId,
     String? unitId,
     String? strategyId,
@@ -40,6 +43,7 @@ class Schedule {
     return Schedule(
       id: id ?? this.id,
       classId: classId ?? this.classId,
+      classLevel: classLevel ?? this.classLevel,
       teacherId: teacherId ?? this.teacherId,
       unitId: unitId ?? this.unitId,
       strategyId: strategyId ?? this.strategyId,
@@ -52,9 +56,13 @@ class Schedule {
   }
 
   factory Schedule.fromMap(Map<String, Object?> map) {
+    final classLevel = map['class_level'];
     return Schedule(
       id: map['id']?.toString(),
-      classId: map['class_id']?.toString() ?? '',
+      classId: map['class_id']?.toString(),
+      classLevel: classLevel is num
+          ? classLevel.toInt()
+          : int.tryParse('$classLevel'),
       teacherId: map['teacher_id']?.toString(),
       unitId: map['unit_id']?.toString() ?? '',
       strategyId:
@@ -71,6 +79,7 @@ class Schedule {
     return {
       'id': id,
       'class_id': classId,
+      'class_level': classLevel,
       'teacher_id': teacherId,
       'unit_id': unitId,
       'strategy_id': strategyId,
@@ -83,13 +92,15 @@ class Schedule {
   }
 
   factory Schedule.sample({
-    required String classId,
+    String? classId,
+    int? classLevel,
     required String unitId,
     String? teacherId,
     String? strategyId,
   }) {
     return Schedule(
       classId: classId,
+      classLevel: classLevel,
       teacherId: teacherId,
       unitId: unitId,
       strategyId: strategyId,

@@ -5,9 +5,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 class TeachingActivityState {
   const TeachingActivityState({
     this.activities = const [],
+    this.sessionDateKeys = const <String>{},
     this.date,
     this.teacherId,
     this.classId,
+    this.classLevel,
     this.status,
     this.isLoading = false,
     this.isSaving = false,
@@ -16,9 +18,11 @@ class TeachingActivityState {
   });
 
   final List<TeachingActivityListItem> activities;
+  final Set<String> sessionDateKeys;
   final String? date;
   final String? teacherId;
   final String? classId;
+  final int? classLevel;
   final String? status;
   final bool isLoading;
   final bool isSaving;
@@ -27,12 +31,15 @@ class TeachingActivityState {
 
   TeachingActivityState copyWith({
     List<TeachingActivityListItem>? activities,
+    Set<String>? sessionDateKeys,
     String? date,
     String? teacherId,
     String? classId,
+    int? classLevel,
     String? status,
     bool? clearTeacherId,
     bool? clearClassId,
+    bool? clearClassLevel,
     bool? clearStatus,
     bool? isLoading,
     bool? isSaving,
@@ -43,9 +50,12 @@ class TeachingActivityState {
   }) {
     return TeachingActivityState(
       activities: activities ?? this.activities,
+      sessionDateKeys: sessionDateKeys ?? this.sessionDateKeys,
       date: date ?? this.date,
       teacherId: clearTeacherId == true ? null : teacherId ?? this.teacherId,
       classId: clearClassId == true ? null : classId ?? this.classId,
+      classLevel:
+          clearClassLevel == true ? null : classLevel ?? this.classLevel,
       status: clearStatus == true ? null : status ?? this.status,
       isLoading: isLoading ?? this.isLoading,
       isSaving: isSaving ?? this.isSaving,
@@ -65,14 +75,18 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
     String? date,
     String? teacherId,
     String? classId,
+    int? classLevel,
     String? status,
     bool clearTeacherId = false,
     bool clearClassId = false,
+    bool clearClassLevel = false,
     bool clearStatus = false,
   }) async {
     final effectiveDate = date ?? state.date ?? _dateOnly(DateTime.now());
     final effectiveTeacherId = clearTeacherId ? null : teacherId ?? state.teacherId;
     final effectiveClassId = clearClassId ? null : classId ?? state.classId;
+    final effectiveClassLevel =
+        clearClassLevel ? null : classLevel ?? state.classLevel;
     final effectiveStatus = clearStatus ? null : status ?? state.status;
 
     emit(
@@ -80,9 +94,11 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
         date: effectiveDate,
         teacherId: effectiveTeacherId,
         classId: effectiveClassId,
+        classLevel: effectiveClassLevel,
         status: effectiveStatus,
         clearTeacherId: clearTeacherId,
         clearClassId: clearClassId,
+        clearClassLevel: clearClassLevel,
         clearStatus: clearStatus,
         isLoading: true,
         clearOpenActivityId: true,
@@ -95,9 +111,23 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
         date: effectiveDate,
         teacherId: effectiveTeacherId,
         classId: effectiveClassId,
+        classLevel: effectiveClassLevel,
         status: effectiveStatus,
       );
-      emit(state.copyWith(activities: activities, isLoading: false));
+      final sessionDateKeys = await _repository.getSessionDateKeysForMonth(
+        month: DateTime.tryParse(effectiveDate) ?? DateTime.now(),
+        teacherId: effectiveTeacherId,
+        classId: effectiveClassId,
+        classLevel: effectiveClassLevel,
+        status: effectiveStatus,
+      );
+      emit(
+        state.copyWith(
+          activities: activities,
+          sessionDateKeys: sessionDateKeys,
+          isLoading: false,
+        ),
+      );
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
     }

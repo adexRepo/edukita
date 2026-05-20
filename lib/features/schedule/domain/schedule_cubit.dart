@@ -97,6 +97,16 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     }
   }
 
+  Future<void> loadSchedulesByLevel(int level) async {
+    emit(state.copyWith(isLoading: true));
+    try {
+      final schedules = await _repository.getSchedulesByLevel(level);
+      emit(state.copyWith(isLoading: false, schedules: schedules, error: null));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: e.toString()));
+    }
+  }
+
   Future<void> loadSchedulesByTeacher(String teacherId) async {
     emit(state.copyWith(isLoading: true));
     try {

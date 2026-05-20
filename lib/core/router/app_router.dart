@@ -1,4 +1,5 @@
 import 'package:edukita/app_shell.dart';
+import 'package:edukita/core/router/root_navigator.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/assistance_program/presentation/assistance_program_page.dart';
 import 'package:edukita/features/assistance_programs/domain/assistance_program_cubit.dart';
@@ -33,10 +34,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
-
 final GoRouter appRouter = GoRouter(
-  navigatorKey: _rootNavigatorKey,
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/login',
   routes: [
     GoRoute(

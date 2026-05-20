@@ -234,7 +234,7 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-class _PrimaryRail extends StatelessWidget {
+class _PrimaryRail extends StatefulWidget {
   const _PrimaryRail({
     required this.width,
     required this.items,
@@ -256,19 +256,28 @@ class _PrimaryRail extends StatelessWidget {
   final ReorderCallback onReorder;
 
   @override
+  State<_PrimaryRail> createState() => _PrimaryRailState();
+}
+
+class _PrimaryRailState extends State<_PrimaryRail> {
+  String? _hoveredRoute;
+  bool _settingsHovered = false;
+  bool _logoutHovered = false;
+
+  @override
   Widget build(BuildContext context) {
     return Container(
-      width: width,
+      width: widget.width,
       color: AppColors.surface,
       child: Column(
         children: [
           Expanded(
             child: ReorderableListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-              itemCount: items.length,
+              itemCount: widget.items.length,
               buildDefaultDragHandles: false,
               itemExtent: 40,
-              onReorder: onReorder,
+              onReorder: widget.onReorder,
               proxyDecorator: (child, index, animation) {
                 return Material(
                   color: AppColors.transparent,
@@ -284,45 +293,35 @@ class _PrimaryRail extends StatelessWidget {
                 );
               },
               itemBuilder: (context, index) {
-                final item = items[index];
-                final selected = selectedIndex == index;
+                final item = widget.items[index];
+                final selected = widget.selectedIndex == index;
+                final hovered = _hoveredRoute == item.route;
 
                 return Padding(
                   key: ValueKey(item.route),
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Tooltip(
                     message: item.label,
-                    waitDuration: const Duration(milliseconds: 200),
+                    waitDuration: const Duration(seconds: 1),
                     child: ReorderableDragStartListener(
                       index: index,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(8),
-                        onTap:
-                            navigationLocked || location.startsWith(item.route)
-                            ? null
-                            : () => onNavigate(item.route),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 140),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? AppColors.primary.withValues(alpha: 0.14)
-                                : AppColors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                            border: selected
-                                ? Border.all(
-                                    color: AppColors.primary.withValues(
-                                      alpha: 0.22,
-                                    ),
-                                  )
-                                : null,
-                          ),
-                          child: Icon(
-                            item.icon,
-                            size: 19,
-                            color: selected
-                                ? AppColors.primaryDark
-                                : AppColors.textSecondary,
+                      child: MouseRegion(
+                        onEnter: (_) =>
+                            setState(() => _hoveredRoute = item.route),
+                        onExit: (_) => setState(() => _hoveredRoute = null),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: widget.navigationLocked ||
+                                  widget.location.startsWith(item.route)
+                              ? null
+                              : () => widget.onNavigate(item.route),
+                          child: _RailButtonBox(
+                            selected: selected,
+                            hovered: hovered,
+                            child: _RailButtonContent(
+                              icon: item.icon,
+                              selected: selected,
+                            ),
                           ),
                         ),
                       ),
@@ -337,34 +336,24 @@ class _PrimaryRail extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(6, 8, 6, 4),
             child: Tooltip(
               message: 'Settings',
-              waitDuration: const Duration(milliseconds: 450),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap:
-                    navigationLocked || location.startsWith('/settings')
-                    ? null
-                    : () => onNavigate('/settings'),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 140),
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: location.startsWith('/settings')
-                        ? AppColors.primary.withValues(alpha: 0.14)
-                        : AppColors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                    border: location.startsWith('/settings')
-                        ? Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.22),
-                          )
-                        : null,
-                  ),
-                  child: Icon(
-                    Icons.settings_outlined,
-                    size: 18,
-                    color: location.startsWith('/settings')
-                        ? AppColors.primaryDark
-                        : AppColors.textSecondary,
+              waitDuration: const Duration(seconds: 1),
+              child: MouseRegion(
+                onEnter: (_) => setState(() => _settingsHovered = true),
+                onExit: (_) => setState(() => _settingsHovered = false),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: widget.navigationLocked ||
+                          widget.location.startsWith('/settings')
+                      ? null
+                      : () => widget.onNavigate('/settings'),
+                  child: _RailButtonBox(
+                    selected: widget.location.startsWith('/settings'),
+                    hovered: _settingsHovered,
+                    height: 36,
+                    child: _RailButtonContent(
+                      icon: Icons.settings_outlined,
+                      selected: widget.location.startsWith('/settings'),
+                    ),
                   ),
                 ),
               ),
@@ -374,17 +363,21 @@ class _PrimaryRail extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(6, 4, 6, 8),
             child: Tooltip(
               message: 'Logout',
-              waitDuration: const Duration(milliseconds: 450),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: onLogout,
-                child: const SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: Icon(
-                    Icons.logout,
-                    size: 18,
-                    color: AppColors.textSecondary,
+              waitDuration: const Duration(seconds: 1),
+              child: MouseRegion(
+                onEnter: (_) => setState(() => _logoutHovered = true),
+                onExit: (_) => setState(() => _logoutHovered = false),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: widget.onLogout,
+                  child: _RailButtonBox(
+                    selected: false,
+                    hovered: _logoutHovered,
+                    height: 36,
+                    child: const _RailButtonContent(
+                      icon: Icons.logout,
+                      selected: false,
+                    ),
                   ),
                 ),
               ),
@@ -393,6 +386,58 @@ class _PrimaryRail extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _RailButtonBox extends StatelessWidget {
+  const _RailButtonBox({
+    required this.selected,
+    required this.hovered,
+    required this.child,
+    this.height,
+  });
+
+  final bool selected;
+  final bool hovered;
+  final Widget child;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: Alignment.center,
+      width: double.infinity,
+      height: height,
+      decoration: BoxDecoration(
+        color: selected
+            ? AppColors.primary.withValues(alpha: 0.14)
+            : hovered
+                ? AppColors.white
+                : AppColors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        border: selected
+            ? Border.all(color: AppColors.primary.withValues(alpha: 0.24))
+            : null,
+      ),
+      child: child,
+    );
+  }
+}
+
+class _RailButtonContent extends StatelessWidget {
+  const _RailButtonContent({
+    required this.icon,
+    required this.selected,
+  });
+
+  final IconData icon;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? AppColors.primaryDark : AppColors.textSecondary;
+
+    return Icon(icon, size: 19, color: color);
   }
 }
 

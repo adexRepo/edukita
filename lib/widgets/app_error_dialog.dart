@@ -1,3 +1,4 @@
+import 'package:edukita/core/router/root_navigator.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 
@@ -6,9 +7,13 @@ Future<void> showErrorDetailDialog(
   required String title,
   required Object error,
 }) async {
-  if (!context.mounted) return;
+  final dialogContext = Navigator.maybeOf(context) == null
+      ? rootNavigatorKey.currentContext
+      : context;
+  if (dialogContext == null || !dialogContext.mounted) return;
+
   await showDialog<void>(
-    context: context,
+    context: dialogContext,
     builder: (dialogContext) => AlertDialog(
       title: Text(title),
       content: SizedBox(

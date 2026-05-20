@@ -99,6 +99,10 @@ class DatabaseMigrations {
       await _ensureAssistancePeriodProgramSchema(db);
     }
 
+    if (oldVersion < 26) {
+      await _ensureScheduleLevelSchema(db);
+    }
+
     await ensureCriticalSchema(db);
   }
 
@@ -110,6 +114,8 @@ class DatabaseMigrations {
     await _ensureScholarshipPlanSchema(db);
     await _ensureAssistanceProgramSchema(db);
     await _ensureAssistancePeriodProgramSchema(db);
+    await _ensureScheduleLevelSchema(db);
+    await _ensureTeachingActivitySchema(db);
   }
 
   static const List<(String oldName, String newName)> _assistanceTableRenames =
@@ -677,6 +683,43 @@ class DatabaseMigrations {
       column: 'normalized_score',
       definition: 'REAL',
     );
+    await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _ensureScheduleLevelSchema(Database db) async {
+    await DatabaseTables.schedules(db);
+    await DatabaseTables.teachingActivities(db);
+    await _addColumnIfMissing(
+      db,
+      table: 'schedules',
+      column: 'class_level',
+      definition: 'INTEGER',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'teaching_activities',
+      column: 'class_level',
+      definition: 'INTEGER',
+    );
+    await db.execute('''
+      UPDATE schedules
+      SET class_level = (
+        SELECT level FROM classes WHERE classes.id = schedules.class_id
+      )
+      WHERE class_level IS NULL
+        AND class_id IS NOT NULL
+        AND class_id <> ''
+    ''');
+    await db.execute('''
+      UPDATE teaching_activities
+      SET class_level = (
+        SELECT COALESCE(s.class_level, c.level)
+        FROM schedules s
+        LEFT JOIN classes c ON c.id = s.class_id
+        WHERE s.id = teaching_activities.schedule_id
+      )
+      WHERE class_level IS NULL
+    ''');
     await DatabaseTables.indexes(db);
   }
 

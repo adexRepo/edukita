@@ -1,6 +1,7 @@
 import 'package:edukita/features/teaching_activity/data/teaching_activity_data.dart';
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_detail_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_error_dialog.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -33,7 +34,12 @@ class _TeachingActivityDetailPageState
       listenWhen: (previous, current) => previous.error != current.error,
       listener: (context, state) {
         if (state.error != null) {
-          AppToast.showFailed(state.error!.replaceFirst('Exception: ', ''));
+          showErrorToastWithDetails(
+            context,
+            title: 'Teaching Activity Error',
+            error: state.error!,
+            message: state.error!.replaceFirst('Exception: ', ''),
+          );
         }
       },
       child: BlocBuilder<TeachingActivityDetailCubit, TeachingActivityDetailState>(
@@ -194,7 +200,7 @@ class _SessionOverview extends StatelessWidget {
             children: [
               _InfoTile(label: 'Date', value: activity.activityDate),
               _InfoTile(label: 'Time', value: activity.displayTime),
-              _InfoTile(label: 'Class', value: activity.className ?? '-'),
+              _InfoTile(label: 'Level', value: activity.className ?? '-'),
               _InfoTile(
                 label: 'Teacher',
                 value: activity.teacherName ?? '-',
@@ -1021,10 +1027,12 @@ class _AssessmentTabState extends State<_AssessmentTab> {
   }
 
   Future<void> _openStudentNoteDialog(ClassStudentOption student) async {
+    final cubit = context.read<TeachingActivityDetailCubit>();
     await showDialog<void>(
       context: context,
       builder: (_) => _StudentNoteDialog(
         student: student,
+        cubit: cubit,
         disabled:
             widget.detail.activity.status == TeachingActivityStatus.cancelled,
       ),
@@ -1492,6 +1500,7 @@ class _StudentNotesPanelState extends State<_StudentNotesPanel> {
       builder: (_) => _StudentNoteDialog(
         student: student,
         note: note,
+        cubit: context.read<TeachingActivityDetailCubit>(),
         disabled:
             widget.detail.activity.status == TeachingActivityStatus.cancelled,
       ),
@@ -1822,11 +1831,13 @@ class _StarRatingInput extends StatelessWidget {
 class _StudentNoteDialog extends StatefulWidget {
   const _StudentNoteDialog({
     required this.student,
+    required this.cubit,
     required this.disabled,
     this.note,
   });
 
   final ClassStudentOption student;
+  final TeachingActivityDetailCubit cubit;
   final StudentSessionNoteRecord? note;
   final bool disabled;
 
@@ -1941,10 +1952,9 @@ class _StudentNoteDialogState extends State<_StudentNoteDialog> {
     }
 
     final normalizedScore = _rating * 20;
-    final cubit = context.read<TeachingActivityDetailCubit>();
     try {
       if (widget.note == null) {
-        await cubit.addStudentNote(
+        await widget.cubit.addStudentNote(
           studentId: widget.student.id,
           noteType: _noteType,
           comment: _commentController.text.trim(),
@@ -1956,7 +1966,7 @@ class _StudentNoteDialogState extends State<_StudentNoteDialog> {
         );
         AppToast.showSuccess('Student note added.');
       } else {
-        await cubit.updateStudentNote(
+        await widget.cubit.updateStudentNote(
           id: widget.note!.id!,
           studentId: widget.student.id,
           noteType: _noteType,

@@ -5,6 +5,7 @@ import 'package:edukita/features/schedule/data/schedule_model.dart';
 import 'package:edukita/features/schedule/domain/schedule_cubit.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
+import 'package:edukita/features/schools/data/school_level_option.dart';
 import 'package:edukita/features/schools/domain/class_cubit.dart';
 import 'package:edukita/features/schools/domain/school_cubit.dart';
 import 'package:edukita/features/strategy/data/strategy_model.dart';
@@ -324,7 +325,7 @@ class _SchedulePageState extends State<SchedulePage> {
                 onTap: () => _showSearchOverlay(fieldContext, results),
                 decoration: const InputDecoration(
                   prefixIcon: Icon(Icons.search),
-                  hintText: 'Find schedule, event, teacher, class',
+                  hintText: 'Find schedule, event, teacher, level',
                 ),
               ),
             );
@@ -390,7 +391,7 @@ class _SchedulePageState extends State<SchedulePage> {
       itemBuilder: (context) => [
         PopupMenuItem(
           value: _ScheduleAddType.schedule,
-          enabled: classes.isNotEmpty && units.isNotEmpty,
+          enabled: units.isNotEmpty,
           child: const Row(
             children: [
               Icon(Icons.school_outlined, size: 18),
@@ -574,8 +575,8 @@ class _SchedulePageState extends State<SchedulePage> {
       final date = _parseDateKey(schedule.date);
       if (date == null) continue;
       final unit = _findUnit(units, schedule.unitId);
-      final schoolClass = _findClass(classes, schedule.classId);
       final teacher = _findTeacher(teachers, schedule.teacherId);
+      final levelLabel = _scheduleLevelLabel(schedule, classes);
       final title = schedule.title?.trim().isNotEmpty == true
           ? schedule.title!.trim()
           : unit?.name ?? 'Teaching Schedule';
@@ -586,7 +587,7 @@ class _SchedulePageState extends State<SchedulePage> {
             schedule.date,
             _timeRange(schedule.startAt, schedule.endAt),
             teacher?.fullName,
-            schoolClass?.className,
+            levelLabel,
           ].whereType<String>().where((text) => text.isNotEmpty).join(' - '),
           date: date,
           icon: Icons.school_outlined,
@@ -1303,7 +1304,7 @@ class _SchedulePageState extends State<SchedulePage> {
 
     return Tooltip(
       waitDuration: const Duration(milliseconds: 350),
-      message: _scheduleTooltip(schedule, title),
+      message: _scheduleTooltip(schedule, title, classes),
       child: InkWell(
         onTap: () => _showScheduleForm(
           existingSchedule: schedule,
@@ -1524,16 +1525,16 @@ class _SchedulePageState extends State<SchedulePage> {
 
     final unit = _findUnit(units, schedule.unitId);
     final subject = _findSubject(subjects, unit?.subjectId);
-    final schoolClass = _findClass(classes, schedule.classId);
     final teacher = _findTeacher(teachers, schedule.teacherId);
     final strategy = _findStrategy(strategies, schedule.strategyId);
+    final levelLabel = _scheduleLevelLabel(schedule, classes);
     final haystack = [
       schedule.title,
       schedule.date,
       schedule.description,
       unit?.name,
       subject?.name,
-      schoolClass?.className,
+      levelLabel,
       teacher?.fullName,
       strategy?.name,
     ].whereType<String>().join(' ').toLowerCase();
@@ -1753,12 +1754,17 @@ class _SchedulePageState extends State<SchedulePage> {
     return '$start - $end';
   }
 
-  String _scheduleTooltip(Schedule schedule, String title) {
+  String _scheduleTooltip(
+    Schedule schedule,
+    String title,
+    List<SchoolClass> classes,
+  ) {
     return [
       title,
       [
         schedule.date,
         _timeRange(schedule.startAt, schedule.endAt),
+        _scheduleLevelLabel(schedule, classes),
       ].whereType<String>().where((text) => text.isNotEmpty).join(' '),
       if (schedule.description?.trim().isNotEmpty == true)
         schedule.description!.trim(),
@@ -1810,6 +1816,12 @@ class _SchedulePageState extends State<SchedulePage> {
       if (schoolClass.id == id) return schoolClass;
     }
     return null;
+  }
+
+  String _scheduleLevelLabel(Schedule schedule, List<SchoolClass> classes) {
+    final level =
+        schedule.classLevel ?? _findClass(classes, schedule.classId)?.level;
+    return schoolLevelLabel(level);
   }
 
   Teacher? _findTeacher(List<Teacher> teachers, String? id) {
@@ -1874,7 +1886,7 @@ class ScheduleFormDialog extends StatefulWidget {
 
 class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   final _formKey = GlobalKey<FormState>();
-  late String classId;
+  late int classLevel;
   late String? teacherId;
   late String unitId;
   late String? strategyId;
@@ -1891,9 +1903,10 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   @override
   void initState() {
     super.initState();
-    classId =
-        widget.schedule?.classId ??
-        (widget.classes.isNotEmpty ? widget.classes.first.id : '');
+    classLevel =
+        widget.schedule?.classLevel ??
+        _levelForClass(widget.schedule?.classId) ??
+        SchoolLevelOption.values.first.level;
     teacherId =
         widget.schedule?.teacherId ??
         (widget.teachers.isNotEmpty ? widget.teachers.first.id : null);
@@ -1926,10 +1939,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final selectedClass = _firstWhereOrNull(
-      widget.classes,
-      (item) => item.id == classId,
-    );
+    final selectedLevel = SchoolLevelOption.fromLevel(classLevel);
     final selectedTeacher = _firstWhereOrNull(
       widget.teachers,
       (item) => item.id == teacherId,
@@ -1955,13 +1965,14 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CommonFormWidgets.dropdownFieldTyped<SchoolClass>(
-                  label: 'Class',
-                  items: widget.classes,
-                  labelBuilder: (item) => item.className,
-                  valueBuilder: (item) => item.id,
-                  value: selectedClass,
-                  onSaved: (value) => classId = value?.id ?? '',
+                CommonFormWidgets.dropdownFieldTyped<SchoolLevelOption>(
+                  label: 'Level',
+                  items: SchoolLevelOption.values,
+                  labelBuilder: (item) => item.label,
+                  valueBuilder: (item) => item.level.toString(),
+                  value: selectedLevel,
+                  onSaved: (value) =>
+                      classLevel = value?.level ?? SchoolLevelOption.values.first.level,
                 ),
                 const SizedBox(height: 16),
                 CommonFormWidgets.dropdownFieldTyped<Teacher>(
@@ -2110,7 +2121,8 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
     _formKey.currentState!.save();
     final schedule = Schedule(
       id: widget.schedule?.id,
-      classId: classId,
+      classId: _classIdForLevel(classLevel),
+      classLevel: classLevel,
       teacherId: teacherId,
       unitId: unitId,
       strategyId: strategyId,
@@ -2131,6 +2143,26 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
       AppToast.showSubmissionFailed(action: action, subject: 'schedule');
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  int? _levelForClass(String? classId) {
+    if (classId == null || classId.isEmpty) return null;
+    for (final schoolClass in widget.classes) {
+      if (schoolClass.id == classId) return schoolClass.level;
+    }
+    return null;
+  }
+
+  String? _classIdForLevel(int level) {
+    final existingClassId = widget.schedule?.classId;
+    if (existingClassId != null && existingClassId.isNotEmpty) {
+      final existingLevel = _levelForClass(existingClassId);
+      if (existingLevel == level) return existingClassId;
+    }
+    for (final schoolClass in widget.classes) {
+      if (schoolClass.level == level) return schoolClass.id;
+    }
+    return null;
   }
 }
 

@@ -1,9 +1,10 @@
-import 'package:edukita/features/schools/domain/class_cubit.dart';
+import 'package:edukita/features/schools/data/school_level_option.dart';
 import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:edukita/features/teaching_activity/data/teaching_activity_data.dart';
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_error_dialog.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
@@ -20,9 +21,13 @@ class TeachingActivityPage extends StatefulWidget {
 }
 
 class _TeachingActivityPageState extends State<TeachingActivityPage> {
+  late DateTime _focusedMonth;
+
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _focusedMonth = DateTime(now.year, now.month);
     context.read<TeachingActivityCubit>().loadActivities();
   }
 
@@ -33,7 +38,14 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
           previous.openActivityId != current.openActivityId ||
           previous.error != current.error,
       listener: (context, state) {
-        if (state.error != null) AppToast.showFailed(_cleanError(state.error!));
+        if (state.error != null) {
+          showErrorToastWithDetails(
+            context,
+            title: 'Teaching Activity Error',
+            error: state.error!,
+            message: _cleanError(state.error!),
+          );
+        }
         final id = state.openActivityId;
         if (id != null && id.isNotEmpty) context.go('/teaching-activities/$id');
       },
@@ -52,63 +64,67 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
                   AppLoadingStrip(isLoading: state.isLoading),
             ),
             const SizedBox(height: AppPageHeaderStyle.bottomGap),
-            const _TeachingActivityFilters(),
-            const SizedBox(height: 16),
             Expanded(
               child: BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
                 builder: (context, state) {
-                  return AppTable<TeachingActivityListItem>(
-                    data: state.activities,
-                    emptyMessage: 'No teaching sessions for this filter.',
-                    onRowTap: (item) {
-                      if (item.activityId != null) {
-                        context.go('/teaching-activities/${item.activityId}');
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final compact = constraints.maxWidth < 920;
+                      final leftPanel = _TeachingActivityDatePanel(
+                        focusedMonth: _focusedMonth,
+                        selectedDate: _parseDate(state.date),
+                        activities: state.activities,
+                        sessionDateKeys: state.sessionDateKeys,
+                        onPreviousMonth: () {
+                          final newMonth = DateTime(
+                            _focusedMonth.year,
+                            _focusedMonth.month - 1,
+                          );
+                          setState(() => _focusedMonth = newMonth);
+                          context.read<TeachingActivityCubit>().loadActivities(
+                                date: _dateKey(newMonth),
+                              );
+                        },
+                        onNextMonth: () {
+                          final newMonth = DateTime(
+                            _focusedMonth.year,
+                            _focusedMonth.month + 1,
+                          );
+                          setState(() => _focusedMonth = newMonth);
+                          context.read<TeachingActivityCubit>().loadActivities(
+                                date: _dateKey(newMonth),
+                              );
+                        },
+                        onDateSelected: (date) {
+                          setState(() {
+                            _focusedMonth = DateTime(date.year, date.month);
+                          });
+                          context.read<TeachingActivityCubit>().loadActivities(
+                                date: _dateKey(date),
+                              );
+                        },
+                      );
+                      final rightPanel = const _TeachingActivityTablePanel();
+
+                      if (compact) {
+                        return ListView(
+                          children: [
+                            leftPanel,
+                            const SizedBox(height: 12),
+                            SizedBox(height: 560, child: rightPanel),
+                          ],
+                        );
                       }
+
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 286, child: leftPanel),
+                          const SizedBox(width: 14),
+                          Expanded(child: rightPanel),
+                        ],
+                      );
                     },
-                    columns: [
-                      AppTableColumn(
-                        title: 'Time',
-                        minWidth: 116,
-                        cell: (item) => _CellText(item.displayTime),
-                      ),
-                      AppTableColumn(
-                        title: 'Class',
-                        minWidth: 120,
-                        cell: (item) => _CellText(item.className ?? '-'),
-                      ),
-                      AppTableColumn(
-                        title: 'Subject',
-                        flex: 2,
-                        minWidth: 150,
-                        cell: (item) => _CellText(item.subjectName ?? '-'),
-                      ),
-                      AppTableColumn(
-                        title: 'Unit / Material',
-                        flex: 2,
-                        minWidth: 190,
-                        cell: (item) => _CellText(
-                          item.unitName ?? item.title ?? '-',
-                          maxLines: 2,
-                        ),
-                      ),
-                      AppTableColumn(
-                        title: 'Teacher',
-                        flex: 2,
-                        minWidth: 160,
-                        cell: (item) => _CellText(item.teacherName ?? '-'),
-                      ),
-                      AppTableColumn(
-                        title: 'Status',
-                        minWidth: 120,
-                        cell: (item) => _StatusBadge(status: item.status),
-                      ),
-                      AppTableColumn(
-                        title: 'Action',
-                        flex: 2,
-                        minWidth: 230,
-                        cell: (item) => _ActionButtons(item: item),
-                      ),
-                    ],
                   );
                 },
               ),
@@ -117,6 +133,10 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
         ),
       ),
     );
+  }
+
+  DateTime _parseDate(String? value) {
+    return DateTime.tryParse(value ?? '') ?? DateTime.now();
   }
 }
 
@@ -136,15 +156,6 @@ class _TeachingActivityFilters extends StatelessWidget {
           ),
           child: Row(
             children: [
-              SizedBox(
-                width: 158,
-                child: OutlinedButton.icon(
-                  onPressed: () => _pickDate(context, state.date),
-                  icon: const Icon(Icons.calendar_today_outlined, size: 16),
-                  label: Text(state.date ?? '-'),
-                ),
-              ),
-              const SizedBox(width: 10),
               Expanded(
                 child: BlocBuilder<TeacherCubit, TeacherState>(
                   builder: (context, teacherState) {
@@ -177,32 +188,29 @@ class _TeachingActivityFilters extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: BlocBuilder<ClassCubit, ClassState>(
-                  builder: (context, classState) {
-                    return AppDropdownButtonFormField<String>(
-                      key: ValueKey('class-${state.classId ?? ''}'),
-                      initialValue: state.classId ?? '',
-                      isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'Class'),
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: '',
-                          child: Text('All classes'),
-                        ),
-                        ...classState.classes.map(
-                          (schoolClass) => DropdownMenuItem(
-                            value: schoolClass.id,
-                            child: Text(schoolClass.name),
-                          ),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        context.read<TeachingActivityCubit>().loadActivities(
-                              classId: value,
-                              clearClassId: value == null || value.isEmpty,
-                            );
-                      },
-                    );
+                child: AppDropdownButtonFormField<String>(
+                  key: ValueKey('level-${state.classLevel ?? ''}'),
+                  initialValue: state.classLevel?.toString() ?? '',
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Level'),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: '',
+                      child: Text('All levels'),
+                    ),
+                    ...SchoolLevelOption.values.map(
+                      (level) => DropdownMenuItem(
+                        value: level.level.toString(),
+                        child: Text(level.label),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    context.read<TeachingActivityCubit>().loadActivities(
+                          classLevel: int.tryParse(value ?? ''),
+                          clearClassId: true,
+                          clearClassLevel: value == null || value.isEmpty,
+                        );
                   },
                 ),
               ),
@@ -241,18 +249,358 @@ class _TeachingActivityFilters extends StatelessWidget {
     );
   }
 
-  Future<void> _pickDate(BuildContext context, String? value) async {
-    final current = DateTime.tryParse(value ?? '') ?? DateTime.now();
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: current,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
+}
+
+class _TeachingActivityTablePanel extends StatelessWidget {
+  const _TeachingActivityTablePanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const _TeachingActivityFilters(),
+        const SizedBox(height: 12),
+        Expanded(
+          child: BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
+            builder: (context, state) {
+              return AppTable<TeachingActivityListItem>(
+                data: state.activities,
+                emptyMessage: 'No teaching sessions for this filter.',
+                onRowTap: (item) {
+                  if (item.activityId != null) {
+                    context.go('/teaching-activities/${item.activityId}');
+                  }
+                },
+                columns: [
+                  AppTableColumn(
+                    title: 'Time',
+                    minWidth: 116,
+                    cell: (item) => _CellText(item.displayTime),
+                  ),
+                  AppTableColumn(
+                    title: 'Level',
+                    minWidth: 120,
+                    cell: (item) => _CellText(item.className ?? '-'),
+                  ),
+                  AppTableColumn(
+                    title: 'Subject',
+                    flex: 2,
+                    minWidth: 150,
+                    cell: (item) => _CellText(item.subjectName ?? '-'),
+                  ),
+                  AppTableColumn(
+                    title: 'Unit / Material',
+                    flex: 2,
+                    minWidth: 190,
+                    cell: (item) => _CellText(
+                      item.unitName ?? item.title ?? '-',
+                      maxLines: 2,
+                    ),
+                  ),
+                  AppTableColumn(
+                    title: 'Teacher',
+                    flex: 2,
+                    minWidth: 160,
+                    cell: (item) => _CellText(item.teacherName ?? '-'),
+                  ),
+                  AppTableColumn(
+                    title: 'Status',
+                    minWidth: 120,
+                    cell: (item) => _StatusBadge(status: item.status),
+                  ),
+                  AppTableColumn(
+                    title: 'Action',
+                    flex: 2,
+                    minWidth: 230,
+                    cell: (item) => _ActionButtons(item: item),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
     );
-    if (selected == null || !context.mounted) return;
-    context.read<TeachingActivityCubit>().loadActivities(
-          date: selected.toIso8601String().split('T').first,
-        );
+  }
+}
+
+class _TeachingActivityDatePanel extends StatelessWidget {
+  const _TeachingActivityDatePanel({
+    required this.focusedMonth,
+    required this.selectedDate,
+    required this.activities,
+    required this.sessionDateKeys,
+    required this.onPreviousMonth,
+    required this.onNextMonth,
+    required this.onDateSelected,
+  });
+
+  final DateTime focusedMonth;
+  final DateTime selectedDate;
+  final List<TeachingActivityListItem> activities;
+  final Set<String> sessionDateKeys;
+  final VoidCallback onPreviousMonth;
+  final VoidCallback onNextMonth;
+  final ValueChanged<DateTime> onDateSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheduled = activities
+        .where((item) => item.status == TeachingActivityStatus.scheduled)
+        .length;
+    final inProgress = activities
+        .where((item) => item.status == TeachingActivityStatus.inProgress)
+        .length;
+    final completed = activities
+        .where((item) => item.status == TeachingActivityStatus.completed)
+        .length;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: _buildCalendar(),
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Selected Date',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      _dateKey(selectedDate),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _DateSummaryRow(
+                  label: 'Sessions',
+                  value: '${activities.length}',
+                  color: AppColors.primaryDark,
+                ),
+                _DateSummaryRow(
+                  label: 'Scheduled',
+                  value: '$scheduled',
+                  color: AppColors.warning,
+                ),
+                _DateSummaryRow(
+                  label: 'In progress',
+                  value: '$inProgress',
+                  color: AppColors.accentBlue,
+                ),
+                _DateSummaryRow(
+                  label: 'Completed',
+                  value: '$completed',
+                  color: AppColors.success,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalendar() {
+    final days = _calendarDays(focusedMonth);
+    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                _monthTitle(focusedMonth),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Previous month',
+              onPressed: onPreviousMonth,
+              icon: const Icon(Icons.chevron_left),
+            ),
+            IconButton(
+              tooltip: 'Next month',
+              onPressed: onNextMonth,
+              icon: const Icon(Icons.chevron_right),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (final day in weekDays)
+              Expanded(
+                child: Center(
+                  child: Text(
+                    day,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final rows = (days.length / 7).ceil();
+            final cellHeight = (constraints.maxWidth / 7) / 1.08;
+            return SizedBox(
+              height: rows * cellHeight,
+              child: GridView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: days.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  childAspectRatio: 1.08,
+                ),
+                itemBuilder: (context, index) {
+                  final day = days[index];
+                  if (day == null) return const SizedBox.shrink();
+                  final selected = _isSameDate(day, selectedDate);
+                  final today = _isSameDate(day, DateTime.now());
+                  final hasSession = sessionDateKeys.contains(_dateKey(day));
+
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => onDateSelected(day),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 120),
+                      margin: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppColors.primary
+                            : today
+                                ? AppColors.primaryLight.withValues(alpha: 0.16)
+                                : AppColors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: today && !selected
+                              ? AppColors.primaryLight
+                              : AppColors.transparent,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${day.day}',
+                            style: TextStyle(
+                              color: selected
+                                  ? AppColors.white
+                                  : AppColors.textPrimary,
+                              fontSize: 12,
+                              fontWeight: selected || today
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          if (hasSession)
+                            _calendarDot(
+                              selected
+                                  ? AppColors.white
+                                  : AppColors.accentBlue,
+                            )
+                          else
+                            const SizedBox(height: 5),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _calendarDot(Color color) {
+    return Container(
+      width: 5,
+      height: 5,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
+}
+
+class _DateSummaryRow extends StatelessWidget {
+  const _DateSummaryRow({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -487,6 +835,51 @@ String _label(String value) {
           ? part
           : '${part[0].toUpperCase()}${part.substring(1)}')
       .join(' ');
+}
+
+List<DateTime?> _calendarDays(DateTime month) {
+  final firstDay = DateTime(month.year, month.month);
+  final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+  final leadingEmptyDays = firstDay.weekday % 7;
+  final days = <DateTime?>[
+    for (var i = 0; i < leadingEmptyDays; i++) null,
+    for (var day = 1; day <= daysInMonth; day++)
+      DateTime(month.year, month.month, day),
+  ];
+  while (days.length % 7 != 0) {
+    days.add(null);
+  }
+  return days;
+}
+
+String _dateKey(DateTime date) {
+  final month = date.month.toString().padLeft(2, '0');
+  final day = date.day.toString().padLeft(2, '0');
+  return '${date.year}-$month-$day';
+}
+
+bool _isSameDate(DateTime first, DateTime second) {
+  return first.year == second.year &&
+      first.month == second.month &&
+      first.day == second.day;
+}
+
+String _monthTitle(DateTime date) {
+  const months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+  return '${months[date.month - 1]} ${date.year}';
 }
 
 String _cleanError(String value) {

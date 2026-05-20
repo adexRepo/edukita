@@ -1,3 +1,5 @@
+import 'package:edukita/features/schools/data/school_level_option.dart';
+
 class TeachingActivityStatus {
   TeachingActivityStatus._();
 
@@ -101,6 +103,7 @@ class TeachingActivityListItem {
     this.activityId,
     this.teacherId,
     this.classId,
+    this.classLevel,
     this.unitId,
     this.strategyId,
     this.startAt,
@@ -131,6 +134,7 @@ class TeachingActivityListItem {
   final String scheduleId;
   final String? teacherId;
   final String? classId;
+  final int? classLevel;
   final String? unitId;
   final String? strategyId;
   final String activityDate;
@@ -172,11 +176,16 @@ class TeachingActivityListItem {
 
   factory TeachingActivityListItem.fromMap(Map<String, Object?> map) {
     final status = map['activity_status']?.toString();
+    final rawClassLevel = map['class_level'];
+    final classLevel = rawClassLevel is num
+        ? rawClassLevel.toInt()
+        : int.tryParse('$rawClassLevel');
     return TeachingActivityListItem(
       activityId: map['activity_id']?.toString(),
       scheduleId: map['schedule_id'].toString(),
       teacherId: map['teacher_id']?.toString(),
       classId: map['class_id']?.toString(),
+      classLevel: classLevel,
       unitId: map['unit_id']?.toString(),
       strategyId: map['strategy_id']?.toString(),
       activityDate:
@@ -186,7 +195,8 @@ class TeachingActivityListItem {
       status: status == null || status.isEmpty
           ? TeachingActivityStatus.scheduled
           : status,
-      className: map['class_name']?.toString(),
+      className:
+          classLevel == null ? map['class_name']?.toString() : schoolLevelLabel(classLevel),
       teacherName: map['teacher_name']?.toString(),
       subjectName: map['subject_name']?.toString(),
       unitName: map['unit_name']?.toString(),
