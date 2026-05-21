@@ -667,10 +667,12 @@ class DatabaseTables {
         normalized_score REAL,
         follow_up_needed INTEGER NOT NULL DEFAULT 0,
         follow_up_notes TEXT,
+        created_by_teacher_id TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT,
         FOREIGN KEY(teaching_activity_id) REFERENCES teaching_activities(id) ON DELETE CASCADE,
-        FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
+        FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by_teacher_id) REFERENCES teachers(id) ON DELETE SET NULL
       )
     ''');
   }

@@ -425,6 +425,7 @@ class TeachingAssessmentBulkInput {
     required this.studentId,
     required this.result,
     required this.scoreMode,
+    this.competencyId,
     this.rawScore,
     this.normalizedScore,
     this.score,
@@ -434,10 +435,33 @@ class TeachingAssessmentBulkInput {
   final String studentId;
   final String result;
   final String scoreMode;
+  final String? competencyId;
   final double? rawScore;
   final double? normalizedScore;
   final double? score;
   final String? notes;
+}
+
+class StudentSessionNoteInput {
+  const StudentSessionNoteInput({
+    required this.studentId,
+    required this.noteType,
+    required this.comment,
+    required this.scoreMode,
+    this.rawScore,
+    this.normalizedScore,
+    required this.followUpNeeded,
+    this.followUpNotes,
+  });
+
+  final String studentId;
+  final String noteType;
+  final String comment;
+  final String scoreMode;
+  final double? rawScore;
+  final double? normalizedScore;
+  final bool followUpNeeded;
+  final String? followUpNotes;
 }
 
 class StudentSessionNoteRecord {
@@ -453,6 +477,8 @@ class StudentSessionNoteRecord {
     this.rawScore,
     this.normalizedScore,
     this.followUpNotes,
+    this.createdByTeacherId,
+    this.createdByTeacherName,
     this.createdAt,
     this.updatedAt,
   });
@@ -468,6 +494,8 @@ class StudentSessionNoteRecord {
   final double? rawScore;
   final double? normalizedScore;
   final String? followUpNotes;
+  final String? createdByTeacherId;
+  final String? createdByTeacherName;
   final String? createdAt;
   final String? updatedAt;
 
@@ -484,6 +512,8 @@ class StudentSessionNoteRecord {
       rawScore: (map['raw_score'] as num?)?.toDouble(),
       normalizedScore: (map['normalized_score'] as num?)?.toDouble(),
       followUpNotes: map['follow_up_notes']?.toString(),
+      createdByTeacherId: map['created_by_teacher_id']?.toString(),
+      createdByTeacherName: map['created_by_teacher_name']?.toString(),
       createdAt: map['created_at']?.toString(),
       updatedAt: map['updated_at']?.toString(),
     );

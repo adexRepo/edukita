@@ -55,6 +55,32 @@ class _TeachingActivityDetailPageState
 
           final isCancelled =
               detail.activity.status == TeachingActivityStatus.cancelled;
+          Future<void> showSessionNotesDialog() async {
+            final cubit = context.read<TeachingActivityDetailCubit>();
+            await showDialog<void>(
+              context: context,
+              builder: (dialogContext) => AlertDialog(
+                title: const Text('Session Notes'),
+                content: SizedBox(
+                  width: 760,
+                  child: SingleChildScrollView(
+                    child: _SessionNotesForm(
+                      detail: detail,
+                      framed: false,
+                      cubit: cubit,
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Close'),
+                  ),
+                ],
+              ),
+            );
+          }
+
           final header = Row(
             children: [
               IconButton(
@@ -97,64 +123,60 @@ class _TeachingActivityDetailPageState
                   icon: const Icon(Icons.check_circle_outline, size: 18),
                   label: const Text('Complete Report'),
                 ),
-            ],
-          );
-          final tabBar = const TabBar(
-            isScrollable: true,
-            tabs: [
-              Tab(text: 'Overall Session'),
-              Tab(text: 'Attendance'),
-              Tab(text: 'Assessment'),
-              Tab(text: 'Notes'),
-            ],
-          );
-          final tabView = TabBarView(
-            children: [
-              _OverallSessionTab(detail: detail),
-              _AttendanceTab(detail: detail),
-              _AssessmentTab(detail: detail),
-              _NotesTab(detail: detail),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: state.isSaving || isCancelled
+                    ? null
+                    : () async {
+                        final confirmed = await _confirmResetReport(context);
+                        if (!confirmed || !context.mounted) return;
+                        try {
+                          await context
+                              .read<TeachingActivityDetailCubit>()
+                              .resetReport();
+                          AppToast.showSuccess('Teaching report reset.');
+                        } catch (_) {}
+                      },
+                icon: const Icon(Icons.restart_alt_outlined, size: 18),
+                label: const Text('Reset Report'),
+              ),
             ],
           );
 
           return Padding(
             padding: AppPageHeaderStyle.pagePadding,
-            child: DefaultTabController(
-              length: 4,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final compactHeight = constraints.maxHeight < 640;
-                  if (compactHeight) {
-                    return ListView(
-                      children: [
-                        header,
-                        const SizedBox(height: 14),
-                        _SessionOverview(detail: detail),
-                        const SizedBox(height: 14),
-                        tabBar,
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 520,
-                          child: tabView,
-                        ),
-                      ],
-                    );
-                  }
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compactHeight = constraints.maxHeight < 660;
+                final overview = _SessionOverview(
+                  detail: detail,
+                  onEditSessionNotes: showSessionNotesDialog,
+                );
+                final workspace = _TeachingSessionWorkspace(detail: detail);
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                if (compactHeight) {
+                  return ListView(
                     children: [
                       header,
                       const SizedBox(height: 14),
-                      _SessionOverview(detail: detail),
+                      overview,
                       const SizedBox(height: 14),
-                      tabBar,
-                      const SizedBox(height: 12),
-                      Expanded(child: tabView),
+                      SizedBox(height: 620, child: workspace),
                     ],
                   );
-                },
-              ),
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    header,
+                    const SizedBox(height: 14),
+                    overview,
+                    const SizedBox(height: 14),
+                    Expanded(child: workspace),
+                  ],
+                );
+              },
             ),
           );
         },
@@ -164,9 +186,13 @@ class _TeachingActivityDetailPageState
 }
 
 class _SessionOverview extends StatelessWidget {
-  const _SessionOverview({required this.detail});
+  const _SessionOverview({
+    required this.detail,
+    required this.onEditSessionNotes,
+  });
 
   final TeachingActivityDetailData detail;
+  final VoidCallback onEditSessionNotes;
 
   @override
   Widget build(BuildContext context) {
@@ -190,6 +216,14 @@ class _SessionOverview extends StatelessWidget {
                   subtitle: 'Teaching session details and completion summary.',
                 ),
               ),
+              OutlinedButton.icon(
+                onPressed: activity.status == TeachingActivityStatus.cancelled
+                    ? null
+                    : onEditSessionNotes,
+                icon: const Icon(Icons.edit_note_outlined, size: 18),
+                label: const Text('Session Note'),
+              ),
+              const SizedBox(width: 8),
               _StatusBadge(status: activity.status),
             ],
           ),
@@ -267,6 +301,18 @@ class _SessionOverview extends StatelessWidget {
                     ? '-'
                     : '${activity.lessonCompletionPercent}%',
                 icon: Icons.donut_large_outlined,
+                trailing: IconButton(
+                  tooltip: 'Edit session note',
+                  onPressed: activity.status == TeachingActivityStatus.cancelled
+                      ? null
+                      : onEditSessionNotes,
+                  icon: const Icon(Icons.edit_note_outlined, size: 16),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 26,
+                    height: 26,
+                  ),
+                ),
               ),
             ],
           ),
@@ -289,6 +335,1085 @@ class _SessionOverview extends StatelessWidget {
       ),
     );
   }
+}
+
+class _TeachingSessionWorkspace extends StatefulWidget {
+  const _TeachingSessionWorkspace({required this.detail});
+
+  final TeachingActivityDetailData detail;
+
+  @override
+  State<_TeachingSessionWorkspace> createState() =>
+      _TeachingSessionWorkspaceState();
+}
+
+class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
+  final TextEditingController _searchController = TextEditingController();
+  final Map<String, String> _attendanceStatus = {};
+  final Map<String, TextEditingController> _attendanceNotes = {};
+  final Map<String, Map<String, String>> _competencyScores = {};
+  final Map<String, Map<String, TextEditingController>> _competencyNotes = {};
+  final Map<String, Map<String, double>> _noteRatings = {};
+  final Map<String, Map<String, TextEditingController>> _noteComments = {};
+  String? _selectedStudentId;
+
+  String get _assessmentType =>
+      widget.detail.activity.assessmentType ??
+      (widget.detail.assessments.isEmpty
+          ? TeachingAssessmentType.values.first
+          : widget.detail.assessments.first.assessmentType);
+
+  bool get _usesNumericScore =>
+      TeachingAssessmentType.usesNumericScore(_assessmentType);
+
+  String get _scoreMode => _usesNumericScore
+      ? TeachingScoreMode.numeric100
+      : TeachingScoreMode.star5;
+
+  bool get _disabled =>
+      widget.detail.activity.status == TeachingActivityStatus.cancelled ||
+      widget.detail.activity.activityId == null;
+
+  ClassStudentOption? get _selectedStudent {
+    if (widget.detail.students.isEmpty) return null;
+    final id = _selectedStudentId;
+    for (final student in widget.detail.students) {
+      if (student.id == id) return student;
+    }
+    return widget.detail.students.first;
+  }
+
+  List<ClassStudentOption> get _filteredStudents {
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) return widget.detail.students;
+    return widget.detail.students.where((student) {
+      return student.displayName.toLowerCase().contains(query) ||
+          student.studentNo.toLowerCase().contains(query);
+    }).toList();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _hydrate();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TeachingSessionWorkspace oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.detail != widget.detail) _hydrate();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _disposeReportControllers();
+    super.dispose();
+  }
+
+  void _disposeReportControllers() {
+    for (final controller in _attendanceNotes.values) {
+      controller.dispose();
+    }
+    for (final byStudent in _competencyNotes.values) {
+      for (final controller in byStudent.values) {
+        controller.dispose();
+      }
+    }
+    for (final byStudent in _noteComments.values) {
+      for (final controller in byStudent.values) {
+        controller.dispose();
+      }
+    }
+    _attendanceNotes.clear();
+    _competencyNotes.clear();
+    _noteComments.clear();
+  }
+
+  void _hydrate() {
+    _disposeReportControllers();
+    _competencyScores.clear();
+    _noteRatings.clear();
+    final activeIds = widget.detail.students.map((student) => student.id).toSet();
+    if (_selectedStudentId == null || !activeIds.contains(_selectedStudentId)) {
+      _selectedStudentId =
+          widget.detail.students.isEmpty ? null : widget.detail.students.first.id;
+    }
+
+    _attendanceStatus
+      ..clear()
+      ..addEntries(
+        widget.detail.students.map(
+          (student) =>
+              MapEntry(student.id, TeachingAttendanceStatus.present),
+        ),
+      );
+    for (final record in widget.detail.attendances) {
+      _attendanceStatus[record.studentId] = record.status;
+      _attendanceNoteController(record.studentId).text = record.notes ?? '';
+    }
+
+    for (final student in widget.detail.students) {
+      _competencyScores.putIfAbsent(student.id, () => {});
+      _competencyNotes.putIfAbsent(student.id, () => {});
+      _noteRatings.putIfAbsent(student.id, () => {});
+      _noteComments.putIfAbsent(student.id, () => {});
+      for (final noteType in StudentSessionNoteType.values) {
+        _noteRatings[student.id]![noteType] = 3;
+        _noteController(student.id, noteType);
+      }
+    }
+
+    for (final record in widget.detail.assessments) {
+      if (record.assessmentType != _assessmentType) continue;
+      final competencyId = record.competencyId;
+      if (competencyId == null || competencyId.isEmpty) continue;
+      _competencyScores
+          .putIfAbsent(record.studentId, () => {})[competencyId] =
+          _scoreTextForRecord(record);
+      _competencyNoteController(record.studentId, competencyId).text =
+          record.notes ?? '';
+    }
+
+    for (final note in widget.detail.studentNotes) {
+      _noteRatings
+          .putIfAbsent(note.studentId, () => {})[note.noteType] =
+          note.rawScore ?? 3;
+      _noteController(note.studentId, note.noteType).text = note.comment;
+    }
+  }
+
+  TextEditingController _attendanceNoteController(String studentId) {
+    return _attendanceNotes.putIfAbsent(
+      studentId,
+      () => TextEditingController(),
+    );
+  }
+
+  TextEditingController _competencyNoteController(
+    String studentId,
+    String competencyId,
+  ) {
+    final byStudent = _competencyNotes.putIfAbsent(studentId, () => {});
+    return byStudent.putIfAbsent(competencyId, () => TextEditingController());
+  }
+
+  TextEditingController _noteController(String studentId, String noteType) {
+    final byStudent = _noteComments.putIfAbsent(studentId, () => {});
+    return byStudent.putIfAbsent(noteType, () => TextEditingController());
+  }
+
+  String _scoreTextForRecord(TeachingAssessmentRecord record) {
+    final rawScore = record.rawScore ??
+        (_usesNumericScore
+            ? record.normalizedScore ?? record.score
+            : record.score != null && record.score! <= 5
+                ? record.score
+                : ((record.normalizedScore ?? record.score) == null
+                    ? null
+                    : (record.normalizedScore ?? record.score)! / 20));
+    return rawScore == null ? '' : _formatScore(rawScore);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedStudent = _selectedStudent;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 980;
+        final left = _buildStudentPanel();
+        final right = selectedStudent == null
+            ? _Panel(
+                child: const Center(
+                  child: Text(
+                    'No students available.',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                ),
+              )
+            : _buildStudentReportPanel(selectedStudent);
+
+        if (compact) {
+          return ListView(
+            children: [
+              SizedBox(height: 360, child: left),
+              const SizedBox(height: 12),
+              SizedBox(height: 620, child: right),
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(width: 360, child: left),
+            const SizedBox(width: 12),
+            Expanded(child: right),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildStudentPanel() {
+    final students = _filteredStudents;
+    return _Panel(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SectionHeader(
+                  title: 'Students & Attendance',
+                  subtitle: 'Select a student and mark attendance.',
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    labelText: 'Search student',
+                    hintText: 'Name or student no',
+                    prefixIcon: Icon(Icons.search, size: 18),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Container(
+            color: AppColors.surface,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            child: const Row(
+              children: [
+                Expanded(child: _TableHeaderText('Student')),
+                SizedBox(width: 144, child: _TableHeaderText('Attendance')),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: students.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No students match the current search.',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: students.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final student = students[index];
+                      final selected = student.id == _selectedStudent?.id;
+                      return InkWell(
+                        onTap: () => setState(() {
+                          _selectedStudentId = student.id;
+                        }),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 120),
+                          color: selected
+                              ? AppColors.primaryLight.withValues(alpha: 0.14)
+                              : AppColors.transparent,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 9,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _StudentIdentity(student: student),
+                              ),
+                              SizedBox(
+                                width: 144,
+                                child: _CompactAttendanceMenu(
+                                  value: _attendanceStatus[student.id] ??
+                                      TeachingAttendanceStatus.present,
+                                  enabled: !_disabled,
+                                  onChanged: (value) => setState(() {
+                                    _attendanceStatus[student.id] = value;
+                                  }),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStudentReportPanel(ClassStudentOption student) {
+    return _Panel(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Reporting',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => _showNoteHistory(student),
+                      icon: const Icon(Icons.history_outlined, size: 18),
+                      label: const Text('Note History'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: _disabled ? null : () => _saveStudent(student),
+                      icon: const Icon(Icons.save_outlined, size: 18),
+                      label: const Text('Save Student'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _StudentIdentity(student: student),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(14),
+              children: [
+                _AssessmentModeBanner(
+                  label: _label(_assessmentType),
+                  usesNumericScore: _usesNumericScore,
+                ),
+                const SizedBox(height: 12),
+                _buildAttendanceNoteBox(student),
+                const SizedBox(height: 12),
+                _buildCompetencyScoreBox(student),
+                const SizedBox(height: 12),
+                _buildObservationBox(student),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompetencyScoreBox(ClassStudentOption student) {
+    return _SubPanel(
+      title: 'Competency Scores',
+      subtitle: _usesNumericScore
+          ? 'Quiz scores use numeric value 0-100.'
+          : 'Session assessment uses star rating.',
+      child: widget.detail.competencies.isEmpty
+          ? const Text(
+              'No competencies registered for this unit.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            )
+          : Column(
+              children: [
+                for (final competency in widget.detail.competencies) ...[
+                  _CompetencyScoreRow(
+                    competency: competency,
+                    score: _competencyScores[student.id]?[competency.id] ?? '',
+                    noteController:
+                        _competencyNoteController(student.id, competency.id),
+                    usesNumericScore: _usesNumericScore,
+                    enabled: !_disabled,
+                    onScoreChanged: (value) {
+                      _competencyScores
+                          .putIfAbsent(student.id, () => {})[competency.id] =
+                          value;
+                    },
+                  ),
+                  if (competency != widget.detail.competencies.last)
+                    const Divider(height: 18),
+                ],
+              ],
+            ),
+    );
+  }
+
+  Widget _buildObservationBox(ClassStudentOption student) {
+    return _SubPanel(
+      title: 'Student Notes',
+      subtitle: 'Add social observation notes directly by type.',
+      initiallyExpanded: false,
+      child: Column(
+        children: [
+          for (final noteType in StudentSessionNoteType.values) ...[
+            _ObservationNoteRow(
+              label: _label(noteType),
+              rating: _noteRatings[student.id]?[noteType] ?? 3,
+              controller: _noteController(student.id, noteType),
+              enabled: !_disabled,
+              onRatingChanged: (value) => setState(() {
+                _noteRatings.putIfAbsent(student.id, () => {})[noteType] =
+                    value;
+              }),
+            ),
+            if (noteType != StudentSessionNoteType.values.last)
+              const Divider(height: 18),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttendanceNoteBox(ClassStudentOption student) {
+    final status =
+        _attendanceStatus[student.id] ?? TeachingAttendanceStatus.present;
+    final required = status == TeachingAttendanceStatus.permission;
+    return _SubPanel(
+      title: 'Attendance Note',
+      subtitle: required
+          ? 'Required because attendance is Permission.'
+          : 'Optional attendance note for this student.',
+      initiallyExpanded: true,
+      child: _NoteField(
+        controller: _attendanceNoteController(student.id),
+        label: required ? 'Attendance note *' : 'Attendance note',
+        enabled: !_disabled,
+      ),
+    );
+  }
+
+  Future<void> _saveStudent(ClassStudentOption student) async {
+    final activityId = widget.detail.activity.activityId;
+    if (activityId == null) return;
+    final status =
+        _attendanceStatus[student.id] ?? TeachingAttendanceStatus.present;
+    final attendanceNote = _attendanceNoteController(student.id).text.trim();
+    if (status == TeachingAttendanceStatus.permission &&
+        attendanceNote.isEmpty) {
+      AppToast.showFailed('Attendance note is required for Permission.');
+      return;
+    }
+
+    final assessments = <TeachingAssessmentBulkInput>[];
+    for (final competency in widget.detail.competencies) {
+      final scoreText =
+          (_competencyScores[student.id]?[competency.id] ?? '').trim();
+      final noteText =
+          _competencyNoteController(student.id, competency.id).text.trim();
+      double? rawScore;
+      if (_usesNumericScore) {
+        if (scoreText.isEmpty && noteText.isEmpty) continue;
+        rawScore = _parseScore(scoreText);
+        if (rawScore == null) {
+          AppToast.showFailed('${competency.label} must be 0-100.');
+          return;
+        }
+      } else {
+        if (scoreText.isEmpty && noteText.isEmpty) continue;
+        rawScore = scoreText.isEmpty ? 3 : _parseScore(scoreText);
+        if (rawScore == null) {
+          AppToast.showFailed('${competency.label} must be 0.5-5 stars.');
+          return;
+        }
+      }
+      final normalized = _usesNumericScore ? rawScore : rawScore * 20;
+      assessments.add(
+        TeachingAssessmentBulkInput(
+          studentId: student.id,
+          competencyId: competency.id,
+          result: _resultFromNormalizedScore(normalized),
+          scoreMode: _scoreMode,
+          rawScore: rawScore,
+          normalizedScore: normalized,
+          score: normalized,
+          notes: _emptyToNull(noteText),
+        ),
+      );
+    }
+
+    final notes = <StudentSessionNoteInput>[];
+    for (final noteType in StudentSessionNoteType.values) {
+      final comment = _noteController(student.id, noteType).text.trim();
+      if (comment.isEmpty) continue;
+      final rating = _noteRatings[student.id]?[noteType] ?? 3;
+      notes.add(
+        StudentSessionNoteInput(
+          studentId: student.id,
+          noteType: noteType,
+          comment: comment,
+          scoreMode: TeachingScoreMode.star5,
+          rawScore: rating,
+          normalizedScore: rating * 20,
+          followUpNeeded: false,
+        ),
+      );
+    }
+
+    try {
+      await context.read<TeachingActivityDetailCubit>().saveStudentReport(
+            attendance: TeachingAttendanceRecord(
+              teachingActivityId: activityId,
+              studentId: student.id,
+              status: status,
+              notes: _emptyToNull(attendanceNote),
+            ),
+            assessmentType: _assessmentType,
+            assessments: assessments,
+            notes: notes,
+          );
+      AppToast.showSuccess('${student.displayName} report saved.');
+    } catch (_) {}
+  }
+
+  double? _parseScore(String value) {
+    final score = double.tryParse(value.replaceAll(',', '.'));
+    if (score == null) return null;
+    if (_usesNumericScore) {
+      if (score < 0 || score > 100) return null;
+      return score;
+    }
+    if (score < 0.5 || score > 5) return null;
+    final doubled = score * 2;
+    if ((doubled - doubled.round()).abs() > 0.001) return null;
+    return score;
+  }
+
+  Future<void> _showNoteHistory(ClassStudentOption student) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _StudentNoteHistoryDialog(
+        student: student,
+        notes: widget.detail.studentNotes
+            .where((note) => note.studentId == student.id)
+            .toList(),
+        teacherName: widget.detail.activity.teacherName,
+        disabled: _disabled,
+        cubit: context.read<TeachingActivityDetailCubit>(),
+      ),
+    );
+  }
+}
+
+class _SubPanel extends StatelessWidget {
+  const _SubPanel({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+    this.initiallyExpanded = true,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget child;
+  final bool initiallyExpanded;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: AppColors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: initiallyExpanded,
+          maintainState: true,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          collapsedShape: const RoundedRectangleBorder(),
+          shape: const RoundedRectangleBorder(),
+          iconColor: AppColors.primary,
+          collapsedIconColor: AppColors.textSecondary,
+          title: Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              subtitle,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+              ),
+            ),
+          ),
+          children: [child],
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactAttendanceMenu extends StatelessWidget {
+  const _CompactAttendanceMenu({
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final String value;
+  final bool enabled;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      enabled: enabled,
+      tooltip: 'Attendance',
+      onSelected: onChanged,
+      itemBuilder: (context) => TeachingAttendanceStatus.values
+          .map(
+            (status) => PopupMenuItem(
+              value: status,
+              child: Row(
+                children: [
+                  Icon(
+                    value == status ? Icons.check : Icons.circle_outlined,
+                    size: 16,
+                    color: value == status
+                        ? _attendanceColor(status)
+                        : AppColors.textHint,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(_label(status)),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+        decoration: BoxDecoration(
+          color: _attendanceColor(value).withValues(alpha: 0.12),
+          border: Border.all(color: _attendanceColor(value).withValues(alpha: 0.28)),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                _label(value),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: _attendanceColor(value),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_down, size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CompetencyScoreRow extends StatelessWidget {
+  const _CompetencyScoreRow({
+    required this.competency,
+    required this.score,
+    required this.noteController,
+    required this.usesNumericScore,
+    required this.enabled,
+    required this.onScoreChanged,
+  });
+
+  final CompetencyOption competency;
+  final String score;
+  final TextEditingController noteController;
+  final bool usesNumericScore;
+  final bool enabled;
+  final ValueChanged<String> onScoreChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scoreField = usesNumericScore
+        ? SizedBox(
+            width: 110,
+            child: TextFormField(
+              key: ValueKey('competency-score-${competency.id}-$score'),
+              initialValue: score,
+              enabled: enabled,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(hintText: '0-100'),
+              onChanged: onScoreChanged,
+            ),
+          )
+        : SizedBox(
+            width: 190,
+            child: _StarRatingInput(
+              value: double.tryParse(score),
+              enabled: enabled,
+              onChanged: (value) => onScoreChanged(_formatScore(value)),
+            ),
+          );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 720;
+        final title = Text(
+          competency.label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+        );
+        final note = TextField(
+          controller: noteController,
+          enabled: enabled,
+          minLines: 1,
+          maxLines: 2,
+          style: const TextStyle(fontSize: 12),
+          decoration: const InputDecoration(
+            labelText: 'Assessment note',
+            hintText: 'Optional',
+          ),
+        );
+
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              title,
+              const SizedBox(height: 8),
+              scoreField,
+              const SizedBox(height: 8),
+              note,
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: title),
+            const SizedBox(width: 10),
+            scoreField,
+            const SizedBox(width: 10),
+            Expanded(child: note),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ObservationNoteRow extends StatelessWidget {
+  const _ObservationNoteRow({
+    required this.label,
+    required this.rating,
+    required this.controller,
+    required this.enabled,
+    required this.onRatingChanged,
+  });
+
+  final String label;
+  final double rating;
+  final TextEditingController controller;
+  final bool enabled;
+  final ValueChanged<double> onRatingChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 720;
+        final title = Text(
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+        );
+        final stars = SizedBox(
+          width: 190,
+          child: _StarRatingInput(
+            value: rating,
+            enabled: enabled,
+            onChanged: onRatingChanged,
+          ),
+        );
+        final note = TextField(
+          controller: controller,
+          enabled: enabled,
+          minLines: 1,
+          maxLines: 2,
+          style: const TextStyle(fontSize: 12),
+          decoration: const InputDecoration(
+            labelText: 'Note',
+            hintText: 'Optional',
+          ),
+        );
+
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              title,
+              const SizedBox(height: 8),
+              stars,
+              const SizedBox(height: 8),
+              note,
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(width: 210, child: title),
+            const SizedBox(width: 10),
+            stars,
+            const SizedBox(width: 10),
+            Expanded(child: note),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _StudentNoteHistoryDialog extends StatelessWidget {
+  const _StudentNoteHistoryDialog({
+    required this.student,
+    required this.notes,
+    required this.teacherName,
+    required this.disabled,
+    required this.cubit,
+  });
+
+  final ClassStudentOption student;
+  final List<StudentSessionNoteRecord> notes;
+  final String? teacherName;
+  final bool disabled;
+  final TeachingActivityDetailCubit cubit;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = _studentNoteHistoryGroups(notes, teacherName);
+    return AlertDialog(
+      title: Text('${student.displayName} Notes'),
+      content: SizedBox(
+        width: 640,
+        height: 460,
+        child: notes.isEmpty
+            ? const Center(
+                child: Text(
+                  'No note history for this student.',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              )
+            : ListView.separated(
+                itemCount: groups.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final group = groups[index];
+                  return _StudentNoteHistoryCard(
+                    group: group,
+                    disabled: disabled,
+                    onEdit: (note) {
+                      final navigator = Navigator.of(context);
+                      final rootContext = navigator.context;
+                      navigator.pop();
+                      showDialog<void>(
+                        context: rootContext,
+                        builder: (_) => _StudentNoteDialog(
+                          student: student,
+                          note: note,
+                          cubit: cubit,
+                          disabled: disabled,
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    );
+  }
+}
+
+class _StudentNoteHistoryCard extends StatelessWidget {
+  const _StudentNoteHistoryCard({
+    required this.group,
+    required this.disabled,
+    required this.onEdit,
+  });
+
+  final _StudentNoteHistoryGroup group;
+  final bool disabled;
+  final ValueChanged<StudentSessionNoteRecord> onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.forum_outlined,
+                  size: 18,
+                  color: AppColors.primaryDark,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      group.dateLabel,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Added by ${group.teacherName}',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (final note in group.notes) ...[
+            _StudentNoteCommentBlock(
+              note: note,
+              disabled: disabled,
+              onEdit: () => onEdit(note),
+            ),
+            if (note != group.notes.last) const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StudentNoteCommentBlock extends StatelessWidget {
+  const _StudentNoteCommentBlock({
+    required this.note,
+    required this.disabled,
+    required this.onEdit,
+  });
+
+  final StudentSessionNoteRecord note;
+  final bool disabled;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final followUpNotes = _emptyToNull(note.followUpNotes);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  '${_label(note.noteType)} (${_formatScore(note.rawScore ?? 3)} stars)',
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Edit',
+                onPressed: disabled ? null : onEdit,
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.edit_outlined, size: 18),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            note.comment,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 12,
+              height: 1.35,
+            ),
+          ),
+          if (note.followUpNeeded && followUpNotes != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Follow up: $followUpNotes',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StudentNoteHistoryGroup {
+  const _StudentNoteHistoryGroup({
+    required this.dateLabel,
+    required this.teacherName,
+    required this.notes,
+  });
+
+  final String dateLabel;
+  final String teacherName;
+  final List<StudentSessionNoteRecord> notes;
 }
 
 class _AttendanceTab extends StatefulWidget {
@@ -717,7 +1842,7 @@ class _AssessmentTabState extends State<_AssessmentTab> {
     final filteredStudents = _filteredStudents;
     final typeLabel = _label(_assessmentType);
     final scoreLabel = _usesNumericScore ? 'Default score' : 'Default rating';
-    final scoreHint = _usesNumericScore ? '1-100' : '0.5-5';
+    final scoreHint = _usesNumericScore ? '0-100' : '0.5-5';
 
     return Column(
       children: [
@@ -942,7 +2067,7 @@ class _AssessmentTabState extends State<_AssessmentTab> {
     if (scoreText.isNotEmpty && _parseScore(scoreText) == null) {
       AppToast.showFailed(
         _usesNumericScore
-            ? 'Default score must be between 1 and 100.'
+            ? 'Default score must be between 0 and 100.'
             : 'Default rating must be between 0.5 and 5.',
       );
       return;
@@ -979,7 +2104,7 @@ class _AssessmentTabState extends State<_AssessmentTab> {
         );
         AppToast.showFailed(
           _usesNumericScore
-              ? '${student.displayName} must have a score between 1 and 100.'
+              ? '${student.displayName} must have a score between 0 and 100.'
               : '${student.displayName} must have a rating between 0.5 and 5.',
         );
         return;
@@ -1012,7 +2137,7 @@ class _AssessmentTabState extends State<_AssessmentTab> {
     final score = double.tryParse(value.replaceAll(',', '.'));
     if (score == null) return null;
     if (_usesNumericScore) {
-      if (score < 1 || score > 100) return null;
+      if (score < 0 || score > 100) return null;
       return score;
     }
     if (score < 0.5 || score > 5) return null;
@@ -1085,7 +2210,7 @@ class _AssessmentStudentRow extends StatelessWidget {
                   initialValue: score,
                   enabled: !disabled,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(hintText: '1-100'),
+                  decoration: const InputDecoration(hintText: '0-100'),
                   onChanged: onScoreChanged,
                 )
               : _StarRatingInput(
@@ -1183,9 +2308,15 @@ class _NotesTab extends StatelessWidget {
 }
 
 class _SessionNotesForm extends StatefulWidget {
-  const _SessionNotesForm({required this.detail});
+  const _SessionNotesForm({
+    required this.detail,
+    this.framed = true,
+    this.cubit,
+  });
 
   final TeachingActivityDetailData detail;
+  final bool framed;
+  final TeachingActivityDetailCubit? cubit;
 
   @override
   State<_SessionNotesForm> createState() => _SessionNotesFormState();
@@ -1239,136 +2370,42 @@ class _SessionNotesFormState extends State<_SessionNotesForm> {
           alignment: Alignment.topCenter,
           child: SizedBox(
             width: constraints.maxWidth,
-            child: _Panel(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const _SectionHeader(
-                    title: 'Session Notes',
-                    subtitle:
-                        'Summarize lesson completion, class condition, and follow-up.',
-                  ),
-                  const SizedBox(height: 12),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final twoColumns = constraints.maxWidth >= 720;
-                      final fieldWidth = twoColumns
-                          ? (constraints.maxWidth - 12) / 2
-                          : constraints.maxWidth;
-
-                      return Wrap(
-                        spacing: 12,
-                        runSpacing: 10,
-                        children: [
-                          SizedBox(
-                            width: fieldWidth,
-                            child: AppDropdownButtonFormField<String>(
-                              initialValue: _assessmentType,
-                              key: ValueKey(
-                                'session-assessment-type-$_assessmentType',
-                              ),
-                              isExpanded: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Assessment type',
-                              ),
-                              items: TeachingAssessmentType.values
-                                  .map(
-                                    (type) => DropdownMenuItem(
-                                      value: type,
-                                      child: Text(_label(type)),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: disabled
-                                  ? null
-                                  : (value) => setState(
-                                        () => _assessmentType =
-                                            value ?? _assessmentType,
-                                      ),
-                            ),
-                          ),
-                          SizedBox(
-                            width: fieldWidth,
-                            child: AppDropdownButtonFormField<int>(
-                              initialValue: _completion,
-                              key: ValueKey('completion-${_completion ?? ''}'),
-                              isExpanded: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Lesson completion',
-                              ),
-                              hint: const Text('Select completion'),
-                              items: const [25, 50, 75, 100]
-                                  .map(
-                                    (value) => DropdownMenuItem(
-                                      value: value,
-                                      child: Text('$value%'),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: disabled
-                                  ? null
-                                  : (value) =>
-                                      setState(() => _completion = value),
-                            ),
-                          ),
-                          SizedBox(
-                            width: fieldWidth,
-                            child: _NoteField(
-                              controller: _materialController,
-                              label: 'Material covered',
-                              enabled: !disabled,
-                            ),
-                          ),
-                          SizedBox(
-                            width: fieldWidth,
-                            child: _NoteField(
-                              controller: _conditionController,
-                              label: 'Class condition',
-                              enabled: !disabled,
-                            ),
-                          ),
-                          SizedBox(
-                            width: fieldWidth,
-                            child: _NoteField(
-                              controller: _challengesController,
-                              label: 'Teaching challenges',
-                              enabled: !disabled,
-                            ),
-                          ),
-                          SizedBox(
-                            width: fieldWidth,
-                            child: _NoteField(
-                              controller: _followUpController,
-                              label: 'Follow up plan',
-                              enabled: !disabled,
-                            ),
-                          ),
-                          SizedBox(
-                            width: fieldWidth,
-                            child: _NoteField(
-                              controller: _notesController,
-                              label: 'Session notes',
-                              enabled: !disabled,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: FilledButton.icon(
-                      onPressed: disabled ? null : _save,
-                      icon: const Icon(Icons.save_outlined, size: 18),
-                      label: const Text('Save Notes'),
+            child: widget.framed
+                ? _Panel(
+                    padding: const EdgeInsets.all(14),
+                    child: _SessionNotesFields(
+                      disabled: disabled,
+                      assessmentType: _assessmentType,
+                      completion: _completion,
+                      materialController: _materialController,
+                      conditionController: _conditionController,
+                      challengesController: _challengesController,
+                      followUpController: _followUpController,
+                      notesController: _notesController,
+                      onAssessmentTypeChanged: (value) => setState(
+                        () => _assessmentType = value ?? _assessmentType,
+                      ),
+                      onCompletionChanged: (value) =>
+                          setState(() => _completion = value),
+                      onSave: _save,
                     ),
+                  )
+                : _SessionNotesFields(
+                    disabled: disabled,
+                    assessmentType: _assessmentType,
+                    completion: _completion,
+                    materialController: _materialController,
+                    conditionController: _conditionController,
+                    challengesController: _challengesController,
+                    followUpController: _followUpController,
+                    notesController: _notesController,
+                    onAssessmentTypeChanged: (value) => setState(
+                      () => _assessmentType = value ?? _assessmentType,
+                    ),
+                    onCompletionChanged: (value) =>
+                        setState(() => _completion = value),
+                    onSave: _save,
                   ),
-                ],
-              ),
-            ),
           ),
         );
       },
@@ -1376,7 +2413,7 @@ class _SessionNotesFormState extends State<_SessionNotesForm> {
   }
 
   Future<void> _save() async {
-    final cubit = context.read<TeachingActivityDetailCubit>();
+    final cubit = widget.cubit ?? context.read<TeachingActivityDetailCubit>();
     final currentType = widget.detail.activity.assessmentType ??
         (widget.detail.assessments.isEmpty
             ? null
@@ -1400,7 +2437,163 @@ class _SessionNotesFormState extends State<_SessionNotesForm> {
         assessmentType: _assessmentType,
       );
       AppToast.showSuccess('Session notes saved.');
+      if (mounted && !widget.framed) Navigator.of(context).maybePop();
     } catch (_) {}
+  }
+}
+
+class _SessionNotesFields extends StatelessWidget {
+  const _SessionNotesFields({
+    required this.disabled,
+    required this.assessmentType,
+    required this.completion,
+    required this.materialController,
+    required this.conditionController,
+    required this.challengesController,
+    required this.followUpController,
+    required this.notesController,
+    required this.onAssessmentTypeChanged,
+    required this.onCompletionChanged,
+    required this.onSave,
+  });
+
+  final bool disabled;
+  final String assessmentType;
+  final int? completion;
+  final TextEditingController materialController;
+  final TextEditingController conditionController;
+  final TextEditingController challengesController;
+  final TextEditingController followUpController;
+  final TextEditingController notesController;
+  final ValueChanged<String?> onAssessmentTypeChanged;
+  final ValueChanged<int?> onCompletionChanged;
+  final VoidCallback onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const _SectionHeader(
+                    title: 'Session Notes',
+                    subtitle:
+                        'Summarize lesson completion, class condition, and follow-up.',
+                  ),
+                  const SizedBox(height: 12),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final twoColumns = constraints.maxWidth >= 720;
+                      final fieldWidth = twoColumns
+                          ? (constraints.maxWidth - 12) / 2
+                          : constraints.maxWidth;
+
+                      return Wrap(
+                        spacing: 12,
+                        runSpacing: 10,
+                        children: [
+                          SizedBox(
+                            width: fieldWidth,
+                            child: AppDropdownButtonFormField<String>(
+                              initialValue: assessmentType,
+                              key: ValueKey(
+                                'session-assessment-type-$assessmentType',
+                              ),
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Assessment type',
+                              ),
+                              items: TeachingAssessmentType.values
+                                  .map(
+                                    (type) => DropdownMenuItem(
+                                      value: type,
+                                      child: Text(_label(type)),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: disabled
+                                  ? null
+                                  : onAssessmentTypeChanged,
+                            ),
+                          ),
+                          SizedBox(
+                            width: fieldWidth,
+                            child: AppDropdownButtonFormField<int>(
+                              initialValue: completion,
+                              key: ValueKey('completion-${completion ?? ''}'),
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Lesson completion',
+                              ),
+                              hint: const Text('Select completion'),
+                              items: const [25, 50, 75, 100]
+                                  .map(
+                                    (value) => DropdownMenuItem(
+                                      value: value,
+                                      child: Text('$value%'),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: disabled
+                                  ? null
+                                  : onCompletionChanged,
+                            ),
+                          ),
+                          SizedBox(
+                            width: fieldWidth,
+                            child: _NoteField(
+                              controller: materialController,
+                              label: 'Material covered',
+                              enabled: !disabled,
+                            ),
+                          ),
+                          SizedBox(
+                            width: fieldWidth,
+                            child: _NoteField(
+                              controller: conditionController,
+                              label: 'Class condition',
+                              enabled: !disabled,
+                            ),
+                          ),
+                          SizedBox(
+                            width: fieldWidth,
+                            child: _NoteField(
+                              controller: challengesController,
+                              label: 'Teaching challenges',
+                              enabled: !disabled,
+                            ),
+                          ),
+                          SizedBox(
+                            width: fieldWidth,
+                            child: _NoteField(
+                              controller: followUpController,
+                              label: 'Follow up plan',
+                              enabled: !disabled,
+                            ),
+                          ),
+                          SizedBox(
+                            width: fieldWidth,
+                            child: _NoteField(
+                              controller: notesController,
+                              label: 'Session notes',
+                              enabled: !disabled,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      onPressed: disabled ? null : onSave,
+                      icon: const Icon(Icons.save_outlined, size: 18),
+                      label: const Text('Save Notes'),
+                    ),
+                  ),
+                ],
+              );
   }
 }
 
@@ -1570,11 +2763,13 @@ class _SummaryMetric extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
+    this.trailing,
   });
 
   final String label;
   final String value;
   final IconData icon;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -1616,6 +2811,10 @@ class _SummaryMetric extends StatelessWidget {
               ],
             ),
           ),
+          if (trailing != null) ...[
+            const SizedBox(width: 4),
+            trailing!,
+          ],
         ],
       ),
     );
@@ -1746,7 +2945,7 @@ class _AssessmentModeBanner extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '$label uses ${usesNumericScore ? 'numeric score 1-100' : 'star rating 0.5-5'}.',
+              '$label uses ${usesNumericScore ? 'numeric score 0-100' : 'star rating 0.5-5'}.',
               style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 12,
@@ -2178,6 +3377,35 @@ Future<bool> _confirmDelete(BuildContext context, String message) async {
   return result ?? false;
 }
 
+Future<bool> _confirmResetReport(BuildContext context) async {
+  final result = await showDialog<bool>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Reset Teaching Report?'),
+        content: const Text(
+          'This will remove all attendance, competency scores, student notes, and session notes for this report.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: AppColors.white,
+            ),
+            child: const Text('Reset All'),
+          ),
+        ],
+      );
+    },
+  );
+  return result ?? false;
+}
+
 Future<bool> _confirmAssessmentTypeChange(BuildContext context) async {
   final result = await showDialog<bool>(
     context: context,
@@ -2206,6 +3434,89 @@ Future<bool> _confirmAssessmentTypeChange(BuildContext context) async {
 String _formatScore(double value) {
   if (value == value.roundToDouble()) return value.toInt().toString();
   return value.toStringAsFixed(1);
+}
+
+List<_StudentNoteHistoryGroup> _studentNoteHistoryGroups(
+  List<StudentSessionNoteRecord> notes,
+  String? teacherName,
+) {
+  final groups = <_StudentNoteHistoryGroup>[];
+  final indexByKey = <String, int>{};
+
+  for (final note in notes) {
+    final author = _historyAuthor(note.createdByTeacherName, teacherName);
+    final rawDate = note.createdAt ?? note.updatedAt;
+    final date = _parseDateTime(rawDate);
+    final key = '${_historyMinuteKey(date, rawDate)}|$author';
+    final existingIndex = indexByKey[key];
+
+    if (existingIndex == null) {
+      indexByKey[key] = groups.length;
+      groups.add(
+        _StudentNoteHistoryGroup(
+          dateLabel: _formatHistoryDateTime(date, rawDate),
+          teacherName: author,
+          notes: [note],
+        ),
+      );
+      continue;
+    }
+
+    groups[existingIndex].notes.add(note);
+  }
+
+  return groups;
+}
+
+String _historyAuthor(String? noteTeacherName, String? fallbackTeacherName) {
+  final noteTeacher = noteTeacherName?.trim();
+  if (noteTeacher != null && noteTeacher.isNotEmpty) return noteTeacher;
+  final fallback = fallbackTeacherName?.trim();
+  if (fallback != null && fallback.isNotEmpty) return fallback;
+  return 'Teacher';
+}
+
+DateTime? _parseDateTime(String? value) {
+  if (value == null || value.trim().isEmpty) return null;
+  return DateTime.tryParse(value)?.toLocal();
+}
+
+String _historyMinuteKey(DateTime? value, String? fallback) {
+  if (value == null) return fallback ?? 'unknown';
+  return [
+    value.year,
+    value.month.toString().padLeft(2, '0'),
+    value.day.toString().padLeft(2, '0'),
+    value.hour.toString().padLeft(2, '0'),
+    value.minute.toString().padLeft(2, '0'),
+  ].join('-');
+}
+
+String _formatHistoryDateTime(DateTime? value, String? fallback) {
+  if (value == null) {
+    final raw = fallback?.trim();
+    return raw == null || raw.isEmpty ? 'Unknown date' : raw;
+  }
+
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  final day = value.day.toString().padLeft(2, '0');
+  final month = months[value.month - 1];
+  final hour = value.hour.toString().padLeft(2, '0');
+  final minute = value.minute.toString().padLeft(2, '0');
+  return '$day $month ${value.year}, $hour:$minute';
 }
 
 String _resultFromNormalizedScore(double? value) {

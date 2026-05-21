@@ -606,6 +606,188 @@ class TeachingActivityRepository {
     });
   }
 
+  Future<void> saveStudentReport({
+    required String activityId,
+    required TeachingAttendanceRecord attendance,
+    required String assessmentType,
+    required List<TeachingAssessmentBulkInput> assessments,
+    required List<StudentSessionNoteInput> notes,
+  }) async {
+    final db = await _databaseProvider.database;
+    final now = DateTime.now().toIso8601String();
+
+    await db.transaction((txn) async {
+      await _ensureEditable(txn, activityId);
+      final teacherId = await _activityTeacherId(txn, activityId);
+      final attendanceExisting = await txn.query(
+        'teaching_attendances',
+        columns: const ['id', 'created_at'],
+        where: 'teaching_activity_id = ? AND student_id = ?',
+        whereArgs: [activityId, attendance.studentId],
+        limit: 1,
+      );
+      final attendanceId = attendanceExisting.isEmpty
+          ? _uuid.v4()
+          : attendanceExisting.first['id'].toString();
+      await txn.insert(
+        'teaching_attendances',
+        {
+          'id': attendanceId,
+          'teaching_activity_id': activityId,
+          'student_id': attendance.studentId,
+          'status': attendance.status,
+          'check_in_time': attendance.checkInTime,
+          'notes': attendance.notes,
+          'created_at': attendanceExisting.isEmpty
+              ? now
+              : attendanceExisting.first['created_at']?.toString() ?? now,
+          'updated_at': now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+      for (final record in assessments) {
+        final where = record.competencyId == null ||
+                record.competencyId!.isEmpty
+            ? '''
+              teaching_activity_id = ?
+              AND student_id = ?
+              AND assessment_type = ?
+              AND (competency_id IS NULL OR competency_id = '')
+              '''
+            : '''
+              teaching_activity_id = ?
+              AND student_id = ?
+              AND assessment_type = ?
+              AND competency_id = ?
+              ''';
+        final whereArgs = <Object?>[
+          activityId,
+          record.studentId,
+          assessmentType,
+          if (record.competencyId != null && record.competencyId!.isNotEmpty)
+            record.competencyId,
+        ];
+        final existing = await txn.query(
+          'teaching_assessments',
+          columns: const ['id', 'created_at'],
+          where: where,
+          whereArgs: whereArgs,
+          orderBy: 'created_at DESC',
+          limit: 1,
+        );
+        final values = {
+          'student_id': record.studentId,
+          'competency_id': record.competencyId == null ||
+                  record.competencyId!.isEmpty
+              ? null
+              : record.competencyId,
+          'assessment_type': assessmentType,
+          'result': record.result,
+          'score_mode': record.scoreMode,
+          'raw_score': record.rawScore,
+          'normalized_score': record.normalizedScore,
+          'score': record.score,
+          'notes': record.notes,
+          'updated_at': now,
+        };
+        if (existing.isEmpty) {
+          await txn.insert('teaching_assessments', {
+            'id': _uuid.v4(),
+            'teaching_activity_id': activityId,
+            ...values,
+            'created_at': now,
+          });
+        } else {
+          await txn.update(
+            'teaching_assessments',
+            values,
+            where: 'id = ?',
+            whereArgs: [existing.first['id']],
+          );
+        }
+      }
+
+      for (final note in notes) {
+        final existing = await txn.query(
+          'student_session_notes',
+          columns: const ['id', 'created_at'],
+          where:
+              'teaching_activity_id = ? AND student_id = ? AND note_type = ?',
+          whereArgs: [activityId, note.studentId, note.noteType],
+          orderBy: 'created_at DESC',
+          limit: 1,
+        );
+        final values = {
+          'student_id': note.studentId,
+          'note_type': note.noteType,
+          'comment': note.comment,
+          'score_mode': note.scoreMode,
+          'raw_score': note.rawScore,
+          'normalized_score': note.normalizedScore,
+          'follow_up_needed': note.followUpNeeded ? 1 : 0,
+          'follow_up_notes': note.followUpNotes,
+          'updated_at': now,
+        };
+        if (existing.isEmpty) {
+          await txn.insert('student_session_notes', {
+            'id': _uuid.v4(),
+            'teaching_activity_id': activityId,
+            ...values,
+            'created_by_teacher_id': teacherId,
+            'created_at': now,
+          });
+        } else {
+          await txn.update(
+            'student_session_notes',
+            values,
+            where: 'id = ?',
+            whereArgs: [existing.first['id']],
+          );
+        }
+      }
+    });
+  }
+
+  Future<void> resetReport(String activityId) async {
+    final db = await _databaseProvider.database;
+    final now = DateTime.now().toIso8601String();
+
+    await db.transaction((txn) async {
+      await _ensureEditable(txn, activityId);
+      await txn.delete(
+        'teaching_attendances',
+        where: 'teaching_activity_id = ?',
+        whereArgs: [activityId],
+      );
+      await txn.delete(
+        'teaching_assessments',
+        where: 'teaching_activity_id = ?',
+        whereArgs: [activityId],
+      );
+      await txn.delete(
+        'student_session_notes',
+        where: 'teaching_activity_id = ?',
+        whereArgs: [activityId],
+      );
+      await txn.update(
+        'teaching_activities',
+        {
+          'lesson_completion_percent': null,
+          'material_covered': null,
+          'class_condition': null,
+          'teaching_challenges': null,
+          'follow_up_plan': null,
+          'session_notes': null,
+          'assessment_type': null,
+          'updated_at': now,
+        },
+        where: 'id = ?',
+        whereArgs: [activityId],
+      );
+    });
+  }
+
   Future<void> deleteAssessment(String id) async {
     final db = await _databaseProvider.database;
     final row = await db.query(
@@ -635,6 +817,7 @@ class TeachingActivityRepository {
     final db = await _databaseProvider.database;
     final now = DateTime.now().toIso8601String();
     await _ensureEditable(db, activityId);
+    final teacherId = await _activityTeacherId(db, activityId);
     await db.insert('student_session_notes', {
       'id': _uuid.v4(),
       'teaching_activity_id': activityId,
@@ -646,6 +829,7 @@ class TeachingActivityRepository {
       'normalized_score': normalizedScore,
       'follow_up_needed': followUpNeeded ? 1 : 0,
       'follow_up_notes': followUpNotes,
+      'created_by_teacher_id': teacherId,
       'created_at': now,
       'updated_at': now,
     });
@@ -775,13 +959,35 @@ class TeachingActivityRepository {
     String activityId,
   ) async {
     final rows = await db.rawQuery('''
-      SELECT ssn.*, s.full_name AS student_name
+      SELECT
+        ssn.*,
+        s.full_name AS student_name,
+        COALESCE(created_teacher.full_name, activity_teacher.full_name) AS created_by_teacher_name
       FROM student_session_notes ssn
       LEFT JOIN students s ON s.id = ssn.student_id
+      LEFT JOIN teaching_activities ta ON ta.id = ssn.teaching_activity_id
+      LEFT JOIN teachers created_teacher ON created_teacher.id = ssn.created_by_teacher_id
+      LEFT JOIN teachers activity_teacher ON activity_teacher.id = ta.teacher_id
       WHERE ssn.teaching_activity_id = ?
       ORDER BY ssn.created_at DESC
     ''', [activityId]);
     return rows.map(StudentSessionNoteRecord.fromMap).toList();
+  }
+
+  Future<String?> _activityTeacherId(
+    DatabaseExecutor db,
+    String activityId,
+  ) async {
+    final rows = await db.query(
+      'teaching_activities',
+      columns: const ['teacher_id'],
+      where: 'id = ?',
+      whereArgs: [activityId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    final teacherId = rows.first['teacher_id']?.toString();
+    return teacherId == null || teacherId.isEmpty ? null : teacherId;
   }
 
   Future<Map<String, Object?>?> _activityBySchedule(

@@ -210,6 +210,45 @@ class TeachingActivityDetailCubit
     }
   }
 
+  Future<void> saveStudentReport({
+    required TeachingAttendanceRecord attendance,
+    required String assessmentType,
+    required List<TeachingAssessmentBulkInput> assessments,
+    required List<StudentSessionNoteInput> notes,
+  }) async {
+    final activityId = _activityId;
+    if (activityId == null) return;
+    emit(state.copyWith(isSaving: true, clearError: true));
+    try {
+      await _repository.saveStudentReport(
+        activityId: activityId,
+        attendance: attendance,
+        assessmentType: assessmentType,
+        assessments: assessments,
+        notes: notes,
+      );
+      emit(state.copyWith(isSaving: false));
+      await loadDetail(activityId);
+    } catch (e) {
+      emit(state.copyWith(isSaving: false, error: e.toString()));
+      rethrow;
+    }
+  }
+
+  Future<void> resetReport() async {
+    final activityId = _activityId;
+    if (activityId == null) return;
+    emit(state.copyWith(isSaving: true, clearError: true));
+    try {
+      await _repository.resetReport(activityId);
+      emit(state.copyWith(isSaving: false));
+      await loadDetail(activityId);
+    } catch (e) {
+      emit(state.copyWith(isSaving: false, error: e.toString()));
+      rethrow;
+    }
+  }
+
   Future<void> deleteAssessment(String id) async {
     final activityId = _activityId;
     if (activityId == null) return;

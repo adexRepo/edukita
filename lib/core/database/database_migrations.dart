@@ -683,6 +683,12 @@ class DatabaseMigrations {
       column: 'normalized_score',
       definition: 'REAL',
     );
+    await _addColumnIfMissing(
+      db,
+      table: 'student_session_notes',
+      column: 'created_by_teacher_id',
+      definition: 'TEXT',
+    );
     await DatabaseTables.indexes(db);
   }
 
