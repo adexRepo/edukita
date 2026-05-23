@@ -619,6 +619,15 @@ class TeachingActivityRepository {
     await db.transaction((txn) async {
       await _ensureEditable(txn, activityId);
       final teacherId = await _activityTeacherId(txn, activityId);
+      await txn.update(
+        'teaching_activities',
+        {
+          'assessment_type': assessmentType,
+          'updated_at': now,
+        },
+        where: 'id = ?',
+        whereArgs: [activityId],
+      );
       final attendanceExisting = await txn.query(
         'teaching_attendances',
         columns: const ['id', 'created_at'],

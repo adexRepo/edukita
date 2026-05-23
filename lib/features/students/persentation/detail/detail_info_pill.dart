@@ -14,7 +14,6 @@ class DetailInfoPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 180,
       constraints: const BoxConstraints(minHeight: 54),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(

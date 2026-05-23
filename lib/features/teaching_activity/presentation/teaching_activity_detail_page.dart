@@ -5,6 +5,7 @@ import 'package:edukita/widgets/app_error_dialog.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 class TeachingActivityDetailPage extends StatefulWidget {
@@ -235,23 +236,14 @@ class _SessionOverview extends StatelessWidget {
               _InfoTile(label: 'Date', value: activity.activityDate),
               _InfoTile(label: 'Time', value: activity.displayTime),
               _InfoTile(label: 'Level', value: activity.className ?? '-'),
-              _InfoTile(
-                label: 'Teacher',
-                value: activity.teacherName ?? '-',
-              ),
-              _InfoTile(
-                label: 'Subject',
-                value: activity.subjectName ?? '-',
-              ),
+              _InfoTile(label: 'Teacher', value: activity.teacherName ?? '-'),
+              _InfoTile(label: 'Subject', value: activity.subjectName ?? '-'),
               _InfoTile(
                 label: 'Unit / Material',
                 value: activity.unitName ?? activity.title ?? '-',
                 width: 220,
               ),
-              _InfoTile(
-                label: 'Strategy',
-                value: activity.strategyName ?? '-',
-              ),
+              _InfoTile(label: 'Strategy', value: activity.strategyName ?? '-'),
               _InfoTile(
                 label: 'Assessment',
                 value: _label(
@@ -356,12 +348,14 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
   final Map<String, Map<String, double>> _noteRatings = {};
   final Map<String, Map<String, TextEditingController>> _noteComments = {};
   String? _selectedStudentId;
+  late String _assessmentType;
 
-  String get _assessmentType =>
-      widget.detail.activity.assessmentType ??
-      (widget.detail.assessments.isEmpty
-          ? TeachingAssessmentType.values.first
-          : widget.detail.assessments.first.assessmentType);
+  String _assessmentTypeFromDetail() {
+    return widget.detail.activity.assessmentType ??
+        (widget.detail.assessments.isEmpty
+            ? TeachingAssessmentType.values.first
+            : widget.detail.assessments.first.assessmentType);
+  }
 
   bool get _usesNumericScore =>
       TeachingAssessmentType.usesNumericScore(_assessmentType);
@@ -430,22 +424,35 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
     _noteComments.clear();
   }
 
+  void _disposeCompetencyControllers() {
+    for (final byStudent in _competencyNotes.values) {
+      for (final controller in byStudent.values) {
+        controller.dispose();
+      }
+    }
+    _competencyNotes.clear();
+    _competencyScores.clear();
+  }
+
   void _hydrate() {
     _disposeReportControllers();
+    _assessmentType = _assessmentTypeFromDetail();
     _competencyScores.clear();
     _noteRatings.clear();
-    final activeIds = widget.detail.students.map((student) => student.id).toSet();
+    final activeIds = widget.detail.students
+        .map((student) => student.id)
+        .toSet();
     if (_selectedStudentId == null || !activeIds.contains(_selectedStudentId)) {
-      _selectedStudentId =
-          widget.detail.students.isEmpty ? null : widget.detail.students.first.id;
+      _selectedStudentId = widget.detail.students.isEmpty
+          ? null
+          : widget.detail.students.first.id;
     }
 
     _attendanceStatus
       ..clear()
       ..addEntries(
         widget.detail.students.map(
-          (student) =>
-              MapEntry(student.id, TeachingAttendanceStatus.present),
+          (student) => MapEntry(student.id, TeachingAttendanceStatus.present),
         ),
       );
     for (final record in widget.detail.attendances) {
@@ -464,23 +471,45 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
       }
     }
 
+    _loadCompetencyInputsForCurrentType();
+
+    for (final note in widget.detail.studentNotes) {
+      _noteRatings.putIfAbsent(note.studentId, () => {})[note.noteType] =
+          note.rawScore ?? 3;
+      _noteController(note.studentId, note.noteType).text = note.comment;
+    }
+  }
+
+  void _loadCompetencyInputsForCurrentType() {
+    _disposeCompetencyControllers();
+    for (final student in widget.detail.students) {
+      _competencyScores.putIfAbsent(student.id, () => {});
+      _competencyNotes.putIfAbsent(student.id, () => {});
+    }
     for (final record in widget.detail.assessments) {
       if (record.assessmentType != _assessmentType) continue;
       final competencyId = record.competencyId;
       if (competencyId == null || competencyId.isEmpty) continue;
-      _competencyScores
-          .putIfAbsent(record.studentId, () => {})[competencyId] =
+      _competencyScores.putIfAbsent(record.studentId, () => {})[competencyId] =
           _scoreTextForRecord(record);
       _competencyNoteController(record.studentId, competencyId).text =
           record.notes ?? '';
     }
+  }
 
-    for (final note in widget.detail.studentNotes) {
-      _noteRatings
-          .putIfAbsent(note.studentId, () => {})[note.noteType] =
-          note.rawScore ?? 3;
-      _noteController(note.studentId, note.noteType).text = note.comment;
+  Future<void> _changeAssessmentType(String? value) async {
+    final nextType = value ?? _assessmentType;
+    if (nextType == _assessmentType) return;
+
+    if (widget.detail.assessments.isNotEmpty) {
+      final confirmed = await _confirmAssessmentTypeChange(context);
+      if (!mounted || !confirmed) return;
     }
+
+    setState(() {
+      _assessmentType = nextType;
+      _loadCompetencyInputsForCurrentType();
+    });
   }
 
   TextEditingController _attendanceNoteController(String studentId) {
@@ -504,14 +533,15 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
   }
 
   String _scoreTextForRecord(TeachingAssessmentRecord record) {
-    final rawScore = record.rawScore ??
+    final rawScore =
+        record.rawScore ??
         (_usesNumericScore
             ? record.normalizedScore ?? record.score
             : record.score != null && record.score! <= 5
-                ? record.score
-                : ((record.normalizedScore ?? record.score) == null
-                    ? null
-                    : (record.normalizedScore ?? record.score)! / 20));
+            ? record.score
+            : ((record.normalizedScore ?? record.score) == null
+                  ? null
+                  : (record.normalizedScore ?? record.score)! / 20));
     return rawScore == null ? '' : _formatScore(rawScore);
   }
 
@@ -631,7 +661,8 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
                               SizedBox(
                                 width: 144,
                                 child: _CompactAttendanceMenu(
-                                  value: _attendanceStatus[student.id] ??
+                                  value:
+                                      _attendanceStatus[student.id] ??
                                       TeachingAttendanceStatus.present,
                                   enabled: !_disabled,
                                   onChanged: (value) => setState(() {
@@ -666,7 +697,8 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
                     Expanded(
                       child: Text(
                         'Reporting',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
                               fontWeight: FontWeight.w800,
                               color: AppColors.textPrimary,
                             ),
@@ -695,11 +727,6 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
             child: ListView(
               padding: const EdgeInsets.all(14),
               children: [
-                _AssessmentModeBanner(
-                  label: _label(_assessmentType),
-                  usesNumericScore: _usesNumericScore,
-                ),
-                const SizedBox(height: 12),
                 _buildAttendanceNoteBox(student),
                 const SizedBox(height: 12),
                 _buildCompetencyScoreBox(student),
@@ -719,32 +746,71 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
       subtitle: _usesNumericScore
           ? 'Quiz scores use numeric value 0-100.'
           : 'Session assessment uses star rating.',
-      child: widget.detail.competencies.isEmpty
-          ? const Text(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _FieldCaption('Assessment type'),
+              const SizedBox(height: 6),
+              AppDropdownButtonFormField<String>(
+                initialValue: _assessmentType,
+                key: ValueKey('competency-assessment-type-$_assessmentType'),
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  hintText: 'Select assessment type',
+                ),
+                items: TeachingAssessmentType.values
+                    .map(
+                      (type) => DropdownMenuItem(
+                        value: type,
+                        child: Text(_label(type)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: _disabled ? null : _changeAssessmentType,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _AssessmentModeBanner(
+            label: _label(_assessmentType),
+            usesNumericScore: _usesNumericScore,
+          ),
+          const SizedBox(height: 12),
+          if (widget.detail.competencies.isEmpty)
+            const Text(
               'No competencies registered for this unit.',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
             )
-          : Column(
+          else
+            Column(
               children: [
                 for (final competency in widget.detail.competencies) ...[
                   _CompetencyScoreRow(
                     competency: competency,
                     score: _competencyScores[student.id]?[competency.id] ?? '',
-                    noteController:
-                        _competencyNoteController(student.id, competency.id),
+                    noteController: _competencyNoteController(
+                      student.id,
+                      competency.id,
+                    ),
                     usesNumericScore: _usesNumericScore,
                     enabled: !_disabled,
-                    onScoreChanged: (value) {
-                      _competencyScores
-                          .putIfAbsent(student.id, () => {})[competency.id] =
-                          value;
-                    },
+                    onScoreChanged: (value) => setState(() {
+                      _competencyScores.putIfAbsent(
+                        student.id,
+                        () => {},
+                      )[competency.id] = value;
+                    }),
                   ),
                   if (competency != widget.detail.competencies.last)
-                    const Divider(height: 18),
+                    const _ItemSeparator(),
                 ],
               ],
             ),
+        ],
+      ),
     );
   }
 
@@ -767,7 +833,7 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
               }),
             ),
             if (noteType != StudentSessionNoteType.values.last)
-              const Divider(height: 18),
+              const _ItemSeparator(),
           ],
         ],
       ),
@@ -788,6 +854,7 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
         controller: _attendanceNoteController(student.id),
         label: required ? 'Attendance note *' : 'Attendance note',
         enabled: !_disabled,
+        showLabel: false,
       ),
     );
   }
@@ -806,10 +873,12 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
 
     final assessments = <TeachingAssessmentBulkInput>[];
     for (final competency in widget.detail.competencies) {
-      final scoreText =
-          (_competencyScores[student.id]?[competency.id] ?? '').trim();
-      final noteText =
-          _competencyNoteController(student.id, competency.id).text.trim();
+      final scoreText = (_competencyScores[student.id]?[competency.id] ?? '')
+          .trim();
+      final noteText = _competencyNoteController(
+        student.id,
+        competency.id,
+      ).text.trim();
       double? rawScore;
       if (_usesNumericScore) {
         if (scoreText.isEmpty && noteText.isEmpty) continue;
@@ -861,16 +930,16 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
 
     try {
       await context.read<TeachingActivityDetailCubit>().saveStudentReport(
-            attendance: TeachingAttendanceRecord(
-              teachingActivityId: activityId,
-              studentId: student.id,
-              status: status,
-              notes: _emptyToNull(attendanceNote),
-            ),
-            assessmentType: _assessmentType,
-            assessments: assessments,
-            notes: notes,
-          );
+        attendance: TeachingAttendanceRecord(
+          teachingActivityId: activityId,
+          studentId: student.id,
+          status: status,
+          notes: _emptyToNull(attendanceNote),
+        ),
+        assessmentType: _assessmentType,
+        assessments: assessments,
+        notes: notes,
+      );
       AppToast.showSuccess('${student.displayName} report saved.');
     } catch (_) {}
   }
@@ -1002,7 +1071,9 @@ class _CompactAttendanceMenu extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
         decoration: BoxDecoration(
           color: _attendanceColor(value).withValues(alpha: 0.12),
-          border: Border.all(color: _attendanceColor(value).withValues(alpha: 0.28)),
+          border: Border.all(
+            color: _attendanceColor(value).withValues(alpha: 0.28),
+          ),
           borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
@@ -1023,6 +1094,18 @@ class _CompactAttendanceMenu extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ItemSeparator extends StatelessWidget {
+  const _ItemSeparator();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 12),
+      child: Divider(height: 1, thickness: 1, color: AppColors.border),
     );
   }
 }
@@ -1054,6 +1137,7 @@ class _CompetencyScoreRow extends StatelessWidget {
               initialValue: score,
               enabled: enabled,
               keyboardType: TextInputType.number,
+              inputFormatters: _numericScoreInputFormatters,
               decoration: const InputDecoration(hintText: '0-100'),
               onChanged: onScoreChanged,
             ),
@@ -1205,7 +1289,21 @@ class _StudentNoteHistoryDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final groups = _studentNoteHistoryGroups(notes, teacherName);
     return AlertDialog(
-      title: Text('${student.displayName} Notes'),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Teacher Notes History'),
+          const SizedBox(height: 4),
+          Text(
+            student.fullName,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
       content: SizedBox(
         width: 640,
         height: 460,
@@ -1221,23 +1319,33 @@ class _StudentNoteHistoryDialog extends StatelessWidget {
                 separatorBuilder: (_, _) => const SizedBox(height: 10),
                 itemBuilder: (context, index) {
                   final group = groups[index];
-                  return _StudentNoteHistoryCard(
-                    group: group,
-                    disabled: disabled,
-                    onEdit: (note) {
-                      final navigator = Navigator.of(context);
-                      final rootContext = navigator.context;
-                      navigator.pop();
-                      showDialog<void>(
-                        context: rootContext,
-                        builder: (_) => _StudentNoteDialog(
-                          student: student,
-                          note: note,
-                          cubit: cubit,
-                          disabled: disabled,
-                        ),
-                      );
-                    },
+                  final alignRight = index.isOdd;
+                  return Align(
+                    alignment: alignRight
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: 0.7,
+                      child: _StudentNoteHistoryCard(
+                        group: group,
+                        alignRight: alignRight,
+                        disabled: disabled,
+                        onEdit: (note) {
+                          final navigator = Navigator.of(context);
+                          final rootContext = navigator.context;
+                          navigator.pop();
+                          showDialog<void>(
+                            context: rootContext,
+                            builder: (_) => _StudentNoteDialog(
+                              student: student,
+                              note: note,
+                              cubit: cubit,
+                              disabled: disabled,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   );
                 },
               ),
@@ -1255,11 +1363,13 @@ class _StudentNoteHistoryDialog extends StatelessWidget {
 class _StudentNoteHistoryCard extends StatelessWidget {
   const _StudentNoteHistoryCard({
     required this.group,
+    required this.alignRight,
     required this.disabled,
     required this.onEdit,
   });
 
   final _StudentNoteHistoryGroup group;
+  final bool alignRight;
   final bool disabled;
   final ValueChanged<StudentSessionNoteRecord> onEdit;
 
@@ -1268,15 +1378,24 @@ class _StudentNoteHistoryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: alignRight
+            ? AppColors.primary.withValues(alpha: 0.08)
+            : AppColors.surface,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(8),
+          topRight: const Radius.circular(8),
+          bottomLeft: Radius.circular(alignRight ? 8 : 2),
+          bottomRight: Radius.circular(alignRight ? 2 : 8),
+        ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
+            textDirection: alignRight ? TextDirection.rtl : TextDirection.ltr,
             children: [
               Container(
                 width: 34,
@@ -1294,7 +1413,9 @@ class _StudentNoteHistoryCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: alignRight
+                      ? CrossAxisAlignment.end
+                      : CrossAxisAlignment.start,
                   children: [
                     Text(
                       group.dateLabel,
@@ -1545,10 +1666,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
             children: [
               header,
               const SizedBox(height: 12),
-              SizedBox(
-                height: 360,
-                child: _buildAttendanceTable(disabled),
-              ),
+              SizedBox(height: 360, child: _buildAttendanceTable(disabled)),
             ],
           );
         }
@@ -1576,56 +1694,57 @@ class _AttendanceTabState extends State<_AttendanceTab> {
               ),
             )
           : students.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No students match the current search.',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                )
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    final tableWidth = constraints.maxWidth < 780
-                        ? 780.0
-                        : constraints.maxWidth;
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: SizedBox(
-                        width: tableWidth,
-                        child: Column(
-                          children: [
-                            _AttendanceTableHeader(width: tableWidth),
-                            const Divider(height: 1),
-                            Expanded(
-                              child: ListView.separated(
-                                itemCount: students.length,
-                                separatorBuilder: (_, _) =>
-                                    const Divider(height: 1),
-                                itemBuilder: (context, index) {
-                                  final student = students[index];
-                                  return _AttendanceTableRow(
-                                    student: student,
-                                    status: _statuses[student.id] ??
-                                        TeachingAttendanceStatus.present,
-                                    notes: _notes[student.id] ?? '',
-                                    disabled: disabled,
-                                    onStatusChanged: (value) {
-                                      setState(() {
-                                        _statuses[student.id] = value;
-                                      });
-                                    },
-                                    onNotesChanged: (value) {
-                                      _notes[student.id] = value;
-                                    },
-                                  );
+          ? const Center(
+              child: Text(
+                'No students match the current search.',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            )
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                final tableWidth = constraints.maxWidth < 780
+                    ? 780.0
+                    : constraints.maxWidth;
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: tableWidth,
+                    child: Column(
+                      children: [
+                        _AttendanceTableHeader(width: tableWidth),
+                        const Divider(height: 1),
+                        Expanded(
+                          child: ListView.separated(
+                            itemCount: students.length,
+                            separatorBuilder: (_, _) =>
+                                const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final student = students[index];
+                              return _AttendanceTableRow(
+                                student: student,
+                                status:
+                                    _statuses[student.id] ??
+                                    TeachingAttendanceStatus.present,
+                                notes: _notes[student.id] ?? '',
+                                disabled: disabled,
+                                onStatusChanged: (value) {
+                                  setState(() {
+                                    _statuses[student.id] = value;
+                                  });
                                 },
-                              ),
-                            ),
-                          ],
+                                onNotesChanged: (value) {
+                                  _notes[student.id] = value;
+                                },
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 
@@ -1804,7 +1923,9 @@ class _AssessmentTabState extends State<_AssessmentTab> {
       _scores[record.studentId] = _scoreTextForRecord(record);
     }
 
-    final activeIds = widget.detail.students.map((student) => student.id).toSet();
+    final activeIds = widget.detail.students
+        .map((student) => student.id)
+        .toSet();
     _selectedStudentIds.removeWhere((id) => !activeIds.contains(id));
     _revision++;
   }
@@ -1815,14 +1936,15 @@ class _AssessmentTabState extends State<_AssessmentTab> {
   }
 
   String _scoreTextForRecord(TeachingAssessmentRecord record) {
-    final rawScore = record.rawScore ??
+    final rawScore =
+        record.rawScore ??
         (_usesNumericScore
             ? record.normalizedScore ?? record.score
             : record.score != null && record.score! <= 5
-                ? record.score
-                : ((record.normalizedScore ?? record.score) == null
-                    ? null
-                    : (record.normalizedScore ?? record.score)! / 20));
+            ? record.score
+            : ((record.normalizedScore ?? record.score) == null
+                  ? null
+                  : (record.normalizedScore ?? record.score)! / 20));
     return rawScore == null ? '' : _formatScore(rawScore);
   }
 
@@ -1908,12 +2030,11 @@ class _AssessmentTabState extends State<_AssessmentTab> {
                         onChanged: disabled
                             ? null
                             : (value) => setState(() {
-                                  _competencyId =
-                                      value == null || value.isEmpty
-                                          ? null
-                                          : value;
-                                  _hydrateRows();
-                                }),
+                                _competencyId = value == null || value.isEmpty
+                                    ? null
+                                    : value;
+                                _hydrateRows();
+                              }),
                       ),
                     ),
                     SizedBox(
@@ -1923,6 +2044,7 @@ class _AssessmentTabState extends State<_AssessmentTab> {
                               controller: _defaultScoreController,
                               enabled: !disabled,
                               keyboardType: TextInputType.number,
+                              inputFormatters: _numericScoreInputFormatters,
                               decoration: InputDecoration(
                                 labelText: scoreLabel,
                                 hintText: scoreHint,
@@ -1939,7 +2061,7 @@ class _AssessmentTabState extends State<_AssessmentTab> {
                               ),
                               label: scoreLabel,
                             ),
-                        ),
+                    ),
                     OutlinedButton.icon(
                       onPressed: disabled ? null : _selectVisibleStudents,
                       icon: const Icon(Icons.checklist_outlined, size: 18),
@@ -1967,9 +2089,13 @@ class _AssessmentTabState extends State<_AssessmentTab> {
                       label: const Text('Save Selected'),
                     ),
                     OutlinedButton.icon(
-                      onPressed: disabled ? null : () => _save(selectedOnly: false),
+                      onPressed: disabled
+                          ? null
+                          : () => _save(selectedOnly: false),
                       icon: const Icon(Icons.save_as_outlined, size: 18),
-                      label: Text('Save All (${widget.detail.students.length})'),
+                      label: Text(
+                        'Save All (${widget.detail.students.length})',
+                      ),
                     ),
                     Text(
                       '${filteredStudents.length} shown | ${_selectedStudentIds.length} selected',
@@ -2027,8 +2153,8 @@ class _AssessmentTabState extends State<_AssessmentTab> {
                           _scores[student.id] = value;
                         },
                         onOpenNote: () => _openStudentNoteDialog(student),
-                        onDelete: disabled ||
-                                (_recordIds[student.id] ?? '').isEmpty
+                        onDelete:
+                            disabled || (_recordIds[student.id] ?? '').isEmpty
                             ? null
                             : () async {
                                 final confirmed = await _confirmDelete(
@@ -2039,7 +2165,9 @@ class _AssessmentTabState extends State<_AssessmentTab> {
                                 try {
                                   await context
                                       .read<TeachingActivityDetailCubit>()
-                                      .deleteAssessment(_recordIds[student.id]!);
+                                      .deleteAssessment(
+                                        _recordIds[student.id]!,
+                                      );
                                   AppToast.showSuccess('Assessment deleted.');
                                 } catch (_) {}
                               },
@@ -2054,7 +2182,9 @@ class _AssessmentTabState extends State<_AssessmentTab> {
 
   void _selectVisibleStudents() {
     setState(() {
-      _selectedStudentIds.addAll(_filteredStudents.map((student) => student.id));
+      _selectedStudentIds.addAll(
+        _filteredStudents.map((student) => student.id),
+      );
     });
   }
 
@@ -2124,10 +2254,10 @@ class _AssessmentTabState extends State<_AssessmentTab> {
 
     try {
       await context.read<TeachingActivityDetailCubit>().saveBulkAssessments(
-            competencyId: _competencyId,
-            assessmentType: _assessmentType,
-            records: records,
-          );
+        competencyId: _competencyId,
+        assessmentType: _assessmentType,
+        records: records,
+      );
       AppToast.showSuccess('${records.length} assessment rows saved.');
       if (mounted) setState(_selectedStudentIds.clear);
     } catch (_) {}
@@ -2210,6 +2340,7 @@ class _AssessmentStudentRow extends StatelessWidget {
                   initialValue: score,
                   enabled: !disabled,
                   keyboardType: TextInputType.number,
+                  inputFormatters: _numericScoreInputFormatters,
                   decoration: const InputDecoration(hintText: '0-100'),
                   onChanged: onScoreChanged,
                 )
@@ -2324,7 +2455,6 @@ class _SessionNotesForm extends StatefulWidget {
 
 class _SessionNotesFormState extends State<_SessionNotesForm> {
   int? _completion;
-  late String _assessmentType;
   late final TextEditingController _materialController;
   late final TextEditingController _conditionController;
   late final TextEditingController _challengesController;
@@ -2336,10 +2466,6 @@ class _SessionNotesFormState extends State<_SessionNotesForm> {
     super.initState();
     final activity = widget.detail.activity;
     _completion = activity.lessonCompletionPercent;
-    _assessmentType = activity.assessmentType ??
-        (widget.detail.assessments.isEmpty
-            ? TeachingAssessmentType.values.first
-            : widget.detail.assessments.first.assessmentType);
     _materialController = TextEditingController(text: activity.materialCovered);
     _conditionController = TextEditingController(text: activity.classCondition);
     _challengesController = TextEditingController(
@@ -2375,16 +2501,12 @@ class _SessionNotesFormState extends State<_SessionNotesForm> {
                     padding: const EdgeInsets.all(14),
                     child: _SessionNotesFields(
                       disabled: disabled,
-                      assessmentType: _assessmentType,
                       completion: _completion,
                       materialController: _materialController,
                       conditionController: _conditionController,
                       challengesController: _challengesController,
                       followUpController: _followUpController,
                       notesController: _notesController,
-                      onAssessmentTypeChanged: (value) => setState(
-                        () => _assessmentType = value ?? _assessmentType,
-                      ),
                       onCompletionChanged: (value) =>
                           setState(() => _completion = value),
                       onSave: _save,
@@ -2392,16 +2514,12 @@ class _SessionNotesFormState extends State<_SessionNotesForm> {
                   )
                 : _SessionNotesFields(
                     disabled: disabled,
-                    assessmentType: _assessmentType,
                     completion: _completion,
                     materialController: _materialController,
                     conditionController: _conditionController,
                     challengesController: _challengesController,
                     followUpController: _followUpController,
                     notesController: _notesController,
-                    onAssessmentTypeChanged: (value) => setState(
-                      () => _assessmentType = value ?? _assessmentType,
-                    ),
                     onCompletionChanged: (value) =>
                         setState(() => _completion = value),
                     onSave: _save,
@@ -2414,17 +2532,6 @@ class _SessionNotesFormState extends State<_SessionNotesForm> {
 
   Future<void> _save() async {
     final cubit = widget.cubit ?? context.read<TeachingActivityDetailCubit>();
-    final currentType = widget.detail.activity.assessmentType ??
-        (widget.detail.assessments.isEmpty
-            ? null
-            : widget.detail.assessments.first.assessmentType);
-    if (currentType != null &&
-        currentType != _assessmentType &&
-            widget.detail.assessments.isNotEmpty) {
-      final confirmed = await _confirmAssessmentTypeChange(context);
-      if (!mounted) return;
-      if (!confirmed) return;
-    }
 
     try {
       await cubit.saveSessionNotes(
@@ -2434,7 +2541,7 @@ class _SessionNotesFormState extends State<_SessionNotesForm> {
         teachingChallenges: _emptyToNull(_challengesController.text),
         followUpPlan: _emptyToNull(_followUpController.text),
         sessionNotes: _emptyToNull(_notesController.text),
-        assessmentType: _assessmentType,
+        assessmentType: widget.detail.activity.assessmentType,
       );
       AppToast.showSuccess('Session notes saved.');
       if (mounted && !widget.framed) Navigator.of(context).maybePop();
@@ -2445,155 +2552,119 @@ class _SessionNotesFormState extends State<_SessionNotesForm> {
 class _SessionNotesFields extends StatelessWidget {
   const _SessionNotesFields({
     required this.disabled,
-    required this.assessmentType,
     required this.completion,
     required this.materialController,
     required this.conditionController,
     required this.challengesController,
     required this.followUpController,
     required this.notesController,
-    required this.onAssessmentTypeChanged,
     required this.onCompletionChanged,
     required this.onSave,
   });
 
   final bool disabled;
-  final String assessmentType;
   final int? completion;
   final TextEditingController materialController;
   final TextEditingController conditionController;
   final TextEditingController challengesController;
   final TextEditingController followUpController;
   final TextEditingController notesController;
-  final ValueChanged<String?> onAssessmentTypeChanged;
   final ValueChanged<int?> onCompletionChanged;
   final VoidCallback onSave;
 
   @override
   Widget build(BuildContext context) {
     return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const _SectionHeader(
-                    title: 'Session Notes',
-                    subtitle:
-                        'Summarize lesson completion, class condition, and follow-up.',
-                  ),
-                  const SizedBox(height: 12),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final twoColumns = constraints.maxWidth >= 720;
-                      final fieldWidth = twoColumns
-                          ? (constraints.maxWidth - 12) / 2
-                          : constraints.maxWidth;
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final twoColumns = constraints.maxWidth >= 720;
+            final fieldWidth = twoColumns
+                ? (constraints.maxWidth - 12) / 2
+                : constraints.maxWidth;
 
-                      return Wrap(
-                        spacing: 12,
-                        runSpacing: 10,
-                        children: [
-                          SizedBox(
-                            width: fieldWidth,
-                            child: AppDropdownButtonFormField<String>(
-                              initialValue: assessmentType,
-                              key: ValueKey(
-                                'session-assessment-type-$assessmentType',
-                              ),
-                              isExpanded: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Assessment type',
-                              ),
-                              items: TeachingAssessmentType.values
-                                  .map(
-                                    (type) => DropdownMenuItem(
-                                      value: type,
-                                      child: Text(_label(type)),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: disabled
-                                  ? null
-                                  : onAssessmentTypeChanged,
-                            ),
-                          ),
-                          SizedBox(
-                            width: fieldWidth,
-                            child: AppDropdownButtonFormField<int>(
-                              initialValue: completion,
-                              key: ValueKey('completion-${completion ?? ''}'),
-                              isExpanded: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Lesson completion',
-                              ),
-                              hint: const Text('Select completion'),
-                              items: const [25, 50, 75, 100]
-                                  .map(
-                                    (value) => DropdownMenuItem(
-                                      value: value,
-                                      child: Text('$value%'),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: disabled
-                                  ? null
-                                  : onCompletionChanged,
-                            ),
-                          ),
-                          SizedBox(
-                            width: fieldWidth,
-                            child: _NoteField(
-                              controller: materialController,
-                              label: 'Material covered',
-                              enabled: !disabled,
-                            ),
-                          ),
-                          SizedBox(
-                            width: fieldWidth,
-                            child: _NoteField(
-                              controller: conditionController,
-                              label: 'Class condition',
-                              enabled: !disabled,
-                            ),
-                          ),
-                          SizedBox(
-                            width: fieldWidth,
-                            child: _NoteField(
-                              controller: challengesController,
-                              label: 'Teaching challenges',
-                              enabled: !disabled,
-                            ),
-                          ),
-                          SizedBox(
-                            width: fieldWidth,
-                            child: _NoteField(
-                              controller: followUpController,
-                              label: 'Follow up plan',
-                              enabled: !disabled,
-                            ),
-                          ),
-                          SizedBox(
-                            width: fieldWidth,
-                            child: _NoteField(
-                              controller: notesController,
-                              label: 'Session notes',
-                              enabled: !disabled,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: FilledButton.icon(
-                      onPressed: disabled ? null : onSave,
-                      icon: const Icon(Icons.save_outlined, size: 18),
-                      label: const Text('Save Notes'),
+            return Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              children: [
+                SizedBox(
+                  width: fieldWidth,
+                  child: AppDropdownButtonFormField<int>(
+                    initialValue: completion,
+                    key: ValueKey('completion-${completion ?? ''}'),
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Lesson completion',
                     ),
+                    hint: const Text('Select completion'),
+                    items: const [25, 50, 75, 100]
+                        .map(
+                          (value) => DropdownMenuItem(
+                            value: value,
+                            child: Text('$value%'),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: disabled ? null : onCompletionChanged,
                   ),
-                ],
-              );
+                ),
+                SizedBox(
+                  width: fieldWidth,
+                  child: _NoteField(
+                    controller: materialController,
+                    label: 'Material covered',
+                    enabled: !disabled,
+                  ),
+                ),
+                SizedBox(
+                  width: fieldWidth,
+                  child: _NoteField(
+                    controller: conditionController,
+                    label: 'Class condition',
+                    enabled: !disabled,
+                  ),
+                ),
+                SizedBox(
+                  width: fieldWidth,
+                  child: _NoteField(
+                    controller: challengesController,
+                    label: 'Teaching challenges',
+                    enabled: !disabled,
+                  ),
+                ),
+                SizedBox(
+                  width: fieldWidth,
+                  child: _NoteField(
+                    controller: followUpController,
+                    label: 'Follow up plan',
+                    enabled: !disabled,
+                  ),
+                ),
+                SizedBox(
+                  width: fieldWidth,
+                  child: _NoteField(
+                    controller: notesController,
+                    label: 'Session notes',
+                    enabled: !disabled,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton.icon(
+            onPressed: disabled ? null : onSave,
+            icon: const Icon(Icons.save_outlined, size: 18),
+            label: const Text('Save Notes'),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -2682,7 +2753,8 @@ class _StudentNotesPanelState extends State<_StudentNotesPanel> {
         break;
       }
     }
-    final student = matched ??
+    final student =
+        matched ??
         ClassStudentOption(
           id: note.studentId,
           studentNo: '-',
@@ -2811,10 +2883,7 @@ class _SummaryMetric extends StatelessWidget {
               ],
             ),
           ),
-          if (trailing != null) ...[
-            const SizedBox(width: 4),
-            trailing!,
-          ],
+          if (trailing != null) ...[const SizedBox(width: 4), trailing!],
         ],
       ),
     );
@@ -2893,7 +2962,9 @@ class _AttendanceChoiceGroup extends StatelessWidget {
                   color: selected
                       ? color.withValues(alpha: 0.14)
                       : AppColors.surface,
-                  border: Border.all(color: selected ? color : AppColors.border),
+                  border: Border.all(
+                    color: selected ? color : AppColors.border,
+                  ),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -2936,9 +3007,7 @@ class _AssessmentModeBanner extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            usesNumericScore
-                ? Icons.pin_outlined
-                : Icons.star_rate_rounded,
+            usesNumericScore ? Icons.pin_outlined : Icons.star_rate_rounded,
             size: 18,
             color: AppColors.primaryDark,
           ),
@@ -2982,8 +3051,8 @@ class _StarRatingInput extends StatelessWidget {
         final icon = rating >= starNo
             ? Icons.star_rounded
             : rating >= starNo - 0.5
-                ? Icons.star_half_rounded
-                : Icons.star_border_rounded;
+            ? Icons.star_half_rounded
+            : Icons.star_border_rounded;
         return GestureDetector(
           onTapDown: enabled
               ? (details) {
@@ -3251,20 +3320,50 @@ class _NoteField extends StatelessWidget {
     required this.controller,
     required this.label,
     required this.enabled,
+    this.showLabel = true,
   });
 
   final TextEditingController controller;
   final String label;
   final bool enabled;
+  final bool showLabel;
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      enabled: enabled,
-      minLines: 2,
-      maxLines: 4,
-      decoration: InputDecoration(labelText: label),
+    final cleanLabel = label.replaceAll('*', '').trim();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (showLabel) ...[_FieldCaption(label), const SizedBox(height: 6)],
+        TextField(
+          controller: controller,
+          enabled: enabled,
+          minLines: 2,
+          maxLines: 4,
+          style: const TextStyle(fontSize: 12),
+          decoration: InputDecoration(
+            hintText: cleanLabel.isEmpty ? 'Enter note' : 'Enter $cleanLabel',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FieldCaption extends StatelessWidget {
+  const _FieldCaption(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        color: AppColors.textSecondary,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+      ),
     );
   }
 }
@@ -3349,6 +3448,17 @@ Color _attendanceColor(String status) {
     _ => AppColors.textSecondary,
   };
 }
+
+final List<TextInputFormatter> _numericScoreInputFormatters = [
+  FilteringTextInputFormatter.digitsOnly,
+  LengthLimitingTextInputFormatter(3),
+  TextInputFormatter.withFunction((oldValue, newValue) {
+    if (newValue.text.isEmpty) return newValue;
+    final score = int.tryParse(newValue.text);
+    if (score == null || score > 100) return oldValue;
+    return newValue;
+  }),
+];
 
 Future<bool> _confirmDelete(BuildContext context, String message) async {
   final result = await showDialog<bool>(

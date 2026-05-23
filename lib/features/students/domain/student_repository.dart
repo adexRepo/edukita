@@ -1,3 +1,5 @@
+import 'dart:io' as io;
+
 import 'package:edukita/core/database/base_repository.dart';
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/helper/pageable.dart';
@@ -7,11 +9,15 @@ import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/students/data/student_advanced_form_data.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
+import 'package:edukita/features/students/data/student_detail_insight_data.dart';
+import 'package:edukita/features/students/data/student_exam_score_data.dart';
 import 'package:edukita/features/students/data/student_page_data.dart';
 import 'package:edukita/features/students/data/student_table.dart';
 import 'package:edukita/features/students/domain/student_mapper.dart';
 import 'package:edukita/features/students/domain/sudent_filter.dart';
+import 'package:edukita/features/syllabus/data/subject_model.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:path/path.dart' as p;
 import 'package:sqflite_common/sqlite_api.dart';
 import 'package:uuid/uuid.dart';
 
@@ -73,9 +79,10 @@ class StudentRepository extends BaseRepository<Student> {
       where.add('''
       EXISTS (
         SELECT 1
-        FROM student_assessments sa
-        WHERE sa.student_id = s.id
-        AND sa.score IN (${placeholders(filter.scores.length)})
+        FROM teaching_assessments ta
+        WHERE ta.student_id = s.id
+        AND COALESCE(ta.normalized_score, ta.score, ta.raw_score)
+          IN (${placeholders(filter.scores.length)})
       )
     ''');
       args.addAll(filter.scores);
@@ -174,9 +181,10 @@ class StudentRepository extends BaseRepository<Student> {
       where.add('''
       EXISTS (
         SELECT 1
-        FROM student_assessments sa
-        WHERE sa.student_id = s.id
-        AND sa.score IN (${placeholders(filter.scores.length)})
+        FROM teaching_assessments ta
+        WHERE ta.student_id = s.id
+        AND COALESCE(ta.normalized_score, ta.score, ta.raw_score)
+          IN (${placeholders(filter.scores.length)})
       )
     ''');
       args.addAll(filter.scores);
@@ -1039,6 +1047,646 @@ class StudentRepository extends BaseRepository<Student> {
     // print(result.first);
     return StudentDetailData.fromJson(result.first);
   }
+
+  Future<StudentDetailInsights> loadDetailInsights(String studentId) async {
+    final db = await _dbProvider.database;
+    final now = DateTime.now();
+    final attendance = await _loadTeachingAttendanceInsight(db, studentId);
+    final monthlyAttendance = await _loadMonthlyTeachingAttendance(
+      db,
+      studentId,
+      now.year,
+    );
+    final recentAttendance = await _loadRecentTeachingAttendance(db, studentId);
+    final learning = await _loadLearningInsight(db, studentId);
+    final competencies = await _loadCompetencyInsights(db, studentId);
+    final teacherNotes = await _loadTeacherNoteInsights(db, studentId);
+    final noteTypeCounts = await _loadTeacherNoteTypeCounts(db, studentId);
+    final assistanceHistory = await _loadAssistanceHistoryInsights(
+      db,
+      studentId,
+    );
+
+    return StudentDetailInsights(
+      attendance: attendance,
+      monthlyAttendance: monthlyAttendance,
+      recentAttendance: recentAttendance,
+      learning: learning,
+      competencies: competencies,
+      recentTeacherNotes: teacherNotes,
+      noteTypeCounts: noteTypeCounts,
+      assistanceHistory: assistanceHistory,
+    );
+  }
+
+  Future<StudentExamScoreOptions> loadExamScoreOptions(String studentId) async {
+    final db = await _dbProvider.database;
+    await _ensureStudentExamScoreSchema(db);
+    final studentLevel = await _loadStudentClassLevel(db, studentId);
+    final subjectRows = await db.query(
+      'subjects',
+      where: "LOWER(COALESCE(status, 'active')) <> 'inactive'",
+      orderBy: 'name COLLATE NOCASE',
+    );
+    final unitRows = studentLevel == null
+        ? await db.query('units', orderBy: 'sequence_no ASC, name COLLATE NOCASE')
+        : await db.rawQuery(
+            '''
+            SELECT DISTINCT u.*
+            FROM units u
+            LEFT JOIN syllabus sy ON sy.subject_id = u.subject_id
+            WHERE sy.id IS NULL
+               OR sy.level IS NULL
+               OR sy.level = ''
+               OR sy.level = ?
+            ORDER BY u.sequence_no ASC, u.name COLLATE NOCASE
+            ''',
+            [studentLevel.toString()],
+          );
+    return StudentExamScoreOptions(
+      subjects: subjectRows.map((row) => Subject.fromMap(row)).toList(),
+      units: unitRows.map((row) => Unit.fromMap(row)).toList(),
+    );
+  }
+
+  Future<int?> _loadStudentClassLevel(DatabaseExecutor db, String studentId) async {
+    final rows = await db.rawQuery(
+      '''
+      SELECT c.level
+      FROM students s
+      LEFT JOIN classes c ON c.id = s.class_id
+      WHERE s.id = ?
+      LIMIT 1
+      ''',
+      [studentId],
+    );
+    if (rows.isEmpty) return null;
+    return (rows.first['level'] as num?)?.toInt();
+  }
+
+  Future<List<StudentExamScoreGroup>> loadStudentExamScores(
+    String studentId,
+  ) async {
+    final db = await _dbProvider.database;
+    await _ensureStudentExamScoreSchema(db);
+    final groupRows = await db.rawQuery(
+      '''
+      SELECT *
+      FROM student_exam_score_groups
+      WHERE student_id = ?
+      ORDER BY exam_date DESC, created_at DESC
+      ''',
+      [studentId],
+    );
+    final legacyGroups = await _loadLegacyStudentExamScores(db, studentId);
+    if (groupRows.isEmpty) return legacyGroups;
+
+    final groupIds = groupRows.map((row) => row['id']?.toString() ?? '').toList();
+    final itemRows = await db.rawQuery(
+      '''
+      SELECT
+        item.*,
+        subject.name AS subject_name,
+        unit.name AS unit_name
+      FROM student_exam_score_items item
+      LEFT JOIN subjects subject ON subject.id = item.subject_id
+      LEFT JOIN units unit ON unit.id = item.unit_id
+      WHERE item.group_id IN (${placeholders(groupIds.length)})
+      ORDER BY subject.name COLLATE NOCASE, unit.sequence_no ASC, unit.name COLLATE NOCASE
+      ''',
+      groupIds,
+    );
+    final itemsByGroup = <String, List<StudentExamScoreItem>>{};
+    for (final row in itemRows) {
+      final item = StudentExamScoreItem.fromMap(row);
+      itemsByGroup.putIfAbsent(item.groupId, () => []).add(item);
+    }
+
+    final groups = groupRows.map((row) {
+      final id = row['id']?.toString() ?? '';
+      return StudentExamScoreGroup.fromMap(
+        row,
+        items: itemsByGroup[id] ?? const <StudentExamScoreItem>[],
+      );
+    }).toList();
+    return [...groups, ...legacyGroups]
+      ..sort((a, b) {
+        final dateCompare = b.examDate.compareTo(a.examDate);
+        if (dateCompare != 0) return dateCompare;
+        return b.createdAt.compareTo(a.createdAt);
+      });
+  }
+
+  Future<List<StudentExamScoreGroup>> _loadLegacyStudentExamScores(
+    DatabaseExecutor db,
+    String studentId,
+  ) async {
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        score.*,
+        subject.name AS subject_name,
+        unit.name AS unit_name
+      FROM student_exam_scores score
+      LEFT JOIN subjects subject ON subject.id = score.subject_id
+      LEFT JOIN units unit ON unit.id = score.unit_id
+      WHERE score.student_id = ?
+      ORDER BY score.exam_date DESC, score.created_at DESC
+      ''',
+      [studentId],
+    );
+
+    return rows.map((row) {
+      final id = row['id']?.toString() ?? '';
+      final scope = row['scope']?.toString() ?? 'school';
+      final item = StudentExamScoreItem(
+        id: 'legacy_item_$id',
+        groupId: 'legacy_$id',
+        subjectId: row['subject_id']?.toString(),
+        subjectName: row['subject_name']?.toString(),
+        unitId: row['unit_id']?.toString(),
+        unitName: row['unit_name']?.toString(),
+        score: (row['score'] as num?)?.toDouble() ?? 0,
+        maxScore: (row['max_score'] as num?)?.toDouble(),
+        note: row['note']?.toString(),
+        createdAt: row['created_at']?.toString(),
+        updatedAt: row['updated_at']?.toString(),
+      );
+      return StudentExamScoreGroup(
+        id: 'legacy_$id',
+        studentId: studentId,
+        scope: scope,
+        examType: row['exam_type']?.toString() ?? '-',
+        source: row['source']?.toString(),
+        academicYear: row['academic_year']?.toString(),
+        semester: row['semester']?.toString(),
+        examDate: row['exam_date']?.toString() ?? '',
+        evidenceRequired:
+            ((row['evidence_required'] as num?)?.toInt() ?? 0) == 1,
+        evidenceFileName: row['evidence_file_name']?.toString(),
+        evidenceFilePath: row['evidence_file_path']?.toString(),
+        evidenceFileType: row['evidence_file_type']?.toString(),
+        note: row['note']?.toString(),
+        items: [item],
+        createdAt: row['created_at']?.toString(),
+        updatedAt: row['updated_at']?.toString(),
+      );
+    }).toList();
+  }
+
+  Future<void> saveStudentExamScoreGroup(
+    StudentExamScoreGroup group, {
+    String? evidenceSourcePath,
+    String? evidenceFileName,
+  }) async {
+    final db = await _dbProvider.database;
+    await _ensureStudentExamScoreSchema(db);
+
+    var values = group.toMap();
+    if (evidenceSourcePath?.trim().isNotEmpty == true) {
+      final evidence = await _copyExamScoreEvidence(
+        scoreId: group.id,
+        studentId: group.studentId,
+        sourcePath: evidenceSourcePath!.trim(),
+        originalFileName: evidenceFileName,
+      );
+      values = {
+        ...values,
+        'evidence_file_name': evidence.fileName,
+        'evidence_file_path': evidence.filePath,
+        'evidence_file_type': evidence.fileType,
+      };
+    }
+
+    await db.transaction((txn) async {
+      await txn.insert('student_exam_score_groups', values);
+      for (final item in group.items) {
+        await txn.insert('student_exam_score_items', item.toMap());
+      }
+    });
+  }
+
+  Future<_StoredExamEvidence> _copyExamScoreEvidence({
+    required String scoreId,
+    required String studentId,
+    required String sourcePath,
+    String? originalFileName,
+  }) async {
+    final sourceFile = io.File(sourcePath);
+    if (!await sourceFile.exists()) {
+      throw StateError('Evidence file not found.');
+    }
+
+    final storagePath = dotenv.env['STORAGE_PATH'] ?? './edukita/storage';
+    final directory = io.Directory(
+      p.join(storagePath, 'student_exam_scores', studentId),
+    );
+    await directory.create(recursive: true);
+
+    final extension = p.extension(sourceFile.path).toLowerCase();
+    final fileName =
+        '${scoreId}_${_compactDateTime(DateTime.now())}$extension';
+    final destinationPath = p.join(directory.path, fileName);
+
+    if (p.normalize(sourceFile.path) != p.normalize(destinationPath)) {
+      await sourceFile.copy(destinationPath);
+    }
+
+    return _StoredExamEvidence(
+      fileName: originalFileName?.trim().isNotEmpty == true
+          ? originalFileName!.trim()
+          : p.basename(sourcePath),
+      filePath: destinationPath,
+      fileType: extension.replaceFirst('.', ''),
+    );
+  }
+
+  Future<void> _ensureStudentExamScoreSchema(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS student_exam_scores(
+        id TEXT PRIMARY KEY NOT NULL,
+        student_id TEXT NOT NULL,
+        scope TEXT NOT NULL CHECK(scope IN ('internal', 'school')),
+        subject_id TEXT,
+        unit_id TEXT,
+        competency_id TEXT,
+        exam_type TEXT NOT NULL,
+        source TEXT,
+        academic_year TEXT,
+        semester TEXT,
+        exam_date TEXT NOT NULL,
+        score REAL,
+        max_score REAL,
+        evidence_required INTEGER NOT NULL DEFAULT 0,
+        evidence_file_name TEXT,
+        evidence_file_path TEXT,
+        evidence_file_type TEXT,
+        note TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_student_exam_scores_student ON student_exam_scores(student_id)',
+    );
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS student_exam_score_groups(
+        id TEXT PRIMARY KEY NOT NULL,
+        student_id TEXT NOT NULL,
+        scope TEXT NOT NULL CHECK(scope IN ('internal', 'school')),
+        exam_type TEXT NOT NULL,
+        source TEXT,
+        academic_year TEXT,
+        semester TEXT,
+        exam_date TEXT NOT NULL,
+        evidence_required INTEGER NOT NULL DEFAULT 0,
+        evidence_file_name TEXT,
+        evidence_file_path TEXT,
+        evidence_file_type TEXT,
+        note TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS student_exam_score_items(
+        id TEXT PRIMARY KEY NOT NULL,
+        group_id TEXT NOT NULL,
+        subject_id TEXT,
+        unit_id TEXT,
+        score REAL NOT NULL,
+        max_score REAL,
+        note TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_student_exam_score_groups_student ON student_exam_score_groups(student_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_student_exam_score_items_group ON student_exam_score_items(group_id)',
+    );
+  }
+
+  String _compactDateTime(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    final second = date.second.toString().padLeft(2, '0');
+    return '${date.year}$month$day$hour$minute$second';
+  }
+
+  Future<StudentAttendanceInsight> _loadTeachingAttendanceInsight(
+    DatabaseExecutor db,
+    String studentId,
+  ) async {
+    final rows = await db.rawQuery(
+      '''
+      SELECT ta.status, COUNT(*) AS count
+      FROM teaching_attendances ta
+      INNER JOIN teaching_activities act ON act.id = ta.teaching_activity_id
+      WHERE ta.student_id = ?
+        AND act.status <> 'cancelled'
+      GROUP BY ta.status
+      ''',
+      [studentId],
+    );
+
+    var present = 0;
+    var late = 0;
+    var absent = 0;
+    var sick = 0;
+    var permission = 0;
+    for (final row in rows) {
+      final count = (row['count'] as num?)?.toInt() ?? 0;
+      switch (row['status']?.toString()) {
+        case 'present':
+          present = count;
+          break;
+        case 'late':
+          late = count;
+          break;
+        case 'absent':
+          absent = count;
+          break;
+        case 'sick':
+          sick = count;
+          break;
+        case 'permission':
+          permission = count;
+          break;
+      }
+    }
+
+    final total = present + late + absent + sick + permission;
+    return StudentAttendanceInsight(
+      totalRecords: total,
+      attendedRecords: present + late,
+      presentCount: present,
+      lateCount: late,
+      absentCount: absent,
+      sickCount: sick,
+      permissionCount: permission,
+    );
+  }
+
+  Future<List<double?>> _loadMonthlyTeachingAttendance(
+    DatabaseExecutor db,
+    String studentId,
+    int year,
+  ) async {
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        CAST(strftime('%m', act.activity_date) AS INTEGER) AS month_no,
+        COUNT(*) AS total_count,
+        SUM(CASE WHEN ta.status IN ('present', 'late') THEN 1 ELSE 0 END)
+          AS attended_count
+      FROM teaching_attendances ta
+      INNER JOIN teaching_activities act ON act.id = ta.teaching_activity_id
+      WHERE ta.student_id = ?
+        AND act.status <> 'cancelled'
+        AND strftime('%Y', act.activity_date) = ?
+      GROUP BY month_no
+      ORDER BY month_no
+      ''',
+      [studentId, year.toString()],
+    );
+
+    final values = List<double?>.filled(12, null);
+    for (final row in rows) {
+      final monthNo = (row['month_no'] as num?)?.toInt();
+      final total = (row['total_count'] as num?)?.toInt() ?? 0;
+      final attended = (row['attended_count'] as num?)?.toInt() ?? 0;
+      if (monthNo == null || monthNo < 1 || monthNo > 12 || total == 0) {
+        continue;
+      }
+      values[monthNo - 1] = (attended / total) * 100;
+    }
+    return values;
+  }
+
+  Future<List<StudentAttendanceRecordView>> _loadRecentTeachingAttendance(
+    DatabaseExecutor db,
+    String studentId,
+  ) async {
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        act.activity_date,
+        COALESCE(NULLIF(s.title, ''), u.name, 'Teaching Session') AS session_name,
+        s.start_at,
+        s.end_at,
+        ta.status,
+        ta.check_in_time,
+        ta.notes
+      FROM teaching_attendances ta
+      INNER JOIN teaching_activities act ON act.id = ta.teaching_activity_id
+      LEFT JOIN schedules s ON s.id = act.schedule_id
+      LEFT JOIN units u ON u.id = s.unit_id
+      WHERE ta.student_id = ?
+        AND act.status <> 'cancelled'
+      ORDER BY act.activity_date DESC, s.start_at DESC
+      LIMIT 12
+      ''',
+      [studentId],
+    );
+
+    return rows.map((row) {
+      final start = row['start_at']?.toString();
+      final end = row['end_at']?.toString();
+      final time = [start, end]
+          .where((value) => value != null && value.trim().isNotEmpty)
+          .join(' - ');
+      return StudentAttendanceRecordView(
+        date: row['activity_date']?.toString() ?? '-',
+        session: row['session_name']?.toString() ?? 'Teaching Session',
+        status: row['status']?.toString() ?? '-',
+        time: time.isEmpty ? null : time,
+        checkIn: row['check_in_time']?.toString(),
+        note: row['notes']?.toString(),
+      );
+    }).toList();
+  }
+
+  Future<StudentLearningInsight> _loadLearningInsight(
+    DatabaseExecutor db,
+    String studentId,
+  ) async {
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        COUNT(*) AS assessment_count,
+        AVG(COALESCE(ta.normalized_score, ta.score)) AS average_score,
+        MAX(act.activity_date) AS latest_date
+      FROM teaching_assessments ta
+      LEFT JOIN teaching_activities act ON act.id = ta.teaching_activity_id
+      WHERE ta.student_id = ?
+        AND COALESCE(ta.normalized_score, ta.score) IS NOT NULL
+        AND act.status <> 'cancelled'
+      ''',
+      [studentId],
+    );
+    final row = rows.isEmpty ? const <String, Object?>{} : rows.first;
+    return StudentLearningInsight(
+      assessmentCount: (row['assessment_count'] as num?)?.toInt() ?? 0,
+      averageScore: (row['average_score'] as num?)?.toDouble(),
+      latestAssessmentDate: row['latest_date']?.toString(),
+    );
+  }
+
+  Future<List<StudentCompetencyInsight>> _loadCompetencyInsights(
+    DatabaseExecutor db,
+    String studentId,
+  ) async {
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        COALESCE(
+          CASE
+            WHEN c.code IS NULL OR c.code = '' THEN c.description
+            ELSE c.code || ' - ' || c.description
+          END,
+          ta.assessment_type,
+          'Assessment'
+        ) AS competency_label,
+        AVG(COALESCE(ta.normalized_score, ta.score)) AS average_score,
+        COUNT(*) AS record_count
+      FROM teaching_assessments ta
+      LEFT JOIN competencies c ON c.id = ta.competency_id
+      LEFT JOIN teaching_activities act ON act.id = ta.teaching_activity_id
+      WHERE ta.student_id = ?
+        AND COALESCE(ta.normalized_score, ta.score) IS NOT NULL
+        AND act.status <> 'cancelled'
+      GROUP BY competency_label
+      ORDER BY average_score DESC, competency_label COLLATE NOCASE
+      LIMIT 8
+      ''',
+      [studentId],
+    );
+
+    return rows.map((row) {
+      return StudentCompetencyInsight(
+        label: row['competency_label']?.toString() ?? 'Assessment',
+        averageScore: (row['average_score'] as num?)?.toDouble() ?? 0,
+        recordCount: (row['record_count'] as num?)?.toInt() ?? 0,
+      );
+    }).toList();
+  }
+
+  Future<List<StudentTeacherNoteInsight>> _loadTeacherNoteInsights(
+    DatabaseExecutor db,
+    String studentId,
+  ) async {
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        ssn.note_type,
+        ssn.comment,
+        ssn.raw_score,
+        COALESCE(ssn.created_at, act.activity_date) AS note_date,
+        COALESCE(created_teacher.full_name, activity_teacher.full_name) AS teacher_name
+      FROM student_session_notes ssn
+      LEFT JOIN teaching_activities act ON act.id = ssn.teaching_activity_id
+      LEFT JOIN teachers created_teacher ON created_teacher.id = ssn.created_by_teacher_id
+      LEFT JOIN teachers activity_teacher ON activity_teacher.id = act.teacher_id
+      WHERE ssn.student_id = ?
+      ORDER BY COALESCE(act.activity_date, ssn.created_at) DESC, ssn.created_at DESC
+      LIMIT 8
+      ''',
+      [studentId],
+    );
+
+    return rows.map((row) {
+      return StudentTeacherNoteInsight(
+        date: row['note_date']?.toString() ?? '-',
+        type: row['note_type']?.toString() ?? '-',
+        comment: row['comment']?.toString() ?? '-',
+        rawScore: (row['raw_score'] as num?)?.toDouble(),
+        teacherName: row['teacher_name']?.toString(),
+      );
+    }).toList();
+  }
+
+  Future<List<StudentNoteTypeCount>> _loadTeacherNoteTypeCounts(
+    DatabaseExecutor db,
+    String studentId,
+  ) async {
+    final rows = await db.rawQuery(
+      '''
+      SELECT note_type, COUNT(*) AS count
+      FROM student_session_notes
+      WHERE student_id = ?
+      GROUP BY note_type
+      ORDER BY count DESC, note_type COLLATE NOCASE
+      ''',
+      [studentId],
+    );
+
+    return rows.map((row) {
+      return StudentNoteTypeCount(
+        type: row['note_type']?.toString() ?? '-',
+        count: (row['count'] as num?)?.toInt() ?? 0,
+      );
+    }).toList();
+  }
+
+  Future<List<StudentAssistanceHistoryInsight>> _loadAssistanceHistoryInsights(
+    DatabaseExecutor db,
+    String studentId,
+  ) async {
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        COALESCE(program.name, 'Assistance Program') AS program_name,
+        COALESCE(period.period_name, period.period_month || '/' || period.period_year) AS period_name,
+        ar.status,
+        ar.rule_name,
+        ar.benefit_type,
+        ar.benefit_amount,
+        ar.benefit_description,
+        ar.approved_at
+      FROM assistance_recipients ar
+      LEFT JOIN assistance_periods period ON period.id = ar.scholarship_period_id
+      LEFT JOIN assistance_programs program ON program.id = period.assistance_program_id
+      WHERE ar.student_id = ?
+      ORDER BY COALESCE(ar.approved_at, ar.created_at) DESC
+      LIMIT 8
+      ''',
+      [studentId],
+    );
+
+    return rows.map((row) {
+      final amount = (row['benefit_amount'] as num?)?.toDouble();
+      final description = row['benefit_description']?.toString();
+      final type = row['benefit_type']?.toString();
+      final benefit = amount != null
+          ? 'Rp ${amount.toStringAsFixed(0)}'
+          : _nullIfBlank(description) ?? _nullIfBlank(type);
+      return StudentAssistanceHistoryInsight(
+        programName: row['program_name']?.toString() ?? 'Assistance Program',
+        periodName: row['period_name']?.toString() ?? '-',
+        status: row['status']?.toString() ?? '-',
+        ruleName: row['rule_name']?.toString(),
+        benefit: benefit,
+        approvedAt: row['approved_at']?.toString(),
+      );
+    }).toList();
+  }
+}
+
+class _StoredExamEvidence {
+  const _StoredExamEvidence({
+    required this.fileName,
+    required this.filePath,
+    required this.fileType,
+  });
+
+  final String fileName;
+  final String filePath;
+  final String fileType;
 }
 
 class _StudentRelationTarget {

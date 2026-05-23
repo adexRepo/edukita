@@ -20,7 +20,13 @@ class TeachingAttendanceStatus {
   static const sick = 'sick';
   static const permission = 'permission';
 
-  static const values = [present, absent, late, sick, permission];
+  static const values = [present, absent, sick, permission];
+
+  static String normalize(String? value) {
+    if (value == late) return present;
+    if (values.contains(value)) return value!;
+    return present;
+  }
 }
 
 class TeachingAssessmentType {
@@ -334,7 +340,7 @@ class TeachingAttendanceRecord {
       id: map['id']?.toString(),
       teachingActivityId: map['teaching_activity_id'].toString(),
       studentId: map['student_id'].toString(),
-      status: map['status']?.toString() ?? TeachingAttendanceStatus.present,
+      status: TeachingAttendanceStatus.normalize(map['status']?.toString()),
       checkInTime: map['check_in_time']?.toString(),
       notes: map['notes']?.toString(),
       createdAt: map['created_at']?.toString(),

@@ -10,8 +10,36 @@ import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_toast.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path/path.dart' as p;
+
+const List<String> _assessmentTypes = [
+  'Ulangan Harian',
+  'UTS',
+  'UAS',
+  'Tryout',
+  'Ujian Akhir',
+  'Exam',
+  'Quiz',
+  'Observation',
+  'Practical',
+  'Other',
+];
+
+const Set<String> _requiredEvidenceTypes = {'UTS', 'UAS', 'Ujian Akhir'};
+
+Widget _twoColumnFormRow(Widget first, Widget second) {
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(child: first),
+      const SizedBox(width: 12),
+      Expanded(child: second),
+    ],
+  );
+}
 
 class ReportsPage extends StatefulWidget {
   const ReportsPage({super.key});
@@ -57,6 +85,7 @@ class _ReportsPageState extends State<ReportsPage> {
     StudentAssessment? existingResult,
     required List<AssessmentStudentOption> students,
     required List<Assessment> assessments,
+    required Map<String, int> evidenceCountsByResult,
   }) async {
     final cubit = context.read<AssessmentCubit>();
     await showDialog<void>(
@@ -65,6 +94,9 @@ class _ReportsPageState extends State<ReportsPage> {
         result: existingResult,
         students: students,
         assessments: assessments,
+        existingEvidenceCount: existingResult == null
+            ? 0
+            : evidenceCountsByResult[existingResult.id] ?? 0,
         onSave: cubit.recordStudentAssessment,
       ),
     );
@@ -195,6 +227,7 @@ class _ReportsPageState extends State<ReportsPage> {
                   : () => _showScoreForm(
                       students: state.students,
                       assessments: state.assessments,
+                      evidenceCountsByResult: state.evidenceCountsByResult,
                     ),
               icon: const Icon(Icons.fact_check),
               label: const Text('Record Score'),
@@ -236,6 +269,10 @@ class _ReportsPageState extends State<ReportsPage> {
       final haystack = [
         assessment.name,
         assessment.type,
+        assessment.assessmentType,
+        assessment.assessmentSource,
+        assessment.scoreType,
+        assessment.evidenceLabel,
         assessment.description,
         unit?.name,
         competency?.code,
@@ -289,6 +326,7 @@ class _ReportsPageState extends State<ReportsPage> {
               state.assessments,
               units,
               competencies,
+              state.evidenceCountsByResult,
             ),
           ),
         ];
@@ -336,7 +374,10 @@ class _ReportsPageState extends State<ReportsPage> {
           ),
           subtitle: Text(
             [
-              '${assessment.type ?? '-'} - max ${assessment.maxScore?.toStringAsFixed(0) ?? '-'}',
+              '${assessment.displayType} - ${assessment.assessmentSource ?? 'internal'} - max ${assessment.maxScore?.toStringAsFixed(0) ?? '-'}',
+              assessment.isEvidenceRequired
+                  ? 'Evidence required: ${assessment.evidenceLabel ?? 'Evidence file'}'
+                  : 'Evidence optional',
               unit?.name ?? '-',
               if (competency != null)
                 '${competency.code ?? 'Competency'}: ${competency.description}',
@@ -384,6 +425,7 @@ class _ReportsPageState extends State<ReportsPage> {
     List<Assessment> assessments,
     List<Unit> units,
     List<Competency> competencies,
+    Map<String, int> evidenceCountsByResult,
   ) {
     return ListView.separated(
       itemCount: results.length,
@@ -392,6 +434,7 @@ class _ReportsPageState extends State<ReportsPage> {
         final result = results[index];
         final student = _findStudent(students, result.studentId);
         final assessment = _findAssessment(assessments, result.assessmentId);
+        final evidenceCount = evidenceCountsByResult[result.id] ?? 0;
         final unit = _findUnit(units, assessment?.unitId);
         final competency = _findCompetency(
           competencies,
@@ -427,9 +470,15 @@ class _ReportsPageState extends State<ReportsPage> {
                   existingResult: result,
                   students: students,
                   assessments: assessments,
+                  evidenceCountsByResult: evidenceCountsByResult,
                 ),
                 icon: const Icon(Icons.edit),
               ),
+              _EvidenceChip(
+                requiredEvidence: assessment?.isEvidenceRequired ?? false,
+                count: evidenceCount,
+              ),
+              const SizedBox(width: 4),
               IconButton(
                 tooltip: 'Delete result',
                 color: AppColors.errorDark,
@@ -505,6 +554,11 @@ class _AssessmentFormDialogState extends State<AssessmentFormDialog> {
   late String? competencyId;
   late String name;
   late String? type;
+  late String? assessmentType;
+  late String? assessmentSource;
+  late String? scoreType;
+  late bool isEvidenceRequired;
+  late String? evidenceLabel;
   late double? maxScore;
   late String? description;
   bool _isSaving = false;
@@ -518,6 +572,14 @@ class _AssessmentFormDialogState extends State<AssessmentFormDialog> {
     competencyId = widget.assessment?.competencyId;
     name = widget.assessment?.name ?? '';
     type = widget.assessment?.type;
+    assessmentType =
+        widget.assessment?.assessmentType ?? widget.assessment?.type;
+    assessmentSource = widget.assessment?.assessmentSource ?? 'internal';
+    scoreType = widget.assessment?.scoreType ?? 'numeric_100';
+    isEvidenceRequired =
+        widget.assessment?.isEvidenceRequired ??
+        _requiredEvidenceTypes.contains(assessmentType);
+    evidenceLabel = widget.assessment?.evidenceLabel ?? 'Scan raport / result';
     maxScore = widget.assessment?.maxScore ?? 100;
     description = widget.assessment?.description;
   }
@@ -548,99 +610,159 @@ class _AssessmentFormDialogState extends State<AssessmentFormDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CommonFormWidgets.dropdownFieldTyped<Unit>(
-                  label: 'Unit',
-                  items: widget.units,
-                  labelBuilder: (item) => item.name,
-                  valueBuilder: (item) => item.id,
-                  value: selectedUnit,
-                  onChanged: (value) => setState(() {
-                    unitId = value?.id ?? '';
-                    competencyId = null;
-                  }),
-                  onSaved: (value) => unitId = value?.id ?? '',
-                ),
-                const SizedBox(height: 16),
-                AppDropdownButtonFormField<String>(
-                  initialValue: selectedCompetency?.id ?? '',
-                  isExpanded: false,
-                  decoration: const InputDecoration(labelText: 'Competency'),
-                  items: [
-                    DropdownMenuItem(
-                      value: '',
-                      child: AppDropdownStyle.menuItemLabel(
-                        label: 'None',
-                        selected: selectedCompetency == null,
-                      ),
-                    ),
-                    ...unitCompetencies.map(
-                      (item) => DropdownMenuItem(
-                        value: item.id,
-                        child: AppDropdownStyle.menuItemLabel(
-                          label: item.code?.trim().isNotEmpty == true
-                              ? '${item.code} - ${item.description}'
-                              : item.description,
-                          selected: item.id == selectedCompetency?.id,
-                        ),
-                      ),
-                    ),
-                  ],
-                  selectedItemBuilder: (context) =>
-                      AppDropdownStyle.selectedLabels([
-                        'None',
-                        ...unitCompetencies.map(
-                          (item) => item.code?.trim().isNotEmpty == true
-                              ? '${item.code} - ${item.description}'
-                              : item.description,
-                        ),
-                      ]),
-                  dropdownColor: AppColors.white,
-                  focusColor: AppColors.transparent,
-                  iconEnabledColor: AppColors.primary,
-                  borderRadius: AppDropdownStyle.menuBorderRadius,
-                  menuMaxHeight: AppDropdownStyle.menuMaxHeight,
-                  style: AppDropdownStyle.textStyle,
-                  onChanged: (value) => setState(
-                    () => competencyId = value == null || value.isEmpty
-                        ? null
-                        : value,
+                _twoColumnFormRow(
+                  CommonFormWidgets.dropdownFieldTyped<Unit>(
+                    label: 'Unit',
+                    items: widget.units,
+                    labelBuilder: (item) => item.name,
+                    valueBuilder: (item) => item.id,
+                    value: selectedUnit,
+                    onChanged: (value) => setState(() {
+                      unitId = value?.id ?? '';
+                      competencyId = null;
+                    }),
+                    onSaved: (value) => unitId = value?.id ?? '',
                   ),
-                  onSaved: (value) => competencyId =
-                      value == null || value.isEmpty ? null : value,
+                  AppDropdownButtonFormField<String>(
+                    initialValue: selectedCompetency?.id ?? '',
+                    isExpanded: false,
+                    decoration: const InputDecoration(labelText: 'Competency'),
+                    items: [
+                      DropdownMenuItem(
+                        value: '',
+                        child: AppDropdownStyle.menuItemLabel(
+                          label: 'None',
+                          selected: selectedCompetency == null,
+                        ),
+                      ),
+                      ...unitCompetencies.map(
+                        (item) => DropdownMenuItem(
+                          value: item.id,
+                          child: AppDropdownStyle.menuItemLabel(
+                            label: item.code?.trim().isNotEmpty == true
+                                ? '${item.code} - ${item.description}'
+                                : item.description,
+                            selected: item.id == selectedCompetency?.id,
+                          ),
+                        ),
+                      ),
+                    ],
+                    selectedItemBuilder: (context) =>
+                        AppDropdownStyle.selectedLabels([
+                          'None',
+                          ...unitCompetencies.map(
+                            (item) => item.code?.trim().isNotEmpty == true
+                                ? '${item.code} - ${item.description}'
+                                : item.description,
+                          ),
+                        ]),
+                    dropdownColor: AppColors.white,
+                    focusColor: AppColors.transparent,
+                    iconEnabledColor: AppColors.primary,
+                    borderRadius: AppDropdownStyle.menuBorderRadius,
+                    menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                    style: AppDropdownStyle.textStyle,
+                    onChanged: (value) => setState(
+                      () => competencyId = value == null || value.isEmpty
+                          ? null
+                          : value,
+                    ),
+                    onSaved: (value) => competencyId =
+                        value == null || value.isEmpty ? null : value,
+                  ),
                 ),
                 const SizedBox(height: 16),
-                CommonFormWidgets.textField(
-                  label: 'Name',
-                  value: name,
-                  onSaved: (value) => name = value?.trim() ?? '',
-                  validator: (value) {
-                    if (value?.trim().isEmpty ?? true) {
-                      return 'Assessment name is required';
-                    }
-                    return null;
-                  },
+                _twoColumnFormRow(
+                  CommonFormWidgets.textField(
+                    label: 'Name',
+                    value: name,
+                    onSaved: (value) => name = value?.trim() ?? '',
+                    validator: (value) {
+                      if (value?.trim().isEmpty ?? true) {
+                        return 'Assessment name is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  CommonFormWidgets.dropdownField(
+                    label: 'Assessment Type',
+                    items: _assessmentTypes,
+                    value: assessmentType,
+                    onChanged: (value) {
+                      setState(() {
+                        assessmentType = value;
+                        type = value;
+                        if (_requiredEvidenceTypes.contains(value)) {
+                          isEvidenceRequired = true;
+                          evidenceLabel ??= 'Scan raport / result';
+                        }
+                      });
+                    },
+                    onSaved: (value) {
+                      assessmentType = _nullIfBlank(value);
+                      type = assessmentType;
+                    },
+                  ),
                 ),
                 const SizedBox(height: 16),
-                CommonFormWidgets.dropdownField(
-                  label: 'Type',
-                  items: const [
-                    'Quiz',
-                    'Worksheet',
-                    'Observation',
-                    'Oral Test',
-                    'Project',
-                    'Exam',
-                  ],
-                  value: type,
-                  isRequired: false,
-                  onChanged: (value) => setState(() => type = value),
-                  onSaved: (value) => type = _nullIfBlank(value),
+                _twoColumnFormRow(
+                  CommonFormWidgets.dropdownField(
+                    label: 'Source',
+                    items: const [
+                      'internal',
+                      'school_report',
+                      'tryout',
+                      'external',
+                    ],
+                    value: assessmentSource,
+                    onChanged: (value) =>
+                        setState(() => assessmentSource = value),
+                    onSaved: (value) =>
+                        assessmentSource = _nullIfBlank(value) ?? 'internal',
+                  ),
+                  CommonFormWidgets.dropdownField(
+                    label: 'Score Type',
+                    items: const ['numeric_100', 'star_5', 'grade'],
+                    value: scoreType,
+                    onChanged: (value) => setState(() => scoreType = value),
+                    onSaved: (value) =>
+                        scoreType = _nullIfBlank(value) ?? 'numeric_100',
+                  ),
                 ),
-                const SizedBox(height: 16),
-                CommonFormWidgets.doubleField(
-                  label: 'Max Score',
-                  value: maxScore,
-                  onSaved: (value) => maxScore = value,
+                const SizedBox(height: 12),
+                CheckboxListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  value:
+                      isEvidenceRequired ||
+                      _requiredEvidenceTypes.contains(assessmentType),
+                  onChanged: _requiredEvidenceTypes.contains(assessmentType)
+                      ? null
+                      : (value) {
+                          setState(
+                            () => isEvidenceRequired = value ?? false,
+                          );
+                        },
+                  title: const Text('Evidence required'),
+                  subtitle: const Text(
+                    'UTS, UAS, and Ujian Akhir always require an uploaded file.',
+                  ),
+                  activeColor: AppColors.primary,
+                ),
+                const SizedBox(height: 12),
+                _twoColumnFormRow(
+                  CommonFormWidgets.textField(
+                    label: 'Evidence Label',
+                    value: evidenceLabel,
+                    onSaved: (value) => evidenceLabel = _nullIfBlank(value),
+                    validator: (_) => null,
+                    isRequired: false,
+                  ),
+                  CommonFormWidgets.doubleField(
+                    label: 'Max Score',
+                    value: maxScore,
+                    onSaved: (value) => maxScore = value,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 CommonFormWidgets.textField(
@@ -688,6 +810,12 @@ class _AssessmentFormDialogState extends State<AssessmentFormDialog> {
       competencyId: competencyId,
       name: name,
       type: type,
+      assessmentType: assessmentType,
+      assessmentSource: assessmentSource,
+      scoreType: scoreType,
+      isEvidenceRequired:
+          isEvidenceRequired || _requiredEvidenceTypes.contains(assessmentType),
+      evidenceLabel: evidenceLabel,
       maxScore: maxScore,
       description: description,
     );
@@ -708,13 +836,20 @@ class StudentAssessmentFormDialog extends StatefulWidget {
   final StudentAssessment? result;
   final List<AssessmentStudentOption> students;
   final List<Assessment> assessments;
-  final FutureOr<void> Function(StudentAssessment) onSave;
+  final int existingEvidenceCount;
+  final FutureOr<void> Function(
+    StudentAssessment, {
+    String? evidenceSourcePath,
+    String? evidenceFileName,
+    String? evidenceRemarks,
+  }) onSave;
 
   const StudentAssessmentFormDialog({
     super.key,
     this.result,
     required this.students,
     required this.assessments,
+    this.existingEvidenceCount = 0,
     required this.onSave,
   });
 
@@ -731,6 +866,9 @@ class _StudentAssessmentFormDialogState
   late double? score;
   late String? note;
   late String? assessedAt;
+  String? _evidenceSourcePath;
+  String? _evidenceFileName;
+  String? _evidenceRemarks;
   bool _isSaving = false;
 
   @override
@@ -833,6 +971,8 @@ class _StudentAssessmentFormDialogState
                   validator: (_) => null,
                   isRequired: false,
                 ),
+                const SizedBox(height: 16),
+                _buildEvidencePicker(selectedAssessment),
               ],
             ),
           ),
@@ -857,6 +997,95 @@ class _StudentAssessmentFormDialogState
     );
   }
 
+  Widget _buildEvidencePicker(Assessment? selectedAssessment) {
+    final required = selectedAssessment?.isEvidenceRequired ?? false;
+    final hasExisting = widget.existingEvidenceCount > 0;
+    final hasSelected = _evidenceSourcePath?.trim().isNotEmpty == true;
+    final fileName = _evidenceFileName ?? 'No file selected';
+
+    return FormField<String>(
+      validator: (_) {
+        if (required && !hasExisting && !hasSelected) {
+          return '${selectedAssessment?.evidenceLabel ?? 'Evidence'} is required';
+        }
+        return null;
+      },
+      builder: (field) {
+        return InputDecorator(
+          decoration: InputDecoration(
+            labelText: selectedAssessment?.evidenceLabel ?? 'Evidence File',
+            helperText: required
+                ? 'Required for this assessment type. Allowed: PDF, JPG, PNG.'
+                : 'Optional. Allowed: PDF, JPG, PNG.',
+            errorText: field.errorText,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  hasSelected
+                      ? fileName
+                      : hasExisting
+                          ? '${widget.existingEvidenceCount} file uploaded'
+                          : 'No file selected',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: hasSelected || hasExisting
+                        ? AppColors.textPrimary
+                        : AppColors.textHint,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: _isSaving ? null : _pickEvidenceFile,
+                icon: const Icon(Icons.upload_file, size: 16),
+                label: Text(hasSelected || hasExisting ? 'Change' : 'Upload'),
+              ),
+              if (hasSelected) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  tooltip: 'Remove selected file',
+                  onPressed: _isSaving
+                      ? null
+                      : () {
+                          setState(() {
+                            _evidenceSourcePath = null;
+                            _evidenceFileName = null;
+                          });
+                        },
+                  icon: const Icon(Icons.close, size: 18),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickEvidenceFile() async {
+    const evidenceGroup = XTypeGroup(
+      label: 'Assessment evidence',
+      extensions: ['pdf', 'jpg', 'jpeg', 'png'],
+    );
+    final file = await openFile(acceptedTypeGroups: [evidenceGroup]);
+    if (file == null) return;
+
+    final extension = p.extension(file.path).replaceFirst('.', '').toLowerCase();
+    if (!['pdf', 'jpg', 'jpeg', 'png'].contains(extension)) {
+      AppToast.showFailed('Only PDF, JPG, and PNG files are allowed.');
+      return;
+    }
+
+    setState(() {
+      _evidenceSourcePath = file.path;
+      _evidenceFileName = file.name;
+    });
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -875,7 +1104,12 @@ class _StudentAssessmentFormDialogState
 
     setState(() => _isSaving = true);
     try {
-      await widget.onSave(result);
+      await widget.onSave(
+        result,
+        evidenceSourcePath: _evidenceSourcePath,
+        evidenceFileName: _evidenceFileName,
+        evidenceRemarks: _evidenceRemarks,
+      );
       AppToast.showSubmissionSuccess(action: action, subject: 'student result');
       if (mounted) Navigator.pop(context);
     } catch (_) {
@@ -945,6 +1179,56 @@ class _AssessmentSection extends StatelessWidget {
                     ),
                   )
                 : child,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EvidenceChip extends StatelessWidget {
+  const _EvidenceChip({required this.requiredEvidence, required this.count});
+
+  final bool requiredEvidence;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasEvidence = count > 0;
+    final color = hasEvidence
+        ? AppColors.success
+        : requiredEvidence
+            ? AppColors.error
+            : AppColors.textSecondary;
+    final label = hasEvidence
+        ? '$count file'
+        : requiredEvidence
+            ? 'Missing'
+            : 'Optional';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            hasEvidence ? Icons.attachment : Icons.warning_amber_outlined,
+            size: 13,
+            color: color,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),

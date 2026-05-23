@@ -5,9 +5,14 @@ import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class StudentHeaderDetail extends StatelessWidget {
-  const StudentHeaderDetail({super.key, required this.student});
+  const StudentHeaderDetail({
+    super.key,
+    required this.student,
+    this.monthlyAttendance,
+  });
 
   final StudentDetailData student;
+  final List<double?>? monthlyAttendance;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +48,11 @@ class StudentHeaderDetail extends StatelessWidget {
                       thickness: 1,
                       color: AppColors.border,
                     ),
-                    Expanded(child: AttendanceLineChart()),
+                    Expanded(
+                      child: AttendanceLineChart(
+                        monthlyAttendance: monthlyAttendance,
+                      ),
+                    ),
                   ],
                 )
               : Row(
@@ -58,7 +67,12 @@ class StudentHeaderDetail extends StatelessWidget {
                       thickness: 1,
                       color: AppColors.border,
                     ),
-                    Expanded(flex: chartFlex, child: AttendanceLineChart()),
+                    Expanded(
+                      flex: chartFlex,
+                      child: AttendanceLineChart(
+                        monthlyAttendance: monthlyAttendance,
+                      ),
+                    ),
                   ],
                 ),
         );

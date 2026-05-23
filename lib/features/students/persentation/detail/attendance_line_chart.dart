@@ -4,71 +4,104 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 class AttendanceLineChart extends StatelessWidget {
-  AttendanceLineChart({super.key});
+  const AttendanceLineChart({
+    super.key,
+    this.monthlyAttendance,
+    this.emptyMessage = 'Attendance will appear after teaching attendance is saved.',
+  });
 
-  final int year = DateTime.now().year;
+  final List<double?>? monthlyAttendance;
+  final String emptyMessage;
 
-  final List<double> monthlyAttendance = const [
-    92,
-    88,
-    95,
-    90,
-    93,
-    86,
-    89,
-    94,
-    91,
-    96,
-    90,
-    93,
-  ];
+  int get year => DateTime.now().year;
 
   @override
   Widget build(BuildContext context) {
+    final values = _values;
+    final spots = _spots(values);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 10, 18, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              Text(
-                'Attendance $year',
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  'Attendance $year',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
-                'Monthly attendance rate',
-                style: TextStyle(
-                  color: AppColors.primary.darken(),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  'Monthly attendance rate',
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: TextStyle(
+                    color: AppColors.primary.darken(),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: LineChart(
-              _chartData(),
-              duration: const Duration(milliseconds: 250),
-            ),
+            child: spots.isEmpty
+                ? Center(
+                    child: Text(
+                      emptyMessage,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  )
+                : LineChart(
+                    _chartData(spots),
+                    duration: const Duration(milliseconds: 250),
+                  ),
           ),
         ],
       ),
     );
   }
 
-  LineChartData _chartData() {
+  List<double?> get _values {
+    final source = monthlyAttendance;
+    if (source == null || source.isEmpty) {
+      return List<double?>.filled(12, null);
+    }
+    return List<double?>.generate(
+      12,
+      (index) => index < source.length ? source[index] : null,
+    );
+  }
+
+  List<FlSpot> _spots(List<double?> values) {
+    final spots = <FlSpot>[];
+    for (var index = 0; index < values.length; index++) {
+      final value = values[index];
+      if (value == null) continue;
+      spots.add(FlSpot(index.toDouble(), value.clamp(0, 100).toDouble()));
+    }
+    return spots;
+  }
+
+  LineChartData _chartData(List<FlSpot> spots) {
     return LineChartData(
       minX: 0,
       maxX: 11,
-      minY: 80,
+      minY: 0,
       maxY: 100,
       lineTouchData: LineTouchData(
         touchTooltipData: LineTouchTooltipData(
@@ -134,10 +167,7 @@ class AttendanceLineChart extends StatelessWidget {
       borderData: FlBorderData(show: false),
       lineBarsData: [
         LineChartBarData(
-          spots: List.generate(
-            monthlyAttendance.length,
-            (index) => FlSpot(index.toDouble(), monthlyAttendance[index]),
-          ),
+          spots: spots,
           isCurved: true,
           curveSmoothness: 0.25,
           color: AppColors.primary,

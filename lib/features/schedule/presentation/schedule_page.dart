@@ -2139,8 +2139,11 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
       await widget.onSave(schedule);
       AppToast.showSubmissionSuccess(action: action, subject: 'schedule');
       if (mounted) Navigator.pop(context);
-    } catch (_) {
-      AppToast.showSubmissionFailed(action: action, subject: 'schedule');
+    } catch (e) {
+      AppToast.showFailed(
+        _scheduleSaveErrorMessage(e),
+        title: 'Cannot Save Schedule',
+      );
       if (mounted) setState(() => _isSaving = false);
     }
   }
@@ -2634,6 +2637,12 @@ String? _nullIfBlank(String? value) {
   final trimmed = value?.trim();
   if (trimmed == null || trimmed.isEmpty) return null;
   return trimmed;
+}
+
+String _scheduleSaveErrorMessage(Object error) {
+  final message = error.toString().replaceFirst('Exception: ', '').trim();
+  if (message.isEmpty) return 'Failed to save the schedule.';
+  return message;
 }
 
 T? _firstWhereOrNull<T>(Iterable<T> items, bool Function(T) test) {

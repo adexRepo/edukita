@@ -578,8 +578,12 @@ class ScholarshipPeriodRule {
   factory ScholarshipPeriodRule.fromMap(Map<String, Object?> map) {
     return ScholarshipPeriodRule(
       id: map['id']?.toString(),
-      scholarshipPeriodId: map['scholarship_period_id'] as String,
-      scholarshipRuleId: map['scholarship_rule_id'] as String?,
+      scholarshipPeriodId:
+          (map['assistance_period_id'] ?? map['scholarship_period_id'])
+              as String,
+      scholarshipRuleId:
+          (map['assistance_rule_id'] ?? map['scholarship_rule_id'])
+              as String?,
       ruleType: ScholarshipType.fromValue(map['rule_type']?.toString()),
       ruleName: map['rule_name']?.toString(),
       quota: (map['quota'] as num?)?.toInt() ?? 0,
@@ -605,6 +609,8 @@ class ScholarshipPeriodRule {
       'id': id,
       'scholarship_period_id': scholarshipPeriodId,
       'scholarship_rule_id': scholarshipRuleId,
+      'assistance_period_id': scholarshipPeriodId,
+      'assistance_rule_id': scholarshipRuleId,
       'rule_type': ruleType.normalized.value,
       'rule_name': ruleName,
       'quota': quota,
@@ -759,8 +765,13 @@ class StudentScholarshipRuleCandidate {
   factory StudentScholarshipRuleCandidate.fromMap(Map<String, Object?> map) {
     return StudentScholarshipRuleCandidate(
       id: map['id']?.toString(),
-      scholarshipPeriodId: map['scholarship_period_id'] as String,
-      scholarshipPeriodRuleId: map['scholarship_period_rule_id'] as String,
+      scholarshipPeriodId:
+          (map['assistance_period_id'] ?? map['scholarship_period_id'])
+              as String,
+      scholarshipPeriodRuleId:
+          (map['assistance_period_rule_id'] ??
+                  map['scholarship_period_rule_id'])
+              as String,
       studentId: map['student_id'] as String,
       nominatedBy: map['nominated_by'] as String?,
       reason: map['reason'] as String?,
@@ -779,6 +790,8 @@ class StudentScholarshipRuleCandidate {
       'id': id,
       'scholarship_period_id': scholarshipPeriodId,
       'scholarship_period_rule_id': scholarshipPeriodRuleId,
+      'assistance_period_id': scholarshipPeriodId,
+      'assistance_period_rule_id': scholarshipPeriodRuleId,
       'student_id': studentId,
       'nominated_by': nominatedBy,
       'reason': reason,
@@ -950,12 +963,19 @@ class StudentScholarshipAssessment {
 
     return StudentScholarshipAssessment(
       id: map['id']?.toString(),
-      scholarshipPeriodId: map['scholarship_period_id'] as String,
+      scholarshipPeriodId:
+          (map['assistance_period_id'] ?? map['scholarship_period_id'])
+              as String,
       studentId: map['student_id'] as String,
       ruleId:
           (map['student_rule_id'] as String?) ?? (map['rule_id'] as String?),
-      scholarshipPeriodRuleId: map['scholarship_period_rule_id'] as String?,
-      ruleCandidateId: map['rule_candidate_id'] as String?,
+      scholarshipPeriodRuleId:
+          (map['assistance_period_rule_id'] ??
+                  map['scholarship_period_rule_id'])
+              as String?,
+      ruleCandidateId:
+          (map['assistance_rule_candidate_id'] ?? map['rule_candidate_id'])
+              as String?,
       scholarshipType: type,
       ruleName: map['rule_name'] as String?,
       selectionMode: ScholarshipSelectionMode.fromValue(
@@ -997,11 +1017,14 @@ class StudentScholarshipAssessment {
     return {
       'id': id,
       'scholarship_period_id': scholarshipPeriodId,
+      'assistance_period_id': scholarshipPeriodId,
       'student_id': studentId,
       'rule_id': ruleId,
       'student_rule_id': ruleId,
       'scholarship_period_rule_id': scholarshipPeriodRuleId,
+      'assistance_period_rule_id': scholarshipPeriodRuleId,
       'rule_candidate_id': ruleCandidateId,
+      'assistance_rule_candidate_id': ruleCandidateId,
       'scholarship_type': scholarshipType.normalized.value,
       'rule_type': scholarshipType.normalized.value,
       'rule_name': ruleName,
@@ -1105,11 +1128,19 @@ class ScholarshipRecipient {
   factory ScholarshipRecipient.fromMap(Map<String, Object?> map) {
     return ScholarshipRecipient(
       id: map['id']?.toString(),
-      scholarshipPeriodId: map['scholarship_period_id'] as String,
+      scholarshipPeriodId:
+          (map['assistance_period_id'] ?? map['scholarship_period_id'])
+              as String,
       studentId: map['student_id'] as String,
       assessmentId: map['assessment_id'] as String,
-      scholarshipRuleTargetId: map['scholarship_rule_target_id'] as String?,
-      scholarshipPeriodRuleId: map['scholarship_period_rule_id'] as String?,
+      scholarshipRuleTargetId:
+          (map['assistance_rule_target_id'] ??
+                  map['scholarship_rule_target_id'])
+              as String?,
+      scholarshipPeriodRuleId:
+          (map['assistance_period_rule_id'] ??
+                  map['scholarship_period_rule_id'])
+              as String?,
       scholarshipType: ScholarshipType.fromValue(
         map['rule_type']?.toString() ?? map['scholarship_type']?.toString(),
       ),
@@ -1137,10 +1168,13 @@ class ScholarshipRecipient {
     return {
       'id': id,
       'scholarship_period_id': scholarshipPeriodId,
+      'assistance_period_id': scholarshipPeriodId,
       'student_id': studentId,
       'assessment_id': assessmentId,
       'scholarship_rule_target_id': scholarshipRuleTargetId,
       'scholarship_period_rule_id': scholarshipPeriodRuleId,
+      'assistance_rule_target_id': scholarshipRuleTargetId,
+      'assistance_period_rule_id': scholarshipPeriodRuleId,
       'scholarship_type': scholarshipType.normalized.value,
       'rule_type': scholarshipType.normalized.value,
       'rule_name': ruleName,
@@ -1211,7 +1245,9 @@ class ScholarshipApprovalDocument {
   factory ScholarshipApprovalDocument.fromMap(Map<String, Object?> map) {
     return ScholarshipApprovalDocument(
       id: map['id']?.toString(),
-      scholarshipPeriodId: map['scholarship_period_id'] as String,
+      scholarshipPeriodId:
+          (map['assistance_period_id'] ?? map['scholarship_period_id'])
+              as String,
       fileName: map['file_name']?.toString() ?? '',
       filePath: map['file_path']?.toString() ?? '',
       fileType: map['file_type'] as String?,
@@ -1227,6 +1263,7 @@ class ScholarshipApprovalDocument {
     return {
       'id': id,
       'scholarship_period_id': scholarshipPeriodId,
+      'assistance_period_id': scholarshipPeriodId,
       'file_name': fileName,
       'file_path': filePath,
       'file_type': fileType,

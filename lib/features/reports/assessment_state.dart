@@ -5,6 +5,7 @@ class AssessmentState {
   final List<StudentAssessment> studentAssessments;
   final List<AssessmentStudentOption> students;
   final List<GradingScale> gradingScales;
+  final Map<String, int> evidenceCountsByResult;
   final bool isLoading;
   final String? error;
 
@@ -13,6 +14,7 @@ class AssessmentState {
     this.studentAssessments = const [],
     this.students = const [],
     this.gradingScales = const [],
+    this.evidenceCountsByResult = const {},
     this.isLoading = false,
     this.error,
   });
@@ -22,6 +24,7 @@ class AssessmentState {
     List<StudentAssessment>? studentAssessments,
     List<AssessmentStudentOption>? students,
     List<GradingScale>? gradingScales,
+    Map<String, int>? evidenceCountsByResult,
     bool? isLoading,
     String? error,
   }) {
@@ -30,6 +33,8 @@ class AssessmentState {
       studentAssessments: studentAssessments ?? this.studentAssessments,
       students: students ?? this.students,
       gradingScales: gradingScales ?? this.gradingScales,
+      evidenceCountsByResult:
+          evidenceCountsByResult ?? this.evidenceCountsByResult,
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );

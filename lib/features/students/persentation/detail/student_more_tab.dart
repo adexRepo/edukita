@@ -1,5 +1,7 @@
+import 'package:edukita/core/utils/text_case.dart';
 import 'package:edukita/features/students/data/student_advanced_form_data.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
+import 'package:edukita/features/students/data/student_detail_insight_data.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
 import 'package:edukita/features/students/persentation/detail/detail_data_table.dart';
 import 'package:edukita/features/students/persentation/detail/detail_empty_section_text.dart';
@@ -17,47 +19,61 @@ class StudentMoreTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return DetailTabScroll(
       children: [
-        const DetailSectionCard(
-          title: 'Documents',
-          icon: Icons.description_outlined,
-          wrapChildren: false,
-          children: [
-            DetailDataTable(
-              columns: ['Type', 'File', 'Uploaded At'],
-              rows: [],
-              emptyText:
-                  'Uploaded documents will appear here from student_documents.',
-            ),
-          ],
-        ),
-        const DetailSectionCard(
-          title: 'Finance',
-          icon: Icons.payments_outlined,
-          wrapChildren: false,
-          children: [
-            DetailDataTable(
-              columns: ['Fee Amount', 'Scholarship', 'Status'],
-              rows: [],
-              emptyText:
-                  'Finance records will appear here from student_finance.',
-            ),
-          ],
-        ),
+        _AssistanceHistoryTable(studentId: student.id),
         _GoalsTable(studentId: student.id),
-        const DetailSectionCard(
-          title: 'Social Notes',
-          icon: Icons.groups_2_outlined,
+      ],
+    );
+  }
+}
+
+class _AssistanceHistoryTable extends StatelessWidget {
+  const _AssistanceHistoryTable({required this.studentId});
+
+  final String studentId;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<StudentDetailInsights>(
+      future: context.read<StudentDetailCubit>().loadDetailInsights(studentId),
+      builder: (context, snapshot) {
+        final history = snapshot.data?.assistanceHistory ??
+            const <StudentAssistanceHistoryInsight>[];
+
+        return DetailSectionCard(
+          title: 'Assistance History',
+          icon: Icons.volunteer_activism_outlined,
           wrapChildren: false,
           children: [
-            DetailDataTable(
-              columns: ['Recorded At', 'Note'],
-              rows: [],
-              emptyText:
-                  'Friend observations and social behavior notes will appear here from student_social_notes.',
-            ),
+            if (snapshot.connectionState == ConnectionState.waiting)
+              const DetailEmptySectionText('Loading assistance history...')
+            else
+              DetailDataTable(
+                columns: const [
+                  'Program',
+                  'Period',
+                  'Rule',
+                  'Benefit',
+                  'Status',
+                  'Approved At',
+                ],
+                rows: history
+                    .map(
+                      (item) => [
+                        item.programName,
+                        item.periodName,
+                        _textOrDash(item.ruleName),
+                        _textOrDash(item.benefit),
+                        item.status.titleWords,
+                        _textOrDash(item.approvedAt),
+                      ],
+                    )
+                    .toList(),
+                emptyText:
+                    'No assistance or scholarship recipient history is available.',
+              ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 }
@@ -103,4 +119,9 @@ class _GoalsTable extends StatelessWidget {
   bool _hasText(String? value) {
     return value != null && value.trim().isNotEmpty;
   }
+}
+
+String _textOrDash(String? value) {
+  if (value == null || value.trim().isEmpty) return '-';
+  return value;
 }

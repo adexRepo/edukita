@@ -5,6 +5,7 @@ import 'package:edukita/features/students/persentation/detail/student_academic_t
 import 'package:edukita/features/students/persentation/detail/student_activities_tab.dart';
 import 'package:edukita/features/students/persentation/detail/student_behavior_tab.dart';
 import 'package:edukita/features/students/persentation/detail/student_family_tab.dart';
+import 'package:edukita/features/students/persentation/detail/student_exam_scores_tab.dart';
 import 'package:edukita/features/students/persentation/detail/student_more_tab.dart';
 import 'package:edukita/features/students/persentation/detail/student_overview_tab.dart';
 import 'package:edukita/features/students/persentation/detail/student_personal_tab.dart';
@@ -65,7 +66,7 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: DefaultTabController(
         initialIndex: 0,
-        length: 7,
+        length: 8,
         child: Column(
           children: <Widget>[
             const SizedBox(height: 8),
@@ -75,6 +76,7 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
                 "Personal",
                 "Family",
                 "Academic",
+                "Exam Scores",
                 "Behavior",
                 "Activities",
                 "More",
@@ -87,7 +89,8 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
                   StudentPersonalTab(student: student),
                   StudentFamilyTab(student: student),
                   StudentAcademicTab(student: student),
-                  const StudentBehaviorTab(),
+                  StudentExamScoresTab(student: student),
+                  StudentBehaviorTab(student: student),
                   StudentActivitiesTab(student: student),
                   StudentMoreTab(student: student),
                 ],

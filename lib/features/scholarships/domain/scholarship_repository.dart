@@ -740,6 +740,21 @@ class ScholarshipRepository {
         whereArgs: [id],
       );
       await txn.delete(
+        'assistance_rule_targets',
+        where: 'scholarship_period_id = ?',
+        whereArgs: [id],
+      );
+      await txn.delete(
+        'assistance_approval_documents',
+        where: 'scholarship_period_id = ?',
+        whereArgs: [id],
+      );
+      await txn.delete(
+        'assistance_recipients',
+        where: 'scholarship_period_id = ?',
+        whereArgs: [id],
+      );
+      await txn.delete(
         'assistance_period_rules',
         where: 'scholarship_period_id = ?',
         whereArgs: [id],
@@ -826,13 +841,54 @@ class ScholarshipRepository {
     StudentScholarshipRuleCandidate candidate,
   ) async {
     final db = await _dbProvider.database;
-    final map = candidate.toMap()
+    final period = await getPeriodById(candidate.scholarshipPeriodId);
+    var effective = candidate;
+    if (period != null) {
+      final calculation = _calculationWindow(
+        period.periodMonth,
+        period.periodYear,
+        period.calculationWindowMonths,
+      );
+      final attendanceScores = await _attendanceScores(
+        calculation.start,
+        calculation.end,
+      );
+      final attendance = attendanceScores[candidate.studentId] ?? 0;
+      final reason = candidate.reason?.trim();
+      final belowMinimum = attendance < period.minimumAttendancePercentage;
+      final hasOverrideReason = reason != null && reason.isNotEmpty;
+      final canOverride =
+          belowMinimum &&
+          period.allowManualOverrideBelowAttendance &&
+          hasOverrideReason;
+      final eligibilityStatus = belowMinimum
+          ? canOverride
+                ? ScholarshipEligibilityStatus.overridden
+                : ScholarshipEligibilityStatus.ineligible
+          : ScholarshipEligibilityStatus.eligible;
+
+      effective = StudentScholarshipRuleCandidate(
+        id: candidate.id,
+        scholarshipPeriodId: candidate.scholarshipPeriodId,
+        scholarshipPeriodRuleId: candidate.scholarshipPeriodRuleId,
+        studentId: candidate.studentId,
+        nominatedBy: candidate.nominatedBy,
+        reason: candidate.reason,
+        attendanceScore: attendance,
+        eligibilityStatus: eligibilityStatus,
+        createdAt: candidate.createdAt,
+        updatedAt: DateTime.now().toIso8601String(),
+        studentName: candidate.studentName,
+      );
+    }
+
+    final map = effective.toMap()
       ..['updated_at'] = DateTime.now().toIso8601String();
     final updated = await db.update(
       'student_assistance_rule_candidates',
       map,
       where: 'id = ?',
-      whereArgs: [candidate.id],
+      whereArgs: [effective.id],
     );
     if (updated == 0) {
       await db.insert(
@@ -908,21 +964,44 @@ class ScholarshipRepository {
       throw Exception('Selected targets cannot exceed target quota.');
     }
 
+    final calculation = _calculationWindow(
+      period.periodMonth,
+      period.periodYear,
+      period.calculationWindowMonths,
+    );
+    final attendanceScores = await _attendanceScores(
+      calculation.start,
+      calculation.end,
+    );
+    final attendance = attendanceScores[studentId] ?? 0;
+    final reasonText = reason?.trim();
+    final belowMinimum = attendance < period.minimumAttendancePercentage;
+    final canOverride =
+        belowMinimum &&
+        period.allowManualOverrideBelowAttendance &&
+        reasonText != null &&
+        reasonText.isNotEmpty;
+    if (belowMinimum && !canOverride) {
+      throw Exception(
+        'Attendance ${attendance.toStringAsFixed(0)}% is below the minimum ${period.minimumAttendancePercentage.toStringAsFixed(0)}%. Add a reason to use manual override.',
+      );
+    }
+    final eligibilityStatus = canOverride
+        ? ScholarshipEligibilityStatus.overridden
+        : ScholarshipEligibilityStatus.eligible;
+
     final now = DateTime.now().toIso8601String();
     final candidate = StudentScholarshipRuleCandidate(
       scholarshipPeriodId: rule.scholarshipPeriodId,
       scholarshipPeriodRuleId: rule.id,
       studentId: studentId,
       reason: reason,
-      eligibilityStatus: ScholarshipEligibilityStatus.eligible,
+      attendanceScore: attendance,
+      eligibilityStatus: eligibilityStatus,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     );
-    final totalScore =
-        rule.ruleType == ScholarshipType.fixedPriority ||
-            rule.ruleType == ScholarshipType.specialCase
-        ? 100.0
-        : existing?.totalScore ?? existing?.attendanceScore ?? 0;
+    final totalScore = _manualTotalScore(rule.ruleType, attendance, null);
     final assessment = StudentScholarshipAssessment(
       id: existing?.id,
       scholarshipPeriodId: rule.scholarshipPeriodId,
@@ -939,18 +1018,18 @@ class ScholarshipRepository {
           : reason.trim(),
       economicScore: existing?.economicScore,
       academicScore: existing?.academicScore,
-      attendanceScore: existing?.attendanceScore ?? 0,
+      attendanceScore: attendance,
       behaviorScore: existing?.behaviorScore,
       teacherRecommendationScore: existing?.teacherRecommendationScore,
       improvementScore: existing?.improvementScore,
       rotationBonus: existing?.rotationBonus,
-      calculationStartDate: existing?.calculationStartDate,
-      calculationEndDate: existing?.calculationEndDate,
+      calculationStartDate: calculation.start,
+      calculationEndDate: calculation.end,
       specialCaseNote: reason?.trim().isEmpty == true ? null : reason?.trim(),
       totalScore: totalScore,
       rankNo: existing?.rankNo,
       decisionStatus: ScholarshipDecisionStatus.approved,
-      eligibilityStatus: ScholarshipEligibilityStatus.eligible,
+      eligibilityStatus: eligibilityStatus,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     );
@@ -1635,6 +1714,9 @@ class ScholarshipRepository {
       'scholarship_period_id': assessment.scholarshipPeriodId,
       'scholarship_period_rule_id': assessment.scholarshipPeriodRuleId ?? '',
       'scholarship_rule_id': null,
+      'assistance_period_id': assessment.scholarshipPeriodId,
+      'assistance_period_rule_id': assessment.scholarshipPeriodRuleId ?? '',
+      'assistance_rule_id': null,
       'student_rule_id': assessment.ruleId,
       'student_id': assessment.studentId,
       'rule_name': assessment.displayName,
@@ -2331,6 +2413,7 @@ class ScholarshipRepository {
       INNER JOIN teaching_activities ta
         ON ta.id = score_source.teaching_activity_id
       WHERE ta.activity_date BETWEEN ? AND ?
+        AND ta.status <> 'cancelled'
         AND $scoreExpression IS NOT NULL
       GROUP BY score_source.student_id
     ''', [start, end]);
@@ -2356,6 +2439,7 @@ class ScholarshipRepository {
         INNER JOIN teaching_activities ta
           ON ta.id = ta_scores.teaching_activity_id
         WHERE ta.activity_date BETWEEN ? AND ?
+          AND ta.status <> 'cancelled'
           AND COALESCE(ta_scores.normalized_score, ta_scores.score) IS NOT NULL
         UNION ALL
         SELECT
@@ -2366,6 +2450,7 @@ class ScholarshipRepository {
         INNER JOIN teaching_activities ta
           ON ta.id = notes.teaching_activity_id
         WHERE ta.activity_date BETWEEN ? AND ?
+          AND ta.status <> 'cancelled'
           AND notes.normalized_score IS NOT NULL
       )
       GROUP BY student_id, period
@@ -2483,40 +2568,40 @@ class ScholarshipRepository {
     String end,
   ) async {
     final db = await _dbProvider.database;
-    if (!await _tableExists(db, 'attendance_sessions') ||
-        !await _tableExists(db, 'student_attendance')) {
+    if (!await _tableExists(db, 'teaching_activities') ||
+        !await _tableExists(db, 'teaching_attendances')) {
       return const <String, double>{};
     }
-    final sessionColumns = await _tableColumns(db, 'attendance_sessions');
-    final attendanceColumns = await _tableColumns(db, 'student_attendance');
-    if (!sessionColumns.contains('id') ||
-        !sessionColumns.contains('date') ||
+    final activityColumns = await _tableColumns(db, 'teaching_activities');
+    final attendanceColumns = await _tableColumns(db, 'teaching_attendances');
+    if (!activityColumns.contains('id') ||
+        !activityColumns.contains('activity_date') ||
+        !activityColumns.contains('status') ||
         !attendanceColumns.contains('student_id') ||
-        !attendanceColumns.contains('attendance_session_id') ||
+        !attendanceColumns.contains('teaching_activity_id') ||
         !attendanceColumns.contains('status')) {
       return const <String, double>{};
     }
 
-    final sessionCountResult = await db.rawQuery(
-      '''
-      SELECT COUNT(DISTINCT id) AS count
-      FROM attendance_sessions
-      WHERE date >= ? AND date <= ?
-      ''',
-      [start, end],
-    );
-    final totalSchoolDays = Sqflite.firstIntValue(sessionCountResult) ?? 0;
-    if (totalSchoolDays == 0) return const <String, double>{};
-
     final rows = await db.rawQuery(
       '''
-      SELECT sa.student_id, COUNT(DISTINCT sa.attendance_session_id) AS present_days
-      FROM student_attendance sa
-      INNER JOIN attendance_sessions ats ON ats.id = sa.attendance_session_id
-      WHERE ats.date >= ?
-        AND ats.date <= ?
-        AND LOWER(COALESCE(sa.status, '')) IN ('present', 'hadir')
-      GROUP BY sa.student_id
+      SELECT
+        attend.student_id,
+        COUNT(*) AS total_records,
+        SUM(
+          CASE
+            WHEN LOWER(COALESCE(attend.status, '')) IN ('present', 'late')
+            THEN 1
+            ELSE 0
+          END
+        ) AS attended_records
+      FROM teaching_attendances attend
+      INNER JOIN teaching_activities activity
+        ON activity.id = attend.teaching_activity_id
+      WHERE activity.activity_date >= ?
+        AND activity.activity_date <= ?
+        AND activity.status <> 'cancelled'
+      GROUP BY attend.student_id
       ''',
       [start, end],
     );
@@ -2525,8 +2610,11 @@ class ScholarshipRepository {
     for (final row in rows) {
       final studentId = row['student_id'] as String?;
       if (studentId == null) continue;
-      final presentDays = (row['present_days'] as num?)?.toDouble() ?? 0;
-      scores[studentId] = (presentDays / totalSchoolDays) * 100;
+      final totalRecords = (row['total_records'] as num?)?.toDouble() ?? 0;
+      if (totalRecords <= 0) continue;
+      final attendedRecords =
+          (row['attended_records'] as num?)?.toDouble() ?? 0;
+      scores[studentId] = (attendedRecords / totalRecords) * 100;
     }
     return scores;
   }

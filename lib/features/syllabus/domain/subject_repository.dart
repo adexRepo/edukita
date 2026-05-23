@@ -122,19 +122,27 @@ class SubjectRepository {
 
   Future<int> insertSyllabus(Syllabus syllabus) async {
     final db = await _dbProvider.database;
-    return db.insert('syllabus', syllabus.toMap());
+    return db.transaction((txn) async {
+      final result = await txn.insert('syllabus', syllabus.toMap());
+      await _normalizeSubjectLegacyLink(txn, syllabus.subjectId);
+      return result;
+    });
   }
 
   Future<int> updateSyllabus(Syllabus syllabus) async {
     final db = await _dbProvider.database;
     final values = syllabus.toMap()
       ..['updated_at'] = DateTime.now().toIso8601String();
-    return db.update(
-      'syllabus',
-      values,
-      where: 'id = ?',
-      whereArgs: [syllabus.id],
-    );
+    return db.transaction((txn) async {
+      final result = await txn.update(
+        'syllabus',
+        values,
+        where: 'id = ?',
+        whereArgs: [syllabus.id],
+      );
+      await _normalizeSubjectLegacyLink(txn, syllabus.subjectId);
+      return result;
+    });
   }
 
   Future<int> deleteSyllabus(String id) async {
@@ -166,10 +174,9 @@ class SubjectRepository {
       WHERE subjects.id = (
         SELECT subject_id FROM syllabus WHERE id = ?
       )
-      OR subjects.syllabus_id = ?
       ORDER BY subjects.name COLLATE NOCASE
       ''',
-      [syllabusId, syllabusId],
+      [syllabusId],
     );
     return maps.map((map) => Subject.fromMap(map)).toList();
   }
@@ -187,14 +194,20 @@ class SubjectRepository {
 
   Future<int> insertSubject(Subject subject) async {
     final db = await _dbProvider.database;
-    return db.insert('subjects', subject.toMap());
+    final now = DateTime.now().toIso8601String();
+    final values = _subjectMapForSave(subject)
+      ..['created_at'] = now
+      ..['updated_at'] = now;
+    return db.insert('subjects', values);
   }
 
   Future<int> updateSubject(Subject subject) async {
     final db = await _dbProvider.database;
+    final values = _subjectMapForSave(subject)
+      ..['updated_at'] = DateTime.now().toIso8601String();
     return db.update(
       'subjects',
-      subject.toMap(),
+      values,
       where: 'id = ?',
       whereArgs: [subject.id],
     );
@@ -532,6 +545,23 @@ class SubjectRepository {
   int _countFromRows(List<Map<String, Object?>> rows) {
     if (rows.isEmpty) return 0;
     return (rows.first['count'] as num?)?.toInt() ?? 0;
+  }
+
+  Map<String, Object?> _subjectMapForSave(Subject subject) {
+    return subject.toMap()..['syllabus_id'] = null;
+  }
+
+  Future<void> _normalizeSubjectLegacyLink(
+    DatabaseExecutor db,
+    String? subjectId,
+  ) async {
+    if (subjectId == null || subjectId.trim().isEmpty) return;
+    await db.update(
+      'subjects',
+      {'syllabus_id': null},
+      where: 'id = ?',
+      whereArgs: [subjectId],
+    );
   }
 }
 

@@ -96,11 +96,12 @@ class AppPageHeaderStyle {
   static TextStyle titleStyle(BuildContext context) {
     return Theme.of(context).textTheme.headlineSmall?.copyWith(
           color: AppColors.textPrimary,
+          fontSize: 21,
           fontWeight: FontWeight.w600,
         ) ??
         const TextStyle(
           color: AppColors.textPrimary,
-          fontSize: 24,
+          fontSize: 21,
           fontWeight: FontWeight.w600,
         );
   }

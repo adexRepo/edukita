@@ -266,9 +266,18 @@ class _TeachingActivityTablePanel extends StatelessWidget {
               return AppTable<TeachingActivityListItem>(
                 data: state.activities,
                 emptyMessage: 'No teaching sessions for this filter.',
-                onRowTap: (item) {
+                onRowTap: (item) async {
                   if (item.activityId != null) {
                     context.go('/teaching-activities/${item.activityId}');
+                    return;
+                  }
+
+                  try {
+                    await context.read<TeachingActivityCubit>().startClass(
+                          item.scheduleId,
+                        );
+                  } catch (_) {
+                    // The cubit emits the error and the page listener shows it.
                   }
                 },
                 columns: [

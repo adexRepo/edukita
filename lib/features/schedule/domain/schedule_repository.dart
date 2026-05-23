@@ -36,22 +36,38 @@ class ScheduleRepository {
 
   Future<int> insertSchedule(Schedule schedule) async {
     final db = await _dbProvider.database;
+    await _validateScheduleConflict(db, schedule);
     return db.insert('schedules', await _scheduleMapForDb(schedule));
   }
 
   Future<int> updateSchedule(Schedule schedule) async {
     final db = await _dbProvider.database;
-    return db.update(
+    await _validateScheduleConflict(db, schedule);
+    await _validateScheduleEditable(db, schedule.id);
+    final map = await _scheduleMapForDb(schedule);
+    final result = await db.update(
       'schedules',
-      await _scheduleMapForDb(schedule),
+      map,
       where: 'id = ?',
       whereArgs: [schedule.id],
     );
+    if (result > 0) {
+      await _syncTeachingActivitySnapshot(db, schedule.id, map);
+    }
+    return result;
   }
 
   Future<int> deleteSchedule(String id) async {
     final db = await _dbProvider.database;
-    return db.delete('schedules', where: 'id = ?', whereArgs: [id]);
+    await _validateScheduleEditable(db, id);
+    return db.transaction((txn) async {
+      await txn.delete(
+        'teaching_activities',
+        where: 'schedule_id = ?',
+        whereArgs: [id],
+      );
+      return txn.delete('schedules', where: 'id = ?', whereArgs: [id]);
+    });
   }
 
   Future<int> insertEvent(ScheduleEvent event) async {
@@ -144,6 +160,83 @@ class ScheduleRepository {
     return maps.map((map) => Schedule.fromMap(map)).toList();
   }
 
+  Future<void> _validateScheduleConflict(
+    Database db,
+    Schedule schedule,
+  ) async {
+    final teacherId = schedule.teacherId?.trim();
+    final date = schedule.date?.trim();
+    final start = _timeToMinutes(schedule.startAt);
+    final end = _timeToMinutes(schedule.endAt);
+
+    if (teacherId == null ||
+        teacherId.isEmpty ||
+        date == null ||
+        date.isEmpty ||
+        start == null ||
+        end == null) {
+      return;
+    }
+
+    if (end <= start) {
+      throw ScheduleConflictException(
+        'Schedule end time must be after start time.',
+      );
+    }
+
+    final rows = await db.query(
+      'schedules',
+      columns: const ['id', 'title', 'start_at', 'end_at'],
+      where: 'teacher_id = ? AND date = ? AND id <> ?',
+      whereArgs: [teacherId, date, schedule.id],
+    );
+
+    for (final row in rows) {
+      final existingStart = _timeToMinutes(row['start_at']?.toString());
+      final existingEnd = _timeToMinutes(row['end_at']?.toString());
+      if (existingStart == null || existingEnd == null) continue;
+
+      final overlaps = start < existingEnd && end > existingStart;
+      if (!overlaps) continue;
+
+      final title = row['title']?.toString().trim();
+      final label = title == null || title.isEmpty ? 'another schedule' : title;
+      throw ScheduleConflictException(
+        'Teacher already has $label on $date at '
+        '${row['start_at'] ?? '-'} - ${row['end_at'] ?? '-'}.',
+      );
+    }
+  }
+
+  Future<void> _validateScheduleEditable(Database db, String scheduleId) async {
+    final rows = await db.query(
+      'teaching_activities',
+      columns: const ['status'],
+      where: 'schedule_id = ?',
+      whereArgs: [scheduleId],
+    );
+    final locked = rows.any((row) {
+      final status = row['status']?.toString();
+      return status != null && status != 'scheduled';
+    });
+    if (!locked) return;
+
+    throw ScheduleConflictException(
+      'This schedule already has a teaching session report and cannot be changed.',
+    );
+  }
+
+  int? _timeToMinutes(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    final parts = value.trim().split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+    return (hour * 60) + minute;
+  }
+
   Future<Map<String, Object?>> _scheduleMapForDb(Schedule schedule) async {
     final db = await _dbProvider.database;
     final columns = await db.rawQuery('PRAGMA table_info(schedules)');
@@ -183,6 +276,36 @@ class ScheduleRepository {
     return map;
   }
 
+  Future<void> _syncTeachingActivitySnapshot(
+    Database db,
+    String scheduleId,
+    Map<String, Object?> scheduleMap,
+  ) async {
+    final activityColumns = await db.rawQuery(
+      'PRAGMA table_info(teaching_activities)',
+    );
+    if (activityColumns.isEmpty) return;
+    final names = activityColumns.map((row) => row['name']?.toString()).toSet();
+    final values = <String, Object?>{
+      if (names.contains('teacher_id')) 'teacher_id': scheduleMap['teacher_id'],
+      if (names.contains('class_id')) 'class_id': scheduleMap['class_id'],
+      if (names.contains('class_level'))
+        'class_level': scheduleMap['class_level'],
+      if (names.contains('activity_date'))
+        'activity_date': scheduleMap['date'] ?? '',
+      if (names.contains('updated_at'))
+        'updated_at': DateTime.now().toIso8601String(),
+    };
+    if (values.isEmpty) return;
+
+    await db.update(
+      'teaching_activities',
+      values,
+      where: 'schedule_id = ? AND status = ?',
+      whereArgs: [scheduleId, 'scheduled'],
+    );
+  }
+
   Future<String?> _defaultClassIdForLevel(Database db, int level) async {
     final rows = await db.query(
       'classes',
@@ -195,4 +318,13 @@ class ScheduleRepository {
     if (rows.isEmpty) return null;
     return rows.first['id']?.toString();
   }
+}
+
+class ScheduleConflictException implements Exception {
+  const ScheduleConflictException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }

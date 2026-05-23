@@ -32,18 +32,49 @@ class DetailSectionCard extends StatelessWidget {
             children: [
               Icon(icon, size: 18, color: AppColors.primary),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  title,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           if (wrapChildren)
-            Wrap(spacing: 8, runSpacing: 8, children: children)
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                var columnCount = 1;
+                if (width >= 900) {
+                  columnCount = 4;
+                } else if (width >= 660) {
+                  columnCount = 3;
+                } else if (width >= 420) {
+                  columnCount = 2;
+                }
+
+                if (children.length == 1) {
+                  columnCount = 1;
+                }
+
+                const spacing = 8.0;
+                final itemWidth =
+                    (width - (spacing * (columnCount - 1))) / columnCount;
+
+                return Wrap(
+                  spacing: spacing,
+                  runSpacing: spacing,
+                  children: children
+                      .map((child) => SizedBox(width: itemWidth, child: child))
+                      .toList(),
+                );
+              },
+            )
           else
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

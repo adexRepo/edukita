@@ -2,6 +2,8 @@ import 'package:edukita/features/common/feature_state.dart';
 import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/students/data/student_advanced_form_data.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
+import 'package:edukita/features/students/data/student_detail_insight_data.dart';
+import 'package:edukita/features/students/data/student_exam_score_data.dart';
 import 'package:edukita/features/students/domain/student_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -32,6 +34,30 @@ class StudentDetailCubit extends Cubit<FeatureState<StudentDetailData>> {
 
   Future<List<StudentActivityFormData>> loadActivities(String studentId) {
     return _repo.loadActivities(studentId);
+  }
+
+  Future<StudentDetailInsights> loadDetailInsights(String studentId) {
+    return _repo.loadDetailInsights(studentId);
+  }
+
+  Future<StudentExamScoreOptions> loadExamScoreOptions(String studentId) {
+    return _repo.loadExamScoreOptions(studentId);
+  }
+
+  Future<List<StudentExamScoreGroup>> loadStudentExamScores(String studentId) {
+    return _repo.loadStudentExamScores(studentId);
+  }
+
+  Future<void> saveStudentExamScoreGroup(
+    StudentExamScoreGroup group, {
+    String? evidenceSourcePath,
+    String? evidenceFileName,
+  }) {
+    return _repo.saveStudentExamScoreGroup(
+      group,
+      evidenceSourcePath: evidenceSourcePath,
+      evidenceFileName: evidenceFileName,
+    );
   }
 
   Future<void> _fetch(String id) async {

@@ -2744,7 +2744,7 @@ class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
             TextField(
               controller: _reasonController,
               decoration: const InputDecoration(
-                labelText: 'Reason for newly selected students',
+                labelText: 'Reason / override note for newly selected students',
               ),
             ),
             const SizedBox(height: 10),
@@ -2822,7 +2822,7 @@ class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
           scholarshipPeriodRuleId: widget.rule.id,
           studentId: student.id,
           reason: _reasonController.text.trim().isEmpty
-              ? widget.rule.displayName
+              ? null
               : _reasonController.text.trim(),
         ),
       );

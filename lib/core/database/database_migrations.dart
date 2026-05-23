@@ -116,6 +116,11 @@ class DatabaseMigrations {
     await _ensureAssistancePeriodProgramSchema(db);
     await _ensureScheduleLevelSchema(db);
     await _ensureTeachingActivitySchema(db);
+    await _ensureAssessmentEvidenceSchema(db);
+    await _ensureStudentExamScoreSchema(db);
+    await _normalizeAcademicRelationFlow(db);
+    await _ensureAssistanceRelationAliases(db);
+    await _ensureSubjectTimestampSchema(db);
   }
 
   static const List<(String oldName, String newName)> _assistanceTableRenames =
@@ -234,6 +239,94 @@ class DatabaseMigrations {
   static Future<void> ensureCurriculumSchema(Database db) async {
     await _ensureCurriculumLearningPlanningSchema(db);
     await _ensureTeachingMaterialSchema(db);
+  }
+
+  static Future<void> _ensureSubjectTimestampSchema(Database db) async {
+    await DatabaseTables.subjects(db);
+    await _addColumnIfMissing(
+      db,
+      table: 'subjects',
+      column: 'created_at',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'subjects',
+      column: 'updated_at',
+      definition: 'TEXT',
+    );
+  }
+
+  static Future<void> _ensureAssessmentEvidenceSchema(Database db) async {
+    await DatabaseTables.assessments(db);
+    await DatabaseTables.studentAssessments(db);
+    await DatabaseTables.assessmentEvidences(db);
+    await _addColumnIfMissing(
+      db,
+      table: 'assessments',
+      column: 'assessment_type',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assessments',
+      column: 'assessment_source',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assessments',
+      column: 'score_type',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assessments',
+      column: 'is_evidence_required',
+      definition: 'INTEGER NOT NULL DEFAULT 0',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assessments',
+      column: 'evidence_label',
+      definition: 'TEXT',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_assessment_evidences_result ON assessment_evidences(student_assessment_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_assessment_evidences_assessment ON assessment_evidences(assessment_id)',
+    );
+  }
+
+  static Future<void> _ensureStudentExamScoreSchema(Database db) async {
+    await DatabaseTables.studentExamScores(db);
+    await DatabaseTables.studentExamScoreGroups(db);
+    await DatabaseTables.studentExamScoreItems(db);
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_student_exam_scores_student ON student_exam_scores(student_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_student_exam_scores_subject ON student_exam_scores(subject_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_student_exam_scores_scope ON student_exam_scores(scope)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_student_exam_score_groups_student ON student_exam_score_groups(student_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_student_exam_score_groups_scope ON student_exam_score_groups(scope)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_student_exam_score_items_group ON student_exam_score_items(group_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_student_exam_score_items_subject ON student_exam_score_items(subject_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_student_exam_score_items_unit ON student_exam_score_items(unit_id)',
+    );
   }
 
   static Future<void> _ensureCurriculumLearningPlanningSchema(
@@ -546,6 +639,150 @@ class DatabaseMigrations {
         whereArgs: ['', syllabusId],
       );
     }
+  }
+
+  static Future<void> _normalizeAcademicRelationFlow(Database db) async {
+    if (!await _tableExists(db, 'syllabus') ||
+        !await _tableExists(db, 'subjects') ||
+        !await _columnExists(db, 'syllabus', 'subject_id') ||
+        !await _columnExists(db, 'subjects', 'syllabus_id')) {
+      return;
+    }
+
+    await _backfillSyllabusSubject(db);
+    await db.execute('''
+      UPDATE subjects
+      SET syllabus_id = NULL
+      WHERE syllabus_id IS NOT NULL
+        AND syllabus_id <> ''
+        AND EXISTS (
+          SELECT 1
+          FROM syllabus
+          WHERE syllabus.id = subjects.syllabus_id
+            AND syllabus.subject_id = subjects.id
+        )
+    ''');
+  }
+
+  static Future<void> _ensureAssistanceRelationAliases(Database db) async {
+    await _syncRelationAlias(
+      db,
+      table: 'assistance_period_rules',
+      legacyColumn: 'scholarship_period_id',
+      currentColumn: 'assistance_period_id',
+    );
+    await _syncRelationAlias(
+      db,
+      table: 'assistance_period_rules',
+      legacyColumn: 'scholarship_rule_id',
+      currentColumn: 'assistance_rule_id',
+    );
+    await _syncRelationAlias(
+      db,
+      table: 'student_assistance_rule_candidates',
+      legacyColumn: 'scholarship_period_id',
+      currentColumn: 'assistance_period_id',
+    );
+    await _syncRelationAlias(
+      db,
+      table: 'student_assistance_rule_candidates',
+      legacyColumn: 'scholarship_period_rule_id',
+      currentColumn: 'assistance_period_rule_id',
+    );
+    await _syncRelationAlias(
+      db,
+      table: 'student_assistance_assessments',
+      legacyColumn: 'scholarship_period_id',
+      currentColumn: 'assistance_period_id',
+    );
+    await _syncRelationAlias(
+      db,
+      table: 'student_assistance_assessments',
+      legacyColumn: 'scholarship_period_rule_id',
+      currentColumn: 'assistance_period_rule_id',
+    );
+    await _syncRelationAlias(
+      db,
+      table: 'student_assistance_assessments',
+      legacyColumn: 'rule_candidate_id',
+      currentColumn: 'assistance_rule_candidate_id',
+    );
+    await _syncRelationAlias(
+      db,
+      table: 'assistance_rule_targets',
+      legacyColumn: 'scholarship_period_id',
+      currentColumn: 'assistance_period_id',
+    );
+    await _syncRelationAlias(
+      db,
+      table: 'assistance_rule_targets',
+      legacyColumn: 'scholarship_period_rule_id',
+      currentColumn: 'assistance_period_rule_id',
+    );
+    await _syncRelationAlias(
+      db,
+      table: 'assistance_rule_targets',
+      legacyColumn: 'scholarship_rule_id',
+      currentColumn: 'assistance_rule_id',
+    );
+    await _syncRelationAlias(
+      db,
+      table: 'assistance_approval_documents',
+      legacyColumn: 'scholarship_period_id',
+      currentColumn: 'assistance_period_id',
+    );
+    await _syncRelationAlias(
+      db,
+      table: 'assistance_recipients',
+      legacyColumn: 'scholarship_period_id',
+      currentColumn: 'assistance_period_id',
+    );
+    await _syncRelationAlias(
+      db,
+      table: 'assistance_recipients',
+      legacyColumn: 'scholarship_rule_target_id',
+      currentColumn: 'assistance_rule_target_id',
+    );
+    await _syncRelationAlias(
+      db,
+      table: 'assistance_recipients',
+      legacyColumn: 'scholarship_period_rule_id',
+      currentColumn: 'assistance_period_rule_id',
+    );
+    await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _syncRelationAlias(
+    Database db, {
+    required String table,
+    required String legacyColumn,
+    required String currentColumn,
+  }) async {
+    if (!await _tableExists(db, table)) return;
+    if (!await _columnExists(db, table, legacyColumn)) return;
+
+    await _addColumnIfMissing(
+      db,
+      table: table,
+      column: currentColumn,
+      definition: 'TEXT',
+    );
+    if (!await _columnExists(db, table, currentColumn)) return;
+
+    await db.execute('''
+      UPDATE $table
+      SET $currentColumn = $legacyColumn
+      WHERE ($currentColumn IS NULL OR $currentColumn = '')
+        AND $legacyColumn IS NOT NULL
+        AND $legacyColumn <> ''
+    ''');
+    await db.execute('''
+      UPDATE $table
+      SET $legacyColumn = $currentColumn
+      WHERE ($legacyColumn IS NULL OR $legacyColumn = '')
+        AND $currentColumn IS NOT NULL
+        AND $currentColumn <> ''
+    ''');
   }
 
   static Future<void> _ensureStudentAdvancedInputSchema(Database db) async {
