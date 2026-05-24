@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:sqflite_common/sqlite_api.dart';
 import 'package:sqflite_common/utils/utils.dart' as utils_sqlite;
 import 'package:uuid/uuid.dart';
@@ -7,6 +9,7 @@ class DatabaseSeed {
     await ensureAdmin(db);
     await _ensureStrategies(db);
     await ensureAssistancePrograms(db);
+    await ensureReportDefinitions(db);
   }
 
   static Future<void> ensureAdmin(Database db) async {
@@ -215,5 +218,91 @@ class DatabaseSeed {
         });
       }
     }
+  }
+
+  static Future<void> ensureReportDefinitions(Database db) async {
+    final table = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'report_definitions'",
+    );
+    if (table.isEmpty) return;
+
+    final existing = await db.query(
+      'report_definitions',
+      columns: const ['id'],
+      where: 'code = ?',
+      whereArgs: ['STUDENT_EXAM_SCORES'],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) return;
+
+    final now = DateTime.now().toIso8601String();
+    await db.insert('report_definitions', {
+      'id': const Uuid().v4(),
+      'code': 'STUDENT_EXAM_SCORES',
+      'name': 'Student Exam Scores',
+      'file_name_pattern': 'student-exam-scores-{year}-{month}',
+      'description':
+          'Student external and internal exam score inquiry with subject or unit score detail.',
+      'query_sql': '''
+SELECT
+  student.student_no,
+  student.full_name AS student_name,
+  cls.name AS class_name,
+  score_group.scope,
+  score_group.semester,
+  score_group.exam_type,
+  COALESCE(subject.name, unit.name, '-') AS item_name,
+  score_item.score,
+  score_item.max_score,
+  score_group.exam_date
+FROM student_exam_score_groups score_group
+JOIN students student ON student.id = score_group.student_id
+LEFT JOIN classes cls ON cls.id = student.class_id
+LEFT JOIN student_exam_score_items score_item ON score_item.group_id = score_group.id
+LEFT JOIN subjects subject ON subject.id = score_item.subject_id
+LEFT JOIN units unit ON unit.id = score_item.unit_id
+ORDER BY score_group.exam_date DESC, student.full_name ASC
+''',
+      'parameters_json': null,
+      'columns_json': jsonEncode([
+        _reportColumn('student_no', 'Student No', 140),
+        _reportColumn('student_name', 'Student Name', 220),
+        _reportColumn('class_name', 'Class', 140),
+        _reportColumn('scope', 'Scope', 110),
+        _reportColumn('semester', 'Semester', 110),
+        _reportColumn('exam_type', 'Exam Type', 150),
+        _reportColumn('item_name', 'Subject / Unit', 220),
+        _reportColumn('score', 'Score', 100, type: 'number', align: 'right'),
+        _reportColumn(
+          'max_score',
+          'Max Score',
+          110,
+          type: 'number',
+          align: 'right',
+        ),
+        _reportColumn('exam_date', 'Exam Date', 130, type: 'date'),
+      ]),
+      'is_active': 1,
+      'created_at': now,
+      'updated_at': now,
+    });
+  }
+
+  static Map<String, Object?> _reportColumn(
+    String field,
+    String label,
+    double width, {
+    String type = 'text',
+    String align = 'left',
+  }) {
+    return {
+      'field': field,
+      'label': label,
+      'width': width,
+      'align': align,
+      'type': type,
+      'visible': true,
+      'export': true,
+    };
   }
 }

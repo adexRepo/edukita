@@ -1,6 +1,7 @@
 import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/management/domain/guardian_cubit.dart';
 import 'package:edukita/features/management/presentation/guardian_form_dialog.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_toast.dart';
@@ -125,7 +126,10 @@ class _GuardiansPageState extends State<GuardiansPage> {
                                     ),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.delete),
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: AppColors.error,
+                                    ),
                                     onPressed: () =>
                                         _confirmDelete(context, guardian.id),
                                   ),

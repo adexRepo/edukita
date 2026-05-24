@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' as io;
 
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
@@ -19,12 +20,12 @@ import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 const List<String> _schoolExamTypes = [
-  'Raport',
   'Ulangan Harian',
   'UTS',
   'UAS',
   'Tryout',
-  'Ujian Akhir',
+  'Ujian Sekolah',
+  'Remedial',
   'Other',
 ];
 
@@ -36,12 +37,7 @@ const List<String> _internalExamTypes = [
   'Other',
 ];
 
-const Set<String> _requiredEvidenceTypes = {
-  'Raport',
-  'UTS',
-  'UAS',
-  'Ujian Akhir',
-};
+const Set<String> _requiredEvidenceTypes = {'UTS', 'UAS', 'Ujian Sekolah'};
 
 class StudentExamScoresTab extends StatefulWidget {
   const StudentExamScoresTab({super.key, required this.student});
@@ -69,7 +65,9 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
+    setState(() {
+      _future = _load();
+    });
     await _future;
   }
 
@@ -92,13 +90,81 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
     await _refresh();
   }
 
+  Future<void> _showEditScoreDialog(
+    StudentExamScoreOptions options,
+    StudentExamScoreGroup group,
+  ) async {
+    final cubit = context.read<StudentDetailCubit>();
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _ScoreExamDialog(
+        student: widget.student,
+        options: options,
+        initialGroup: group,
+        onSave: (updatedGroup, {evidenceSourcePath, evidenceFileName}) {
+          return cubit.updateStudentExamScoreGroup(
+            updatedGroup,
+            evidenceSourcePath: evidenceSourcePath,
+            evidenceFileName: evidenceFileName,
+          );
+        },
+      ),
+    );
+    await _refresh();
+  }
+
+  Future<void> _deleteScoreGroup(StudentExamScoreGroup group) async {
+    final cubit = context.read<StudentDetailCubit>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const AppDialogTitle('Remove Exam Score?'),
+          content: Text(
+            'This will remove ${group.examType} score data from this student.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              icon: const Icon(
+                Icons.delete_outline,
+                color: AppColors.error,
+              ),
+              label: const Text('Remove'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await cubit.deleteStudentExamScoreGroup(group);
+      AppToast.showSubmissionSuccess(
+        action: SubmissionAction.delete,
+        subject: 'score exam',
+      );
+      await _refresh();
+    } catch (_) {
+      AppToast.showSubmissionFailed(
+        action: SubmissionAction.delete,
+        subject: 'score exam',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<_ExamScoreTabData>(
       future: _future,
-      builder: (context, snapshot) {
+              builder: (context, snapshot) {
         final data = snapshot.data;
         final groups = data?.groups ?? const <StudentExamScoreGroup>[];
+        final options = data?.options;
 
         return DetailTabScroll(
           children: [
@@ -138,7 +204,13 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
                     'No internal or school exam score has been added.',
                   )
                 else
-                  _ExamScoreGroupTable(groups: groups),
+                  _ExamScoreGroupTable(
+                    groups: groups,
+                    onEdit: options == null
+                        ? (_) async {}
+                        : (group) => _showEditScoreDialog(options, group),
+                    onDelete: _deleteScoreGroup,
+                  ),
               ],
             ),
           ],
@@ -149,9 +221,15 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
 }
 
 class _ExamScoreGroupTable extends StatelessWidget {
-  const _ExamScoreGroupTable({required this.groups});
+  const _ExamScoreGroupTable({
+    required this.groups,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final List<StudentExamScoreGroup> groups;
+  final Future<void> Function(StudentExamScoreGroup group) onEdit;
+  final Future<void> Function(StudentExamScoreGroup group) onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -162,52 +240,65 @@ class _ExamScoreGroupTable extends StatelessWidget {
           border: Border.all(color: AppColors.border),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: SizedBox(
-            width: 980,
-            child: Table(
-              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-              border: const TableBorder(
-                horizontalInside: BorderSide(color: AppColors.divider),
-              ),
-              columnWidths: const {
-                0: FixedColumnWidth(92),
-                1: FixedColumnWidth(88),
-                2: FixedColumnWidth(100),
-                3: FlexColumnWidth(),
-                4: FixedColumnWidth(92),
-                5: FixedColumnWidth(130),
-                6: FlexColumnWidth(),
-              },
-              children: [
-                const TableRow(
-                  decoration: BoxDecoration(color: AppColors.surface),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth > 1140
+                ? constraints.maxWidth
+                : 1140.0;
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: width,
+                child: Table(
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                  border: const TableBorder(
+                    horizontalInside: BorderSide(color: AppColors.divider),
+                  ),
+                  columnWidths: const {
+                    0: FixedColumnWidth(128),
+                    1: FixedColumnWidth(160),
+                    2: FixedColumnWidth(160),
+                    3: FixedColumnWidth(140),
+                    4: FlexColumnWidth(1.9),
+                    5: FixedColumnWidth(132),
+                  },
                   children: [
-                    _TableHeader('Date'),
-                    _TableHeader('Type'),
-                    _TableHeader('Scope'),
-                    _TableHeader('Items'),
-                    _TableHeader('Average'),
-                    _TableHeader('Evidence'),
-                    _TableHeader('Note'),
+                    const TableRow(
+                      decoration: BoxDecoration(color: AppColors.surface),
+                      children: [
+                        _TableHeader('Exam Date'),
+                        _TableHeader('Scope\nSemester'),
+                        _TableHeader('Type\nSubject'),
+                        _ScoreHeader(),
+                        _TableHeader('Note'),
+                        _TableHeader('Action'),
+                      ],
+                    ),
+                    for (final group in groups)
+                      TableRow(
+                        children: [
+                          _TableCell(group.examDate),
+                          _TableCell(_scopeSemesterText(group)),
+                          _TableCell(
+                            '${group.examType}\n${_itemSummary(group)}',
+                          ),
+                          _ScoreAverageCell(
+                            score: _scoreSummary(group),
+                            average: _averageText(group),
+                          ),
+                          _TableCell(_dash(group.note)),
+                          _ExamScoreActionCell(
+                            group: group,
+                            onEdit: onEdit,
+                            onDelete: onDelete,
+                          ),
+                        ],
+                      ),
                   ],
                 ),
-                for (final group in groups)
-                  TableRow(
-                    children: [
-                      _TableCell(group.examDate),
-                      _TableCell(group.examType),
-                      _TableCell(group.isSchool ? 'School' : 'Internal'),
-                      _TableCell(_itemSummary(group)),
-                      _TableCell(_averageText(group)),
-                      _TableCell(_evidenceText(group)),
-                      _TableCell(_dash(group.note)),
-                    ],
-                  ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -216,21 +307,33 @@ class _ExamScoreGroupTable extends StatelessWidget {
   String _itemSummary(StudentExamScoreGroup group) {
     final labels = group.items.take(4).map((item) {
       final label = group.isSchool ? item.subjectName : item.unitName;
-      return '${_dash(label)} ${item.score.toStringAsFixed(0)}';
+      return _dash(label);
     }).toList();
     if (group.items.length > 4) labels.add('+${group.items.length - 4} more');
     return labels.join('\n');
+  }
+
+  String _scopeSemesterText(StudentExamScoreGroup group) {
+    final scope = group.isSchool ? 'School' : 'Internal';
+    if (!group.isSchool) return scope;
+    return '$scope\n${_dash(group.semester)} - ${group.academicYear}';
+  }
+
+  String _scoreSummary(StudentExamScoreGroup group) {
+    final scores = group.items.take(3).map((item) {
+      final score = item.score.toStringAsFixed(0);
+      final max = item.maxScore;
+      if (max == null || max <= 0) return score;
+      return '$score/${max.toStringAsFixed(0)}';
+    }).toList();
+    if (group.items.length > 3) scores.add('+${group.items.length - 3} more');
+    return scores.isEmpty ? '-' : scores.join(', ');
   }
 
   String _averageText(StudentExamScoreGroup group) {
     final value = group.averagePercent;
     if (value == null) return '-';
     return '${value.toStringAsFixed(1)}%';
-  }
-
-  String _evidenceText(StudentExamScoreGroup group) {
-    if (group.hasEvidence) return group.evidenceFileName ?? 'Uploaded';
-    return group.evidenceRequired ? 'Required' : 'Optional';
   }
 }
 
@@ -245,12 +348,51 @@ class _TableHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       child: Text(
         value,
+        maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
           color: AppColors.textSecondary,
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
+      ),
+    );
+  }
+}
+
+class _ScoreHeader extends StatelessWidget {
+  const _ScoreHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Flexible(
+            child: Text(
+              'Score\nAvg',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Tooltip(
+            message:
+                'Avg is calculated from each\nitem score divided by max score,\nthen averaged for this exam.',
+            child: Icon(
+              Icons.info_outline,
+              size: 13,
+              color: AppColors.textHint,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -279,20 +421,118 @@ class _TableCell extends StatelessWidget {
   }
 }
 
+class _ScoreAverageCell extends StatelessWidget {
+  const _ScoreAverageCell({required this.score, required this.average});
+
+  final String score;
+  final String average;
+
+  @override
+  Widget build(BuildContext context) {
+    return _TableCell('$score\nAvg $average');
+  }
+}
+
+class _ExamScoreActionCell extends StatelessWidget {
+  const _ExamScoreActionCell({
+    required this.group,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final StudentExamScoreGroup group;
+  final Future<void> Function(StudentExamScoreGroup group) onEdit;
+  final Future<void> Function(StudentExamScoreGroup group) onDelete;
+
+  Future<void> _download() async {
+    final sourcePath = group.evidenceFilePath?.trim();
+    if (sourcePath == null || sourcePath.isEmpty) {
+      AppToast.showFailed('No evidence file is attached.');
+      return;
+    }
+
+    final sourceFile = io.File(sourcePath);
+    if (!await sourceFile.exists()) {
+      AppToast.showFailed('Evidence file was not found in storage.');
+      return;
+    }
+
+    final fileName = group.evidenceFileName ?? p.basename(sourcePath);
+    final location = await getSaveLocation(suggestedName: fileName);
+    if (location == null) return;
+
+    try {
+      if (p.normalize(sourceFile.path) != p.normalize(location.path)) {
+        await sourceFile.copy(location.path);
+      }
+      AppToast.showSuccess('Evidence downloaded.');
+    } catch (_) {
+      AppToast.showFailed('Failed to download evidence.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Tooltip(
+            message: 'Edit score record',
+            child: IconButton(
+              onPressed: () => onEdit(group),
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              color: AppColors.primaryDark,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+          Tooltip(
+            message: 'Download evidence',
+            child: IconButton(
+              onPressed: group.hasEvidence ? () => _download() : null,
+              icon: const Icon(Icons.download_outlined, size: 18),
+              color: AppColors.primary,
+              disabledColor: AppColors.textHint,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+          Tooltip(
+            message: 'Remove score record',
+            child: IconButton(
+              onPressed: () => onDelete(group),
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: AppColors.error,
+              ),
+              color: AppColors.error,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ScoreExamDialog extends StatefulWidget {
   const _ScoreExamDialog({
     required this.student,
     required this.options,
+    this.initialGroup,
     required this.onSave,
   });
 
   final StudentDetailData student;
   final StudentExamScoreOptions options;
+  final StudentExamScoreGroup? initialGroup;
   final FutureOr<void> Function(
     StudentExamScoreGroup group, {
     String? evidenceSourcePath,
     String? evidenceFileName,
-  }) onSave;
+  })
+  onSave;
 
   @override
   State<_ScoreExamDialog> createState() => _ScoreExamDialogState();
@@ -303,21 +543,25 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
   final _schoolRows = <_ScoreLineDraft>[];
   final _internalRows = <_ScoreLineDraft>[];
   String _scope = 'school';
-  String _schoolExamType = 'Raport';
+  String _schoolExamType = 'Ulangan Harian';
   String _internalExamType = 'Quiz';
   String _schoolSource = 'school_report';
   String _academicYear = DateTime.now().year.toString();
   String? _semester;
   String _examDate = DateTime.now().toIso8601String().split('T').first;
+  TextEditingController? _examDateController;
   String? _note;
   String? _evidenceSourcePath;
   String? _evidenceFileName;
+  bool _evidenceChanged = false;
   bool _saving = false;
 
+  bool get _isEdit => widget.initialGroup != null;
   bool get _isSchool => _scope == 'school';
   bool get _evidenceRequired =>
       _isSchool && _requiredEvidenceTypes.contains(_schoolExamType);
-  String get _currentExamType => _isSchool ? _schoolExamType : _internalExamType;
+  String get _currentExamType =>
+      _isSchool ? _schoolExamType : _internalExamType;
   String get _currentSource => _isSchool ? _schoolSource : 'internal';
   List<_ScoreLineDraft> get _activeRows =>
       _isSchool ? _schoolRows : _internalRows;
@@ -329,15 +573,22 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
 
   List<_ScoreTarget> get _unitTargets {
     return widget.options.units
-        .map((unit) => _ScoreTarget(unit.id, unit.name, parentId: unit.subjectId))
+        .map(
+          (unit) => _ScoreTarget(unit.id, unit.name, parentId: unit.subjectId),
+        )
         .toList();
   }
 
   @override
   void initState() {
     super.initState();
-    final internalRow = _createInternalRow();
-    if (internalRow != null) _internalRows.add(internalRow);
+    final group = widget.initialGroup;
+    if (group == null) {
+      final internalRow = _createInternalRow();
+      if (internalRow != null) _internalRows.add(internalRow);
+    } else {
+      _loadInitialGroup(group);
+    }
   }
 
   @override
@@ -345,13 +596,14 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
     for (final row in [..._schoolRows, ..._internalRows]) {
       row.dispose();
     }
+    _examDateController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const AppDialogTitle('Add Score Exam'),
+      title: AppDialogTitle(_isEdit ? 'Edit Score Exam' : 'Add Score Exam'),
       content: SizedBox(
         width: 860,
         child: SingleChildScrollView(
@@ -392,7 +644,7 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
                       onChanged: (value) {
                         setState(() {
                           if (_isSchool) {
-                            _schoolExamType = value ?? 'Raport';
+                            _schoolExamType = value ?? 'Ulangan Harian';
                           } else {
                             _internalExamType = value ?? 'Quiz';
                           }
@@ -400,25 +652,14 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
                       },
                       onSaved: (value) {
                         if (_isSchool) {
-                          _schoolExamType = value ?? 'Raport';
+                          _schoolExamType = value ?? 'Ulangan Harian';
                         } else {
                           _internalExamType = value ?? 'Quiz';
                         }
                       },
                     ),
                   ),
-                  CommonFormWidgets.textField(
-                    label: 'Exam Date',
-                    value: _examDate,
-                    hint: AppFormFieldStyle.dateFormat,
-                    onSaved: (value) => _examDate = value?.trim() ?? _examDate,
-                    validator: (value) {
-                      if (value?.trim().isEmpty ?? true) {
-                        return 'Exam date is required';
-                      }
-                      return null;
-                    },
-                  ),
+                  _buildExamDatePicker(),
                 ),
                 const SizedBox(height: 14),
                 if (_isSchool) ...[
@@ -427,8 +668,9 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
                       label: 'Source',
                       items: const ['school_report', 'tryout', 'external'],
                       value: _schoolSource,
-                      onChanged: (value) =>
-                          setState(() => _schoolSource = value ?? 'school_report'),
+                      onChanged: (value) => setState(
+                        () => _schoolSource = value ?? 'school_report',
+                      ),
                       onSaved: (value) =>
                           _schoolSource = value ?? 'school_report',
                     ),
@@ -462,11 +704,11 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
                   unitOptions: _unitTargets,
                   rows: _activeRows,
                   allowAddRemove: true,
-                  allowEmptyRows: _isSchool,
+                  allowEmptyRows: true,
                   addButtonLabel: _isSchool ? 'Add Subject' : 'Add Unit',
                   emptyText: _isSchool
                       ? 'No subject score added yet. Click Add Subject to input report scores.'
-                      : 'No unit score available.',
+                      : 'No unit score added yet. Click Add Unit to input internal scores.',
                   onChanged: () => setState(() {}),
                 ),
                 const SizedBox(height: 14),
@@ -496,7 +738,7 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(_isEdit ? 'Update' : 'Save'),
         ),
       ],
     );
@@ -546,6 +788,47 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
     );
   }
 
+  Widget _buildExamDatePicker() {
+    _examDateController ??= TextEditingController(text: _examDate);
+    return TextFormField(
+      controller: _examDateController,
+      readOnly: true,
+      decoration: InputDecoration(
+        label: CommonFormWidgets.requiredLabel('Exam Date'),
+        hintText: AppFormFieldStyle.dateFormat,
+        suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
+        border: const OutlineInputBorder(),
+        contentPadding: AppFormFieldStyle.contentPadding,
+      ),
+      validator: (value) {
+        if (value?.trim().isEmpty ?? true) {
+          return 'Exam date is required';
+        }
+        return null;
+      },
+      onTap: _pickExamDate,
+      onSaved: (value) => _examDate = value?.trim() ?? _examDate,
+    );
+  }
+
+  Future<void> _pickExamDate() async {
+    final now = DateTime.now();
+    final controller = _examDateController;
+    final current = DateTime.tryParse(controller?.text ?? _examDate) ?? now;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(now.year + 1, 12, 31),
+    );
+    if (picked == null || !mounted) return;
+    final formatted = _formatDate(picked);
+    setState(() {
+      _examDate = formatted;
+      _examDateController?.text = formatted;
+    });
+  }
+
   Future<void> _pickEvidence() async {
     const group = XTypeGroup(
       label: 'Exam evidence',
@@ -553,7 +836,10 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
     );
     final file = await openFile(acceptedTypeGroups: [group]);
     if (file == null) return;
-    final extension = p.extension(file.path).replaceFirst('.', '').toLowerCase();
+    final extension = p
+        .extension(file.path)
+        .replaceFirst('.', '')
+        .toLowerCase();
     if (!['pdf', 'jpg', 'jpeg', 'png'].contains(extension)) {
       AppToast.showFailed('Only PDF, JPG, and PNG files are allowed.');
       return;
@@ -561,7 +847,62 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
     setState(() {
       _evidenceSourcePath = file.path;
       _evidenceFileName = file.name;
+      _evidenceChanged = true;
     });
+  }
+
+  void _loadInitialGroup(StudentExamScoreGroup group) {
+    _scope = group.scope;
+    if (group.isSchool) {
+      _schoolExamType = _schoolExamTypes.contains(group.examType)
+          ? group.examType
+          : _schoolExamTypes.first;
+      _schoolSource = group.source ?? _schoolSource;
+      _academicYear = group.academicYear ?? _academicYear;
+      _semester = group.semester;
+    } else {
+      _internalExamType = _internalExamTypes.contains(group.examType)
+          ? group.examType
+          : _internalExamTypes.first;
+    }
+    _examDate = group.examDate;
+    _note = group.note;
+    _evidenceFileName = group.evidenceFileName;
+    _evidenceSourcePath = group.evidenceFilePath;
+
+    final targetRows = group.isSchool ? _schoolRows : _internalRows;
+    for (final item in group.items) {
+      if (group.isSchool) {
+        final subject = _targetById(_subjectTargets, item.subjectId);
+        targetRows.add(
+          _ScoreLineDraft(
+            targetId: item.subjectId,
+            label: subject?.label ?? item.subjectName,
+            score: item.score,
+            maxScore: item.maxScore,
+            note: item.note,
+          ),
+        );
+      } else {
+        final unit = _targetById(_unitTargets, item.unitId);
+        final subject = _targetById(_subjectTargets, unit?.parentId);
+        targetRows.add(
+          _ScoreLineDraft(
+            targetId: item.unitId,
+            label: unit?.label ?? item.unitName,
+            subjectId: subject?.id,
+            subjectLabel: subject?.label,
+            score: item.score,
+            maxScore: item.maxScore,
+            note: item.note,
+          ),
+        );
+      }
+    }
+    if (!group.isSchool && _internalRows.isEmpty) {
+      final row = _createInternalRow();
+      if (row != null) _internalRows.add(row);
+    }
   }
 
   Future<void> _changeScope(String nextScope) async {
@@ -596,6 +937,7 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
       _scope = nextScope;
       _evidenceSourcePath = null;
       _evidenceFileName = null;
+      _evidenceChanged = false;
       if (!_isSchool && _internalRows.isEmpty) {
         final row = _createInternalRow();
         if (row != null) _internalRows.add(row);
@@ -629,11 +971,16 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
 
   _ScoreLineDraft? _createInternalRow({String? preferredSubjectId}) {
     if (_unitTargets.isEmpty) return null;
+    final subjectIds = _subjectTargets.map((subject) => subject.id).toSet();
+    final units = _unitTargets.where((unit) {
+      return unit.parentId != null && subjectIds.contains(unit.parentId);
+    }).toList();
+    if (units.isEmpty) return null;
     final unit = preferredSubjectId == null
-        ? _unitTargets.first
-        : _unitTargets.firstWhere(
+        ? units.first
+        : units.firstWhere(
             (item) => item.parentId == preferredSubjectId,
-            orElse: () => _unitTargets.first,
+            orElse: () => units.first,
           );
     final subject = _targetById(_subjectTargets, unit.parentId);
     return _ScoreLineDraft(
@@ -646,6 +993,7 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
     final duplicateLabel = _duplicateTargetLabel();
     if (duplicateLabel != null) {
       AppToast.showFailed(
@@ -658,9 +1006,11 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
       AppToast.showFailed('Input at least one score item.');
       return;
     }
-    _formKey.currentState!.save();
 
-    final groupId = const Uuid().v4();
+    final initialGroup = widget.initialGroup;
+    final groupId = initialGroup?.id ?? const Uuid().v4();
+    final keepExistingEvidence =
+        !_evidenceChanged && _evidenceSourcePath?.trim().isNotEmpty == true;
     final group = StudentExamScoreGroup(
       id: groupId,
       studentId: widget.student.id,
@@ -671,25 +1021,29 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
       semester: _isSchool ? _semester : null,
       examDate: _examDate,
       evidenceRequired: _evidenceRequired,
+      evidenceFileName: keepExistingEvidence ? initialGroup?.evidenceFileName : null,
+      evidenceFilePath: keepExistingEvidence ? initialGroup?.evidenceFilePath : null,
+      evidenceFileType: keepExistingEvidence ? initialGroup?.evidenceFileType : null,
       note: _note,
       items: items.map((item) => item.withGroupId(groupId)).toList(),
+      createdAt: initialGroup?.createdAt,
     );
 
     setState(() => _saving = true);
     try {
       await widget.onSave(
         group,
-        evidenceSourcePath: _evidenceSourcePath,
-        evidenceFileName: _evidenceFileName,
+        evidenceSourcePath: _evidenceChanged ? _evidenceSourcePath : null,
+        evidenceFileName: _evidenceChanged ? _evidenceFileName : null,
       );
       AppToast.showSubmissionSuccess(
-        action: SubmissionAction.create,
+        action: _isEdit ? SubmissionAction.update : SubmissionAction.create,
         subject: 'score exam',
       );
       if (mounted) Navigator.pop(context);
     } catch (_) {
       AppToast.showSubmissionFailed(
-        action: SubmissionAction.create,
+        action: _isEdit ? SubmissionAction.update : SubmissionAction.create,
         subject: 'score exam',
       );
       if (mounted) setState(() => _saving = false);
@@ -756,10 +1110,11 @@ class _ScoreRowsEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final addOptions = isSchool ? subjectOptions : unitOptions;
-    final availableForNewRow = addOptions.where((option) {
-      return !rows.any((row) => row.targetId == option.id);
-    }).toList();
+    final availableForNewRow = isSchool
+        ? subjectOptions.where((option) {
+            return !rows.any((row) => row.targetId == option.id);
+          }).toList()
+        : _availableInternalUnits();
 
     return InputDecorator(
       decoration: InputDecoration(labelText: title),
@@ -778,8 +1133,8 @@ class _ScoreRowsEditor extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
-            ),
-          for (var index = 0; index < rows.length; index++) ...[
+              ),
+            for (var index = 0; index < rows.length; index++) ...[
               _ScoreLineRow(
                 isSchool: isSchool,
                 subjectOptions: subjectOptions,
@@ -827,6 +1182,20 @@ class _ScoreRowsEditor extends StatelessWidget {
       ),
     );
   }
+
+  List<_ScoreTarget> _availableInternalUnits() {
+    final selectedUnitIds = rows
+        .map((row) => row.targetId)
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    final validSubjectIds = subjectOptions.map((subject) => subject.id).toSet();
+    return unitOptions.where((unit) {
+      return !selectedUnitIds.contains(unit.id) &&
+          unit.parentId != null &&
+          validSubjectIds.contains(unit.parentId);
+    }).toList();
+  }
 }
 
 class _ScoreLineRow extends StatelessWidget {
@@ -850,9 +1219,20 @@ class _ScoreLineRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!isSchool && row.subjectId == null && row.targetId != null) {
+      final currentUnit = _targetById(unitOptions, row.targetId);
+      final currentSubject = _targetById(subjectOptions, currentUnit?.parentId);
+      row.subjectId = currentSubject?.id;
+      row.subjectLabel = currentSubject?.label;
+    }
+    final effectiveSubjectOptions = isSchool
+        ? subjectOptions
+        : subjectOptions.where((subject) {
+            return unitOptions.any((unit) => unit.parentId == subject.id);
+          }).toList();
     final selectedSubject = isSchool
-        ? _targetById(subjectOptions, row.targetId)
-        : _targetById(subjectOptions, row.subjectId);
+        ? _targetById(effectiveSubjectOptions, row.targetId)
+        : _targetById(effectiveSubjectOptions, row.subjectId);
     final filteredUnits = unitOptions.where((unit) {
       return row.subjectId == null || unit.parentId == row.subjectId;
     }).toList();
@@ -865,11 +1245,14 @@ class _ScoreLineRow extends StatelessWidget {
           flex: isSchool ? 3 : 2,
           child: CommonFormWidgets.dropdownFieldTyped<_ScoreTarget>(
             label: 'Subject',
-            items: subjectOptions,
+            items: effectiveSubjectOptions,
             labelBuilder: (item) => item.label,
             valueBuilder: (item) => item.id,
-            value: selectedSubject ??
-                (subjectOptions.isEmpty ? null : subjectOptions.first),
+            value:
+                selectedSubject ??
+                (effectiveSubjectOptions.isEmpty
+                    ? null
+                    : effectiveSubjectOptions.first),
             onChanged: (value) {
               if (isSchool) {
                 row.targetId = value?.id;
@@ -877,14 +1260,14 @@ class _ScoreLineRow extends StatelessWidget {
               } else {
                 row.subjectId = value?.id;
                 row.subjectLabel = value?.label;
-                final nextUnit = unitOptions.firstWhere(
-                  (unit) => unit.parentId == value?.id,
-                  orElse: () => unitOptions.isEmpty
-                      ? const _ScoreTarget('', '')
-                      : unitOptions.first,
-                );
-                row.targetId = nextUnit.id.isEmpty ? null : nextUnit.id;
-                row.label = nextUnit.label.isEmpty ? null : nextUnit.label;
+                final subjectUnits = unitOptions
+                    .where((unit) => unit.parentId == value?.id)
+                    .toList();
+                final nextUnit = subjectUnits.isEmpty
+                    ? null
+                    : subjectUnits.first;
+                row.targetId = nextUnit?.id;
+                row.label = nextUnit?.label;
               }
               onChanged();
             },
@@ -903,27 +1286,32 @@ class _ScoreLineRow extends StatelessWidget {
         if (!isSchool) ...[
           Expanded(
             flex: 3,
-            child: CommonFormWidgets.dropdownFieldTyped<_ScoreTarget>(
-              label: 'Unit',
-              items: filteredUnits,
-              labelBuilder: (item) => item.label,
-              valueBuilder: (item) => item.id,
-              value: selectedUnit ??
-                  (filteredUnits.isEmpty ? null : filteredUnits.first),
-              onChanged: (value) {
-                row.targetId = value?.id;
-                row.label = value?.label;
-                onChanged();
-              },
-              onSaved: (value) {
-                row.targetId = value?.id;
-                row.label = value?.label;
-              },
+            child: KeyedSubtree(
+              key: ValueKey('unit_${row.subjectId}_${filteredUnits.length}'),
+              child: CommonFormWidgets.dropdownFieldTyped<_ScoreTarget>(
+                label: 'Unit',
+                items: filteredUnits,
+                labelBuilder: (item) => item.label,
+                valueBuilder: (item) => item.id,
+                value:
+                    selectedUnit ??
+                    (filteredUnits.isEmpty ? null : filteredUnits.first),
+                onChanged: (value) {
+                  row.targetId = value?.id;
+                  row.label = value?.label;
+                  onChanged();
+                },
+                onSaved: (value) {
+                  row.targetId = value?.id;
+                  row.label = value?.label;
+                },
+              ),
             ),
           ),
           const SizedBox(width: 8),
         ],
         Expanded(
+          flex: 1,
           child: _numberTextField(
             label: 'Score',
             controller: row.scoreController,
@@ -933,8 +1321,9 @@ class _ScoreLineRow extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Expanded(
+          flex: 1,
           child: _numberTextField(
-            label: 'Max',
+            label: 'Max Score',
             controller: row.maxScoreController,
             required: false,
           ),
@@ -953,7 +1342,10 @@ class _ScoreLineRow extends StatelessWidget {
             tooltip: 'Remove row',
             onPressed: onRemove,
             color: AppColors.error,
-            icon: const Icon(Icons.delete_outline),
+            icon: const Icon(
+              Icons.delete_outline,
+              color: AppColors.error,
+            ),
           ),
         ],
       ],
@@ -967,10 +1359,16 @@ class _ScoreLineDraft {
     required this.label,
     this.subjectId,
     this.subjectLabel,
-  })
-      : scoreController = TextEditingController(),
-        maxScoreController = TextEditingController(text: '100'),
-        noteController = TextEditingController();
+    double? score,
+    double? maxScore,
+    String? note,
+  }) : scoreController = TextEditingController(
+         text: score == null ? '' : _formatScoreNumber(score),
+       ),
+       maxScoreController = TextEditingController(
+         text: _formatScoreNumber(maxScore ?? 100),
+       ),
+       noteController = TextEditingController(text: note ?? '');
 
   String? targetId;
   String? label;
@@ -1046,35 +1444,131 @@ Widget _numberTextField({
   TextEditingController? maxController,
   bool required = false,
 }) {
-  return TextFormField(
+  return _ScoreNumberField(
+    label: label,
     controller: controller,
-    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-    inputFormatters: [
-      TextInputFormatter.withFunction((oldValue, newValue) {
-        final text = newValue.text.trim();
-        if (text.isEmpty || RegExp(r'^\d*\.?\d{0,2}$').hasMatch(text)) {
-          return newValue;
-        }
-        return oldValue;
-      }),
-    ],
-    decoration: InputDecoration(
-      label: required ? CommonFormWidgets.requiredLabel(label) : Text(label),
-      contentPadding: AppFormFieldStyle.contentPadding,
-      border: const OutlineInputBorder(),
-    ),
-    validator: (raw) {
-      final trimmed = raw?.trim();
-      if (trimmed == null || trimmed.isEmpty) {
-        return required ? '$label is required' : null;
-      }
-      final value = double.tryParse(trimmed);
-      if (value == null) return '$label must be a number';
-      final max = _parseNumber(maxController?.text);
-      if (max != null && value > max) return '$label cannot be more than Max';
-      return null;
-    },
+    maxController: maxController,
+    required: required,
   );
+}
+
+class _ScoreNumberField extends StatefulWidget {
+  const _ScoreNumberField({
+    required this.label,
+    required this.controller,
+    this.maxController,
+    required this.required,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final TextEditingController? maxController;
+  final bool required;
+
+  @override
+  State<_ScoreNumberField> createState() => _ScoreNumberFieldState();
+}
+
+class _ScoreNumberFieldState extends State<_ScoreNumberField> {
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_refreshError);
+    widget.maxController?.addListener(_refreshError);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ScoreNumberField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_refreshError);
+      widget.controller.addListener(_refreshError);
+    }
+    if (oldWidget.maxController != widget.maxController) {
+      oldWidget.maxController?.removeListener(_refreshError);
+      widget.maxController?.addListener(_refreshError);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_refreshError);
+    widget.maxController?.removeListener(_refreshError);
+    super.dispose();
+  }
+
+  void _refreshError() {
+    final nextError = _validate(widget.controller.text);
+    if (nextError == _error) return;
+    setState(() => _error = nextError);
+    if (nextError != null) {
+      AppToast.showFailed(nextError);
+    }
+  }
+
+  String? _validate(String? raw) {
+    final trimmed = raw?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return widget.required ? '${widget.label} is required' : null;
+    }
+    final value = double.tryParse(trimmed);
+    if (value == null) return '${widget.label} must be a number';
+    final max = _parseNumber(widget.maxController?.text);
+    if (max != null && value > max) {
+      return '${widget.label} must be less than or equal to Max.';
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: widget.controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        TextInputFormatter.withFunction((oldValue, newValue) {
+          final text = newValue.text.trim();
+          if (text.isEmpty || RegExp(r'^\d*\.?\d{0,2}$').hasMatch(text)) {
+            return newValue;
+          }
+          return oldValue;
+        }),
+      ],
+      decoration: InputDecoration(
+        label: widget.required
+            ? CommonFormWidgets.requiredLabel(widget.label)
+            : Text(widget.label),
+        contentPadding: AppFormFieldStyle.contentPadding,
+        border: const OutlineInputBorder(),
+        errorStyle: const TextStyle(height: 0, fontSize: 0),
+        suffixIcon: _error == null
+            ? null
+            : Tooltip(
+                message: _error!,
+                child: const Icon(
+                  Icons.error_outline,
+                  color: AppColors.error,
+                  size: 18,
+                ),
+              ),
+      ),
+      validator: (raw) {
+        final nextError = _validate(raw);
+        if (nextError != _error) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            setState(() => _error = nextError);
+            if (nextError != null) AppToast.showFailed(nextError);
+          });
+        } else if (nextError != null) {
+          AppToast.showFailed(nextError);
+        }
+        return nextError == null ? null : '';
+      },
+    );
+  }
 }
 
 double? _parseNumber(String? value) {
@@ -1093,6 +1587,17 @@ String? _nullIfBlank(String? value) {
   final trimmed = value?.trim();
   if (trimmed == null || trimmed.isEmpty) return null;
   return trimmed;
+}
+
+String _formatDate(DateTime date) {
+  final month = date.month.toString().padLeft(2, '0');
+  final day = date.day.toString().padLeft(2, '0');
+  return '${date.year}-$month-$day';
+}
+
+String _formatScoreNumber(double value) {
+  if (value % 1 == 0) return value.toStringAsFixed(0);
+  return value.toStringAsFixed(2);
 }
 
 _ScoreTarget? _targetById(List<_ScoreTarget> options, String? id) {

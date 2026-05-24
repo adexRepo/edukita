@@ -939,7 +939,11 @@ class _SyllabusPageState extends State<SyllabusPage> {
             constraints: const BoxConstraints.tightFor(width: 30, height: 30),
             padding: EdgeInsets.zero,
             color: AppColors.errorDark,
-            icon: const Icon(Icons.delete_outline, size: 17),
+            icon: const Icon(
+              Icons.delete_outline,
+              size: 17,
+              color: AppColors.error,
+            ),
           ),
         ],
       ),

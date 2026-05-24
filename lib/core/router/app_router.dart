@@ -7,7 +7,7 @@ import 'package:edukita/features/auth/presentation/login_page.dart';
 import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
 import 'package:edukita/features/dashboard/presentation/dashboard_page.dart';
 import 'package:edukita/features/parameters/presentation/parameter_page.dart';
-import 'package:edukita/features/reports/assessment_cubit.dart';
+import 'package:edukita/features/report_definitions/domain/report_definition_cubit.dart';
 import 'package:edukita/features/reports/reports_page.dart';
 import 'package:edukita/features/schedule/domain/schedule_cubit.dart';
 import 'package:edukita/features/schedule/presentation/schedule_page.dart';
@@ -142,6 +142,10 @@ final GoRouter appRouter = GoRouter(
                   create: (_) =>
                       getIt<AssistanceProgramCubit>()..loadPrograms(),
                 ),
+                BlocProvider<ReportDefinitionCubit>(
+                  create: (_) =>
+                      getIt<ReportDefinitionCubit>()..loadDefinitions(),
+                ),
               ],
               child: const ParameterPage(),
             ),
@@ -239,16 +243,8 @@ final GoRouter appRouter = GoRouter(
           path: '/reports',
           pageBuilder: (context, state) => _noTransitionPage(
             state: state,
-            child: MultiBlocProvider(
-              providers: [
-                BlocProvider<AssessmentCubit>(
-                  create: (_) =>
-                      getIt<AssessmentCubit>()..loadAssessmentModule(),
-                ),
-                BlocProvider<SubjectCubit>(
-                  create: (_) => getIt<SubjectCubit>()..loadCurriculum(),
-                ),
-              ],
+            child: withCubit(
+              create: () => getIt<ReportDefinitionCubit>()..loadDefinitions(),
               child: const ReportsPage(),
             ),
           ),

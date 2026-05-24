@@ -60,6 +60,22 @@ class StudentDetailCubit extends Cubit<FeatureState<StudentDetailData>> {
     );
   }
 
+  Future<void> deleteStudentExamScoreGroup(StudentExamScoreGroup group) {
+    return _repo.deleteStudentExamScoreGroup(group);
+  }
+
+  Future<void> updateStudentExamScoreGroup(
+    StudentExamScoreGroup group, {
+    String? evidenceSourcePath,
+    String? evidenceFileName,
+  }) {
+    return _repo.updateStudentExamScoreGroup(
+      group,
+      evidenceSourcePath: evidenceSourcePath,
+      evidenceFileName: evidenceFileName,
+    );
+  }
+
   Future<void> _fetch(String id) async {
     emit(state.copyWith(loading: true, data: null));
 

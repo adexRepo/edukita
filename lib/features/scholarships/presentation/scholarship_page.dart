@@ -82,9 +82,8 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
             children: [
               _ScholarshipContentHeader(
                 view: _selectedView,
-                onRefresh: () => context
-                    .read<ScholarshipCubit>()
-                    .loadScholarshipRulesOnly(),
+                onRefresh: () =>
+                    context.read<ScholarshipCubit>().loadScholarshipRulesOnly(),
                 primaryAction: _selectedView == _ScholarshipView.rules
                     ? FilledButton.icon(
                         onPressed: () => _showRuleDialog(context),
@@ -105,62 +104,60 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
               child: state.error != null
                   ? Center(child: Text('Error: ${state.error}'))
                   : Row(
-                        children: [
-                          _ScholarshipNavigator(
-                            width: _navigatorWidth,
-                            selectedView: _selectedView,
-                            setupOpen: _setupOpen,
-                            workflowOpen: _workflowOpen,
-                            historyOpen: _historyOpen,
-                            onSelect: (view) {
-                              setState(() => _selectedView = view);
-                            },
-                            onToggleSetup: () {
-                              setState(() => _setupOpen = !_setupOpen);
-                            },
-                            onToggleWorkflow: () {
-                              setState(() => _workflowOpen = !_workflowOpen);
-                            },
-                            onToggleHistory: () {
-                              setState(() => _historyOpen = !_historyOpen);
-                            },
-                            onResize: (delta) {
-                              setState(() {
-                                _navigatorWidth = (_navigatorWidth + delta)
-                                    .clamp(52, 288)
-                                    .toDouble();
-                              });
-                            },
-                            onToggleWidth: () {
-                              setState(() {
-                                _navigatorWidth = _navigatorWidth < 96
-                                    ? 228
-                                    : 52;
-                              });
-                            },
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: AppPageHeaderStyle.pagePadding,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  _ScholarshipContentHeader(
-                                    view: _selectedView,
-                                    onRefresh: () => context
-                                        .read<ScholarshipCubit>()
-                                        .loadModule(),
-                                  ),
-                                  AppLoadingStrip(isLoading: state.isLoading),
-                                  const SizedBox(
-                                    height: AppPageHeaderStyle.bottomGap,
-                                  ),
-                                  Expanded(child: _buildSelectedContent(state)),
-                                ],
-                              ),
+                      children: [
+                        _ScholarshipNavigator(
+                          width: _navigatorWidth,
+                          selectedView: _selectedView,
+                          setupOpen: _setupOpen,
+                          workflowOpen: _workflowOpen,
+                          historyOpen: _historyOpen,
+                          onSelect: (view) {
+                            setState(() => _selectedView = view);
+                          },
+                          onToggleSetup: () {
+                            setState(() => _setupOpen = !_setupOpen);
+                          },
+                          onToggleWorkflow: () {
+                            setState(() => _workflowOpen = !_workflowOpen);
+                          },
+                          onToggleHistory: () {
+                            setState(() => _historyOpen = !_historyOpen);
+                          },
+                          onResize: (delta) {
+                            setState(() {
+                              _navigatorWidth = (_navigatorWidth + delta)
+                                  .clamp(52, 288)
+                                  .toDouble();
+                            });
+                          },
+                          onToggleWidth: () {
+                            setState(() {
+                              _navigatorWidth = _navigatorWidth < 96 ? 228 : 52;
+                            });
+                          },
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: AppPageHeaderStyle.pagePadding,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _ScholarshipContentHeader(
+                                  view: _selectedView,
+                                  onRefresh: () => context
+                                      .read<ScholarshipCubit>()
+                                      .loadModule(),
+                                ),
+                                AppLoadingStrip(isLoading: state.isLoading),
+                                const SizedBox(
+                                  height: AppPageHeaderStyle.bottomGap,
+                                ),
+                                Expanded(child: _buildSelectedContent(state)),
+                              ],
                             ),
                           ),
-                        ],
+                        ),
+                      ],
                     ),
             ),
           ],
@@ -219,10 +216,8 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
     final cubit = context.read<ScholarshipCubit>();
     await showDialog<void>(
       context: context,
-      builder: (_) => _ScholarshipRuleDialog(
-        rule: rule,
-        onSave: cubit.saveScholarshipRule,
-      ),
+      builder: (_) =>
+          _ScholarshipRuleDialog(rule: rule, onSave: cubit.saveScholarshipRule),
     );
   }
 }
@@ -647,39 +642,40 @@ class _PeriodsTab extends StatelessWidget {
       context: context,
       builder: (_) => _ScholarshipPeriodDialog(
         period: period,
-        onSave: (
-          month,
-          year,
-          quota,
-          calculationWindowMonths,
-          minimumAttendancePercentage,
-          allowManualOverrideBelowAttendance,
-        ) async {
-          if (period == null) {
-            await cubit.createPeriod(
-              month: month,
-              year: year,
-              targetQuota: quota,
-              calculationWindowMonths: calculationWindowMonths,
-              minimumAttendancePercentage: minimumAttendancePercentage,
-              allowManualOverrideBelowAttendance:
-                  allowManualOverrideBelowAttendance,
-            );
-          } else {
-            await cubit.updatePeriod(
-              period.copyWith(
-                periodMonth: month,
-                periodYear: year,
-                targetQuota: quota,
-                calculationWindowMonths: calculationWindowMonths,
-                minimumAttendancePercentage: minimumAttendancePercentage,
-                allowManualOverrideBelowAttendance:
-                    allowManualOverrideBelowAttendance,
-                updatedAt: DateTime.now().toIso8601String(),
-              ),
-            );
-          }
-        },
+        onSave:
+            (
+              month,
+              year,
+              quota,
+              calculationWindowMonths,
+              minimumAttendancePercentage,
+              allowManualOverrideBelowAttendance,
+            ) async {
+              if (period == null) {
+                await cubit.createPeriod(
+                  month: month,
+                  year: year,
+                  targetQuota: quota,
+                  calculationWindowMonths: calculationWindowMonths,
+                  minimumAttendancePercentage: minimumAttendancePercentage,
+                  allowManualOverrideBelowAttendance:
+                      allowManualOverrideBelowAttendance,
+                );
+              } else {
+                await cubit.updatePeriod(
+                  period.copyWith(
+                    periodMonth: month,
+                    periodYear: year,
+                    targetQuota: quota,
+                    calculationWindowMonths: calculationWindowMonths,
+                    minimumAttendancePercentage: minimumAttendancePercentage,
+                    allowManualOverrideBelowAttendance:
+                        allowManualOverrideBelowAttendance,
+                    updatedAt: DateTime.now().toIso8601String(),
+                  ),
+                );
+              }
+            },
       ),
     );
   }
@@ -847,7 +843,11 @@ class _PeriodsTab extends StatelessWidget {
                       ),
                       padding: EdgeInsets.zero,
                       color: AppColors.errorDark,
-                      icon: const Icon(Icons.delete_outline, size: 16),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        size: 16,
+                        color: AppColors.error,
+                      ),
                     ),
                   ],
                 ),
@@ -861,10 +861,7 @@ class _PeriodsTab extends StatelessWidget {
 }
 
 class _ScholarshipRulesTab extends StatelessWidget {
-  const _ScholarshipRulesTab({
-    required this.state,
-    this.showAddButton = true,
-  });
+  const _ScholarshipRulesTab({required this.state, this.showAddButton = true});
 
   final ScholarshipState state;
   final bool showAddButton;
@@ -876,10 +873,8 @@ class _ScholarshipRulesTab extends StatelessWidget {
     final cubit = context.read<ScholarshipCubit>();
     await showDialog<void>(
       context: context,
-      builder: (_) => _ScholarshipRuleDialog(
-        rule: rule,
-        onSave: cubit.saveScholarshipRule,
-      ),
+      builder: (_) =>
+          _ScholarshipRuleDialog(rule: rule, onSave: cubit.saveScholarshipRule),
     );
   }
 
@@ -1151,7 +1146,11 @@ class _FixedPriorityTab extends StatelessWidget {
                       ),
                       padding: EdgeInsets.zero,
                       color: AppColors.errorDark,
-                      icon: const Icon(Icons.delete_outline, size: 16),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        size: 16,
+                        color: AppColors.error,
+                      ),
                     ),
                   ],
                 ),
@@ -1538,8 +1537,9 @@ class _RuleAllocationPanel extends StatelessWidget {
                         ),
                         IconButton(
                           tooltip: 'Edit allocation',
-                          onPressed:
-                              onEdit == null ? null : () => onEdit!(rule),
+                          onPressed: onEdit == null
+                              ? null
+                              : () => onEdit!(rule),
                           constraints: const BoxConstraints.tightFor(
                             width: 28,
                             height: 28,
@@ -1607,10 +1607,12 @@ class _AssessmentTab extends StatelessWidget {
     final safePeriod = _safeFileName(periodLabel.toLowerCase());
     final isPdf = format == _RecipientExportFormat.pdf;
     final location = await getSaveLocation(
-      suggestedName:
-          'scholarship-plan-$safePeriod.${isPdf ? 'pdf' : 'xls'}',
+      suggestedName: 'scholarship-plan-$safePeriod.${isPdf ? 'pdf' : 'xls'}',
       acceptedTypeGroups: [
-        XTypeGroup(label: isPdf ? 'PDF' : 'Excel', extensions: [isPdf ? 'pdf' : 'xls']),
+        XTypeGroup(
+          label: isPdf ? 'PDF' : 'Excel',
+          extensions: [isPdf ? 'pdf' : 'xls'],
+        ),
       ],
     );
     if (location == null) return;
@@ -1701,9 +1703,7 @@ class _AssessmentTab extends StatelessWidget {
               child: AppDropdownButtonFormField<ScholarshipType?>(
                 initialValue: typeFilter,
                 isExpanded: false,
-                decoration: const InputDecoration(
-                  labelText: 'Rule Type',
-                ),
+                decoration: const InputDecoration(labelText: 'Rule Type'),
                 items: [
                   DropdownMenuItem<ScholarshipType?>(
                     value: null,
@@ -1723,7 +1723,7 @@ class _AssessmentTab extends StatelessWidget {
                   ),
                 ],
                 selectedItemBuilder: (context) =>
-                  AppDropdownStyle.selectedLabels([
+                    AppDropdownStyle.selectedLabels([
                       'All',
                       ...ScholarshipType.ruleTypes.map((type) => type.label),
                     ]),
@@ -1803,7 +1803,8 @@ class _AssessmentTab extends StatelessWidget {
                       _AssessmentGroup(
                         title: entry.key,
                         rows: entry.value,
-                        locked: state.selectedPeriod?.status ==
+                        locked:
+                            state.selectedPeriod?.status ==
                             ScholarshipPeriodStatus.approved,
                       ),
                   ],
@@ -2150,7 +2151,9 @@ class _ApprovalDocumentTabState extends State<_ApprovalDocumentTab> {
                       TextField(
                         enabled: !locked && !_saving,
                         controller: _uploadedByController,
-                        decoration: const InputDecoration(labelText: 'Uploaded By'),
+                        decoration: const InputDecoration(
+                          labelText: 'Uploaded By',
+                        ),
                       ),
                       const SizedBox(height: 12),
                       TextField(
@@ -2163,8 +2166,7 @@ class _ApprovalDocumentTabState extends State<_ApprovalDocumentTab> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: FilledButton.icon(
-                          onPressed:
-                              locked || _saving || _selectedFile == null
+                          onPressed: locked || _saving || _selectedFile == null
                               ? null
                               : _upload,
                           icon: const Icon(Icons.verified),
@@ -2186,7 +2188,10 @@ class _ApprovalDocumentTabState extends State<_ApprovalDocumentTab> {
   Future<void> _pickFile() async {
     final file = await openFile(
       acceptedTypeGroups: const [
-        XTypeGroup(label: 'Approval Document', extensions: ['pdf', 'jpg', 'jpeg', 'png']),
+        XTypeGroup(
+          label: 'Approval Document',
+          extensions: ['pdf', 'jpg', 'jpeg', 'png'],
+        ),
       ],
     );
     if (file == null || !mounted) return;
@@ -2243,16 +2248,22 @@ class _ApprovalStatusCard extends StatelessWidget {
         children: [
           Text(
             period.label,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
           _InfoLine(label: 'Status', value: period.status.label),
-          _InfoLine(label: 'Approved at', value: _shortDateTime(period.approvedAt)),
+          _InfoLine(
+            label: 'Approved at',
+            value: _shortDateTime(period.approvedAt),
+          ),
           _InfoLine(label: 'Approved by', value: period.approvedBy ?? '-'),
           _InfoLine(label: 'Document', value: document?.fileName ?? '-'),
-          _InfoLine(label: 'Uploaded at', value: _shortDateTime(document?.uploadedAt)),
+          _InfoLine(
+            label: 'Uploaded at',
+            value: _shortDateTime(document?.uploadedAt),
+          ),
           _InfoLine(label: 'Remarks', value: document?.remarks ?? '-'),
         ],
       ),
@@ -2386,7 +2397,8 @@ class _AssessmentGroup extends StatelessWidget {
                   sortValue: (item) => item.eligibilityStatus.index,
                   cell: (item) => _StatusChip(
                     label: item.eligibilityStatus.label,
-                    color: item.eligibilityStatus ==
+                    color:
+                        item.eligibilityStatus ==
                             ScholarshipEligibilityStatus.ineligible
                         ? AppColors.errorDark
                         : AppColors.primary,
@@ -2409,14 +2421,14 @@ class _AssessmentGroup extends StatelessWidget {
                         onPressed: locked
                             ? null
                             : () => showDialog<void>(
-                          context: context,
-                          builder: (_) => _AssessmentOverrideDialog(
-                            assessment: item,
-                            onSave: context
-                                .read<ScholarshipCubit>()
-                                .updateAssessment,
-                          ),
-                        ),
+                                context: context,
+                                builder: (_) => _AssessmentOverrideDialog(
+                                  assessment: item,
+                                  onSave: context
+                                      .read<ScholarshipCubit>()
+                                      .updateAssessment,
+                                ),
+                              ),
                         constraints: const BoxConstraints.tightFor(
                           width: 28,
                           height: 28,
@@ -2426,9 +2438,10 @@ class _AssessmentGroup extends StatelessWidget {
                       ),
                       IconButton(
                         tooltip: 'Remove target',
-                        onPressed: locked ||
+                        onPressed:
+                            locked ||
                                 item.decisionStatus ==
-                                ScholarshipDecisionStatus.rejected
+                                    ScholarshipDecisionStatus.rejected
                             ? null
                             : () async {
                                 try {
@@ -2437,8 +2450,10 @@ class _AssessmentGroup extends StatelessWidget {
                                       .updateAssessment(
                                         item.copyWith(
                                           decisionStatus:
-                                              ScholarshipDecisionStatus.rejected,
-                                          priorityReason: item.priorityReason ??
+                                              ScholarshipDecisionStatus
+                                                  .rejected,
+                                          priorityReason:
+                                              item.priorityReason ??
                                               'Removed in review',
                                         ),
                                       );
@@ -2456,7 +2471,11 @@ class _AssessmentGroup extends StatelessWidget {
                         ),
                         padding: EdgeInsets.zero,
                         color: AppColors.errorDark,
-                        icon: const Icon(Icons.remove_circle_outline, size: 16),
+                        icon: const Icon(
+                          Icons.remove_circle_outline,
+                          size: 16,
+                          color: AppColors.error,
+                        ),
                       ),
                     ],
                   ),
@@ -2693,9 +2712,9 @@ class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
   }
 
   Future<void> _load() async {
-    final candidates = await context
-        .read<ScholarshipCubit>()
-        .getRuleCandidates(widget.rule.id);
+    final candidates = await context.read<ScholarshipCubit>().getRuleCandidates(
+      widget.rule.id,
+    );
     if (!mounted) return;
     setState(() {
       _candidates = candidates;
@@ -2753,7 +2772,7 @@ class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
                   ? const Center(child: CircularProgressIndicator())
                   : ListView.separated(
                       itemCount: students.length,
-                      separatorBuilder: (_, __) =>
+                      separatorBuilder: (_, _) =>
                           const Divider(height: 1, color: AppColors.divider),
                       itemBuilder: (context, index) {
                         final student = students[index];
@@ -2813,7 +2832,9 @@ class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
     }
     if (value && selected == null) {
       if (_candidates.length >= widget.rule.quota) {
-        AppToast.showFailed('Selected candidates already reached this rule quota.');
+        AppToast.showFailed(
+          'Selected candidates already reached this rule quota.',
+        );
         return;
       }
       await cubit.saveRuleCandidate(
@@ -2878,8 +2899,7 @@ class _ScholarshipPeriodDialogState extends State<_ScholarshipPeriodDialog> {
       text:
           '${(widget.period?.minimumAttendancePercentage ?? 75).toStringAsFixed(0)}',
     );
-    _allowOverride =
-        widget.period?.allowManualOverrideBelowAttendance ?? true;
+    _allowOverride = widget.period?.allowManualOverrideBelowAttendance ?? true;
   }
 
   @override
@@ -2920,11 +2940,11 @@ class _ScholarshipPeriodDialogState extends State<_ScholarshipPeriodDialog> {
                 ),
                 selectedItemBuilder: (context) =>
                     AppDropdownStyle.selectedLabels(
-                  List.generate(
-                    12,
-                    (index) => ScholarshipPeriod.monthName(index + 1),
-                  ),
-                ),
+                      List.generate(
+                        12,
+                        (index) => ScholarshipPeriod.monthName(index + 1),
+                      ),
+                    ),
                 dropdownColor: AppColors.white,
                 focusColor: AppColors.transparent,
                 iconEnabledColor: AppColors.primary,
@@ -2981,7 +3001,9 @@ class _ScholarshipPeriodDialogState extends State<_ScholarshipPeriodDialog> {
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   final attendance = double.tryParse(value ?? '');
-                  if (attendance == null || attendance < 0 || attendance > 100) {
+                  if (attendance == null ||
+                      attendance < 0 ||
+                      attendance > 100) {
                     return 'Enter 0 - 100';
                   }
                   return null;
@@ -3084,8 +3106,9 @@ class _ScholarshipPeriodRuleDialogState
     super.initState();
     final rule = widget.rule;
     _ruleType = rule?.ruleType ?? ScholarshipType.customRule;
-    _selectionMode =
-        rule == null ? _ruleType.defaultSelectionMode : rule.selectionMode;
+    _selectionMode = rule == null
+        ? _ruleType.defaultSelectionMode
+        : rule.selectionMode;
     _ruleNameController = TextEditingController(
       text: _ruleType == ScholarshipType.customRule ? rule?.ruleName ?? '' : '',
     );
@@ -3156,8 +3179,8 @@ class _ScholarshipPeriodRuleDialogState
                       .toList(),
                   selectedItemBuilder: (context) =>
                       AppDropdownStyle.selectedLabels(
-                    ruleTypes.map((type) => type.label),
-                  ),
+                        ruleTypes.map((type) => type.label),
+                      ),
                   dropdownColor: AppColors.white,
                   focusColor: AppColors.transparent,
                   iconEnabledColor: AppColors.primary,
@@ -3173,9 +3196,7 @@ class _ScholarshipPeriodRuleDialogState
                         ? newCustomRuleValue
                         : _selectedScholarshipRuleId,
                     isExpanded: false,
-                    decoration: const InputDecoration(
-                      labelText: 'Rule Master',
-                    ),
+                    decoration: const InputDecoration(labelText: 'Rule Master'),
                     items: [
                       DropdownMenuItem(
                         value: newCustomRuleValue,
@@ -3196,9 +3217,9 @@ class _ScholarshipPeriodRuleDialogState
                     ],
                     selectedItemBuilder: (context) =>
                         AppDropdownStyle.selectedLabels([
-                      'New Custom Rule',
-                      ...customRules.map((rule) => rule.displayName),
-                    ]),
+                          'New Custom Rule',
+                          ...customRules.map((rule) => rule.displayName),
+                        ]),
                     dropdownColor: AppColors.white,
                     focusColor: AppColors.transparent,
                     iconEnabledColor: AppColors.primary,
@@ -3207,8 +3228,9 @@ class _ScholarshipPeriodRuleDialogState
                     style: AppDropdownStyle.textStyle,
                     onChanged: (value) {
                       setState(() {
-                        _selectedScholarshipRuleId =
-                            value == newCustomRuleValue ? null : value;
+                        _selectedScholarshipRuleId = value == newCustomRuleValue
+                            ? null
+                            : value;
                         ScholarshipRule? selectedRule;
                         for (final rule in customRules) {
                           if (rule.id == _selectedScholarshipRuleId) {
@@ -3272,7 +3294,9 @@ class _ScholarshipPeriodRuleDialogState
                 AppDropdownButtonFormField<ScholarshipSelectionMode>(
                   initialValue: _selectionMode,
                   isExpanded: false,
-                  decoration: const InputDecoration(labelText: 'Selection Mode'),
+                  decoration: const InputDecoration(
+                    labelText: 'Selection Mode',
+                  ),
                   items: selectionModes
                       .map(
                         (mode) => DropdownMenuItem(
@@ -3286,8 +3310,8 @@ class _ScholarshipPeriodRuleDialogState
                       .toList(),
                   selectedItemBuilder: (context) =>
                       AppDropdownStyle.selectedLabels(
-                    selectionModes.map((mode) => mode.label),
-                  ),
+                        selectionModes.map((mode) => mode.label),
+                      ),
                   dropdownColor: AppColors.white,
                   focusColor: AppColors.transparent,
                   iconEnabledColor: AppColors.primary,
@@ -3562,7 +3586,9 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
         (widget.students.isEmpty ? null : widget.students.first.id);
     _type = widget.rule?.scholarshipType ?? ScholarshipType.fixedPriority;
     _ruleNameController = TextEditingController(
-      text: _type == ScholarshipType.customRule ? widget.rule?.ruleName ?? '' : '',
+      text: _type == ScholarshipType.customRule
+          ? widget.rule?.ruleName ?? ''
+          : '',
     );
     _reasonController = TextEditingController(text: widget.rule?.reason ?? '');
     _scoreController = TextEditingController(
@@ -3618,8 +3644,8 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
                       .toList(),
                   selectedItemBuilder: (context) =>
                       AppDropdownStyle.selectedLabels(
-                    widget.students.map((student) => student.name),
-                  ),
+                        widget.students.map((student) => student.name),
+                      ),
                   dropdownColor: AppColors.white,
                   focusColor: AppColors.transparent,
                   iconEnabledColor: AppColors.primary,
@@ -3648,8 +3674,10 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
                       .toList(),
                   selectedItemBuilder: (context) =>
                       AppDropdownStyle.selectedLabels(
-                    ScholarshipType.studentRuleTypes.map((type) => type.label),
-                  ),
+                        ScholarshipType.studentRuleTypes.map(
+                          (type) => type.label,
+                        ),
+                      ),
                   dropdownColor: AppColors.white,
                   focusColor: AppColors.transparent,
                   iconEnabledColor: AppColors.primary,
@@ -3671,8 +3699,7 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
                   TextFormField(
                     controller: _ruleNameController,
                     decoration: const InputDecoration(labelText: 'Rule Name'),
-                    validator: (value) =>
-                        value == null || value.trim().isEmpty
+                    validator: (value) => value == null || value.trim().isEmpty
                         ? 'Rule name is required'
                         : null,
                   ),
@@ -3968,7 +3995,12 @@ Uint8List _buildPlanPdf(
       '',
       'Page ${pageIndex + 1} of ${chunks.length}',
     ];
-    final content = _pdfContent(pageLines, margin, pageHeight - margin, lineHeight);
+    final content = _pdfContent(
+      pageLines,
+      margin,
+      pageHeight - margin,
+      lineHeight,
+    );
     final contentObjectNumber = objects.length + 1;
     objects.add(
       '<< /Length ${latin1.encode(content).length} >>\nstream\n$content\nendstream',
@@ -4300,9 +4332,7 @@ class _AssessmentOverrideDialogState extends State<_AssessmentOverrideDialog> {
                 AppDropdownButtonFormField<ScholarshipDecisionStatus>(
                   initialValue: _status,
                   isExpanded: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Target Status',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Target Status'),
                   items: ScholarshipDecisionStatus.values
                       .map(
                         (status) => DropdownMenuItem(
@@ -4316,10 +4346,10 @@ class _AssessmentOverrideDialogState extends State<_AssessmentOverrideDialog> {
                       .toList(),
                   selectedItemBuilder: (context) =>
                       AppDropdownStyle.selectedLabels(
-                    ScholarshipDecisionStatus.values.map(
-                      (status) => status.label,
-                    ),
-                  ),
+                        ScholarshipDecisionStatus.values.map(
+                          (status) => status.label,
+                        ),
+                      ),
                   dropdownColor: AppColors.white,
                   focusColor: AppColors.transparent,
                   iconEnabledColor: AppColors.primary,

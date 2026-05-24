@@ -417,7 +417,11 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
                                 height: 30,
                               ),
                               padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.delete_outline, size: 18),
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                size: 18,
+                                color: AppColors.error,
+                              ),
                               onPressed: () {
                                 setState(() => draftFilters.removeAt(i));
                               },

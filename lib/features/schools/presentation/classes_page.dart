@@ -1,6 +1,7 @@
 import 'package:edukita/features/schools/domain/class_cubit.dart';
 import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_toast.dart';
@@ -127,7 +128,10 @@ class _ClassesPageState extends State<ClassesPage> {
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete),
+                              icon: const Icon(
+                                Icons.delete,
+                                color: AppColors.error,
+                              ),
                               onPressed: () =>
                                   _confirmDelete(context, schoolClass.id),
                             ),

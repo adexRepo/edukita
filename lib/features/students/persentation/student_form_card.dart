@@ -1637,7 +1637,10 @@ class _SiblingRelationDraftCard extends StatelessWidget {
               const SizedBox(width: 12),
               IconButton(
                 onPressed: canRemove ? onRemove : null,
-                icon: const Icon(Icons.delete_outline),
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: AppColors.error,
+                ),
                 tooltip: 'Remove relation',
               ),
             ],
@@ -1884,7 +1887,11 @@ class _GuardianDraftTableRow extends StatelessWidget {
                       ),
                       padding: EdgeInsets.zero,
                       onPressed: () => onRemove(draftIndex),
-                      icon: const Icon(Icons.delete_outline, size: 16),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        size: 16,
+                        color: AppColors.error,
+                      ),
                     ),
                   ],
                 ),
@@ -2027,7 +2034,11 @@ class _ActivityDraftTableRow extends StatelessWidget {
                       ),
                       padding: EdgeInsets.zero,
                       onPressed: () => onRemove(draftIndex),
-                      icon: const Icon(Icons.delete_outline, size: 16),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        size: 16,
+                        color: AppColors.error,
+                      ),
                     ),
                   ],
                 ),

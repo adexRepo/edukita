@@ -93,7 +93,8 @@ class _AssistanceProgramFormDialogState
                   CommonFormWidgets.textField(
                     label: 'Code',
                     value: code,
-                    onSaved: (value) => code = value?.trim().toUpperCase() ?? '',
+                    onSaved: (value) =>
+                        code = value?.trim().toUpperCase() ?? '',
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(
                         RegExp(r'[A-Za-z0-9_]'),
@@ -336,9 +337,9 @@ class _AssistanceProgramFormDialogState
                         onPressed: _isSaving
                             ? null
                             : () => _openBenefitDialog(
-                                  benefit: benefit,
-                                  index: index,
-                                ),
+                                benefit: benefit,
+                                index: index,
+                              ),
                         icon: const Icon(Icons.edit_outlined, size: 18),
                       ),
                       IconButton(
@@ -492,8 +493,7 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
   void initState() {
     super.initState();
     final benefit = widget.benefit;
-    _schoolType =
-        benefit?.schoolType ?? AssistanceBenefitSchoolType.all;
+    _schoolType = benefit?.schoolType ?? AssistanceBenefitSchoolType.all;
     _benefitType = benefit?.benefitType ?? widget.defaultBenefitType;
     _amountController = TextEditingController(
       text: benefit?.amount?.toString() ?? '',
@@ -535,7 +535,9 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _twoColumnFormRow(
-                  CommonFormWidgets.dropdownFieldTyped<AssistanceBenefitSchoolType>(
+                  CommonFormWidgets.dropdownFieldTyped<
+                    AssistanceBenefitSchoolType
+                  >(
                     label: 'School Type',
                     items: AssistanceBenefitSchoolType.values,
                     labelBuilder: (item) => item.label,
@@ -692,10 +694,7 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Save Package'),
-        ),
+        FilledButton(onPressed: _submit, child: const Text('Save Package')),
       ],
     );
   }
@@ -706,10 +705,8 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
   }) async {
     final result = await showDialog<AssistanceProgramBenefitItem>(
       context: context,
-      builder: (context) => BenefitItemDialog(
-        item: item,
-        benefitId: widget.benefit?.id ?? '',
-      ),
+      builder: (context) =>
+          BenefitItemDialog(item: item, benefitId: widget.benefit?.id ?? ''),
     );
     if (result == null) return;
     setState(() {
@@ -753,17 +750,13 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
         assistanceProgramId: widget.programId,
         schoolType: _schoolType,
         benefitType: _benefitType,
-        amount:
-            _benefitType == AssistanceBenefitType.goods ? null : amount,
+        amount: _benefitType == AssistanceBenefitType.goods ? null : amount,
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
         isActive: _isActive,
         items: needsItems
-            ? [
-                for (final item in _items)
-                  item.copyWith(programBenefitId: id),
-              ]
+            ? [for (final item in _items) item.copyWith(programBenefitId: id)]
             : const [],
         createdAt: widget.benefit?.createdAt,
       ),
@@ -772,11 +765,7 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
 }
 
 class BenefitItemDialog extends StatefulWidget {
-  const BenefitItemDialog({
-    super.key,
-    this.item,
-    required this.benefitId,
-  });
+  const BenefitItemDialog({super.key, this.item, required this.benefitId});
 
   final AssistanceProgramBenefitItem? item;
   final String benefitId;
@@ -834,8 +823,9 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(labelText: 'Item Name'),
-                validator: (value) =>
-                    value?.trim().isEmpty == true ? 'Item name is required' : null,
+                validator: (value) => value?.trim().isEmpty == true
+                    ? 'Item name is required'
+                    : null,
               ),
               const SizedBox(height: 12),
               _twoColumnFormRow(
@@ -897,10 +887,7 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Save Item'),
-        ),
+        FilledButton(onPressed: _submit, child: const Text('Save Item')),
       ],
     );
   }

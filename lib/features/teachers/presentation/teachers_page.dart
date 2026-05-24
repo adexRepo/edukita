@@ -279,7 +279,11 @@ class _TeachersPageState extends State<TeachersPage> {
                   ),
                   padding: EdgeInsets.zero,
                   color: AppColors.errorDark,
-                  icon: const Icon(Icons.delete_outline, size: 16),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 16,
+                    color: AppColors.error,
+                  ),
                 ),
               ],
             ),

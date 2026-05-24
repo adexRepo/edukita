@@ -1,4 +1,5 @@
-import 'package:edukita/core/helper/image_helper.dart';
+import 'dart:io' as io;
+
 import 'package:edukita/features/students/data/student_table.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -10,24 +11,27 @@ class StudentProfileCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final photoPath = student.photoPath?.trim();
+    final hasPhoto = photoPath != null &&
+        photoPath.isNotEmpty &&
+        io.File(photoPath).existsSync();
+
     return Row(
       children: [
         CircleAvatar(
-          radius: 14,
-          backgroundColor: AppColors.surfaceMuted,
-          backgroundImage: getImageByLocalPath(student.photoPath),
-          child: student.photoPath == null || student.photoPath!.isEmpty
-              ? Text(
-                  student.fullName.isNotEmpty
-                      ? student.fullName[0].toUpperCase()
-                      : '?',
+          radius: 15,
+          backgroundColor: AppColors.primaryLight.withValues(alpha: 0.22),
+          backgroundImage: hasPhoto ? FileImage(io.File(photoPath)) : null,
+          child: hasPhoto
+              ? null
+              : Text(
+                  _initials(student.fullName),
                   style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.black87,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryDark,
                   ),
-                )
-              : null,
+                ),
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -58,5 +62,16 @@ class StudentProfileCell extends StatelessWidget {
 
   String _buildSubtitle(StudentTable s) {
     return s.studentNo;
+  }
+
+  String _initials(String name) {
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return '${parts.first[0]}${parts[1][0]}'.toUpperCase();
   }
 }

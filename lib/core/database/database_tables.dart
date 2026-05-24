@@ -61,6 +61,7 @@ class DatabaseTables {
     await studentWellbeing(db);
     await studentWellBeing(db);
 
+    await reportDefinitions(db);
     await reports(db);
     await assistancePrograms(db);
     await assistanceProgramBenefits(db);
@@ -1006,6 +1007,24 @@ class DatabaseTables {
     ''');
   }
 
+  static Future<void> reportDefinitions(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS report_definitions(
+        id TEXT PRIMARY KEY NOT NULL,
+        code TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        file_name_pattern TEXT NOT NULL,
+        description TEXT,
+        query_sql TEXT NOT NULL,
+        parameters_json TEXT,
+        columns_json TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+  }
+
   static Future<void> scholarshipPeriods(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS assistance_periods(
@@ -1289,6 +1308,20 @@ class DatabaseTables {
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_assessments_student_id ON student_assessments(student_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'report_definitions',
+      columns: const ['code'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_report_definitions_code ON report_definitions(code)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'report_definitions',
+      columns: const ['is_active'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_report_definitions_active ON report_definitions(is_active)',
     );
     await _createIndexIfColumnsExist(
       db,

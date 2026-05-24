@@ -323,7 +323,11 @@ class _StudentsPageState extends State<StudentsPage> {
                     height: 28,
                   ),
                   padding: EdgeInsets.zero,
-                  icon: const Icon(Icons.delete_outline, size: 16),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 16,
+                    color: AppColors.error,
+                  ),
                 ),
               ],
             ),

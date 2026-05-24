@@ -339,7 +339,11 @@ class _AssistanceProgramPageState extends State<AssistanceProgramPage> {
                 onPressed: period.status == ScholarshipPeriodStatus.approved
                     ? null
                     : () => _confirmDeletePeriod(context, period),
-                icon: const Icon(Icons.delete_outline, size: 18),
+                icon: const Icon(
+                  Icons.delete_outline,
+                  size: 18,
+                  color: AppColors.error,
+                ),
                 color: AppColors.errorDark,
               ),
             ],
@@ -985,7 +989,11 @@ class _RuleTargetSection extends StatelessWidget {
                                     ScholarshipDecisionStatus.cancelled
                                 ? null
                                 : () => _removeTargetCandidate(context, item),
-                            icon: const Icon(Icons.delete_outline, size: 18),
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              size: 18,
+                              color: AppColors.error,
+                            ),
                             color: AppColors.errorDark,
                           ),
                         ),

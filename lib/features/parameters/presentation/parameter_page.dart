@@ -1,4 +1,5 @@
 import 'package:edukita/features/assistance_programs/presentation/assistance_programs_page.dart';
+import 'package:edukita/features/report_definitions/presentation/report_definitions_page.dart';
 import 'package:edukita/features/schools/presentation/schools_page.dart';
 import 'package:edukita/features/scholarships/presentation/scholarship_page.dart';
 import 'package:edukita/features/syllabus/presentation/syllabus_page.dart';
@@ -47,6 +48,7 @@ class _ParameterPageState extends State<ParameterPage> {
       icon: Icons.settings_outlined,
       items: [
         _ParameterMenuItem('Config', Icons.tune_outlined),
+        _ParameterMenuItem('Reports', Icons.summarize_outlined),
       ],
     ),
   ];
@@ -122,6 +124,10 @@ class _ParameterPageState extends State<ParameterPage> {
       return const ScholarshipPage(embedded: true, initialSection: 'rules');
     }
 
+    if (_selectedTitle == 'Reports') {
+      return const ReportDefinitionsPage(embedded: true);
+    }
+
     return DecoratedBox(
       decoration: BoxDecoration(
         color: AppColors.white,
@@ -165,6 +171,8 @@ class _ParameterPageState extends State<ParameterPage> {
     return switch (title) {
       'Config' =>
         'Manage system-wide parameter settings used across the application.',
+      'Reports' =>
+        'Maintain dynamic report definitions used by the Reports menu.',
       _ => 'Maintain parameter data used by Edukita modules.',
     };
   }

@@ -359,7 +359,11 @@ class _SchoolsPageState extends State<SchoolsPage> {
                             ),
                             padding: EdgeInsets.zero,
                             color: AppColors.errorDark,
-                            icon: const Icon(Icons.delete_outline, size: 16),
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              size: 16,
+                              color: AppColors.error,
+                            ),
                           ),
                         ],
                       ),
@@ -578,6 +582,7 @@ class _SchoolClassesDialog extends StatelessWidget {
                                 color: AppColors.errorDark,
                                 icon: const Icon(
                                   Icons.delete_outline,
+                                  color: AppColors.error,
                                   size: 16,
                                 ),
                               ),

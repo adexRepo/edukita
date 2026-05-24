@@ -874,7 +874,11 @@ class _ClassTableRow extends StatelessWidget {
                           ),
                           padding: EdgeInsets.zero,
                           onPressed: () => onRemove(draftIndex),
-                          icon: const Icon(Icons.delete_outline, size: 16),
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            size: 16,
+                            color: AppColors.error,
+                          ),
                         ),
                       ],
                     ),

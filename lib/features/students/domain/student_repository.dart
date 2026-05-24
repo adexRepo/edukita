@@ -1088,7 +1088,7 @@ class StudentRepository extends BaseRepository<Student> {
       where: "LOWER(COALESCE(status, 'active')) <> 'inactive'",
       orderBy: 'name COLLATE NOCASE',
     );
-    final unitRows = studentLevel == null
+    var unitRows = studentLevel == null
         ? await db.query('units', orderBy: 'sequence_no ASC, name COLLATE NOCASE')
         : await db.rawQuery(
             '''
@@ -1103,6 +1103,12 @@ class StudentRepository extends BaseRepository<Student> {
             ''',
             [studentLevel.toString()],
           );
+    if (unitRows.isEmpty) {
+      unitRows = await db.query(
+        'units',
+        orderBy: 'sequence_no ASC, name COLLATE NOCASE',
+      );
+    }
     return StudentExamScoreOptions(
       subjects: subjectRows.map((row) => Subject.fromMap(row)).toList(),
       units: unitRows.map((row) => Unit.fromMap(row)).toList(),
@@ -1260,6 +1266,106 @@ class StudentRepository extends BaseRepository<Student> {
 
     await db.transaction((txn) async {
       await txn.insert('student_exam_score_groups', values);
+      for (final item in group.items) {
+        await txn.insert('student_exam_score_items', item.toMap());
+      }
+    });
+  }
+
+  Future<void> deleteStudentExamScoreGroup(StudentExamScoreGroup group) async {
+    final db = await _dbProvider.database;
+    await _ensureStudentExamScoreSchema(db);
+
+    await db.transaction((txn) async {
+      if (group.id.startsWith('legacy_')) {
+        final legacyId = group.id.replaceFirst('legacy_', '');
+        await txn.delete(
+          'student_exam_scores',
+          where: 'id = ?',
+          whereArgs: [legacyId],
+        );
+        return;
+      }
+
+      await txn.delete(
+        'student_exam_score_items',
+        where: 'group_id = ?',
+        whereArgs: [group.id],
+      );
+      await txn.delete(
+        'student_exam_score_groups',
+        where: 'id = ?',
+        whereArgs: [group.id],
+      );
+    });
+  }
+
+  Future<void> updateStudentExamScoreGroup(
+    StudentExamScoreGroup group, {
+    String? evidenceSourcePath,
+    String? evidenceFileName,
+  }) async {
+    final db = await _dbProvider.database;
+    await _ensureStudentExamScoreSchema(db);
+
+    var values = group.toMap()
+      ..['updated_at'] = DateTime.now().toIso8601String();
+    if (evidenceSourcePath?.trim().isNotEmpty == true) {
+      final evidence = await _copyExamScoreEvidence(
+        scoreId: group.id,
+        studentId: group.studentId,
+        sourcePath: evidenceSourcePath!.trim(),
+        originalFileName: evidenceFileName,
+      );
+      values = {
+        ...values,
+        'evidence_file_name': evidence.fileName,
+        'evidence_file_path': evidence.filePath,
+        'evidence_file_type': evidence.fileType,
+      };
+    }
+
+    await db.transaction((txn) async {
+      if (group.id.startsWith('legacy_')) {
+        final legacyId = group.id.replaceFirst('legacy_', '');
+        final item = group.items.isEmpty ? null : group.items.first;
+        await txn.update(
+          'student_exam_scores',
+          {
+            'scope': group.scope,
+            'subject_id': item?.subjectId,
+            'unit_id': item?.unitId,
+            'exam_type': group.examType,
+            'source': group.source,
+            'academic_year': group.academicYear,
+            'semester': group.semester,
+            'exam_date': group.examDate,
+            'score': item?.score,
+            'max_score': item?.maxScore,
+            'evidence_required': group.evidenceRequired ? 1 : 0,
+            'evidence_file_name': values['evidence_file_name'],
+            'evidence_file_path': values['evidence_file_path'],
+            'evidence_file_type': values['evidence_file_type'],
+            'note': group.note,
+            'updated_at': values['updated_at'],
+          },
+          where: 'id = ?',
+          whereArgs: [legacyId],
+        );
+        return;
+      }
+
+      await txn.update(
+        'student_exam_score_groups',
+        values,
+        where: 'id = ?',
+        whereArgs: [group.id],
+      );
+      await txn.delete(
+        'student_exam_score_items',
+        where: 'group_id = ?',
+        whereArgs: [group.id],
+      );
       for (final item in group.items) {
         await txn.insert('student_exam_score_items', item.toMap());
       }

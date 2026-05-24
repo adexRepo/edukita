@@ -138,7 +138,16 @@ class AppDropdownStyle {
 
   static List<Widget> selectedLabels(Iterable<String> labels) {
     return labels
-        .map((label) => Text(label, overflow: TextOverflow.ellipsis))
+        .map(
+          (label) => Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        )
         .toList();
   }
 
@@ -331,7 +340,7 @@ class AppDropdownButtonFormField<T> extends StatelessWidget {
                       iconDisabledColor: iconDisabledColor,
                       iconEnabledColor: iconEnabledColor,
                       isDense: isDense,
-                      isExpanded: isExpanded,
+                      isExpanded: true,
                       itemHeight: itemHeight,
                       focusColor: focusColor ?? AppColors.transparent,
                       dropdownColor: dropdownColor,
