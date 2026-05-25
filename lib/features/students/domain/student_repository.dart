@@ -328,11 +328,13 @@ class StudentRepository extends BaseRepository<Student> {
     final relations = await loadRelations(studentId);
     final activities = await loadActivities(studentId);
     final goals = await _loadGoalInputs(db, studentId);
+    final registrationForm = await _loadRegistrationForm(db, studentId);
 
     return StudentAdvancedFormData(
       health: health,
       relations: relations,
       activities: activities,
+      registrationForm: registrationForm,
       hobby: goals.$1,
       aspiration: goals.$2,
     );
@@ -568,6 +570,7 @@ class StudentRepository extends BaseRepository<Student> {
       );
     }
     await _saveActivities(txn, student.id, advanced.activities);
+    await _saveRegistrationForm(txn, student.id, advanced.registrationForm);
     await _saveGoals(txn, student.id, advanced);
   }
 
@@ -937,6 +940,120 @@ class StudentRepository extends BaseRepository<Student> {
         'created_at': now,
       });
     }
+  }
+
+  Future<StudentDocumentFormData> _loadRegistrationForm(
+    DatabaseExecutor db,
+    String studentId,
+  ) async {
+    final result = await db.query(
+      'student_documents',
+      where: 'student_id = ? AND document_type = ?',
+      whereArgs: [
+        studentId,
+        StudentDocumentTypeOptions.registrationForm,
+      ],
+      orderBy: 'uploaded_at DESC',
+      limit: 1,
+    );
+    if (result.isEmpty) {
+      return const StudentDocumentFormData(
+        documentType: StudentDocumentTypeOptions.registrationForm,
+      );
+    }
+
+    final row = result.first;
+    final filePath = row['file_url'] as String?;
+    return StudentDocumentFormData(
+      id: row['id'] as String?,
+      documentType:
+          row['document_type'] as String? ??
+          StudentDocumentTypeOptions.registrationForm,
+      fileName: filePath == null ? null : p.basename(filePath),
+      filePath: filePath,
+      uploadedAt: row['uploaded_at'] as String?,
+    );
+  }
+
+  Future<void> _saveRegistrationForm(
+    Transaction txn,
+    String studentId,
+    StudentDocumentFormData document,
+  ) async {
+    final sourcePath = _nullIfBlank(document.sourcePath);
+    var filePath = _nullIfBlank(document.filePath);
+
+    if (sourcePath != null) {
+      if (filePath == null ||
+          p.normalize(sourcePath) != p.normalize(filePath)) {
+        filePath = await _copyStudentRegistrationForm(
+          studentId: studentId,
+          sourcePath: sourcePath,
+          originalFileName: document.fileName,
+        );
+      }
+    }
+
+    if (filePath == null) {
+      throw Exception('Registration form is required.');
+    }
+
+    await txn.delete(
+      'student_documents',
+      where: 'student_id = ? AND document_type = ?',
+      whereArgs: [
+        studentId,
+        StudentDocumentTypeOptions.registrationForm,
+      ],
+    );
+    await txn.insert('student_documents', {
+      'id': document.id ?? const Uuid().v4(),
+      'student_id': studentId,
+      'document_type': StudentDocumentTypeOptions.registrationForm,
+      'file_url': filePath,
+      'uploaded_at':
+          _nullIfBlank(document.uploadedAt) ??
+          DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<String> _copyStudentRegistrationForm({
+    required String studentId,
+    required String sourcePath,
+    String? originalFileName,
+  }) async {
+    final sourceFile = io.File(sourcePath);
+    if (!await sourceFile.exists()) {
+      throw StateError('Registration form file not found.');
+    }
+
+    final storagePath = dotenv.env['STORAGE_PATH'] ?? './edukita/storage';
+    final directory = io.Directory(
+      p.join(storagePath, 'student_documents', studentId),
+    );
+    await directory.create(recursive: true);
+
+    final extension = p.extension(sourceFile.path).toLowerCase();
+    final baseName = _safeFileName(
+      originalFileName?.trim().isNotEmpty == true
+          ? p.basenameWithoutExtension(originalFileName!.trim())
+          : 'registration-form',
+    );
+    final fileName =
+        '${baseName}_${_compactDateTime(DateTime.now())}$extension';
+    final destinationPath = p.join(directory.path, fileName);
+
+    if (p.normalize(sourceFile.path) != p.normalize(destinationPath)) {
+      await sourceFile.copy(destinationPath);
+    }
+
+    return destinationPath;
+  }
+
+  String _safeFileName(String value) {
+    final cleaned = value.trim().replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-');
+    final normalized = cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
+    return normalized.isEmpty ? 'file' : normalized;
   }
 
   String _relationTypeForStudent(String? gender) {

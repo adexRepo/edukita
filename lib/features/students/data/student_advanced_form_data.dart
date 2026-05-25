@@ -5,6 +5,9 @@ class StudentAdvancedFormData {
     this.health = const StudentHealthFormData(),
     this.relations = const [],
     this.activities = const [],
+    this.registrationForm = const StudentDocumentFormData(
+      documentType: StudentDocumentTypeOptions.registrationForm,
+    ),
     this.hobby,
     this.aspiration,
   });
@@ -12,6 +15,7 @@ class StudentAdvancedFormData {
   final StudentHealthFormData health;
   final List<StudentRelationFormData> relations;
   final List<StudentActivityFormData> activities;
+  final StudentDocumentFormData registrationForm;
   final String? hobby;
   final String? aspiration;
 
@@ -19,9 +23,38 @@ class StudentAdvancedFormData {
     return health.hasData ||
         relations.any((relation) => relation.hasData) ||
         activities.any((activity) => activity.hasData) ||
+        registrationForm.hasFile ||
         _hasText(hobby) ||
         _hasText(aspiration);
   }
+}
+
+class StudentDocumentFormData {
+  const StudentDocumentFormData({
+    this.id,
+    this.documentType,
+    this.fileName,
+    this.filePath,
+    this.sourcePath,
+    this.uploadedAt,
+  });
+
+  final String? id;
+  final String? documentType;
+  final String? fileName;
+  final String? filePath;
+  final String? sourcePath;
+  final String? uploadedAt;
+
+  bool get hasFile {
+    return _hasText(sourcePath) || _hasText(filePath);
+  }
+}
+
+class StudentDocumentTypeOptions {
+  StudentDocumentTypeOptions._();
+
+  static const registrationForm = 'REGISTRATION_FORM';
 }
 
 class StudentHealthFormData {

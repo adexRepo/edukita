@@ -86,6 +86,11 @@ class _StudentFormCardState extends State<StudentFormCard> {
   String? _selectedClassId;
   String? _selectedPhotoSourcePath;
   String? _selectedPhotoFileName;
+  String? _registrationFormId;
+  String? _registrationFormSourcePath;
+  String? _registrationFormStoredPath;
+  String? _registrationFormFileName;
+  String? _registrationFormUploadedAt;
   late Gender _selectedGender;
   late bool _showAdvancedDetail;
   bool _isSaving = false;
@@ -173,6 +178,16 @@ class _StudentFormCardState extends State<StudentFormCard> {
     _selectedPhotoFileName = student?.photoPath == null
         ? null
         : p.basename(student!.photoPath!);
+    final registrationForm = widget.initialAdvancedData.registrationForm;
+    _registrationFormId = registrationForm.id;
+    _registrationFormStoredPath = registrationForm.filePath;
+    _registrationFormSourcePath = registrationForm.sourcePath;
+    _registrationFormFileName =
+        registrationForm.fileName ??
+        (registrationForm.filePath == null
+            ? null
+            : p.basename(registrationForm.filePath!));
+    _registrationFormUploadedAt = registrationForm.uploadedAt;
     _selectedClassId = student?.classId;
     _selectedSchoolId = _schoolIdForClass(_selectedClassId);
     _selectedGender = student?.gender ?? Gender.male;
@@ -268,6 +283,41 @@ class _StudentFormCardState extends State<StudentFormCard> {
 
     await sourceFile.copy(destinationPath);
     return destinationPath;
+  }
+
+  Future<void> _pickRegistrationForm(FormFieldState<String> field) async {
+    const documentGroup = XTypeGroup(
+      label: 'Registration Form',
+      extensions: ['pdf', 'jpg', 'jpeg', 'png'],
+    );
+    final file = await openFile(acceptedTypeGroups: [documentGroup]);
+    if (file == null) return;
+
+    final sourceFile = File(file.path);
+    final size = await sourceFile.length();
+    const maxDocumentSize = 20 * 1024 * 1024;
+    if (size > maxDocumentSize) {
+      _showMessage('Registration form must be 20 MB or smaller.');
+      return;
+    }
+
+    setState(() {
+      _registrationFormSourcePath = file.path;
+      _registrationFormStoredPath = null;
+      _registrationFormFileName = file.name;
+      _registrationFormUploadedAt = null;
+    });
+    field.didChange(file.path);
+  }
+
+  void _clearRegistrationForm(FormFieldState<String> field) {
+    setState(() {
+      _registrationFormSourcePath = null;
+      _registrationFormStoredPath = null;
+      _registrationFormFileName = null;
+      _registrationFormUploadedAt = null;
+    });
+    field.didChange(null);
   }
 
   Future<void> _submit() async {
@@ -385,6 +435,14 @@ class _StudentFormCardState extends State<StudentFormCard> {
           .map((draft) => draft.toData())
           .where((activity) => activity.hasData)
           .toList(),
+      registrationForm: StudentDocumentFormData(
+        id: _registrationFormId,
+        documentType: StudentDocumentTypeOptions.registrationForm,
+        fileName: _nullIfEmptyNullable(_registrationFormFileName),
+        filePath: _nullIfEmptyNullable(_registrationFormStoredPath),
+        sourcePath: _nullIfEmptyNullable(_registrationFormSourcePath),
+        uploadedAt: _registrationFormUploadedAt,
+      ),
       hobby: nullIfEmpty(_hobbyController.text),
       aspiration: nullIfEmpty(_aspirationController.text),
     );
@@ -667,6 +725,12 @@ class _StudentFormCardState extends State<StudentFormCard> {
     return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
   }
 
+  String? _nullIfEmptyNullable(String? value) {
+    final text = value?.trim();
+    if (text == null || text.isEmpty) return null;
+    return text;
+  }
+
   String? _schoolIdForClass(String? classId) {
     if (classId == null) return null;
     for (final schoolClass in widget.availableClasses) {
@@ -760,6 +824,8 @@ class _StudentFormCardState extends State<StudentFormCard> {
                   ],
                   maxColumns: 3,
                 ),
+                const SizedBox(height: 12),
+                _registrationFormPicker(),
               ],
             ),
             const SizedBox(height: 18),
@@ -1213,6 +1279,100 @@ class _StudentFormCardState extends State<StudentFormCard> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _registrationFormPicker() {
+    final initialValue =
+        _registrationFormSourcePath ?? _registrationFormStoredPath;
+    return FormField<String>(
+      initialValue: initialValue,
+      validator: (_) {
+        final hasFile =
+            (_registrationFormSourcePath?.trim().isNotEmpty ?? false) ||
+            (_registrationFormStoredPath?.trim().isNotEmpty ?? false);
+        if (!hasFile) return 'Registration form is required';
+        return null;
+      },
+      builder: (field) {
+        return InputDecorator(
+          decoration: InputDecoration(
+            label: _requiredLabel('Registration Form'),
+            helperText: 'Upload signed paper registration form (PDF/JPG/PNG)',
+            errorText: field.errorText,
+            border: const OutlineInputBorder(),
+            contentPadding: const EdgeInsets.all(12),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 460;
+              final fileLabel = Row(
+                children: [
+                  const Icon(
+                    Icons.description_outlined,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _registrationFormFileName ?? 'No file selected',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: _registrationFormFileName == null
+                            ? AppColors.textHint
+                            : AppColors.textPrimary,
+                        fontWeight: _registrationFormFileName == null
+                            ? FontWeight.w400
+                            : FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+              final actions = Row(
+                mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
+                mainAxisAlignment: compact
+                    ? MainAxisAlignment.end
+                    : MainAxisAlignment.start,
+                children: [
+                  if (_registrationFormFileName != null)
+                    IconButton(
+                      tooltip: 'Remove file',
+                      onPressed: () => _clearRegistrationForm(field),
+                      icon: const Icon(Icons.delete_outline),
+                      color: AppColors.error,
+                    ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => _pickRegistrationForm(field),
+                    icon: const Icon(Icons.upload_file),
+                    label: const Text('Upload'),
+                  ),
+                ],
+              );
+
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    fileLabel,
+                    const SizedBox(height: 10),
+                    actions,
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: fileLabel),
+                  const SizedBox(width: 12),
+                  actions,
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
