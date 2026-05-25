@@ -32,12 +32,15 @@ class StudentFormDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isEditing = initialStudent != null;
+    final dialogWidth = (MediaQuery.sizeOf(context).width - 80)
+        .clamp(360.0, 920.0)
+        .toDouble();
 
     return AlertDialog(
       title: AppDialogTitle(isEditing ? 'Edit Student' : 'Add Student'),
       contentPadding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
       content: SizedBox(
-        width: 640,
+        width: dialogWidth,
         child: SingleChildScrollView(
           child: StudentFormCard(
             availableSchools: availableSchools,

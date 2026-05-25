@@ -177,7 +177,6 @@ class _StudentFormCardState extends State<StudentFormCard> {
     _selectedSchoolId = _schoolIdForClass(_selectedClassId);
     _selectedGender = student?.gender ?? Gender.male;
     _showAdvancedDetail =
-        widget.initialAdvancedData.health.hasData ||
         widget.initialAdvancedData.activities.any(
           (activity) => activity.hasData,
         ) ||
@@ -696,71 +695,70 @@ class _StudentFormCardState extends State<StudentFormCard> {
             _FormSection(
               title: 'Basic Info',
               children: [
-                _generatedStudentNoDisplay(),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _nickNameController,
-                  decoration: const InputDecoration(labelText: 'Nick Name'),
-                  inputFormatters: [LengthLimitingTextInputFormatter(40)],
-                  validator: (value) => AppFormValidation.optionalText(
-                    value,
-                    'Nick name',
-                    maxLength: 40,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _fullNameController,
-                  decoration: InputDecoration(
-                    label: _requiredLabel('Full Name'),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Full name is required';
-                    }
-                    if (value.trim().length < 3) {
-                      return 'Minimum 3 characters';
-                    }
-                    if (value.trim().length > 80) {
-                      return 'Full name must be at most 80 characters';
-                    }
-                    return null;
-                  },
-                  inputFormatters: [LengthLimitingTextInputFormatter(80)],
-                ),
-                const SizedBox(height: 14),
-                _EnumSegmentedField<Gender>(
-                  label: _requiredLabel('Gender'),
-                  value: _selectedGender,
-                  values: Gender.values,
-                  labelBuilder: (gender) => gender.name,
-                  onChanged: (gender) =>
-                      setState(() => _selectedGender = gender),
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _nisController,
-                  decoration: InputDecoration(label: _requiredLabel('NISN')),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'NISN is required';
-                    }
-                    if (value.trim().length > 10) {
-                      return 'NISN must be at most 10 characters';
-                    }
-                    return null;
-                  },
-                  inputFormatters: [LengthLimitingTextInputFormatter(10)],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _dateField('Birth Date', _birthDateController),
+                _fieldGrid(
+                  [
+                    _generatedStudentNoDisplay(),
+                    TextFormField(
+                      controller: _fullNameController,
+                      decoration: InputDecoration(
+                        label: _requiredLabel('Full Name'),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Full name is required';
+                        }
+                        if (value.trim().length < 3) {
+                          return 'Minimum 3 characters';
+                        }
+                        if (value.trim().length > 80) {
+                          return 'Full name must be at most 80 characters';
+                        }
+                        return null;
+                      },
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(80),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(child: _dateField('Join Date', _joinAtController)),
+                    TextFormField(
+                      controller: _nickNameController,
+                      decoration: const InputDecoration(labelText: 'Nick Name'),
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(40),
+                      ],
+                      validator: (value) => AppFormValidation.optionalText(
+                        value,
+                        'Nick name',
+                        maxLength: 40,
+                      ),
+                    ),
+                    _EnumSegmentedField<Gender>(
+                      label: _requiredLabel('Gender'),
+                      value: _selectedGender,
+                      values: Gender.values,
+                      labelBuilder: (gender) => gender.name,
+                      onChanged: (gender) =>
+                          setState(() => _selectedGender = gender),
+                    ),
+                    TextFormField(
+                      controller: _nisController,
+                      decoration: InputDecoration(label: _requiredLabel('NISN')),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'NISN is required';
+                        }
+                        if (value.trim().length > 10) {
+                          return 'NISN must be at most 10 characters';
+                        }
+                        return null;
+                      },
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(10),
+                      ],
+                    ),
+                    _dateField('Birth Date', _birthDateController),
+                    _dateField('Join Date', _joinAtController),
                   ],
+                  maxColumns: 3,
                 ),
               ],
             ),
@@ -768,90 +766,101 @@ class _StudentFormCardState extends State<StudentFormCard> {
             _FormSection(
               title: 'School',
               children: [
-                AppDropdownButtonFormField<String>(
-                  initialValue: _selectedSchoolId,
-                  isExpanded: false,
-                  items: widget.availableSchools
-                      .map(
-                        (school) => DropdownMenuItem(
-                          value: school.id,
-                          child: AppDropdownStyle.menuItemLabel(
-                            label:
-                                '${school.name ?? '-'} (${school.type?.label ?? '-'})',
-                            selected: school.id == _selectedSchoolId,
+                _fieldGrid(
+                  [
+                    AppDropdownButtonFormField<String>(
+                      initialValue: _selectedSchoolId,
+                      isExpanded: false,
+                      items: widget.availableSchools
+                          .map(
+                            (school) => DropdownMenuItem(
+                              value: school.id,
+                              child: AppDropdownStyle.menuItemLabel(
+                                label:
+                                    '${school.name ?? '-'} (${school.type?.label ?? '-'})',
+                                selected: school.id == _selectedSchoolId,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      selectedItemBuilder: (context) =>
+                          AppDropdownStyle.selectedLabels(
+                            widget.availableSchools.map(
+                              (school) =>
+                                  '${school.name ?? '-'} (${school.type?.label ?? '-'})',
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
-                  selectedItemBuilder: (context) =>
-                      AppDropdownStyle.selectedLabels(
-                        widget.availableSchools.map(
-                          (school) =>
-                              '${school.name ?? '-'} (${school.type?.label ?? '-'})',
-                        ),
+                      dropdownColor: AppColors.white,
+                      focusColor: AppColors.transparent,
+                      iconEnabledColor: AppColors.primary,
+                      borderRadius: AppDropdownStyle.menuBorderRadius,
+                      menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                      style: AppDropdownStyle.textStyle,
+                      decoration: InputDecoration(
+                        label: _requiredLabel('School'),
+                        hintText: 'Select school',
                       ),
-                  dropdownColor: AppColors.white,
-                  focusColor: AppColors.transparent,
-                  iconEnabledColor: AppColors.primary,
-                  borderRadius: AppDropdownStyle.menuBorderRadius,
-                  menuMaxHeight: AppDropdownStyle.menuMaxHeight,
-                  style: AppDropdownStyle.textStyle,
-                  decoration: InputDecoration(label: _requiredLabel('School')),
-                  onChanged: (value) => setState(() {
-                    _selectedSchoolId = value;
-                    _selectedClassId = null;
-                  }),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please select a school';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 14),
-                AppDropdownButtonFormField<String>(
-                  initialValue: _selectedClassId,
-                  isExpanded: false,
-                  items: _classesForSelectedSchool
-                      .map(
-                        (schoolClass) => DropdownMenuItem(
-                          value: schoolClass.id,
-                          child: AppDropdownStyle.menuItemLabel(
-                            label:
-                                '${schoolClass.className} (${schoolClass.year})',
-                            selected: schoolClass.id == _selectedClassId,
+                      hint: const Text(
+                        'Select school',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onChanged: (value) => setState(() {
+                        _selectedSchoolId = value;
+                        _selectedClassId = null;
+                      }),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please select a school';
+                        }
+                        return null;
+                      },
+                    ),
+                    AppDropdownButtonFormField<String>(
+                      initialValue: _selectedClassId,
+                      isExpanded: false,
+                      items: _classesForSelectedSchool
+                          .map(
+                            (schoolClass) => DropdownMenuItem(
+                              value: schoolClass.id,
+                              child: AppDropdownStyle.menuItemLabel(
+                                label:
+                                    '${schoolClass.className} (${schoolClass.year})',
+                                selected: schoolClass.id == _selectedClassId,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      selectedItemBuilder: (context) =>
+                          AppDropdownStyle.selectedLabels(
+                            _classesForSelectedSchool.map(
+                              (schoolClass) =>
+                                  '${schoolClass.className} (${schoolClass.year})',
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
-                  selectedItemBuilder: (context) =>
-                      AppDropdownStyle.selectedLabels(
-                        _classesForSelectedSchool.map(
-                          (schoolClass) =>
-                              '${schoolClass.className} (${schoolClass.year})',
-                        ),
+                      dropdownColor: AppColors.white,
+                      focusColor: AppColors.transparent,
+                      iconEnabledColor: AppColors.primary,
+                      borderRadius: AppDropdownStyle.menuBorderRadius,
+                      menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                      style: AppDropdownStyle.textStyle,
+                      decoration: InputDecoration(
+                        label: _requiredLabel('Class'),
+                        hintText: _selectedSchoolId == null
+                            ? 'Select school first'
+                            : 'Select class',
                       ),
-                  dropdownColor: AppColors.white,
-                  focusColor: AppColors.transparent,
-                  iconEnabledColor: AppColors.primary,
-                  borderRadius: AppDropdownStyle.menuBorderRadius,
-                  menuMaxHeight: AppDropdownStyle.menuMaxHeight,
-                  style: AppDropdownStyle.textStyle,
-                  decoration: InputDecoration(
-                    label: _requiredLabel('Class'),
-                    hintText: _selectedSchoolId == null
-                        ? 'Select school first'
-                        : 'Select class',
-                  ),
-                  onChanged: _selectedSchoolId == null
-                      ? null
-                      : (value) => setState(() => _selectedClassId = value),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please select a class';
-                    }
-                    return null;
-                  },
+                      onChanged: _selectedSchoolId == null
+                          ? null
+                          : (value) => setState(() => _selectedClassId = value),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please select a class';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                  maxColumns: 2,
                 ),
               ],
             ),
@@ -859,22 +868,30 @@ class _StudentFormCardState extends State<StudentFormCard> {
             _FormSection(
               title: 'Contact',
               children: [
-                TextFormField(
-                  controller: _mobileNoController,
-                  decoration: const InputDecoration(
-                    labelText: 'Mobile No',
-                    hintText: AppFormValidation.mobilePlaceholder,
-                  ),
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: AppFormValidation.mobileInputFormatters,
-                  validator: AppFormValidation.optionalMobile,
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _emailAddrController,
-                  decoration: const InputDecoration(labelText: 'Email Address'),
-                  validator: AppFormValidation.optionalEmail,
-                  inputFormatters: [LengthLimitingTextInputFormatter(120)],
+                _fieldGrid(
+                  [
+                    TextFormField(
+                      controller: _mobileNoController,
+                      decoration: const InputDecoration(
+                        labelText: 'Mobile No',
+                        hintText: AppFormValidation.mobilePlaceholder,
+                      ),
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: AppFormValidation.mobileInputFormatters,
+                      validator: AppFormValidation.optionalMobile,
+                    ),
+                    TextFormField(
+                      controller: _emailAddrController,
+                      decoration: const InputDecoration(
+                        labelText: 'Email Address',
+                      ),
+                      validator: AppFormValidation.optionalEmail,
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(120),
+                      ],
+                    ),
+                  ],
+                  maxColumns: 2,
                 ),
               ],
             ),
@@ -884,23 +901,16 @@ class _StudentFormCardState extends State<StudentFormCard> {
             _FormSection(
               title: 'Physical',
               children: [
-                Row(
-                  children: [
-                    Expanded(child: _shoeSizeField()),
-                    const SizedBox(width: 12),
-                    Expanded(child: _uniformSizeField()),
+                _fieldGrid(
+                  [
+                    _shoeSizeField(),
+                    _uniformSizeField(),
+                    _pantsSizeField(),
+                    _heightField(),
+                    _weightField(),
                   ],
+                  maxColumns: 3,
                 ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(child: _pantsSizeField()),
-                    const SizedBox(width: 12),
-                    Expanded(child: _heightField()),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                _weightField(),
               ],
             ),
             const SizedBox(height: 18),
@@ -909,8 +919,6 @@ class _StudentFormCardState extends State<StudentFormCard> {
             _advancedDetailButton(),
             if (_showAdvancedDetail) ...[
               const SizedBox(height: 12),
-              _healthSection(),
-              const SizedBox(height: 18),
               _activitySection(),
               const SizedBox(height: 18),
               _goalsSection(),
@@ -945,6 +953,32 @@ class _StudentFormCardState extends State<StudentFormCard> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _fieldGrid(List<Widget> children, {int maxColumns = 3}) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final columns = width >= 760
+            ? maxColumns
+            : width >= 520
+            ? maxColumns.clamp(1, 2).toInt()
+            : 1;
+        const spacing = 12.0;
+        final itemWidth = columns == 1
+            ? width
+            : (width - (spacing * (columns - 1))) / columns;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: 12,
+          children: [
+            for (final child in children)
+              SizedBox(width: itemWidth, child: child),
+          ],
+        );
+      },
     );
   }
 
@@ -1076,16 +1110,20 @@ class _StudentFormCardState extends State<StudentFormCard> {
     return _FormSection(
       title: 'Hobby & Cita-cita',
       children: [
-        TextFormField(
-          controller: _hobbyController,
-          decoration: const InputDecoration(labelText: 'Hobby'),
-          inputFormatters: [LengthLimitingTextInputFormatter(120)],
-        ),
-        const SizedBox(height: 14),
-        TextFormField(
-          controller: _aspirationController,
-          decoration: const InputDecoration(labelText: 'Cita-cita'),
-          inputFormatters: [LengthLimitingTextInputFormatter(120)],
+        _fieldGrid(
+          [
+            TextFormField(
+              controller: _hobbyController,
+              decoration: const InputDecoration(labelText: 'Hobby'),
+              inputFormatters: [LengthLimitingTextInputFormatter(120)],
+            ),
+            TextFormField(
+              controller: _aspirationController,
+              decoration: const InputDecoration(labelText: 'Cita-cita'),
+              inputFormatters: [LengthLimitingTextInputFormatter(120)],
+            ),
+          ],
+          maxColumns: 2,
         ),
       ],
     );
@@ -2502,24 +2540,87 @@ class _ActivityDraftDialogState extends State<_ActivityDraftDialog> {
   }
 }
 
-class _OptionalDateTextField extends StatelessWidget {
+class _OptionalDateTextField extends StatefulWidget {
   const _OptionalDateTextField({required this.controller, required this.label});
 
   final TextEditingController controller;
   final String label;
 
   @override
+  State<_OptionalDateTextField> createState() => _OptionalDateTextFieldState();
+}
+
+class _OptionalDateTextFieldState extends State<_OptionalDateTextField> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_handleDateChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handleDateChanged);
+    super.dispose();
+  }
+
+  void _handleDateChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _pickDate() async {
+    final firstDate = DateTime(2000);
+    final lastDate = DateTime(2100);
+    final parsedDate = DateTime.tryParse(widget.controller.text);
+    final initialDate = _clampDate(parsedDate ?? DateTime.now(), firstDate, lastDate);
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+    );
+    if (selectedDate == null) return;
+
+    widget.controller.text = _formatDate(selectedDate);
+  }
+
+  DateTime _clampDate(DateTime date, DateTime firstDate, DateTime lastDate) {
+    if (date.isBefore(firstDate)) return firstDate;
+    if (date.isAfter(lastDate)) return lastDate;
+    return date;
+  }
+
+  String _formatDate(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
+  }
+
+  @override
   Widget build(BuildContext context) {
     return TextFormField(
-      controller: controller,
+      controller: widget.controller,
+      readOnly: true,
       decoration: InputDecoration(
-        labelText: label,
+        labelText: widget.label,
         hintText: AppFormFieldStyle.dateFormat,
+        suffixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.controller.text.isNotEmpty)
+              IconButton(
+                tooltip: 'Clear date',
+                icon: const Icon(Icons.close, size: 18),
+                onPressed: () => widget.controller.clear(),
+              ),
+            IconButton(
+              tooltip: 'Choose date',
+              icon: const Icon(Icons.calendar_today_outlined, size: 18),
+              onPressed: _pickDate,
+            ),
+          ],
+        ),
       ),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
-        LengthLimitingTextInputFormatter(10),
-      ],
+      onTap: _pickDate,
       validator: (value) {
         final text = value?.trim() ?? '';
         if (text.isEmpty) return null;

@@ -83,7 +83,9 @@ class _ReportsPageState extends State<ReportsPage> {
           tooltip: 'Refresh reports',
           onPressed: state.isLoading
               ? null
-              : () => context.read<ReportDefinitionCubit>().loadDefinitions(),
+              : () => context.read<ReportDefinitionCubit>().loadDefinitions(
+                    forceRefresh: true,
+                  ),
           icon: const Icon(Icons.refresh),
         ),
         FilledButton.icon(

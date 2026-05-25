@@ -83,7 +83,9 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
               _ScholarshipContentHeader(
                 view: _selectedView,
                 onRefresh: () =>
-                    context.read<ScholarshipCubit>().loadScholarshipRulesOnly(),
+                    context.read<ScholarshipCubit>().loadScholarshipRulesOnly(
+                      forceRefresh: true,
+                    ),
                 primaryAction: _selectedView == _ScholarshipView.rules
                     ? FilledButton.icon(
                         onPressed: () => _showRuleDialog(context),
@@ -146,7 +148,7 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
                                   view: _selectedView,
                                   onRefresh: () => context
                                       .read<ScholarshipCubit>()
-                                      .loadModule(),
+                                      .loadModule(forceRefresh: true),
                                 ),
                                 AppLoadingStrip(isLoading: state.isLoading),
                                 const SizedBox(

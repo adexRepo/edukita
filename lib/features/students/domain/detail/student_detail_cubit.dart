@@ -4,13 +4,20 @@ import 'package:edukita/features/students/data/student_advanced_form_data.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/data/student_detail_insight_data.dart';
 import 'package:edukita/features/students/data/student_exam_score_data.dart';
+import 'package:edukita/features/students/domain/student_feature_cubit.dart';
 import 'package:edukita/features/students/domain/student_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class StudentDetailCubit extends Cubit<FeatureState<StudentDetailData>> {
   final StudentRepository _repo;
+  final StudentCacheService _cacheService;
 
-  StudentDetailCubit(this._repo) : super(const FeatureState());
+  StudentDetailCubit(this._repo, this._cacheService)
+    : super(const FeatureState());
+
+  void _safeEmit(FeatureState<StudentDetailData> nextState) {
+    if (!isClosed) emit(nextState);
+  }
 
   Future<void> init(String id) async {
     await _fetch(id);
@@ -52,39 +59,56 @@ class StudentDetailCubit extends Cubit<FeatureState<StudentDetailData>> {
     StudentExamScoreGroup group, {
     String? evidenceSourcePath,
     String? evidenceFileName,
-  }) {
-    return _repo.saveStudentExamScoreGroup(
+  }) async {
+    await _repo.saveStudentExamScoreGroup(
       group,
       evidenceSourcePath: evidenceSourcePath,
       evidenceFileName: evidenceFileName,
     );
+    _cacheService.clear();
   }
 
-  Future<void> deleteStudentExamScoreGroup(StudentExamScoreGroup group) {
-    return _repo.deleteStudentExamScoreGroup(group);
+  Future<void> deleteStudentExamScoreGroup(StudentExamScoreGroup group) async {
+    await _repo.deleteStudentExamScoreGroup(group);
+    _cacheService.clear();
   }
 
   Future<void> updateStudentExamScoreGroup(
     StudentExamScoreGroup group, {
     String? evidenceSourcePath,
     String? evidenceFileName,
-  }) {
-    return _repo.updateStudentExamScoreGroup(
+  }) async {
+    await _repo.updateStudentExamScoreGroup(
       group,
       evidenceSourcePath: evidenceSourcePath,
       evidenceFileName: evidenceFileName,
     );
+    _cacheService.clear();
   }
 
-  Future<void> _fetch(String id) async {
-    emit(state.copyWith(loading: true, data: null));
+  Future<void> _fetch(String id, {bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cachedData = _cacheService.getDetail(id);
+      if (cachedData != null) {
+        _safeEmit(FeatureState<StudentDetailData>(
+          data: cachedData,
+          loading: false,
+        ));
+        return;
+      }
+    }
+
+    _safeEmit(state.copyWith(loading: true, data: null));
 
     try {
       final result = await _repo.loadDetailItem(id);
+      _cacheService.putDetail(id, result);
 
-      emit(state.copyWith(data: result, loading: false));
+      _safeEmit(state.copyWith(data: result, loading: false));
     } catch (e) {
-      emit(state.copyWith(loading: false, message: e.toString(), data: null));
+      _safeEmit(
+        state.copyWith(loading: false, message: e.toString(), data: null),
+      );
     }
   }
 }

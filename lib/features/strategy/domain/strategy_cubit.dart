@@ -6,27 +6,45 @@ part 'strategy_state.dart';
 
 class StrategyCubit extends Cubit<StrategyState> {
   final StrategyRepository _repository;
+  final StrategyCacheService _cacheService;
 
-  StrategyCubit(this._repository) : super(const StrategyState());
+  StrategyCubit(this._repository, this._cacheService)
+    : super(const StrategyState());
 
-  Future<void> loadStrategies() async {
-    emit(state.copyWith(isLoading: true));
+  void _safeEmit(StrategyState nextState) {
+    if (!isClosed) emit(nextState);
+  }
+
+  Future<void> loadStrategies({bool forceRefresh = false}) async {
+    const cacheKey = 'all';
+    final cachedState = forceRefresh ? null : _cacheService.get(cacheKey);
+    if (cachedState != null) {
+      _safeEmit(cachedState.copyWith(isLoading: false));
+      return;
+    }
+
+    _safeEmit(state.copyWith(isLoading: true));
     try {
       final strategies = await _repository.getAllStrategies();
-      emit(
-        state.copyWith(isLoading: false, strategies: strategies, error: null),
+      final nextState = state.copyWith(
+        isLoading: false,
+        strategies: strategies,
+        error: null,
       );
+      _cacheService.put(cacheKey, nextState);
+      _safeEmit(nextState);
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
   Future<void> addStrategy(Strategy strategy) async {
     try {
       await _repository.insertStrategy(strategy);
-      await loadStrategies();
+      _cacheService.clear();
+      await loadStrategies(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -34,9 +52,10 @@ class StrategyCubit extends Cubit<StrategyState> {
   Future<void> updateStrategy(Strategy strategy) async {
     try {
       await _repository.updateStrategy(strategy);
-      await loadStrategies();
+      _cacheService.clear();
+      await loadStrategies(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -44,10 +63,44 @@ class StrategyCubit extends Cubit<StrategyState> {
   Future<void> deleteStrategy(String id) async {
     try {
       await _repository.deleteStrategy(id);
-      await loadStrategies();
+      _cacheService.clear();
+      await loadStrategies(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
+}
+
+class StrategyCacheService {
+  StrategyCacheService({this.ttl = const Duration(minutes: 2)});
+
+  final Duration ttl;
+  final Map<String, _StrategyCacheEntry> _items = {};
+
+  StrategyState? get(String key) {
+    final entry = _items[key];
+    if (entry == null) return null;
+    if (DateTime.now().difference(entry.cachedAt) > ttl) {
+      _items.remove(key);
+      return null;
+    }
+    return entry.state;
+  }
+
+  void put(String key, StrategyState state) {
+    _items[key] = _StrategyCacheEntry(
+      state: state.copyWith(isLoading: false),
+      cachedAt: DateTime.now(),
+    );
+  }
+
+  void clear() => _items.clear();
+}
+
+class _StrategyCacheEntry {
+  const _StrategyCacheEntry({required this.state, required this.cachedAt});
+
+  final StrategyState state;
+  final DateTime cachedAt;
 }

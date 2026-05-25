@@ -59,9 +59,7 @@ final GoRouter appRouter = GoRouter(
           pageBuilder: (context, state) => _noTransitionPage(
             state: state,
             child: withCubit(
-              create: () => getIt<DashboardCubit>()
-                ..loadDashboard()
-                ..refreshCounters(),
+              create: () => getIt<DashboardCubit>()..loadDashboard(),
               child: const DashboardPage(),
             ),
           ),
@@ -158,7 +156,7 @@ final GoRouter appRouter = GoRouter(
             child: MultiBlocProvider(
               providers: [
                 BlocProvider<ScheduleCubit>(
-                  create: (_) => getIt<ScheduleCubit>()..loadSchedules(),
+                  create: (_) => getIt<ScheduleCubit>(),
                 ),
                 BlocProvider<SubjectCubit>(
                   create: (_) => getIt<SubjectCubit>()..loadCurriculum(),

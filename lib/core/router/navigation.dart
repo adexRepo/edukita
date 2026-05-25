@@ -29,9 +29,7 @@ final List<NavigationItem> navigationPageItems = [
     label: 'Dashboard',
     icon: Icons.dashboard,
     pageBuilder: () => BlocProvider(
-      create: (_) => getIt<DashboardCubit>()
-        ..loadDashboard()
-        ..refreshCounters(),
+      create: (_) => getIt<DashboardCubit>()..loadDashboard(),
       child: const DashboardPage(),
     ),
   ),

@@ -5,17 +5,32 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 part 'scholarship_state.dart';
 
 class ScholarshipCubit extends Cubit<ScholarshipState> {
-  ScholarshipCubit(this._repository) : super(const ScholarshipState());
+  ScholarshipCubit(this._repository, this._cacheService)
+    : super(const ScholarshipState());
 
   final ScholarshipRepository _repository;
+  final ScholarshipCacheService _cacheService;
 
   void _emitIfOpen(ScholarshipState state) {
     if (isClosed) return;
     emit(state);
   }
 
-  Future<void> loadModule({String? selectedPeriodId}) async {
+  Future<void> loadModule({
+    String? selectedPeriodId,
+    bool forceRefresh = false,
+  }) async {
     if (isClosed) return;
+    if (!forceRefresh) {
+      final cachedState =
+          _cacheService.getModule(selectedPeriodId ?? state.selectedPeriodId) ??
+          _cacheService.getLastModule();
+      if (cachedState != null) {
+        _emitIfOpen(cachedState.copyWith(isLoading: false, error: null));
+        return;
+      }
+    }
+
     _emitIfOpen(state.copyWith(isLoading: true, error: null));
     try {
       final periods = await _repository.getPeriods();
@@ -41,40 +56,48 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
       final summary = await _repository.getSummary(selectedId);
       if (isClosed) return;
 
-      _emitIfOpen(
-        state.copyWith(
-          isLoading: false,
-          periods: periods,
-          scholarshipRules: scholarshipRules,
-          selectedPeriodId: selectedId,
-          rules: rules,
-          periodRules: periodRules,
-          students: students,
-          assessments: assessments,
-          recipients: recipients,
-          approvalDocuments: approvalDocuments,
-          summary: summary,
-          error: null,
-        ),
+      final nextState = state.copyWith(
+        isLoading: false,
+        periods: periods,
+        scholarshipRules: scholarshipRules,
+        selectedPeriodId: selectedId,
+        rules: rules,
+        periodRules: periodRules,
+        students: students,
+        assessments: assessments,
+        recipients: recipients,
+        approvalDocuments: approvalDocuments,
+        summary: summary,
+        error: null,
       );
+      _cacheService.putModule(selectedId, nextState);
+      _emitIfOpen(nextState);
     } catch (e) {
       _emitIfOpen(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
-  Future<void> loadScholarshipRulesOnly() async {
+  Future<void> loadScholarshipRulesOnly({bool forceRefresh = false}) async {
     if (isClosed) return;
+    if (!forceRefresh) {
+      final cachedState = _cacheService.getRulesOnly();
+      if (cachedState != null) {
+        _emitIfOpen(cachedState.copyWith(isLoading: false, error: null));
+        return;
+      }
+    }
+
     _emitIfOpen(state.copyWith(isLoading: true, error: null));
     try {
       final scholarshipRules = await _repository.getScholarshipRules();
       if (isClosed) return;
-      _emitIfOpen(
-        state.copyWith(
-          isLoading: false,
-          scholarshipRules: scholarshipRules,
-          error: null,
-        ),
+      final nextState = state.copyWith(
+        isLoading: false,
+        scholarshipRules: scholarshipRules,
+        error: null,
       );
+      _cacheService.putRulesOnly(nextState);
+      _emitIfOpen(nextState);
     } catch (e) {
       _emitIfOpen(state.copyWith(isLoading: false, error: e.toString()));
     }
@@ -83,6 +106,24 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
   Future<void> selectPeriod(String? periodId, {bool force = false}) async {
     if (isClosed) return;
     if (!force && periodId == state.selectedPeriodId) return;
+    if (!force) {
+      final cachedState = _cacheService.getPeriodDetail(periodId);
+      if (cachedState != null) {
+        _emitIfOpen(
+          state.copyWith(
+            selectedPeriodId: periodId,
+            periodRules: cachedState.periodRules,
+            assessments: cachedState.assessments,
+            recipients: cachedState.recipients,
+            approvalDocuments: cachedState.approvalDocuments,
+            summary: cachedState.summary,
+            error: null,
+          ),
+        );
+        return;
+      }
+    }
+
     _emitIfOpen(state.copyWith(selectedPeriodId: periodId, error: null));
     try {
       final assessments = await _repository.getAssessments(periodId: periodId);
@@ -96,16 +137,16 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
       final summary = await _repository.getSummary(periodId);
       if (isClosed) return;
 
-      _emitIfOpen(
-        state.copyWith(
-          periodRules: periodRules,
-          assessments: assessments,
-          recipients: recipients,
-          approvalDocuments: approvalDocuments,
-          summary: summary,
-          error: null,
-        ),
+      final nextState = state.copyWith(
+        periodRules: periodRules,
+        assessments: assessments,
+        recipients: recipients,
+        approvalDocuments: approvalDocuments,
+        summary: summary,
+        error: null,
       );
+      _cacheService.putPeriodDetail(periodId, nextState);
+      _emitIfOpen(nextState);
     } catch (e) {
       _emitIfOpen(state.copyWith(error: e.toString()));
     }
@@ -127,7 +168,11 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
       minimumAttendancePercentage: minimumAttendancePercentage,
       allowManualOverrideBelowAttendance: allowManualOverrideBelowAttendance,
     );
-    await loadModule(selectedPeriodId: ScholarshipPeriod.periodId(year, month));
+    _cacheService.clear();
+    await loadModule(
+      selectedPeriodId: ScholarshipPeriod.periodId(year, month),
+      forceRefresh: true,
+    );
   }
 
   Future<ScholarshipPeriod> createAssistancePeriod({
@@ -160,51 +205,59 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
       allowManualOverrideBelowAttendance: allowManualOverrideBelowAttendance,
       rules: rules,
     );
-    await loadModule(selectedPeriodId: period.id);
+    _cacheService.clear();
+    await loadModule(selectedPeriodId: period.id, forceRefresh: true);
     return period;
   }
 
   Future<void> updatePeriod(ScholarshipPeriod period) async {
     await _repository.updatePeriod(period);
-    await loadModule(selectedPeriodId: period.id);
+    _cacheService.clear();
+    await loadModule(selectedPeriodId: period.id, forceRefresh: true);
   }
 
   Future<void> deletePeriod(String id) async {
     await _repository.deletePeriod(id);
-    await loadModule();
+    _cacheService.clear();
+    await loadModule(forceRefresh: true);
   }
 
   Future<void> saveRule(StudentScholarshipRule rule) async {
     await _repository.saveRule(rule);
-    await loadModule(selectedPeriodId: state.selectedPeriodId);
+    _cacheService.clear();
+    await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
   }
 
   Future<void> toggleRule(String id, bool isActive) async {
     await _repository.toggleRule(id, isActive);
-    await loadModule(selectedPeriodId: state.selectedPeriodId);
+    _cacheService.clear();
+    await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
   }
 
   Future<void> deleteRule(String id) async {
     await _repository.deleteRule(id);
-    await loadModule(selectedPeriodId: state.selectedPeriodId);
+    _cacheService.clear();
+    await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
   }
 
   Future<void> saveScholarshipRule(ScholarshipRule rule) async {
     await _repository.saveScholarshipRule(rule);
+    _cacheService.clear();
     if (_isRulesOnlyState) {
-      await loadScholarshipRulesOnly();
+      await loadScholarshipRulesOnly(forceRefresh: true);
       return;
     }
-    await loadModule(selectedPeriodId: state.selectedPeriodId);
+    await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
   }
 
   Future<void> toggleScholarshipRule(String id, bool isActive) async {
     await _repository.toggleScholarshipRule(id, isActive);
+    _cacheService.clear();
     if (_isRulesOnlyState) {
-      await loadScholarshipRulesOnly();
+      await loadScholarshipRulesOnly(forceRefresh: true);
       return;
     }
-    await loadModule(selectedPeriodId: state.selectedPeriodId);
+    await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
   }
 
   bool get _isRulesOnlyState {
@@ -220,12 +273,14 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
 
   Future<void> savePeriodRule(ScholarshipPeriodRule rule) async {
     await _repository.savePeriodRule(rule);
-    await loadModule(selectedPeriodId: state.selectedPeriodId);
+    _cacheService.clear();
+    await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
   }
 
   Future<void> deletePeriodRule(String id) async {
     await _repository.deletePeriodRule(id);
-    await loadModule(selectedPeriodId: state.selectedPeriodId);
+    _cacheService.clear();
+    await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
   }
 
   Future<List<StudentScholarshipRuleCandidate>> getRuleCandidates(
@@ -238,7 +293,8 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
     StudentScholarshipRuleCandidate candidate,
   ) async {
     await _repository.saveRuleCandidate(candidate);
-    await loadModule(selectedPeriodId: state.selectedPeriodId);
+    _cacheService.clear();
+    await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
   }
 
   Future<void> saveManualTarget({
@@ -251,40 +307,46 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
       studentId: studentId,
       reason: reason,
     );
+    _cacheService.clear();
     await selectPeriod(rule.scholarshipPeriodId, force: true);
   }
 
   Future<void> deleteRuleCandidate(String id) async {
     await _repository.deleteRuleCandidate(id);
-    await loadModule(selectedPeriodId: state.selectedPeriodId);
+    _cacheService.clear();
+    await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
   }
 
   Future<void> generateSelectedPeriod() async {
     final id = state.selectedPeriodId;
     if (id == null) throw Exception('Select a scholarship period first.');
     await _repository.generateScholarshipPeriod(id);
-    await loadModule(selectedPeriodId: id);
+    _cacheService.clear();
+    await loadModule(selectedPeriodId: id, forceRefresh: true);
   }
 
   Future<void> approveSelectedPeriod(String approvedBy) async {
     final id = state.selectedPeriodId;
     if (id == null) throw Exception('Select a scholarship period first.');
     await _repository.approveScholarshipPeriod(id, approvedBy);
-    await loadModule(selectedPeriodId: id);
+    _cacheService.clear();
+    await loadModule(selectedPeriodId: id, forceRefresh: true);
   }
 
   Future<void> markPlanSubmitted() async {
     final id = state.selectedPeriodId;
     if (id == null) throw Exception('Select a scholarship period first.');
     await _repository.markPlanSubmitted(id);
-    await loadModule(selectedPeriodId: id);
+    _cacheService.clear();
+    await loadModule(selectedPeriodId: id, forceRefresh: true);
   }
 
   Future<void> markPlanTargeted() async {
     final id = state.selectedPeriodId;
     if (id == null) throw Exception('Select an assistance period first.');
     await _repository.markPlanTargeted(id);
-    await loadModule(selectedPeriodId: id);
+    _cacheService.clear();
+    await loadModule(selectedPeriodId: id, forceRefresh: true);
   }
 
   Future<void> uploadApprovalDocument({
@@ -302,11 +364,13 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
       uploadedBy: uploadedBy,
       remarks: remarks,
     );
-    await loadModule(selectedPeriodId: id);
+    _cacheService.clear();
+    await loadModule(selectedPeriodId: id, forceRefresh: true);
   }
 
   Future<void> updateAssessment(StudentScholarshipAssessment assessment) async {
     await _repository.updateAssessment(assessment);
+    _cacheService.clear();
     await selectPeriod(assessment.scholarshipPeriodId, force: true);
   }
 
@@ -318,6 +382,108 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
       recipientId: recipientId,
       status: status,
     );
+    _cacheService.clear();
     await selectPeriod(state.selectedPeriodId, force: true);
   }
+}
+
+class ScholarshipCacheService {
+  ScholarshipCacheService({this.ttl = const Duration(minutes: 2)});
+
+  final Duration ttl;
+  final Map<String, _ScholarshipCacheEntry> _modules = {};
+  final Map<String, _ScholarshipCacheEntry> _periodDetails = {};
+  _ScholarshipCacheEntry? _lastModule;
+  _ScholarshipCacheEntry? _rulesOnly;
+
+  ScholarshipState? getModule(String? selectedPeriodId) {
+    if (selectedPeriodId == null) return null;
+    return _get(_modules, selectedPeriodId);
+  }
+
+  ScholarshipState? getLastModule() {
+    final entry = _lastModule;
+    if (entry == null) return null;
+    if (_isExpired(entry.cachedAt)) {
+      _lastModule = null;
+      return null;
+    }
+    return entry.state;
+  }
+
+  void putModule(String? selectedPeriodId, ScholarshipState state) {
+    final entry = _ScholarshipCacheEntry(
+      state: state.copyWith(isLoading: false, error: null),
+      cachedAt: DateTime.now(),
+    );
+    _lastModule = entry;
+    if (selectedPeriodId != null) {
+      _modules[selectedPeriodId] = entry;
+      _periodDetails[selectedPeriodId] = entry;
+    }
+  }
+
+  ScholarshipState? getPeriodDetail(String? selectedPeriodId) {
+    if (selectedPeriodId == null) return null;
+    return _get(_periodDetails, selectedPeriodId);
+  }
+
+  void putPeriodDetail(String? selectedPeriodId, ScholarshipState state) {
+    if (selectedPeriodId == null) return;
+    _periodDetails[selectedPeriodId] = _ScholarshipCacheEntry(
+      state: state.copyWith(isLoading: false, error: null),
+      cachedAt: DateTime.now(),
+    );
+  }
+
+  ScholarshipState? getRulesOnly() {
+    final entry = _rulesOnly;
+    if (entry == null) return null;
+    if (_isExpired(entry.cachedAt)) {
+      _rulesOnly = null;
+      return null;
+    }
+    return entry.state;
+  }
+
+  void putRulesOnly(ScholarshipState state) {
+    _rulesOnly = _ScholarshipCacheEntry(
+      state: state.copyWith(isLoading: false, error: null),
+      cachedAt: DateTime.now(),
+    );
+  }
+
+  void clear() {
+    _modules.clear();
+    _periodDetails.clear();
+    _lastModule = null;
+    _rulesOnly = null;
+  }
+
+  ScholarshipState? _get(
+    Map<String, _ScholarshipCacheEntry> cache,
+    String key,
+  ) {
+    final entry = cache[key];
+    if (entry == null) return null;
+    if (_isExpired(entry.cachedAt)) {
+      cache.remove(key);
+      return null;
+    }
+    return entry.state;
+  }
+
+  bool _isExpired(DateTime cachedAt) {
+    return DateTime.now().difference(cachedAt) > ttl;
+  }
+}
+
+class _ScholarshipCacheEntry {
+  const _ScholarshipCacheEntry({
+    required this.state,
+    required this.cachedAt,
+  });
+
+  final ScholarshipState state;
+  final DateTime cachedAt;
 }

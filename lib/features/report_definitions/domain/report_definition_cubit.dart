@@ -5,12 +5,27 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 part 'report_definition_state.dart';
 
 class ReportDefinitionCubit extends Cubit<ReportDefinitionState> {
-  ReportDefinitionCubit(this._repository) : super(const ReportDefinitionState());
+  ReportDefinitionCubit(this._repository, this._cacheService)
+    : super(const ReportDefinitionState());
 
   final ReportDefinitionRepository _repository;
+  final ReportDefinitionCacheService _cacheService;
 
-  Future<void> loadDefinitions() async {
-    emit(state.copyWith(isLoading: true, error: null));
+  void _safeEmit(ReportDefinitionState nextState) {
+    if (!isClosed) emit(nextState);
+  }
+
+  Future<void> loadDefinitions({bool forceRefresh = false}) async {
+    final cacheKey = _definitionCacheKey();
+    if (!forceRefresh) {
+      final cachedState = _cacheService.getDefinitions(cacheKey);
+      if (cachedState != null) {
+        _safeEmit(cachedState.copyWith(isLoading: false, error: null));
+        return;
+      }
+    }
+
+    _safeEmit(state.copyWith(isLoading: true, error: null));
     try {
       final definitions = await _repository.getDefinitions(
         query: state.query,
@@ -18,43 +33,44 @@ class ReportDefinitionCubit extends Cubit<ReportDefinitionState> {
       );
       final selected = _selectedAfterReload(definitions);
       final keepRows = selected != null && selected.id == state.selectedDefinition?.id;
-      emit(
-        state.copyWith(
-          isLoading: false,
-          definitions: definitions,
-          selectedDefinition: selected,
-          clearSelectedDefinition: selected == null,
-          resultRows: keepRows ? state.resultRows : const [],
-          runError: keepRows ? state.runError : null,
-          error: null,
-        ),
+      final nextState = state.copyWith(
+        isLoading: false,
+        definitions: definitions,
+        selectedDefinition: selected,
+        clearSelectedDefinition: selected == null,
+        resultRows: keepRows ? state.resultRows : const [],
+        runError: keepRows ? state.runError : null,
+        error: null,
       );
+      _cacheService.putDefinitions(cacheKey, nextState);
+      _safeEmit(nextState);
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
   Future<void> setSearch(String query) async {
-    emit(state.copyWith(query: query));
+    _safeEmit(state.copyWith(query: query));
     await loadDefinitions();
   }
 
   Future<void> setStatus(bool? isActive) async {
-    emit(state.copyWith(isActive: isActive, clearStatus: isActive == null));
+    _safeEmit(state.copyWith(isActive: isActive, clearStatus: isActive == null));
     await loadDefinitions();
   }
 
   Future<void> clearFilters() async {
-    emit(state.copyWith(query: '', clearStatus: true));
+    _safeEmit(state.copyWith(query: '', clearStatus: true));
     await loadDefinitions();
   }
 
   Future<void> saveDefinition(ReportDefinition definition) async {
     try {
       await _repository.saveDefinition(definition);
-      await loadDefinitions();
+      _cacheService.clear();
+      await loadDefinitions(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -62,9 +78,10 @@ class ReportDefinitionCubit extends Cubit<ReportDefinitionState> {
   Future<void> setActive(ReportDefinition definition, bool isActive) async {
     try {
       await _repository.setActive(definition.id, isActive);
-      await loadDefinitions();
+      _cacheService.clear();
+      await loadDefinitions(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -72,15 +89,16 @@ class ReportDefinitionCubit extends Cubit<ReportDefinitionState> {
   Future<void> deleteDefinition(ReportDefinition definition) async {
     try {
       await _repository.deleteDefinition(definition.id);
-      await loadDefinitions();
+      _cacheService.clear();
+      await loadDefinitions(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
 
   void selectDefinition(ReportDefinition definition) {
-    emit(
+    _safeEmit(
       state.copyWith(
         selectedDefinition: definition,
         resultRows: const [],
@@ -92,13 +110,24 @@ class ReportDefinitionCubit extends Cubit<ReportDefinitionState> {
   Future<void> runSelectedReport() async {
     final definition = state.selectedDefinition;
     if (definition == null) return;
+    final cacheKey = _resultCacheKey(definition);
+    final cachedRows = _cacheService.getResultRows(cacheKey);
+    if (cachedRows != null) {
+      _safeEmit(
+        state.copyWith(isRunning: false, resultRows: cachedRows, runError: null),
+      );
+      return;
+    }
 
-    emit(state.copyWith(isRunning: true, runError: null));
+    _safeEmit(state.copyWith(isRunning: true, runError: null));
     try {
       final rows = await _repository.runReport(definition);
-      emit(state.copyWith(isRunning: false, resultRows: rows, runError: null));
+      _cacheService.putResultRows(cacheKey, rows);
+      _safeEmit(
+        state.copyWith(isRunning: false, resultRows: rows, runError: null),
+      );
     } catch (e) {
-      emit(
+      _safeEmit(
         state.copyWith(
           isRunning: false,
           resultRows: const [],
@@ -130,4 +159,84 @@ class ReportDefinitionCubit extends Cubit<ReportDefinitionState> {
       orElse: () => definitions.first,
     );
   }
+
+  String _definitionCacheKey() {
+    return '${state.query.trim().toLowerCase()}|${state.isActive?.toString() ?? ''}';
+  }
+
+  String _resultCacheKey(ReportDefinition definition) {
+    return [
+      definition.id,
+      definition.updatedAt,
+      definition.querySql.hashCode.toString(),
+    ].join('|');
+  }
+}
+
+class ReportDefinitionCacheService {
+  ReportDefinitionCacheService({this.ttl = const Duration(minutes: 2)});
+
+  final Duration ttl;
+  final Map<String, _ReportDefinitionStateCacheEntry> _definitionStates = {};
+  final Map<String, _ReportRowsCacheEntry> _resultRows = {};
+
+  ReportDefinitionState? getDefinitions(String key) {
+    final entry = _definitionStates[key];
+    if (entry == null) return null;
+    if (_isExpired(entry.cachedAt)) {
+      _definitionStates.remove(key);
+      return null;
+    }
+    return entry.state;
+  }
+
+  void putDefinitions(String key, ReportDefinitionState state) {
+    _definitionStates[key] = _ReportDefinitionStateCacheEntry(
+      state: state.copyWith(isLoading: false, isRunning: false, error: null),
+      cachedAt: DateTime.now(),
+    );
+  }
+
+  List<Map<String, Object?>>? getResultRows(String key) {
+    final entry = _resultRows[key];
+    if (entry == null) return null;
+    if (_isExpired(entry.cachedAt)) {
+      _resultRows.remove(key);
+      return null;
+    }
+    return entry.rows;
+  }
+
+  void putResultRows(String key, List<Map<String, Object?>> rows) {
+    _resultRows[key] = _ReportRowsCacheEntry(
+      rows: rows,
+      cachedAt: DateTime.now(),
+    );
+  }
+
+  void clear() {
+    _definitionStates.clear();
+    _resultRows.clear();
+  }
+
+  bool _isExpired(DateTime cachedAt) {
+    return DateTime.now().difference(cachedAt) > ttl;
+  }
+}
+
+class _ReportDefinitionStateCacheEntry {
+  const _ReportDefinitionStateCacheEntry({
+    required this.state,
+    required this.cachedAt,
+  });
+
+  final ReportDefinitionState state;
+  final DateTime cachedAt;
+}
+
+class _ReportRowsCacheEntry {
+  const _ReportRowsCacheEntry({required this.rows, required this.cachedAt});
+
+  final List<Map<String, Object?>> rows;
+  final DateTime cachedAt;
 }

@@ -7,51 +7,76 @@ part 'subject_state.dart';
 
 class SubjectCubit extends Cubit<SubjectState> {
   final SubjectRepository _repository;
+  final SubjectCacheService _cacheService;
 
-  SubjectCubit(this._repository) : super(const SubjectState());
+  SubjectCubit(this._repository, this._cacheService)
+    : super(const SubjectState());
 
-  Future<void> loadCurriculum() async {
-    emit(state.copyWith(isLoading: true));
+  void _safeEmit(SubjectState nextState) {
+    if (!isClosed) emit(nextState);
+  }
+
+  Future<void> loadCurriculum({bool forceRefresh = false}) async {
+    const cacheKey = 'curriculum:all';
+    final cachedState = forceRefresh ? null : _cacheService.get(cacheKey);
+    if (cachedState != null) {
+      _safeEmit(cachedState.copyWith(isLoading: false, error: null));
+      return;
+    }
+
+    _safeEmit(state.copyWith(isLoading: true));
     try {
       final curriculums = await _repository.getAllCurriculums();
       final syllabi = await _repository.getAllSyllabi();
       final subjects = await _repository.getAllSubjects();
       final units = await _repository.getAllUnits();
       final competencies = await _repository.getAllCompetencies();
-      emit(
-        state.copyWith(
-          isLoading: false,
-          curriculums: curriculums,
-          syllabi: syllabi,
-          subjects: subjects,
-          units: units,
-          competencies: competencies,
-          error: null,
-        ),
+      final nextState = state.copyWith(
+        isLoading: false,
+        curriculums: curriculums,
+        syllabi: syllabi,
+        subjects: subjects,
+        units: units,
+        competencies: competencies,
+        error: null,
       );
+      _cacheService.put(cacheKey, nextState);
+      _safeEmit(nextState);
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
-  Future<void> loadCurriculums() async {
-    emit(state.copyWith(isLoading: true));
+  Future<void> loadCurriculums({bool forceRefresh = false}) async {
+    const cacheKey = 'curriculums';
+    final cachedState = forceRefresh ? null : _cacheService.get(cacheKey);
+    if (cachedState != null) {
+      _safeEmit(cachedState.copyWith(isLoading: false, error: null));
+      return;
+    }
+
+    _safeEmit(state.copyWith(isLoading: true));
     try {
       final curriculums = await _repository.getAllCurriculums();
-      emit(
-        state.copyWith(isLoading: false, curriculums: curriculums, error: null),
+      final nextState = state.copyWith(
+        isLoading: false,
+        curriculums: curriculums,
+        error: null,
       );
+      _cacheService.put(cacheKey, nextState);
+      _safeEmit(nextState);
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
   Future<void> addCurriculum(Curriculum curriculum) async {
     try {
       await _repository.insertCurriculum(curriculum);
-      await loadCurriculum();
+      _cacheService.clear();
+      await loadCurriculum(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -59,9 +84,10 @@ class SubjectCubit extends Cubit<SubjectState> {
   Future<void> updateCurriculum(Curriculum curriculum) async {
     try {
       await _repository.updateCurriculum(curriculum);
-      await loadCurriculum();
+      _cacheService.clear();
+      await loadCurriculum(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -69,29 +95,44 @@ class SubjectCubit extends Cubit<SubjectState> {
   Future<void> deleteCurriculum(String id) async {
     try {
       await _repository.deleteCurriculum(id);
-      await loadCurriculum();
+      _cacheService.clear();
+      await loadCurriculum(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
 
-  Future<void> loadSyllabi() async {
-    emit(state.copyWith(isLoading: true));
+  Future<void> loadSyllabi({bool forceRefresh = false}) async {
+    const cacheKey = 'syllabi';
+    final cachedState = forceRefresh ? null : _cacheService.get(cacheKey);
+    if (cachedState != null) {
+      _safeEmit(cachedState.copyWith(isLoading: false, error: null));
+      return;
+    }
+
+    _safeEmit(state.copyWith(isLoading: true));
     try {
       final syllabi = await _repository.getAllSyllabi();
-      emit(state.copyWith(isLoading: false, syllabi: syllabi, error: null));
+      final nextState = state.copyWith(
+        isLoading: false,
+        syllabi: syllabi,
+        error: null,
+      );
+      _cacheService.put(cacheKey, nextState);
+      _safeEmit(nextState);
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
   Future<void> addSyllabus(Syllabus syllabus) async {
     try {
       await _repository.insertSyllabus(syllabus);
-      await loadCurriculum();
+      _cacheService.clear();
+      await loadCurriculum(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -99,9 +140,10 @@ class SubjectCubit extends Cubit<SubjectState> {
   Future<void> updateSyllabus(Syllabus syllabus) async {
     try {
       await _repository.updateSyllabus(syllabus);
-      await loadCurriculum();
+      _cacheService.clear();
+      await loadCurriculum(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -109,29 +151,44 @@ class SubjectCubit extends Cubit<SubjectState> {
   Future<void> deleteSyllabus(String id) async {
     try {
       await _repository.deleteSyllabus(id);
-      await loadCurriculum();
+      _cacheService.clear();
+      await loadCurriculum(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
 
-  Future<void> loadSubjects() async {
-    emit(state.copyWith(isLoading: true));
+  Future<void> loadSubjects({bool forceRefresh = false}) async {
+    const cacheKey = 'subjects';
+    final cachedState = forceRefresh ? null : _cacheService.get(cacheKey);
+    if (cachedState != null) {
+      _safeEmit(cachedState.copyWith(isLoading: false, error: null));
+      return;
+    }
+
+    _safeEmit(state.copyWith(isLoading: true));
     try {
       final subjects = await _repository.getAllSubjects();
-      emit(state.copyWith(isLoading: false, subjects: subjects, error: null));
+      final nextState = state.copyWith(
+        isLoading: false,
+        subjects: subjects,
+        error: null,
+      );
+      _cacheService.put(cacheKey, nextState);
+      _safeEmit(nextState);
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
   Future<void> addSubject(Subject subject) async {
     try {
       await _repository.insertSubject(subject);
-      await loadCurriculum();
+      _cacheService.clear();
+      await loadCurriculum(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -139,9 +196,10 @@ class SubjectCubit extends Cubit<SubjectState> {
   Future<void> updateSubject(Subject subject) async {
     try {
       await _repository.updateSubject(subject);
-      await loadCurriculum();
+      _cacheService.clear();
+      await loadCurriculum(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -149,9 +207,10 @@ class SubjectCubit extends Cubit<SubjectState> {
   Future<void> deleteSubject(String id) async {
     try {
       await _repository.deleteSubject(id);
-      await loadCurriculum();
+      _cacheService.clear();
+      await loadCurriculum(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -160,22 +219,36 @@ class SubjectCubit extends Cubit<SubjectState> {
     return _repository.getSubjectDeleteImpact(id);
   }
 
-  Future<void> loadUnits() async {
-    emit(state.copyWith(isLoading: true));
+  Future<void> loadUnits({bool forceRefresh = false}) async {
+    const cacheKey = 'units';
+    final cachedState = forceRefresh ? null : _cacheService.get(cacheKey);
+    if (cachedState != null) {
+      _safeEmit(cachedState.copyWith(isLoading: false, error: null));
+      return;
+    }
+
+    _safeEmit(state.copyWith(isLoading: true));
     try {
       final units = await _repository.getAllUnits();
-      emit(state.copyWith(isLoading: false, units: units, error: null));
+      final nextState = state.copyWith(
+        isLoading: false,
+        units: units,
+        error: null,
+      );
+      _cacheService.put(cacheKey, nextState);
+      _safeEmit(nextState);
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
   Future<void> addUnit(Unit unit) async {
     try {
       await _repository.insertUnit(unit);
-      await loadCurriculum();
+      _cacheService.clear();
+      await loadCurriculum(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -183,9 +256,10 @@ class SubjectCubit extends Cubit<SubjectState> {
   Future<void> updateUnit(Unit unit) async {
     try {
       await _repository.updateUnit(unit);
-      await loadCurriculum();
+      _cacheService.clear();
+      await loadCurriculum(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -193,9 +267,10 @@ class SubjectCubit extends Cubit<SubjectState> {
   Future<void> deleteUnit(String id) async {
     try {
       await _repository.deleteUnit(id);
-      await loadCurriculum();
+      _cacheService.clear();
+      await loadCurriculum(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -204,38 +279,62 @@ class SubjectCubit extends Cubit<SubjectState> {
     return _repository.getUnitDeleteImpact(id);
   }
 
-  Future<void> loadUnitsBySubject(String subjectId) async {
-    emit(state.copyWith(isLoading: true));
+  Future<void> loadUnitsBySubject(
+    String subjectId, {
+    bool forceRefresh = false,
+  }) async {
+    final cacheKey = 'units:subject:$subjectId';
+    final cachedState = forceRefresh ? null : _cacheService.get(cacheKey);
+    if (cachedState != null) {
+      _safeEmit(cachedState.copyWith(isLoading: false, error: null));
+      return;
+    }
+
+    _safeEmit(state.copyWith(isLoading: true));
     try {
       final units = await _repository.getUnitsBySubject(subjectId);
-      emit(state.copyWith(isLoading: false, units: units, error: null));
+      final nextState = state.copyWith(
+        isLoading: false,
+        units: units,
+        error: null,
+      );
+      _cacheService.put(cacheKey, nextState);
+      _safeEmit(nextState);
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
-  Future<void> loadCompetencies() async {
-    emit(state.copyWith(isLoading: true));
+  Future<void> loadCompetencies({bool forceRefresh = false}) async {
+    const cacheKey = 'competencies';
+    final cachedState = forceRefresh ? null : _cacheService.get(cacheKey);
+    if (cachedState != null) {
+      _safeEmit(cachedState.copyWith(isLoading: false, error: null));
+      return;
+    }
+
+    _safeEmit(state.copyWith(isLoading: true));
     try {
       final competencies = await _repository.getAllCompetencies();
-      emit(
-        state.copyWith(
-          isLoading: false,
-          competencies: competencies,
-          error: null,
-        ),
+      final nextState = state.copyWith(
+        isLoading: false,
+        competencies: competencies,
+        error: null,
       );
+      _cacheService.put(cacheKey, nextState);
+      _safeEmit(nextState);
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
   Future<void> addCompetency(Competency competency) async {
     try {
       await _repository.insertCompetency(competency);
-      await loadCurriculum();
+      _cacheService.clear();
+      await loadCurriculum(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -243,9 +342,10 @@ class SubjectCubit extends Cubit<SubjectState> {
   Future<void> updateCompetency(Competency competency) async {
     try {
       await _repository.updateCompetency(competency);
-      await loadCurriculum();
+      _cacheService.clear();
+      await loadCurriculum(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -253,26 +353,70 @@ class SubjectCubit extends Cubit<SubjectState> {
   Future<void> deleteCompetency(String id) async {
     try {
       await _repository.deleteCompetency(id);
-      await loadCurriculum();
+      _cacheService.clear();
+      await loadCurriculum(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
 
-  Future<void> loadCompetenciesByUnit(String unitId) async {
-    emit(state.copyWith(isLoading: true));
+  Future<void> loadCompetenciesByUnit(
+    String unitId, {
+    bool forceRefresh = false,
+  }) async {
+    final cacheKey = 'competencies:unit:$unitId';
+    final cachedState = forceRefresh ? null : _cacheService.get(cacheKey);
+    if (cachedState != null) {
+      _safeEmit(cachedState.copyWith(isLoading: false, error: null));
+      return;
+    }
+
+    _safeEmit(state.copyWith(isLoading: true));
     try {
       final competencies = await _repository.getCompetenciesByUnit(unitId);
-      emit(
-        state.copyWith(
-          isLoading: false,
-          competencies: competencies,
-          error: null,
-        ),
+      final nextState = state.copyWith(
+        isLoading: false,
+        competencies: competencies,
+        error: null,
       );
+      _cacheService.put(cacheKey, nextState);
+      _safeEmit(nextState);
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
+}
+
+class SubjectCacheService {
+  SubjectCacheService({this.ttl = const Duration(minutes: 2)});
+
+  final Duration ttl;
+  final Map<String, _SubjectCacheEntry> _items = {};
+
+  SubjectState? get(String key) {
+    final entry = _items[key];
+    if (entry == null) return null;
+    if (DateTime.now().difference(entry.cachedAt) > ttl) {
+      _items.remove(key);
+      return null;
+    }
+    return entry.state;
+  }
+
+  void put(String key, SubjectState state) {
+    _items[key] = _SubjectCacheEntry(
+      state: state.copyWith(isLoading: false, error: null),
+      cachedAt: DateTime.now(),
+    );
+  }
+
+  void clear() => _items.clear();
+}
+
+class _SubjectCacheEntry {
+  const _SubjectCacheEntry({required this.state, required this.cachedAt});
+
+  final SubjectState state;
+  final DateTime cachedAt;
 }

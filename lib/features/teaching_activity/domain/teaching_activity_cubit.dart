@@ -67,9 +67,15 @@ class TeachingActivityState {
 }
 
 class TeachingActivityCubit extends Cubit<TeachingActivityState> {
-  TeachingActivityCubit(this._repository) : super(const TeachingActivityState());
+  TeachingActivityCubit(this._repository, this._cacheService)
+    : super(const TeachingActivityState());
 
   final TeachingActivityRepository _repository;
+  final TeachingActivityCacheService _cacheService;
+
+  void _safeEmit(TeachingActivityState nextState) {
+    if (!isClosed) emit(nextState);
+  }
 
   Future<void> loadActivities({
     String? date,
@@ -81,15 +87,48 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
     bool clearClassId = false,
     bool clearClassLevel = false,
     bool clearStatus = false,
+    bool forceRefresh = false,
   }) async {
     final effectiveDate = date ?? state.date ?? _dateOnly(DateTime.now());
-    final effectiveTeacherId = clearTeacherId ? null : teacherId ?? state.teacherId;
+    final effectiveTeacherId = clearTeacherId
+        ? null
+        : teacherId ?? state.teacherId;
     final effectiveClassId = clearClassId ? null : classId ?? state.classId;
     final effectiveClassLevel =
         clearClassLevel ? null : classLevel ?? state.classLevel;
     final effectiveStatus = clearStatus ? null : status ?? state.status;
+    final cacheKey = _cacheKey(
+      date: effectiveDate,
+      teacherId: effectiveTeacherId,
+      classId: effectiveClassId,
+      classLevel: effectiveClassLevel,
+      status: effectiveStatus,
+    );
 
-    emit(
+    if (!forceRefresh) {
+      final cachedState = _cacheService.get(cacheKey);
+      if (cachedState != null) {
+        _safeEmit(
+          cachedState.copyWith(
+            date: effectiveDate,
+            teacherId: effectiveTeacherId,
+            classId: effectiveClassId,
+            classLevel: effectiveClassLevel,
+            status: effectiveStatus,
+            clearTeacherId: effectiveTeacherId == null,
+            clearClassId: effectiveClassId == null,
+            clearClassLevel: effectiveClassLevel == null,
+            clearStatus: effectiveStatus == null,
+            isLoading: false,
+            clearOpenActivityId: true,
+            clearError: true,
+          ),
+        );
+        return;
+      }
+    }
+
+    _safeEmit(
       state.copyWith(
         date: effectiveDate,
         teacherId: effectiveTeacherId,
@@ -121,25 +160,41 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
         classLevel: effectiveClassLevel,
         status: effectiveStatus,
       );
-      emit(
-        state.copyWith(
-          activities: activities,
-          sessionDateKeys: sessionDateKeys,
-          isLoading: false,
-        ),
+      final nextState = state.copyWith(
+        activities: activities,
+        sessionDateKeys: sessionDateKeys,
+        date: effectiveDate,
+        teacherId: effectiveTeacherId,
+        classId: effectiveClassId,
+        classLevel: effectiveClassLevel,
+        status: effectiveStatus,
+        clearTeacherId: effectiveTeacherId == null,
+        clearClassId: effectiveClassId == null,
+        clearClassLevel: effectiveClassLevel == null,
+        clearStatus: effectiveStatus == null,
+        isLoading: false,
       );
+      _cacheService.put(cacheKey, nextState);
+      _safeEmit(nextState);
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
   Future<void> startClass(String scheduleId) async {
-    emit(state.copyWith(isSaving: true, clearOpenActivityId: true, clearError: true));
+    _safeEmit(
+      state.copyWith(
+        isSaving: true,
+        clearOpenActivityId: true,
+        clearError: true,
+      ),
+    );
     try {
       final activityId = await _repository.startClass(scheduleId);
-      emit(state.copyWith(isSaving: false, openActivityId: activityId));
+      _cacheService.clear();
+      _safeEmit(state.copyWith(isSaving: false, openActivityId: activityId));
     } catch (e) {
-      emit(state.copyWith(isSaving: false, error: e.toString()));
+      _safeEmit(state.copyWith(isSaving: false, error: e.toString()));
       rethrow;
     }
   }
@@ -151,7 +206,7 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
     String? notes,
     required bool replacementRequired,
   }) async {
-    emit(state.copyWith(isSaving: true, clearError: true));
+    _safeEmit(state.copyWith(isSaving: true, clearError: true));
     try {
       await _repository.cancelClass(
         scheduleId: scheduleId,
@@ -160,25 +215,79 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
         notes: notes,
         replacementRequired: replacementRequired,
       );
-      emit(state.copyWith(isSaving: false));
-      await loadActivities();
+      _cacheService.clear();
+      _safeEmit(state.copyWith(isSaving: false));
+      await loadActivities(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(isSaving: false, error: e.toString()));
+      _safeEmit(state.copyWith(isSaving: false, error: e.toString()));
       rethrow;
     }
   }
 
   Future<void> completeActivity(String activityId) async {
-    emit(state.copyWith(isSaving: true, clearError: true));
+    _safeEmit(state.copyWith(isSaving: true, clearError: true));
     try {
       await _repository.completeActivity(activityId);
-      emit(state.copyWith(isSaving: false));
-      await loadActivities();
+      _cacheService.clear();
+      _safeEmit(state.copyWith(isSaving: false));
+      await loadActivities(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(isSaving: false, error: e.toString()));
+      _safeEmit(state.copyWith(isSaving: false, error: e.toString()));
       rethrow;
     }
   }
 
+  String _cacheKey({
+    required String date,
+    String? teacherId,
+    String? classId,
+    int? classLevel,
+    String? status,
+  }) {
+    return [
+      date,
+      teacherId ?? '',
+      classId ?? '',
+      classLevel?.toString() ?? '',
+      status ?? '',
+    ].join('|');
+  }
+
   String _dateOnly(DateTime value) => value.toIso8601String().split('T').first;
+}
+
+class TeachingActivityCacheService {
+  TeachingActivityCacheService({this.ttl = const Duration(minutes: 2)});
+
+  final Duration ttl;
+  final Map<String, _TeachingActivityCacheEntry> _items = {};
+
+  TeachingActivityState? get(String key) {
+    final entry = _items[key];
+    if (entry == null) return null;
+    if (DateTime.now().difference(entry.cachedAt) > ttl) {
+      _items.remove(key);
+      return null;
+    }
+    return entry.state;
+  }
+
+  void put(String key, TeachingActivityState state) {
+    _items[key] = _TeachingActivityCacheEntry(
+      state: state.copyWith(isLoading: false, isSaving: false),
+      cachedAt: DateTime.now(),
+    );
+  }
+
+  void clear() => _items.clear();
+}
+
+class _TeachingActivityCacheEntry {
+  const _TeachingActivityCacheEntry({
+    required this.state,
+    required this.cachedAt,
+  });
+
+  final TeachingActivityState state;
+  final DateTime cachedAt;
 }

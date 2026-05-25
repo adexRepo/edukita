@@ -275,7 +275,9 @@ class _SchedulePageState extends State<SchedulePage> {
           '${state.schedules.length} teaching schedules, ${state.events.length} events',
       trailing: IconButton(
         tooltip: 'Refresh schedules',
-        onPressed: () => context.read<ScheduleCubit>().loadSchedules(),
+        onPressed: () => context.read<ScheduleCubit>().loadSchedules(
+          forceRefresh: true,
+        ),
         icon: const Icon(Icons.refresh),
       ),
     );

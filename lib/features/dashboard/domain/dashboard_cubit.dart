@@ -280,16 +280,73 @@ class DashboardRecentNote {
   final String date;
 }
 
+class DashboardCacheService {
+  DashboardCacheService({this.ttl = const Duration(minutes: 2)});
+
+  final Duration ttl;
+  final Map<String, _DashboardCacheEntry> _items = {};
+
+  DashboardStat? get(String key) {
+    final entry = _items[key];
+    if (entry == null) return null;
+    if (DateTime.now().difference(entry.cachedAt) > ttl) {
+      _items.remove(key);
+      return null;
+    }
+    return entry.state;
+  }
+
+  void put(String key, DashboardStat state) {
+    _items[key] = _DashboardCacheEntry(
+      state: state.copyWith(isLoading: false, clearError: true),
+      cachedAt: DateTime.now(),
+    );
+  }
+
+  void clear() => _items.clear();
+}
+
+class _DashboardCacheEntry {
+  const _DashboardCacheEntry({required this.state, required this.cachedAt});
+
+  final DashboardStat state;
+  final DateTime cachedAt;
+}
+
 class DashboardCubit extends Cubit<DashboardStat> {
-  DashboardCubit(this.databaseProvider) : super(const DashboardStat());
+  DashboardCubit(this.databaseProvider, this.cacheService)
+    : super(const DashboardStat());
 
   final DatabaseProvider databaseProvider;
+  final DashboardCacheService cacheService;
 
-  Future<void> loadDashboard() async {
-    emit(state.copyWith(isLoading: true, clearError: true));
+  void _safeEmit(DashboardStat nextState) {
+    if (!isClosed) emit(nextState);
+  }
+
+  Future<void> loadDashboard({bool forceRefresh = false}) async {
+    final selectedRange = state.range;
+    final selectedLevels = normalizeLevels(state.levels);
+    final cacheKey = _cacheKey(selectedRange, selectedLevels);
+    if (!forceRefresh) {
+      final cachedState = cacheService.get(cacheKey);
+      if (cachedState != null) {
+        _safeEmit(cachedState.copyWith(isLoading: false, clearError: true));
+        return;
+      }
+    }
+
+    _safeEmit(
+      state.copyWith(
+        isLoading: true,
+        range: selectedRange,
+        levels: selectedLevels,
+        clearError: true,
+      ),
+    );
     try {
       final db = await databaseProvider.database;
-      final range = _rangeDates(state.range);
+      final range = _rangeDates(selectedRange);
       final today = _dateOnly(DateTime.now());
       final weekEnd = _dateOnly(DateTime.now().add(const Duration(days: 6)));
 
@@ -299,7 +356,7 @@ class DashboardCubit extends Cubit<DashboardStat> {
       final strategyCount = await _countTable('strategies');
       final scheduleCount = await _countTable('schedules');
       final reportCount = await _teachingReportCount();
-      final levels = state.levels;
+      final levels = selectedLevels;
       final studentSummary = await _activeStudentSummary(levels);
       final studentCount = studentSummary.total;
       final sessionCount = await _sessionCount(
@@ -329,7 +386,7 @@ class DashboardCubit extends Cubit<DashboardStat> {
         levels: levels,
       );
       final progress = await _progressPoints(
-        range: state.range,
+        range: selectedRange,
         levels: levels,
       );
       final sessionStatus = await _sessionStatusCounts(
@@ -363,9 +420,10 @@ class DashboardCubit extends Cubit<DashboardStat> {
         ),
       );
 
-      emit(
-        state.copyWith(
+      final nextState = state.copyWith(
           isLoading: false,
+          range: selectedRange,
+          levels: selectedLevels,
           userCount: userCount,
           studentCount: studentCount,
           maleStudentCount: studentSummary.male,
@@ -396,25 +454,30 @@ class DashboardCubit extends Cubit<DashboardStat> {
           attentionStudents: attentionStudents,
           recentNotes: recentNotes,
           clearError: true,
-        ),
       );
+      cacheService.put(cacheKey, nextState);
+      _safeEmit(nextState);
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
   Future<void> setRange(DashboardRange range) async {
-    emit(state.copyWith(range: range));
+    _safeEmit(state.copyWith(range: range));
     await loadDashboard();
   }
 
   Future<void> setLevels(List<int> levels) async {
-    emit(state.copyWith(levels: normalizeLevels(levels)));
+    _safeEmit(state.copyWith(levels: normalizeLevels(levels)));
     await loadDashboard();
   }
 
   Future<void> refreshCounters() async {
-    await loadDashboard();
+    await loadDashboard(forceRefresh: true);
+  }
+
+  String _cacheKey(DashboardRange range, List<int> levels) {
+    return '${range.value}|${normalizeLevels(levels).join(',')}';
   }
 
   Future<int> _countTable(String table) async {

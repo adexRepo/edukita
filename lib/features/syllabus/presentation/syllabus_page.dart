@@ -413,8 +413,8 @@ class _SyllabusPageState extends State<SyllabusPage> {
         final refresh = IconButton(
           tooltip: 'Refresh curriculum',
           onPressed: () {
-            context.read<SubjectCubit>().loadCurriculum();
-            context.read<StrategyCubit>().loadStrategies();
+            context.read<SubjectCubit>().loadCurriculum(forceRefresh: true);
+            context.read<StrategyCubit>().loadStrategies(forceRefresh: true);
           },
           icon: const Icon(Icons.refresh),
         );

@@ -407,7 +407,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
           final refresh = IconButton(
             tooltip: 'Refresh schools',
             onPressed: () {
-              context.read<SchoolCubit>().loadSchools();
+              context.read<SchoolCubit>().loadSchools(forceRefresh: true);
               _refreshClassCounts();
             },
             icon: const Icon(Icons.refresh),

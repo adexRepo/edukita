@@ -57,42 +57,99 @@ Future<void> setupLocator() async {
   getIt.registerLazySingleton<TeachingActivityRepository>(
     () => TeachingActivityRepository(db),
   );
+  getIt.registerLazySingleton<DashboardCacheService>(
+    () => DashboardCacheService(),
+  );
+  getIt.registerLazySingleton<ScheduleCacheService>(
+    () => ScheduleCacheService(),
+  );
+  getIt.registerLazySingleton<TeachingActivityCacheService>(
+    () => TeachingActivityCacheService(),
+  );
+  getIt.registerLazySingleton<StudentCacheService>(() => StudentCacheService());
+  getIt.registerLazySingleton<TeacherCacheService>(() => TeacherCacheService());
+  getIt.registerLazySingleton<AssistanceProgramCacheService>(
+    () => AssistanceProgramCacheService(),
+  );
+  getIt.registerLazySingleton<ScholarshipCacheService>(
+    () => ScholarshipCacheService(),
+  );
+  getIt.registerLazySingleton<ReportDefinitionCacheService>(
+    () => ReportDefinitionCacheService(),
+  );
+  getIt.registerLazySingleton<SchoolCacheService>(() => SchoolCacheService());
+  getIt.registerLazySingleton<ClassCacheService>(() => ClassCacheService());
+  getIt.registerLazySingleton<SubjectCacheService>(() => SubjectCacheService());
+  getIt.registerLazySingleton<StrategyCacheService>(
+    () => StrategyCacheService(),
+  );
 
   // Cubits (factory = new instance each time)
-  getIt.registerFactory<DashboardCubit>(() => DashboardCubit(db));
+  getIt.registerFactory<DashboardCubit>(
+    () => DashboardCubit(db, getIt<DashboardCacheService>()),
+  );
 
   getIt.registerFactory<StudentPageCubit>(
-    () => StudentPageCubit(getIt<StudentRepository>()),
+    () => StudentPageCubit(
+      getIt<StudentRepository>(),
+      getIt<StudentCacheService>(),
+    ),
   );
 
   getIt.registerFactory<StudentDetailCubit>(
-    () => StudentDetailCubit(getIt<StudentRepository>()),
+    () => StudentDetailCubit(
+      getIt<StudentRepository>(),
+      getIt<StudentCacheService>(),
+    ),
   );
 
   getIt.registerFactory<SchoolCubit>(
-    () => SchoolCubit(getIt<SchoolRepository>()),
+    () => SchoolCubit(
+      getIt<SchoolRepository>(),
+      getIt<SchoolCacheService>(),
+    ),
   );
 
-  getIt.registerFactory<ClassCubit>(() => ClassCubit(getIt<ClassRepository>()));
+  getIt.registerFactory<ClassCubit>(
+    () => ClassCubit(
+      getIt<ClassRepository>(),
+      getIt<ClassCacheService>(),
+    ),
+  );
 
   getIt.registerFactory<TeacherCubit>(
-    () => TeacherCubit(getIt<TeacherRepository>()),
+    () => TeacherCubit(
+      getIt<TeacherRepository>(),
+      getIt<TeacherCacheService>(),
+    ),
   );
 
   getIt.registerFactory<SubjectCubit>(
-    () => SubjectCubit(getIt<SubjectRepository>()),
+    () => SubjectCubit(
+      getIt<SubjectRepository>(),
+      getIt<SubjectCacheService>(),
+    ),
   );
 
   getIt.registerFactory<StrategyCubit>(
-    () => StrategyCubit(getIt<StrategyRepository>()),
+    () => StrategyCubit(
+      getIt<StrategyRepository>(),
+      getIt<StrategyCacheService>(),
+    ),
   );
 
   getIt.registerFactory<AssistanceProgramCubit>(
-    () => AssistanceProgramCubit(getIt<AssistanceProgramRepository>()),
+    () => AssistanceProgramCubit(
+      getIt<AssistanceProgramRepository>(),
+      getIt<AssistanceProgramCacheService>(),
+    ),
   );
 
   getIt.registerFactory<ScheduleCubit>(
-    () => ScheduleCubit(getIt<ScheduleRepository>()),
+    () => ScheduleCubit(
+      getIt<ScheduleRepository>(),
+      getIt<ScheduleCacheService>(),
+    ),
   );
 
   getIt.registerFactory<AssessmentCubit>(
@@ -100,18 +157,30 @@ Future<void> setupLocator() async {
   );
 
   getIt.registerFactory<ReportDefinitionCubit>(
-    () => ReportDefinitionCubit(getIt<ReportDefinitionRepository>()),
+    () => ReportDefinitionCubit(
+      getIt<ReportDefinitionRepository>(),
+      getIt<ReportDefinitionCacheService>(),
+    ),
   );
 
   getIt.registerFactory<ScholarshipCubit>(
-    () => ScholarshipCubit(getIt<ScholarshipRepository>()),
+    () => ScholarshipCubit(
+      getIt<ScholarshipRepository>(),
+      getIt<ScholarshipCacheService>(),
+    ),
   );
 
   getIt.registerFactory<TeachingActivityCubit>(
-    () => TeachingActivityCubit(getIt<TeachingActivityRepository>()),
+    () => TeachingActivityCubit(
+      getIt<TeachingActivityRepository>(),
+      getIt<TeachingActivityCacheService>(),
+    ),
   );
 
   getIt.registerFactory<TeachingActivityDetailCubit>(
-    () => TeachingActivityDetailCubit(getIt<TeachingActivityRepository>()),
+    () => TeachingActivityDetailCubit(
+      getIt<TeachingActivityRepository>(),
+      getIt<TeachingActivityCacheService>(),
+    ),
   );
 }

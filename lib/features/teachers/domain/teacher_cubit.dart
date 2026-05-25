@@ -6,25 +6,47 @@ part 'teacher_state.dart';
 
 class TeacherCubit extends Cubit<TeacherState> {
   final TeacherRepository _repository;
+  final TeacherCacheService _cacheService;
 
-  TeacherCubit(this._repository) : super(const TeacherState());
+  TeacherCubit(this._repository, this._cacheService)
+    : super(const TeacherState());
 
-  Future<void> loadTeachers() async {
-    emit(state.copyWith(isLoading: true));
+  void _safeEmit(TeacherState nextState) {
+    if (!isClosed) emit(nextState);
+  }
+
+  Future<void> loadTeachers({bool forceRefresh = false}) async {
+    const cacheKey = 'all';
+    if (!forceRefresh) {
+      final cachedState = _cacheService.get(cacheKey);
+      if (cachedState != null) {
+        _safeEmit(cachedState.copyWith(isLoading: false));
+        return;
+      }
+    }
+
+    _safeEmit(state.copyWith(isLoading: true));
     try {
       final teachers = await _repository.getAllTeachers();
-      emit(state.copyWith(isLoading: false, teachers: teachers, error: null));
+      final nextState = state.copyWith(
+        isLoading: false,
+        teachers: teachers,
+        error: null,
+      );
+      _cacheService.put(cacheKey, nextState);
+      _safeEmit(nextState);
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
   Future<void> addTeacher(Teacher teacher) async {
     try {
       await _repository.insertTeacher(teacher);
-      await loadTeachers();
+      _cacheService.clear();
+      await loadTeachers(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -32,9 +54,10 @@ class TeacherCubit extends Cubit<TeacherState> {
   Future<void> updateTeacher(Teacher teacher) async {
     try {
       await _repository.updateTeacher(teacher);
-      await loadTeachers();
+      _cacheService.clear();
+      await loadTeachers(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
@@ -42,20 +65,72 @@ class TeacherCubit extends Cubit<TeacherState> {
   Future<void> deleteTeacher(String id) async {
     try {
       await _repository.deleteTeacher(id);
-      await loadTeachers();
+      _cacheService.clear();
+      await loadTeachers(forceRefresh: true);
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      _safeEmit(state.copyWith(error: e.toString()));
       rethrow;
     }
   }
 
-  Future<void> loadTeachersByGender(String gender) async {
-    emit(state.copyWith(isLoading: true));
+  Future<void> loadTeachersByGender(
+    String gender, {
+    bool forceRefresh = false,
+  }) async {
+    final cacheKey = 'gender:$gender';
+    if (!forceRefresh) {
+      final cachedState = _cacheService.get(cacheKey);
+      if (cachedState != null) {
+        _safeEmit(cachedState.copyWith(isLoading: false));
+        return;
+      }
+    }
+
+    _safeEmit(state.copyWith(isLoading: true));
     try {
       final teachers = await _repository.getTeachersByGender(gender);
-      emit(state.copyWith(isLoading: false, teachers: teachers, error: null));
+      final nextState = state.copyWith(
+        isLoading: false,
+        teachers: teachers,
+        error: null,
+      );
+      _cacheService.put(cacheKey, nextState);
+      _safeEmit(nextState);
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
+}
+
+class TeacherCacheService {
+  TeacherCacheService({this.ttl = const Duration(minutes: 2)});
+
+  final Duration ttl;
+  final Map<String, _TeacherCacheEntry> _items = {};
+
+  TeacherState? get(String key) {
+    final entry = _items[key];
+    if (entry == null) return null;
+    if (DateTime.now().difference(entry.cachedAt) > ttl) {
+      _items.remove(key);
+      return null;
+    }
+    return entry.state;
+  }
+
+  void put(String key, TeacherState state) {
+    _items[key] = _TeacherCacheEntry(
+      state: state.copyWith(isLoading: false),
+      cachedAt: DateTime.now(),
+    );
+  }
+
+  void clear() => _items.clear();
+}
+
+class _TeacherCacheEntry {
+  const _TeacherCacheEntry({required this.state, required this.cachedAt});
+
+  final TeacherState state;
+  final DateTime cachedAt;
 }
