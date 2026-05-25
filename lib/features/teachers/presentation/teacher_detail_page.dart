@@ -78,7 +78,7 @@ class TeacherDetailPage extends StatelessWidget {
           body: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: DefaultTabController(
-              length: 6,
+              length: 4,
               child: Column(
                 children: [
                   const SizedBox(height: 8),
@@ -88,8 +88,6 @@ class TeacherDetailPage extends StatelessWidget {
                       'Impact',
                       'Classes',
                       'Notes',
-                      'Risk',
-                      'More',
                     ],
                   ),
                   Expanded(
@@ -99,8 +97,6 @@ class TeacherDetailPage extends StatelessWidget {
                         _ImpactTab(data: data),
                         _ClassesTab(data: data),
                         _NotesTab(data: data),
-                        _RiskTab(data: data),
-                        const _MoreTab(),
                       ],
                     ),
                   ),
@@ -187,11 +183,11 @@ class _TeacherHeader extends StatelessWidget {
             _MetricTile(label: 'Classes', value: data.classCount.toString()),
             _MetricTile(label: 'Notes', value: data.notesWritten.toString()),
             _MetricTile(
-              label: 'Interventions',
-              value: data.interventionsHandled.toString(),
+              label: 'Follow-up',
+              value: data.followUpNotes.toString(),
             ),
             _MetricTile(
-              label: 'At-risk',
+              label: 'Need Care',
               value: data.atRiskStudents.toString(),
             ),
           ],
@@ -231,7 +227,10 @@ class _OverviewTab extends StatelessWidget {
               label: 'Subjects',
               value: data.subjects.length.toString(),
             ),
-            const _MetricTile(label: 'Teaching Hours', value: '-'),
+            _MetricTile(
+              label: 'Teaching Hours',
+              value: _formatHours(data.teachingHours),
+            ),
           ],
         ),
         DetailSectionCard(
@@ -280,7 +279,7 @@ class _ImpactTab extends StatelessWidget {
               value: '${data.declinedStudents} down',
             ),
             _MetricTile(
-              label: 'At-risk',
+              label: 'Need Care',
               value: data.atRiskStudents.toString(),
             ),
           ],
@@ -291,10 +290,10 @@ class _ImpactTab extends StatelessWidget {
           wrapChildren: false,
           children: [
             DetailDataTable(
-              columns: const ['Student', 'Class', 'Trend', 'Latest Signal'],
+              columns: const ['Student', 'Class', 'Score Trend', 'Follow-up'],
               rows: data.studentImpactRows,
               emptyText:
-                  'Student impact rows will appear after score trend history is available.',
+                  'Student impact rows will appear after teaching assessment scores are recorded.',
             ),
           ],
         ),
@@ -347,10 +346,14 @@ class _NotesTab extends StatelessWidget {
               label: 'Total Notes',
               value: data.notesWritten.toString(),
             ),
-            const _MetricTile(label: 'Academic', value: '-'),
-            const _MetricTile(label: 'Behavior', value: '-'),
-            const _MetricTile(label: 'Well-being', value: '-'),
-            const _MetricTile(label: 'General', value: '-'),
+            _MetricTile(
+              label: 'Follow-up',
+              value: data.followUpNotes.toString(),
+            ),
+            _MetricTile(
+              label: 'Need Care',
+              value: data.atRiskStudents.toString(),
+            ),
           ],
         ),
         DetailSectionCard(
@@ -359,10 +362,10 @@ class _NotesTab extends StatelessWidget {
           wrapChildren: false,
           children: [
             DetailDataTable(
-              columns: const ['Date', 'Student', 'Class', 'Note'],
+              columns: const ['Date', 'Student', 'Class', 'Type', 'Note'],
               rows: data.noteRows,
               emptyText:
-                  'No teaching notes have been recorded by this teacher.',
+                  'No student session notes have been recorded by this teacher.',
             ),
           ],
         ),
@@ -371,99 +374,10 @@ class _NotesTab extends StatelessWidget {
   }
 }
 
-class _RiskTab extends StatelessWidget {
-  const _RiskTab({required this.data});
-
-  final TeacherDetailData data;
-
-  @override
-  Widget build(BuildContext context) {
-    return DetailTabScroll(
-      children: [
-        DetailSectionCard(
-          title: 'Risk Management Performance',
-          icon: Icons.health_and_safety_outlined,
-          children: [
-            _MetricTile(
-              label: 'At-risk Assigned',
-              value: data.atRiskStudents.toString(),
-            ),
-            _MetricTile(
-              label: 'Resolved',
-              value: data.resolvedRiskCases.toString(),
-            ),
-            _MetricTile(
-              label: 'Still Active',
-              value: data.activeRiskCases.toString(),
-            ),
-            _MetricTile(label: 'Follow-up Rate', value: data.followUpRateLabel),
-          ],
-        ),
-        DetailSectionCard(
-          title: 'At-risk Students Under Care',
-          icon: Icons.report_problem_outlined,
-          wrapChildren: false,
-          children: [
-            DetailDataTable(
-              columns: const [
-                'Detected At',
-                'Student',
-                'Class',
-                'Risk Type',
-                'Level',
-              ],
-              rows: data.riskRows,
-              emptyText:
-                  'No at-risk students are currently linked to this teacher.',
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _MoreTab extends StatelessWidget {
-  const _MoreTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return DetailTabScroll(
-      children: const [
-        DetailSectionCard(
-          title: 'Attendance / Presence',
-          icon: Icons.event_available_outlined,
-          wrapChildren: false,
-          children: [
-            DetailDataTable(
-              columns: ['Date', 'Status', 'Check In', 'Note'],
-              rows: [],
-              emptyText:
-                  'Teacher attendance records will appear here when attendance tracking is enabled.',
-            ),
-          ],
-        ),
-        DetailSectionCard(
-          title: 'Student Interaction Signals',
-          icon: Icons.forum_outlined,
-          wrapChildren: false,
-          children: [
-            DetailDataTable(
-              columns: [
-                'Student',
-                'Interaction Count',
-                'Flags',
-                'Latest Contact',
-              ],
-              rows: [],
-              emptyText:
-                  'Most interacted and most flagged student signals will appear after engagement history is available.',
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+String _formatHours(double hours) {
+  if (hours <= 0) return '-';
+  if (hours == hours.roundToDouble()) return '${hours.round()}h';
+  return '${hours.toStringAsFixed(1)}h';
 }
 
 class _MetricTile extends StatelessWidget {

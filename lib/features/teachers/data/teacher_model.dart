@@ -96,7 +96,9 @@ class TeacherDetailData {
     required this.teacher,
     required this.totalStudents,
     required this.classCount,
+    required this.teachingHours,
     required this.notesWritten,
+    required this.followUpNotes,
     required this.interventionsHandled,
     required this.atRiskStudents,
     required this.improvedStudents,
@@ -116,7 +118,9 @@ class TeacherDetailData {
   final Teacher teacher;
   final int totalStudents;
   final int classCount;
+  final double teachingHours;
   final int notesWritten;
+  final int followUpNotes;
   final int interventionsHandled;
   final int atRiskStudents;
   final int improvedStudents;
@@ -144,10 +148,16 @@ class TeacherDetailData {
     }
 
     if (atRiskStudents > 0) {
-      return '${teacher.fullName} handles $totalStudents students across $classCount classes, with $atRiskStudents at-risk students and a $followUpRateLabel intervention follow-up signal.';
+      return '${teacher.fullName} handles $totalStudents students across $classCount classes, with $atRiskStudents students needing follow-up signal.';
     }
 
-    return '${teacher.fullName} handles $totalStudents students across $classCount classes with no current at-risk signal recorded.';
+    return '${teacher.fullName} handles $totalStudents students across $classCount classes, with ${_hoursLabel(teachingHours)} scheduled teaching hours recorded.';
+  }
+
+  String _hoursLabel(double hours) {
+    if (hours <= 0) return 'no';
+    if (hours == hours.roundToDouble()) return hours.round().toString();
+    return hours.toStringAsFixed(1);
   }
 }
 

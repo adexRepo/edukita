@@ -87,82 +87,74 @@ class TeacherRepository {
       );
     }).toList();
 
-    final notesCount = await _count(
+    final scheduleTimeRows = await db.rawQuery(
       '''
-        SELECT COUNT(*) AS total
-        FROM teaching_notes
+        SELECT start_at, end_at
+        FROM schedules
         WHERE teacher_id = ?
       ''',
       [teacher.id],
     );
+    final teachingHours = scheduleTimeRows.fold<double>(
+      0,
+      (total, row) =>
+          total +
+          _durationHours(
+            row['start_at']?.toString(),
+            row['end_at']?.toString(),
+          ),
+    );
 
-    final atRiskCount = await _count(
+    final notesCount = await _count(
       '''
-        SELECT COUNT(DISTINCT sr.student_id) AS total
-        FROM student_risks sr
-        INNER JOIN students st ON st.id = sr.student_id
-        INNER JOIN schedules sch ON sch.class_id = st.class_id
-        WHERE sch.teacher_id = ?
+        SELECT COUNT(*) AS total
+        FROM student_session_notes note
+        INNER JOIN teaching_activities activity
+          ON activity.id = note.teaching_activity_id
+        WHERE COALESCE(note.created_by_teacher_id, activity.teacher_id) = ?
       ''',
       [teacher.id],
     );
 
-    final interventionsCount = await _count(
+    final followUpNotes = await _count(
       '''
-        SELECT COUNT(DISTINCT si.id) AS total
-        FROM student_interventions si
-        INNER JOIN students st ON st.id = si.student_id
-        INNER JOIN schedules sch ON sch.class_id = st.class_id
-        WHERE sch.teacher_id = ?
+        SELECT COUNT(*) AS total
+        FROM student_session_notes note
+        INNER JOIN teaching_activities activity
+          ON activity.id = note.teaching_activity_id
+        WHERE COALESCE(note.created_by_teacher_id, activity.teacher_id) = ?
+          AND note.follow_up_needed = 1
       ''',
       [teacher.id],
     );
 
-    final resolvedRiskCases = await _count(
+    final followUpStudents = await _count(
       '''
-        SELECT COUNT(DISTINCT si.student_id) AS total
-        FROM student_interventions si
-        INNER JOIN students st ON st.id = si.student_id
-        INNER JOIN schedules sch ON sch.class_id = st.class_id
-        WHERE sch.teacher_id = ?
-          AND si.end_date IS NOT NULL
-          AND si.end_date != ''
+        SELECT COUNT(DISTINCT note.student_id) AS total
+        FROM student_session_notes note
+        INNER JOIN teaching_activities activity
+          ON activity.id = note.teaching_activity_id
+        WHERE COALESCE(note.created_by_teacher_id, activity.teacher_id) = ?
+          AND note.follow_up_needed = 1
       ''',
       [teacher.id],
     );
 
     final noteRows = await db.rawQuery(
       '''
-        SELECT
+        SELECT DISTINCT
           COALESCE(st.full_name, '-') AS student_name,
           COALESCE(c.name, '-') AS class_name,
-          COALESCE(tn.note, '-') AS note,
-          COALESCE(tn.created_at, '-') AS created_at
-        FROM teaching_notes tn
-        LEFT JOIN students st ON st.id = tn.student_id
+          COALESCE(note.note_type, '-') AS note_type,
+          COALESCE(note.comment, '-') AS note,
+          COALESCE(note.created_at, activity.activity_date, '-') AS created_at
+        FROM student_session_notes note
+        INNER JOIN teaching_activities activity
+          ON activity.id = note.teaching_activity_id
+        LEFT JOIN students st ON st.id = note.student_id
         LEFT JOIN classes c ON c.id = st.class_id
-        WHERE tn.teacher_id = ?
-        ORDER BY tn.created_at DESC
-        LIMIT 20
-      ''',
-      [teacher.id],
-    );
-
-    final riskRows = await db.rawQuery(
-      '''
-        SELECT
-          COALESCE(st.full_name, '-') AS student_name,
-          COALESCE(c.name, '-') AS class_name,
-          COALESCE(sr.risk_type, '-') AS risk_type,
-          COALESCE(sr.level, '-') AS level,
-          COALESCE(sr.detected_at, '-') AS detected_at
-        FROM student_risks sr
-        INNER JOIN students st ON st.id = sr.student_id
-        LEFT JOIN classes c ON c.id = st.class_id
-        INNER JOIN schedules sch ON sch.class_id = st.class_id
-        WHERE sch.teacher_id = ?
-        GROUP BY sr.id
-        ORDER BY sr.detected_at DESC
+        WHERE COALESCE(note.created_by_teacher_id, activity.teacher_id) = ?
+        ORDER BY COALESCE(note.created_at, activity.activity_date) DESC
         LIMIT 20
       ''',
       [teacher.id],
@@ -186,24 +178,40 @@ class TeacherRepository {
           COALESCE(st.full_name, '-') AS student_name,
           COALESCE(c.name, '-') AS class_name,
           (
-            SELECT ss.score
-            FROM student_scores ss
-            WHERE ss.student_id = st.id
-            ORDER BY COALESCE(ss.recorded_at, ''), ss.id
+            SELECT COALESCE(score.normalized_score, score.score, score.raw_score)
+            FROM teaching_assessments score
+            INNER JOIN teaching_activities activity
+              ON activity.id = score.teaching_activity_id
+            WHERE score.student_id = st.id
+              AND activity.teacher_id = ?
+              AND COALESCE(score.normalized_score, score.score, score.raw_score)
+                IS NOT NULL
+            ORDER BY COALESCE(activity.activity_date, score.created_at, ''), score.id
             LIMIT 1
           ) AS first_score,
           (
-            SELECT ss.score
-            FROM student_scores ss
-            WHERE ss.student_id = st.id
-            ORDER BY COALESCE(ss.recorded_at, '') DESC, ss.id DESC
+            SELECT COALESCE(score.normalized_score, score.score, score.raw_score)
+            FROM teaching_assessments score
+            INNER JOIN teaching_activities activity
+              ON activity.id = score.teaching_activity_id
+            WHERE score.student_id = st.id
+              AND activity.teacher_id = ?
+              AND COALESCE(score.normalized_score, score.score, score.raw_score)
+                IS NOT NULL
+            ORDER BY COALESCE(activity.activity_date, score.created_at, '') DESC,
+              score.id DESC
             LIMIT 1
           ) AS latest_score,
           (
-            SELECT sr.level
-            FROM student_risks sr
-            WHERE sr.student_id = st.id
-            ORDER BY COALESCE(sr.detected_at, '') DESC, sr.id DESC
+            SELECT note.note_type
+            FROM student_session_notes note
+            INNER JOIN teaching_activities activity
+              ON activity.id = note.teaching_activity_id
+            WHERE note.student_id = st.id
+              AND COALESCE(note.created_by_teacher_id, activity.teacher_id) = ?
+              AND note.follow_up_needed = 1
+            ORDER BY COALESCE(note.created_at, activity.activity_date, '') DESC,
+              note.id DESC
             LIMIT 1
           ) AS latest_signal
         FROM students st
@@ -216,7 +224,7 @@ class TeacherRepository {
         ORDER BY st.full_name
         LIMIT 50
       ''',
-      [teacher.id],
+      [teacher.id, teacher.id, teacher.id, teacher.id],
     );
 
     var improvedStudents = 0;
@@ -252,16 +260,16 @@ class TeacherRepository {
       teacher: teacher,
       totalStudents: totalStudents,
       classCount: classes.length,
+      teachingHours: teachingHours,
       notesWritten: notesCount,
-      interventionsHandled: interventionsCount,
-      atRiskStudents: atRiskCount,
+      followUpNotes: followUpNotes,
+      interventionsHandled: followUpNotes,
+      atRiskStudents: followUpStudents,
       improvedStudents: improvedStudents,
       stableStudents: stableStudents,
       declinedStudents: declinedStudents,
-      resolvedRiskCases: resolvedRiskCases,
-      activeRiskCases: (atRiskCount - resolvedRiskCases)
-          .clamp(0, atRiskCount)
-          .toInt(),
+      resolvedRiskCases: 0,
+      activeRiskCases: followUpStudents,
       subjects: subjects,
       classes: classes,
       classRows: classes
@@ -282,28 +290,18 @@ class TeacherRepository {
               row['created_at']?.toString() ?? '-',
               row['student_name']?.toString() ?? '-',
               row['class_name']?.toString() ?? '-',
+              row['note_type']?.toString() ?? '-',
               row['note']?.toString() ?? '-',
             ],
           )
           .toList(),
-      riskRows: riskRows
-          .map(
-            (row) => [
-              row['detected_at']?.toString() ?? '-',
-              row['student_name']?.toString() ?? '-',
-              row['class_name']?.toString() ?? '-',
-              row['risk_type']?.toString() ?? '-',
-              row['level']?.toString() ?? '-',
-            ],
-          )
-          .toList(),
+      riskRows: const [],
       studentImpactRows: studentImpactRows,
       alertRows: _buildAlertRows(
         totalStudents: totalStudents,
         classCount: classes.length,
-        atRiskStudents: atRiskCount,
+        followUpStudents: followUpStudents,
         notesWritten: notesCount,
-        interventionsHandled: interventionsCount,
       ),
     );
   }
@@ -333,12 +331,32 @@ class TeacherRepository {
     return 'Stable';
   }
 
+  static double _durationHours(String? startAt, String? endAt) {
+    final start = _parseTime(startAt);
+    final end = _parseTime(endAt);
+    if (start == null || end == null) return 0;
+    var minutes = end - start;
+    if (minutes < 0) minutes += 24 * 60;
+    return minutes / 60;
+  }
+
+  static int? _parseTime(String? value) {
+    final text = value?.trim();
+    if (text == null || text.isEmpty) return null;
+    final match = RegExp(r'^(\d{1,2}):(\d{2})').firstMatch(text);
+    if (match == null) return null;
+    final hour = int.tryParse(match.group(1) ?? '');
+    final minute = int.tryParse(match.group(2) ?? '');
+    if (hour == null || minute == null) return null;
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+    return (hour * 60) + minute;
+  }
+
   static List<List<String>> _buildAlertRows({
     required int totalStudents,
     required int classCount,
-    required int atRiskStudents,
+    required int followUpStudents,
     required int notesWritten,
-    required int interventionsHandled,
   }) {
     final rows = <List<String>>[];
 
@@ -348,11 +366,12 @@ class TeacherRepository {
     if (classCount >= 5) {
       rows.add(['Class load', '$classCount classes assigned', 'Review']);
     }
-    if (atRiskStudents >= 5) {
-      rows.add(['Risk concentration', '$atRiskStudents at-risk students', 'High']);
-    }
-    if (atRiskStudents > 0 && interventionsHandled == 0) {
-      rows.add(['Follow-up gap', 'At-risk students have no intervention records', 'Review']);
+    if (followUpStudents >= 5) {
+      rows.add([
+        'Follow-up concentration',
+        '$followUpStudents students need follow-up',
+        'Review',
+      ]);
     }
     if (totalStudents > 0 && notesWritten == 0) {
       rows.add(['Low engagement signal', 'No teaching notes recorded', 'Monitor']);
