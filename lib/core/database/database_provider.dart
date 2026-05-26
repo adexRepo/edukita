@@ -3,8 +3,8 @@ import 'dart:io' as io;
 import 'package:edukita/core/database/database_migrations.dart';
 import 'package:edukita/core/database/database_seed.dart';
 import 'package:edukita/core/database/database_tables.dart';
+import 'package:edukita/core/storage/app_storage_paths.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -56,14 +56,33 @@ class DatabaseProvider {
   Future<String> _resolvePath() async {
     if (kIsWeb) return 'edukita.db';
 
-    final dbPath = dotenv.env['DB_PATH'] ?? '../../../../../data';
-    final dir = io.Directory(join(io.Directory.current.path, dbPath));
+    final dir = io.Directory(await AppStoragePaths.databaseDirectory());
 
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
 
-    return join(dir.path, 'edukita.db');
+    final databasePath = join(dir.path, 'edukita.db');
+    await _copyLegacyDatabaseIfNeeded(databasePath);
+    return databasePath;
+  }
+
+  Future<void> _copyLegacyDatabaseIfNeeded(String databasePath) async {
+    final target = io.File(databasePath);
+    if (await target.exists()) return;
+
+    final legacyCandidates = [
+      join(io.Directory.current.path, 'edukita', 'database', 'edukita.db'),
+      join(io.Directory.current.path, 'data', 'edukita.db'),
+    ];
+
+    for (final legacyPath in legacyCandidates) {
+      final legacy = io.File(legacyPath);
+      if (!await legacy.exists()) continue;
+      await target.parent.create(recursive: true);
+      await legacy.copy(databasePath);
+      return;
+    }
   }
 
   Future<int> insert(String table, Map<String, Object?> values) async {

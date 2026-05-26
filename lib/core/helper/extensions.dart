@@ -19,16 +19,50 @@ extension MultiFilterItemMapper on List<MultiFilterItem> {
         .toList();
   }
 
+  List<String> mapStringByOperator(
+    StudentFilterCodes field,
+    FilterOperator operator,
+  ) {
+    return _byField(field)
+        .where((e) => e.operator == operator)
+        .map((e) => e.value)
+        .whereType<String>()
+        .where((v) => v.isNotEmpty)
+        .toList();
+  }
+
   List<int> mapInt(StudentFilterCodes field) {
     return _byField(
       field,
     ).map((e) => int.tryParse(e.value ?? '')).whereType<int>().toList();
   }
 
+  List<int> mapIntByOperator(
+    StudentFilterCodes field,
+    FilterOperator operator,
+  ) {
+    return _byField(field)
+        .where((e) => e.operator == operator)
+        .map((e) => int.tryParse(e.value ?? ''))
+        .whereType<int>()
+        .toList();
+  }
+
   List<double> mapDouble(StudentFilterCodes field) {
     return _byField(
       field,
     ).map((e) => double.tryParse(e.value ?? '')).whereType<double>().toList();
+  }
+
+  List<double> mapDoubleByOperator(
+    StudentFilterCodes field,
+    FilterOperator operator,
+  ) {
+    return _byField(field)
+        .where((e) => e.operator == operator)
+        .map((e) => double.tryParse(e.value ?? ''))
+        .whereType<double>()
+        .toList();
   }
 
   List<R> mapParsed<R>(

@@ -3,8 +3,8 @@ import 'dart:collection';
 import 'dart:io' as io;
 
 import 'package:edukita/core/database/database_provider.dart';
+import 'package:edukita/core/storage/app_storage_paths.dart';
 import 'package:edukita/features/scholarships/data/scholarship_models.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
@@ -1474,14 +1474,9 @@ class ScholarshipRepository {
     required String sourcePath,
     required String fileName,
   }) async {
-    final dbPath = dotenv.env['DB_PATH'] ?? '../../../../../data';
+    final storagePath = await AppStoragePaths.storageDirectory();
     final baseDir = io.Directory(
-      p.join(
-        io.Directory.current.path,
-        dbPath,
-        'scholarship_approvals',
-        periodId,
-      ),
+      p.join(storagePath, 'scholarship_approvals', periodId),
     );
     if (!await baseDir.exists()) {
       await baseDir.create(recursive: true);

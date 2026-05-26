@@ -17,53 +17,93 @@ enum StudentFilterCodes {
 class StudentFilter {
   final List<String> keyword;
   final List<String> status;
+  final List<String> statusNot;
   final List<String> classNames;
+  final List<String> classNamesNot;
   final List<String> schoolNames;
+  final List<String> schoolNamesNot;
   final List<String> joinAt;
+  final List<String> joinAtNot;
   final List<double> scores;
+  final List<double> scoresNot;
   final List<int> ages;
+  final List<int> agesNot;
   final List<String> genders;
+  final List<String> gendersNot;
+  final List<String> keywordNot;
 
   const StudentFilter({
     this.keyword = const [],
     this.status = const [],
+    this.statusNot = const [],
     this.classNames = const [],
+    this.classNamesNot = const [],
     this.schoolNames = const [],
+    this.schoolNamesNot = const [],
     this.joinAt = const [],
+    this.joinAtNot = const [],
     this.scores = const [],
+    this.scoresNot = const [],
     this.ages = const [],
+    this.agesNot = const [],
     this.genders = const [],
+    this.gendersNot = const [],
+    this.keywordNot = const [],
   });
 
   bool get isEmpty =>
       keyword.isEmpty &&
       status.isEmpty &&
+      statusNot.isEmpty &&
       classNames.isEmpty &&
+      classNamesNot.isEmpty &&
       schoolNames.isEmpty &&
+      schoolNamesNot.isEmpty &&
       joinAt.isEmpty &&
+      joinAtNot.isEmpty &&
       scores.isEmpty &&
+      scoresNot.isEmpty &&
       ages.isEmpty &&
-      genders.isEmpty;
+      agesNot.isEmpty &&
+      genders.isEmpty &&
+      gendersNot.isEmpty &&
+      keywordNot.isEmpty;
 
   StudentFilter copyWith({
     List<String>? keyword,
     List<String>? status,
+    List<String>? statusNot,
     List<String>? classNames,
+    List<String>? classNamesNot,
     List<String>? schoolNames,
+    List<String>? schoolNamesNot,
     List<String>? joinAt,
+    List<String>? joinAtNot,
     List<double>? scores,
+    List<double>? scoresNot,
     List<int>? ages,
+    List<int>? agesNot,
     List<String>? genders,
+    List<String>? gendersNot,
+    List<String>? keywordNot,
   }) {
     return StudentFilter(
       keyword: keyword ?? this.keyword,
       status: status ?? this.status,
+      statusNot: statusNot ?? this.statusNot,
       classNames: classNames ?? this.classNames,
+      classNamesNot: classNamesNot ?? this.classNamesNot,
       schoolNames: schoolNames ?? this.schoolNames,
+      schoolNamesNot: schoolNamesNot ?? this.schoolNamesNot,
       joinAt: joinAt ?? this.joinAt,
+      joinAtNot: joinAtNot ?? this.joinAtNot,
       scores: scores ?? this.scores,
+      scoresNot: scoresNot ?? this.scoresNot,
       ages: ages ?? this.ages,
+      agesNot: agesNot ?? this.agesNot,
       genders: genders ?? this.genders,
+      gendersNot: gendersNot ?? this.gendersNot,
+      keywordNot: keywordNot ?? this.keywordNot,
     );
   }
 }
@@ -71,17 +111,81 @@ class StudentFilter {
 StudentFilter buildStudentFilter(List<MultiFilterItem> items) {
   return StudentFilter(
     keyword: [
-      ...items.mapString(StudentFilterCodes.name),
-      ...items.mapString(StudentFilterCodes.studentId),
+      ...items.mapStringByOperator(
+        StudentFilterCodes.name,
+        FilterOperator.isEqual,
+      ),
+      ...items.mapStringByOperator(
+        StudentFilterCodes.name,
+        FilterOperator.contains,
+      ),
+      ...items.mapStringByOperator(
+        StudentFilterCodes.studentId,
+        FilterOperator.isEqual,
+      ),
+      ...items.mapStringByOperator(
+        StudentFilterCodes.studentId,
+        FilterOperator.contains,
+      ),
     ],
-    status: items.mapString(StudentFilterCodes.status),
-    classNames: items.mapString(StudentFilterCodes.className),
-    schoolNames: items.mapString(StudentFilterCodes.schoolName),
-    joinAt: items.mapString(StudentFilterCodes.joinDate),
-    ages: items.mapInt(StudentFilterCodes.age),
-    scores: items.mapDouble(StudentFilterCodes.score),
+    keywordNot: [
+      ...items.mapStringByOperator(
+        StudentFilterCodes.name,
+        FilterOperator.isNot,
+      ),
+      ...items.mapStringByOperator(
+        StudentFilterCodes.studentId,
+        FilterOperator.isNot,
+      ),
+    ],
+    status: items.mapStringByOperator(
+      StudentFilterCodes.status,
+      FilterOperator.isEqual,
+    ),
+    statusNot: items.mapStringByOperator(
+      StudentFilterCodes.status,
+      FilterOperator.isNot,
+    ),
+    classNames: items.mapStringByOperator(
+      StudentFilterCodes.className,
+      FilterOperator.isEqual,
+    ),
+    classNamesNot: items.mapStringByOperator(
+      StudentFilterCodes.className,
+      FilterOperator.isNot,
+    ),
+    schoolNames: items.mapStringByOperator(
+      StudentFilterCodes.schoolName,
+      FilterOperator.isEqual,
+    ),
+    schoolNamesNot: items.mapStringByOperator(
+      StudentFilterCodes.schoolName,
+      FilterOperator.isNot,
+    ),
+    joinAt: items.mapStringByOperator(
+      StudentFilterCodes.joinDate,
+      FilterOperator.isEqual,
+    ),
+    joinAtNot: items.mapStringByOperator(
+      StudentFilterCodes.joinDate,
+      FilterOperator.isNot,
+    ),
+    ages: items.mapIntByOperator(StudentFilterCodes.age, FilterOperator.isEqual),
+    agesNot: items.mapIntByOperator(StudentFilterCodes.age, FilterOperator.isNot),
+    scores: items.mapDoubleByOperator(
+      StudentFilterCodes.score,
+      FilterOperator.isEqual,
+    ),
+    scoresNot: items.mapDoubleByOperator(
+      StudentFilterCodes.score,
+      FilterOperator.isNot,
+    ),
     genders: items
-        .mapString(StudentFilterCodes.gender)
+        .mapStringByOperator(StudentFilterCodes.gender, FilterOperator.isEqual)
+        .map((value) => value.toLowerCase())
+        .toList(),
+    gendersNot: items
+        .mapStringByOperator(StudentFilterCodes.gender, FilterOperator.isNot)
         .map((value) => value.toLowerCase())
         .toList(),
   );

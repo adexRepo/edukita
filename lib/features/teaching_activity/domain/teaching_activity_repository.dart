@@ -250,47 +250,36 @@ class TeachingActivityRepository {
 
       final classLevel = _intValue(activity['class_level']);
       final classId = activity['class_id']?.toString();
-      final activeStudents = classLevel != null
-          ? Sqflite.firstIntValue(
-                await txn.rawQuery(
-                  '''
-                  SELECT COUNT(*)
-                  FROM students st
-                  INNER JOIN classes c ON c.id = st.class_id
-                  WHERE c.level = ? AND st.status = 'active'
-                  ''',
-                  [classLevel],
-                ),
-              ) ??
-              0
-          : classId == null
-              ? 0
-              : Sqflite.firstIntValue(
-                    await txn.rawQuery(
-                      '''
-                      SELECT COUNT(*)
-                      FROM students
-                      WHERE class_id = ? AND status = 'active'
-                      ''',
-                      [classId],
-                    ),
-                  ) ??
-                  0;
+      final activeStudents = await _loadStudents(
+        txn,
+        classId: classId,
+        classLevel: classLevel,
+      );
+      final attendanceRows = await txn.query(
+        'teaching_attendances',
+        columns: const ['student_id'],
+        where: 'teaching_activity_id = ?',
+        whereArgs: [activityId],
+      );
+      final submittedStudentIds = attendanceRows
+          .map((row) => row['student_id']?.toString())
+          .whereType<String>()
+          .toSet();
+      final missingStudents = activeStudents.where(
+        (student) => !submittedStudentIds.contains(student.id),
+      );
 
-      final submittedAttendance = Sqflite.firstIntValue(
-            await txn.rawQuery(
-              '''
-              SELECT COUNT(DISTINCT student_id)
-              FROM teaching_attendances
-              WHERE teaching_activity_id = ?
-              ''',
-              [activityId],
-            ),
-          ) ??
-          0;
-
-      if (submittedAttendance < activeStudents) {
-        throw Exception('Complete attendance for all active students first.');
+      for (final student in missingStudents) {
+        await txn.insert('teaching_attendances', {
+          'id': _uuid.v4(),
+          'teaching_activity_id': activityId,
+          'student_id': student.id,
+          'status': TeachingAttendanceStatus.present,
+          'check_in_time': null,
+          'notes': null,
+          'created_at': now,
+          'updated_at': now,
+        });
       }
 
       await txn.update(

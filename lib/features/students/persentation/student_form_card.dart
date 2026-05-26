@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:edukita/core/storage/app_storage_paths.dart';
 import 'package:edukita/core/helper/com_enum.dart';
 import 'package:edukita/core/helper/validation_helper.dart';
 import 'package:edukita/features/management/data/guardian_model.dart';
@@ -16,7 +17,6 @@ import 'package:edukita/widgets/form_validation.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path/path.dart' as p;
 
 typedef StudentFormSubmit =
@@ -268,7 +268,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
 
     final studentNo = _studentNoController.text.trim();
     final fullName = _fullNameController.text.trim();
-    final storagePath = dotenv.env['STORAGE_PATH'] ?? './edukita/storage';
+    final storagePath = await AppStoragePaths.storageDirectory();
     final photoDirectory = Directory(p.join(storagePath, 'photos', studentNo));
     await photoDirectory.create(recursive: true);
 

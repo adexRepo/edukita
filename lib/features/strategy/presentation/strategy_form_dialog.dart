@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:edukita/core/storage/app_storage_paths.dart';
 import 'package:edukita/features/strategy/data/strategy_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path/path.dart' as p;
 
 Widget _twoColumnFormRow(Widget first, Widget second) {
@@ -292,7 +292,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
     final sourceFile = File(sourcePath);
     if (!await sourceFile.exists()) return sampleFilePath;
 
-    final storagePath = dotenv.env['STORAGE_PATH'] ?? './edukita/storage';
+    final storagePath = await AppStoragePaths.storageDirectory();
     final strategyDirectory = Directory(p.join(storagePath, 'strategy'));
     await strategyDirectory.create(recursive: true);
 

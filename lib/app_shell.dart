@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
 
+import 'package:edukita/core/storage/app_storage_paths.dart';
 import 'package:edukita/features/common/title_bar.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
@@ -146,8 +146,7 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<io.File> _menuOrderFile() async {
-    final dbPath = dotenv.env['DB_PATH'] ?? '../../../../../data';
-    final dir = io.Directory(p.join(io.Directory.current.path, dbPath));
+    final dir = io.Directory(await AppStoragePaths.databaseDirectory());
     return io.File(p.join(dir.path, 'sidebar_menu_order.json'));
   }
 

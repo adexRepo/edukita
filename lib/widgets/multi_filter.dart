@@ -395,7 +395,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
-                                    f.operator.name,
+                                    _operatorLabel(f.operator),
                                     style: const TextStyle(
                                       fontSize: 11,
                                       color: AppColors.grey600,
@@ -534,5 +534,14 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
       title: Text(label),
       value: value,
     );
+  }
+
+  String _operatorLabel(FilterOperator operator) {
+    return switch (operator) {
+      FilterOperator.isEqual => 'is',
+      FilterOperator.isNot => 'is not',
+      FilterOperator.contains => 'contains',
+      FilterOperator.hasAnyValue => 'has any value',
+    };
   }
 }

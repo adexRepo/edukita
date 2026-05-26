@@ -1,8 +1,8 @@
 import 'dart:io' as io;
 
 import 'package:edukita/core/database/database_provider.dart';
+import 'package:edukita/core/storage/app_storage_paths.dart';
 import 'package:edukita/features/reports/assessment_model.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path/path.dart' as p;
 
 class AssessmentRepository {
@@ -364,7 +364,7 @@ class AssessmentRepository {
       throw StateError('Evidence file not found.');
     }
 
-    final storagePath = dotenv.env['STORAGE_PATH'] ?? './edukita/storage';
+    final storagePath = await AppStoragePaths.storageDirectory();
     final directory = io.Directory(p.join(storagePath, 'assessment_evidence'));
     await directory.create(recursive: true);
 

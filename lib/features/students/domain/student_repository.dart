@@ -3,6 +3,7 @@ import 'dart:io' as io;
 import 'package:edukita/core/database/base_repository.dart';
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/storage/app_storage_paths.dart';
 import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
@@ -49,10 +50,28 @@ class StudentRepository extends BaseRepository<Student> {
       args.add('%${filter.keyword.first}%');
     }
 
+    if (filter.keywordNot.isNotEmpty) {
+      where.add('''
+      NOT (
+        s.student_no IN (${placeholders(filter.keywordNot.length)})
+        OR s.nis IN (${placeholders(filter.keywordNot.length)})
+        OR ${List.filled(filter.keywordNot.length, 's.full_name LIKE ?').join(' OR ')}
+      )
+    ''');
+      args.addAll(filter.keywordNot);
+      args.addAll(filter.keywordNot);
+      args.addAll(filter.keywordNot.map((value) => '%$value%'));
+    }
+
     // 📌 status
     if (filter.status.isNotEmpty) {
       where.add('s.status IN (${placeholders(filter.status.length)})');
       args.addAll(filter.status.map((value) => value.toLowerCase()));
+    }
+
+    if (filter.statusNot.isNotEmpty) {
+      where.add('s.status NOT IN (${placeholders(filter.statusNot.length)})');
+      args.addAll(filter.statusNot.map((value) => value.toLowerCase()));
     }
 
     if (filter.genders.isNotEmpty) {
@@ -60,10 +79,20 @@ class StudentRepository extends BaseRepository<Student> {
       args.addAll(filter.genders.map((value) => value.toLowerCase()));
     }
 
+    if (filter.gendersNot.isNotEmpty) {
+      where.add('s.gender NOT IN (${placeholders(filter.gendersNot.length)})');
+      args.addAll(filter.gendersNot.map((value) => value.toLowerCase()));
+    }
+
     // 📅 join date
     if (filter.joinAt.isNotEmpty) {
       where.add('s.join_at IN (${placeholders(filter.joinAt.length)})');
       args.addAll(filter.joinAt);
+    }
+
+    if (filter.joinAtNot.isNotEmpty) {
+      where.add('s.join_at NOT IN (${placeholders(filter.joinAtNot.length)})');
+      args.addAll(filter.joinAtNot);
     }
 
     if (filter.ages.isNotEmpty) {
@@ -73,6 +102,15 @@ class StudentRepository extends BaseRepository<Student> {
       IN (${placeholders(filter.ages.length)})
     ''');
       args.addAll(filter.ages);
+    }
+
+    if (filter.agesNot.isNotEmpty) {
+      where.add('''
+      ((strftime('%Y', 'now') - strftime('%Y', s.birth_date)) -
+      (strftime('%m-%d', 'now') < strftime('%m-%d', s.birth_date)))
+      NOT IN (${placeholders(filter.agesNot.length)})
+    ''');
+      args.addAll(filter.agesNot);
     }
 
     if (filter.scores.isNotEmpty) {
@@ -88,16 +126,43 @@ class StudentRepository extends BaseRepository<Student> {
       args.addAll(filter.scores);
     }
 
+    if (filter.scoresNot.isNotEmpty) {
+      where.add('''
+      NOT EXISTS (
+        SELECT 1
+        FROM teaching_assessments ta
+        WHERE ta.student_id = s.id
+        AND COALESCE(ta.normalized_score, ta.score, ta.raw_score)
+          IN (${placeholders(filter.scoresNot.length)})
+      )
+    ''');
+      args.addAll(filter.scoresNot);
+    }
+
     // 🏫 class
     if (filter.classNames.isNotEmpty) {
       where.add('c.name IN (${placeholders(filter.classNames.length)})');
       args.addAll(filter.classNames);
     }
 
+    if (filter.classNamesNot.isNotEmpty) {
+      where.add(
+        "COALESCE(c.name, '') NOT IN (${placeholders(filter.classNamesNot.length)})",
+      );
+      args.addAll(filter.classNamesNot);
+    }
+
     // 🏫 school
     if (filter.schoolNames.isNotEmpty) {
       where.add('sc.name IN (${placeholders(filter.schoolNames.length)})');
       args.addAll(filter.schoolNames);
+    }
+
+    if (filter.schoolNamesNot.isNotEmpty) {
+      where.add(
+        "COALESCE(sc.name, '') NOT IN (${placeholders(filter.schoolNamesNot.length)})",
+      );
+      args.addAll(filter.schoolNamesNot);
     }
 
     final whereClause = where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}';
@@ -153,9 +218,27 @@ class StudentRepository extends BaseRepository<Student> {
       args.add('%${filter.keyword.first}%');
     }
 
+    if (filter.keywordNot.isNotEmpty) {
+      where.add('''
+      NOT (
+        s.student_no IN (${placeholders(filter.keywordNot.length)})
+        OR s.nis IN (${placeholders(filter.keywordNot.length)})
+        OR ${List.filled(filter.keywordNot.length, 's.full_name LIKE ?').join(' OR ')}
+      )
+    ''');
+      args.addAll(filter.keywordNot);
+      args.addAll(filter.keywordNot);
+      args.addAll(filter.keywordNot.map((value) => '%$value%'));
+    }
+
     if (filter.status.isNotEmpty) {
       where.add('s.status IN (${placeholders(filter.status.length)})');
       args.addAll(filter.status.map((value) => value.toLowerCase()));
+    }
+
+    if (filter.statusNot.isNotEmpty) {
+      where.add('s.status NOT IN (${placeholders(filter.statusNot.length)})');
+      args.addAll(filter.statusNot.map((value) => value.toLowerCase()));
     }
 
     if (filter.genders.isNotEmpty) {
@@ -163,9 +246,19 @@ class StudentRepository extends BaseRepository<Student> {
       args.addAll(filter.genders.map((value) => value.toLowerCase()));
     }
 
+    if (filter.gendersNot.isNotEmpty) {
+      where.add('s.gender NOT IN (${placeholders(filter.gendersNot.length)})');
+      args.addAll(filter.gendersNot.map((value) => value.toLowerCase()));
+    }
+
     if (filter.joinAt.isNotEmpty) {
       where.add('s.join_at IN (${placeholders(filter.joinAt.length)})');
       args.addAll(filter.joinAt);
+    }
+
+    if (filter.joinAtNot.isNotEmpty) {
+      where.add('s.join_at NOT IN (${placeholders(filter.joinAtNot.length)})');
+      args.addAll(filter.joinAtNot);
     }
 
     if (filter.ages.isNotEmpty) {
@@ -175,6 +268,15 @@ class StudentRepository extends BaseRepository<Student> {
       IN (${placeholders(filter.ages.length)})
     ''');
       args.addAll(filter.ages);
+    }
+
+    if (filter.agesNot.isNotEmpty) {
+      where.add('''
+      ((strftime('%Y', 'now') - strftime('%Y', s.birth_date)) -
+      (strftime('%m-%d', 'now') < strftime('%m-%d', s.birth_date)))
+      NOT IN (${placeholders(filter.agesNot.length)})
+    ''');
+      args.addAll(filter.agesNot);
     }
 
     if (filter.scores.isNotEmpty) {
@@ -190,14 +292,41 @@ class StudentRepository extends BaseRepository<Student> {
       args.addAll(filter.scores);
     }
 
+    if (filter.scoresNot.isNotEmpty) {
+      where.add('''
+      NOT EXISTS (
+        SELECT 1
+        FROM teaching_assessments ta
+        WHERE ta.student_id = s.id
+        AND COALESCE(ta.normalized_score, ta.score, ta.raw_score)
+          IN (${placeholders(filter.scoresNot.length)})
+      )
+    ''');
+      args.addAll(filter.scoresNot);
+    }
+
     if (filter.classNames.isNotEmpty) {
       where.add('c.name IN (${placeholders(filter.classNames.length)})');
       args.addAll(filter.classNames);
     }
 
+    if (filter.classNamesNot.isNotEmpty) {
+      where.add(
+        "COALESCE(c.name, '') NOT IN (${placeholders(filter.classNamesNot.length)})",
+      );
+      args.addAll(filter.classNamesNot);
+    }
+
     if (filter.schoolNames.isNotEmpty) {
       where.add('sc.name IN (${placeholders(filter.schoolNames.length)})');
       args.addAll(filter.schoolNames);
+    }
+
+    if (filter.schoolNamesNot.isNotEmpty) {
+      where.add(
+        "COALESCE(sc.name, '') NOT IN (${placeholders(filter.schoolNamesNot.length)})",
+      );
+      args.addAll(filter.schoolNamesNot);
     }
 
     final whereClause = where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}';
@@ -1027,7 +1156,7 @@ class StudentRepository extends BaseRepository<Student> {
       throw StateError('Registration form file not found.');
     }
 
-    final storagePath = dotenv.env['STORAGE_PATH'] ?? './edukita/storage';
+    final storagePath = await AppStoragePaths.storageDirectory();
     final directory = io.Directory(
       p.join(storagePath, 'student_documents', studentId),
     );
@@ -1500,7 +1629,7 @@ class StudentRepository extends BaseRepository<Student> {
       throw StateError('Evidence file not found.');
     }
 
-    final storagePath = dotenv.env['STORAGE_PATH'] ?? './edukita/storage';
+    final storagePath = await AppStoragePaths.storageDirectory();
     final directory = io.Directory(
       p.join(storagePath, 'student_exam_scores', studentId),
     );

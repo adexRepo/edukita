@@ -1,293 +1,337 @@
-# Edukita  
-## Baitul Hikmah Education Management Information System (EMIS)
+# Edukita
+
+Edukita is a Flutter desktop application for education foundation operations.
+It is designed as a local-first Education Management Information System for
+student administration, teaching sessions, schedules, assistance programs, and
+operational reporting.
+
+The current implementation targets Windows desktop with a local SQLite database.
+
+## Table Of Contents
+
+- [Product Scope](#product-scope)
+- [Technology Stack](#technology-stack)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Environment Configuration](#environment-configuration)
+- [Database And Storage](#database-and-storage)
+- [Development Workflow](#development-workflow)
+- [Windows Build](#windows-build)
+- [Release And Installation Notes](#release-and-installation-notes)
+- [Security Notes](#security-notes)
+- [Troubleshooting](#troubleshooting)
+
+## Product Scope
+
+Edukita currently includes these main areas:
+
+- Dashboard analytics
+- Student management and student detail profile
+- Teacher management and teacher detail profile
+- Schedule and calendar planning
+- Teaching activity reports
+- Attendance and learning score capture
+- Parameter maintenance
+- Curriculum, syllabus, subjects, units, competencies, and strategies
+- Assistance programs, periods, target candidates, approval document, and recipients
+- Dynamic report definitions and report inquiry
+- Local settings, backup, and cache maintenance
+
+## Technology Stack
+
+- Flutter desktop
+- Dart
+- Bloc/Cubit for state management
+- Repository pattern for data access
+- GetIt for dependency injection
+- SQLite via `sqflite_common_ffi`
+- `go_router` for navigation
+- `fl_chart` for dashboard charts
+- `file_selector` for document upload and export flows
+- `.env` based runtime configuration
+
+## Architecture
+
+The application follows a feature-based structure:
+
+- Presentation layer: pages, dialogs, widgets
+- Domain layer: cubits, repositories, business logic
+- Data layer: models, DTOs, mappers
+- Core layer: database, routing, shared infrastructure
+- Widgets layer: reusable UI components
+
+General flow:
+
+```text
+UI Page/Dialog
+  -> Cubit
+  -> Repository
+  -> SQLite
+  -> Cubit State
+  -> UI
+```
+
+Business rules should live in repositories or domain services, not directly in UI widgets.
+UI code should mainly handle rendering, validation feedback, and user interaction.
+
+## Project Structure
+
+```text
+lib/
+  app_shell.dart
+  main.dart
+  core/
+    database/
+    router/
+    storage/
+    helper/
+  features/
+    assistance_program/
+    assistance_programs/
+    auth/
+    dashboard/
+    parameters/
+    reports/
+    report_definitions/
+    schedule/
+    scholarships/
+    schools/
+    settings/
+    strategy/
+    students/
+    syllabus/
+    teachers/
+    teaching_activity/
+  theme/
+  widgets/
+```
 
----
+## Getting Started
 
-# 📘 System Requirements Document  
-### *Enterprise Learning & Education Platform*
+Install Flutter and enable Windows desktop support:
 
----
+```bash
+flutter config --enable-windows-desktop
+flutter doctor
+```
 
-## 1. Background & Definition  
+Install dependencies:
 
-Baitul Hikmah (Bayt al-Hikmah) was a historic center of knowledge and translation during the Islamic Golden Age in Baghdad. It represented the integration of knowledge systems, structured learning, and institutionalized intellectual development.
+```bash
+flutter pub get
+```
 
-Inspired by this legacy, **Edukita** is designed as a modern **Education Management Information System (EMIS)** to support operational excellence and data-driven decision-making within the Alkahfi Foundation.
+Run the app:
 
-This system acts as a:
+```bash
+flutter run -d windows
+```
 
-> **Single Source of Truth (SSOT)** for all educational data across the institution.
+Default seeded login:
 
-### Key Objectives
-- Improve learning quality  
-- Standardize educational operations  
-- Enable data-driven decision-making  
-- Increase operational efficiency  
+```text
+Username: admin
+Password: admin
+```
 
----
+For development only. Change this before real user deployment.
 
-## 2. Problem Statement  
+## Environment Configuration
 
-Current educational operations face several structural challenges:
+The app loads `.env` at startup.
 
-### 📌 Core Issues
+Current recommended local configuration:
 
-- Limited understanding of student profiles and behavior  
-- Insufficient and uneven teacher distribution  
-- Lack of standardized curriculum and materials  
-- Unstructured scheduling of learning activities  
-- Absence of documented teaching strategies  
-- Subjective student evaluation processes  
-- Poor documentation of academic activities  
-- Difficulty generating periodic reports  
-- Lack of structured classroom management  
-- Insufficient data for strategic decisions (e.g., scholarships)  
+```env
+BRANCH_ID=JKTM1
+DB_PATH=database
+STORAGE_PATH=storage
+```
 
----
+Relative `DB_PATH` and `STORAGE_PATH` values are resolved under the application
+data folder, not under the executable folder.
 
-## 3. Proposed Solution  
+On Windows this is typically:
 
-A fully integrated **Education Management Information System (EMIS)** designed to centralize all academic and operational processes.
+```text
+%LOCALAPPDATA%\Edukita\database
+%LOCALAPPDATA%\Edukita\storage
+```
 
----
+This keeps user data outside `Program Files`, avoids Windows permission issues,
+and makes app updates safer.
 
-## 3.1 Student Management System  
+Optional portable mode:
 
-Comprehensive student profile management:
+```env
+APP_DATA_PATH=.
+DB_PATH=database
+STORAGE_PATH=storage
+```
 
-- Personal identity information  
-- Family and environmental background  
-- Parent/guardian details  
-- Social relationships mapping  
-- Teacher interaction history  
-- Academic performance records  
-- Multimedia documentation (photo/video)  
-- Behavioral and development notes  
+Use portable mode only when you intentionally want database and uploaded files
+near the running directory.
 
----
+## Database And Storage
 
-## 3.2 Teacher Management System  
+The app uses a local SQLite database:
 
-Structured educator data management:
+```text
+edukita.db
+```
 
-- Personal & professional profile  
-- Academic background  
-- Teaching experience history  
-- Subject specialization  
-- Teaching schedules  
+Database schema is created and upgraded through:
 
----
+```text
+lib/core/database/database_tables.dart
+lib/core/database/database_migrations.dart
+lib/core/database/database_seed.dart
+```
 
-## 3.3 Curriculum & Material Standardization  
+Important rules:
 
-- Structured curriculum per grade/level  
-- Alignment with official education standards  
-- Centralized learning repository  
-- Version-controlled teaching materials  
+- Do not drop production tables in migrations.
+- Use safe incremental migrations.
+- Prefer `CREATE TABLE IF NOT EXISTS`.
+- Add missing columns with guarded `ALTER TABLE`.
+- Keep old columns when backward compatibility is needed.
+- Store uploaded files in storage, not in SQLite blobs.
+- Store file metadata/path in database tables.
 
----
+The app contains a compatibility copy step for older local databases from:
 
-## 3.4 Scheduling System  
+```text
+./edukita/database/edukita.db
+```
 
-- Integrated scheduling (students, teachers, rooms, time)  
-- Conflict detection & resolution  
-- Attendance tracking system  
+If the new app data location is empty, the old database is copied automatically.
 
----
+## Development Workflow
 
-## 3.5 Learning Strategy Repository  
+Recommended checks before a pull request:
 
-Reusable teaching methodologies:
+```bash
+flutter analyze
+flutter test
+```
 
-### Teaching Models
-- Direct Instruction → Explain → Practice → Assess  
-- Contextual Learning → Observe → Analyze → Reflect  
-- Problem-Based Learning → Identify → Solve → Evaluate  
-- Gamification-Based Learning  
+Generate model code when changing Freezed or JSON serializable models:
 
-### Objective
-Ensure consistency and scalability of teaching methods.
+```bash
+dart run build_runner build --delete-conflicting-outputs
+```
 
----
+General engineering conventions:
 
-## 3.6 Learning Environment Management  
+- Keep changes scoped to the feature being modified.
+- Reuse existing widgets and theme styles.
+- Keep business logic out of presentation widgets.
+- Use repository transactions for multi-table writes.
+- Keep desktop layouts responsive and scroll-safe.
+- Prefer small, explicit migrations over destructive schema changes.
+- Keep user data stable across app updates.
 
-- Discipline and behavioral rules  
-- Visual learning environment (posters, boards, etc.)  
-- Institutional culture standards  
-- Character-building programs  
+## Windows Build
 
----
+Create a release build:
 
-## 3.7 Evaluation & Student Progress System  
+```bash
+flutter build windows --release
+```
 
-Data-driven assessment model:
+Release output:
 
-### Metrics
-- Academic performance  
-- Attendance records  
-- Engagement levels  
-- Behavioral evaluation  
+```text
+build/windows/x64/runner/Release/
+```
 
-### Outputs
-- Real-time analytics dashboard  
-- Student ranking system  
-- Scholarship recommendation engine  
+Do not distribute only `edukita.exe`. Flutter Windows apps require the generated
+DLLs, assets, and `data` folder beside the executable.
 
----
+## Release And Installation Notes
 
-## 3.8 Documentation System  
+Recommended packaging for Windows users:
 
-Centralized institutional documentation:
+- Build Flutter Windows release.
+- Package the full release folder with an installer.
+- Use Inno Setup for the first production installer.
+- Install binaries under `Program Files`.
+- Keep database and uploads under `%LOCALAPPDATA%\Edukita`.
+- Create Start Menu and optional Desktop shortcuts.
+- Add database backup instructions before upgrades.
 
-- Learning activities  
-- Institutional programs  
-- Special events (study tours, charity, religious events, etc.)  
+Suggested installer output:
 
----
+```text
+EdukitaSetup-<version>.exe
+```
 
-## 3.9 Reporting & Analytics  
+Future release improvements:
 
-- Student progress reports (real-time & periodic)  
-- Teacher performance reports  
-- Operational reports  
-- Strategic decision insights  
+- Code signing certificate
+- Auto-update flow
+- Structured backup and restore UI
+- Per-branch configuration
+- User and role management hardening
 
----
+## Security Notes
 
-## 4. System Architecture & Deployment  
+This app currently stores data locally. Treat the local machine as part of the
+security boundary.
 
----
+Recommended deployment practices:
 
-## 4.1 System Characteristics  
+- Use trusted Windows devices only.
+- Restrict file system access to the Windows user account.
+- Change default admin credentials before real use.
+- Back up SQLite database regularly.
+- Avoid storing database files in shared public folders.
+- Do not commit real user data, uploaded documents, or production databases.
+- Consider database encryption before handling sensitive production data.
 
-- Internal enterprise system  
-- Highly confidential data  
-- Strict access control (RBAC)  
+## Troubleshooting
 
----
+### App cannot login with admin
 
-## 4.2 Deployment Models  
+The app seeds the default admin user when the database opens. If login still
+fails, check whether the app is using a different database path in Settings.
 
-### Phase 1 – Offline/Desktop System
-- Local execution  
-- Minimal infrastructure dependency  
+### Database looks empty after changing path
 
-### Phase 2 – Internal Web System
-- Intranet-based deployment  
-- Controlled institutional access  
+Check the database path shown in:
 
-### Phase 3 – Centralized Platform
-- Multi-branch integration  
-- Central data synchronization  
-- Executive-level monitoring dashboard  
+```text
+Settings -> Storage -> Database
+```
 
----
+If needed, copy the previous `edukita.db` into the active database directory.
 
-## 4.3 Development Roadmap  
+### Uploaded files cannot be opened
 
-| Phase | Description |
-|------|------------|
-| Phase 1 | Offline/Desktop MVP |
-| Phase 2 | Internal Web System |
-| Phase 3 | Mobile Application + Advanced Security |
+Check the storage path shown in:
 
----
+```text
+Settings -> Storage -> Uploads
+```
 
-## 5. Technology Stack  
+The database stores file paths. Moving or deleting files from storage can break
+document links.
 
-- **Frontend:** Flutter (Cross-platform UI)  
-- **Backend:** RESTful API / Modular Architecture  
-- **Database:** PostgreSQL (ACID-compliant relational DB)  
+### Windows build works locally but not on another computer
 
----
+Make sure the full release folder is packaged, not only the executable file.
 
-## 6. Security Architecture  
+Required release contents include:
 
-Built with **OWASP standards** and a **Defense-in-Depth** approach.
+- `edukita.exe`
+- Flutter DLLs
+- plugin DLLs
+- `data/`
+- assets
 
----
+## Current Status
 
-## 6.1 Access Control  
-
-- VPN-based access restriction  
-- Device whitelisting  
-- Role-Based Access Control (RBAC)  
-- Short-lived authentication tokens  
-
----
-
-## 6.2 Authentication  
-
-- Multi-Factor Authentication (MFA)  
-- Optional biometric authentication  
-- Secure session management  
-
----
-
-## 6.3 Data Protection  
-
-- TLS encryption (in transit)  
-- Encryption at rest  
-- Secure key management  
-
----
-
-## 6.4 Application Security  
-
-Protection against:
-
-- SQL Injection  
-- XSS (Cross-Site Scripting)  
-- CSRF (Cross-Site Request Forgery)  
-- Broken Access Control  
-- Input validation issues  
-- API abuse & rate limiting  
-
----
-
-## 6.5 Client Security  
-
-- Code obfuscation  
-- No sensitive data stored on client  
-- Backend-enforced validation  
-- Anti-tampering mechanisms  
-
----
-
-## 6.6 Operational Security  
-
-- Production debug disabled  
-- Centralized logging system  
-- Incident response procedures  
-
----
-
-## 6.7 Security Policy  
-
-- Access only via trusted networks  
-- No unsecured public WiFi usage  
-- Device security compliance required  
-
----
-
-## 7. Strategic Conclusion  
-
-Edukita EMIS is designed as a **strategic digital transformation platform** for the Alkahfi Foundation.
-
-### Strategic Value
-
-- Data-driven education system  
-- Standardized learning processes  
-- Objective evaluation framework  
-- Scalable institutional ecosystem  
-
----
-
-## 🚀 Long-Term Vision  
-
-Edukita is positioned to evolve into a:
-
-> **National-scale Education Operating System**
-
-supporting multi-branch institutions with centralized governance and analytics.
+Edukita is an active desktop MVP. The codebase is evolving toward a stable
+local-first Windows application with structured data modules, dynamic reporting,
+and safer installer-ready storage behavior.

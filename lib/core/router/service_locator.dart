@@ -16,6 +16,7 @@ import 'package:edukita/features/schools/domain/class_cubit.dart';
 import 'package:edukita/features/schools/domain/class_repository.dart';
 import 'package:edukita/features/schools/domain/school_cubit.dart';
 import 'package:edukita/features/schools/domain/school_repository.dart';
+import 'package:edukita/features/settings/domain/settings_repository.dart';
 import 'package:edukita/features/syllabus/domain/subject_cubit.dart';
 import 'package:edukita/features/syllabus/domain/subject_repository.dart';
 import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
@@ -54,6 +55,7 @@ Future<void> setupLocator() async {
   getIt.registerLazySingleton<ReportDefinitionRepository>(
     () => ReportDefinitionRepository(db),
   );
+  getIt.registerLazySingleton<SettingsRepository>(() => SettingsRepository(db));
   getIt.registerLazySingleton<TeachingActivityRepository>(
     () => TeachingActivityRepository(db),
   );
