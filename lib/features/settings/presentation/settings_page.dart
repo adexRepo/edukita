@@ -1,10 +1,10 @@
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
-import 'package:edukita/features/assistance_programs/domain/assistance_program_cubit.dart';
+import 'package:edukita/features/assistance/programs/domain/assistance_program_cubit.dart';
 import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
 import 'package:edukita/features/report_definitions/domain/report_definition_cubit.dart';
 import 'package:edukita/features/schedule/domain/schedule_cubit.dart';
-import 'package:edukita/features/scholarships/domain/scholarship_cubit.dart';
+import 'package:edukita/features/assistance/plans/domain/assistance_plan_cubit.dart';
 import 'package:edukita/features/schools/domain/class_cubit.dart';
 import 'package:edukita/features/schools/domain/school_cubit.dart';
 import 'package:edukita/features/settings/domain/settings_repository.dart';
@@ -176,8 +176,8 @@ class _SettingsPageState extends State<SettingsPage> {
     if (getIt.isRegistered<AssistanceProgramCacheService>()) {
       getIt<AssistanceProgramCacheService>().clear();
     }
-    if (getIt.isRegistered<ScholarshipCacheService>()) {
-      getIt<ScholarshipCacheService>().clear();
+    if (getIt.isRegistered<AssistancePlanCacheService>()) {
+      getIt<AssistancePlanCacheService>().clear();
     }
     if (getIt.isRegistered<ReportDefinitionCacheService>()) {
       getIt<ReportDefinitionCacheService>().clear();

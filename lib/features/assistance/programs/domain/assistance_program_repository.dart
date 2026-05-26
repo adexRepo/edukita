@@ -1,5 +1,5 @@
 import 'package:edukita/core/database/database_provider.dart';
-import 'package:edukita/features/assistance_programs/data/assistance_program_model.dart';
+import 'package:edukita/features/assistance/programs/data/assistance_program_model.dart';
 import 'package:sqflite_common/sqlite_api.dart';
 
 class AssistanceProgramRepository {

@@ -1,17 +1,17 @@
-import 'package:edukita/features/scholarships/data/scholarship_models.dart';
-import 'package:edukita/features/scholarships/domain/scholarship_repository.dart';
+import 'package:edukita/features/assistance/plans/data/assistance_plan_models.dart';
+import 'package:edukita/features/assistance/plans/domain/assistance_plan_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-part 'scholarship_state.dart';
+part 'assistance_plan_state.dart';
 
-class ScholarshipCubit extends Cubit<ScholarshipState> {
-  ScholarshipCubit(this._repository, this._cacheService)
-    : super(const ScholarshipState());
+class AssistancePlanCubit extends Cubit<AssistancePlanState> {
+  AssistancePlanCubit(this._repository, this._cacheService)
+    : super(const AssistancePlanState());
 
-  final ScholarshipRepository _repository;
-  final ScholarshipCacheService _cacheService;
+  final AssistancePlanRepository _repository;
+  final AssistancePlanCacheService _cacheService;
 
-  void _emitIfOpen(ScholarshipState state) {
+  void _emitIfOpen(AssistancePlanState state) {
     if (isClosed) return;
     emit(state);
   }
@@ -34,7 +34,7 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
     _emitIfOpen(state.copyWith(isLoading: true, error: null));
     try {
       final periods = await _repository.getPeriods();
-      final scholarshipRules = await _repository.getScholarshipRules();
+      final scholarshipRules = await _repository.getAssistanceRules();
       if (isClosed) return;
 
       final selectedId =
@@ -77,7 +77,7 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
     }
   }
 
-  Future<void> loadScholarshipRulesOnly({bool forceRefresh = false}) async {
+  Future<void> loadAssistanceRulesOnly({bool forceRefresh = false}) async {
     if (isClosed) return;
     if (!forceRefresh) {
       final cachedState = _cacheService.getRulesOnly();
@@ -89,7 +89,7 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
 
     _emitIfOpen(state.copyWith(isLoading: true, error: null));
     try {
-      final scholarshipRules = await _repository.getScholarshipRules();
+      final scholarshipRules = await _repository.getAssistanceRules();
       if (isClosed) return;
       final nextState = state.copyWith(
         isLoading: false,
@@ -240,21 +240,21 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
     await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
   }
 
-  Future<void> saveScholarshipRule(ScholarshipRule rule) async {
-    await _repository.saveScholarshipRule(rule);
+  Future<void> saveAssistanceRule(ScholarshipRule rule) async {
+    await _repository.saveAssistanceRule(rule);
     _cacheService.clear();
     if (_isRulesOnlyState) {
-      await loadScholarshipRulesOnly(forceRefresh: true);
+      await loadAssistanceRulesOnly(forceRefresh: true);
       return;
     }
     await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
   }
 
-  Future<void> toggleScholarshipRule(String id, bool isActive) async {
-    await _repository.toggleScholarshipRule(id, isActive);
+  Future<void> toggleAssistanceRule(String id, bool isActive) async {
+    await _repository.toggleAssistanceRule(id, isActive);
     _cacheService.clear();
     if (_isRulesOnlyState) {
-      await loadScholarshipRulesOnly(forceRefresh: true);
+      await loadAssistanceRulesOnly(forceRefresh: true);
       return;
     }
     await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
@@ -319,23 +319,23 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
 
   Future<void> generateSelectedPeriod() async {
     final id = state.selectedPeriodId;
-    if (id == null) throw Exception('Select a scholarship period first.');
-    await _repository.generateScholarshipPeriod(id);
+    if (id == null) throw Exception('Select an assistance period first.');
+    await _repository.generateAssistancePeriod(id);
     _cacheService.clear();
     await loadModule(selectedPeriodId: id, forceRefresh: true);
   }
 
   Future<void> approveSelectedPeriod(String approvedBy) async {
     final id = state.selectedPeriodId;
-    if (id == null) throw Exception('Select a scholarship period first.');
-    await _repository.approveScholarshipPeriod(id, approvedBy);
+    if (id == null) throw Exception('Select an assistance period first.');
+    await _repository.approveAssistancePeriod(id, approvedBy);
     _cacheService.clear();
     await loadModule(selectedPeriodId: id, forceRefresh: true);
   }
 
   Future<void> markPlanSubmitted() async {
     final id = state.selectedPeriodId;
-    if (id == null) throw Exception('Select a scholarship period first.');
+    if (id == null) throw Exception('Select an assistance period first.');
     await _repository.markPlanSubmitted(id);
     _cacheService.clear();
     await loadModule(selectedPeriodId: id, forceRefresh: true);
@@ -356,7 +356,7 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
     String? remarks,
   }) async {
     final id = state.selectedPeriodId;
-    if (id == null) throw Exception('Select a scholarship period first.');
+    if (id == null) throw Exception('Select an assistance period first.');
     await _repository.uploadApprovalDocument(
       scholarshipPeriodId: id,
       sourcePath: sourcePath,
@@ -387,21 +387,21 @@ class ScholarshipCubit extends Cubit<ScholarshipState> {
   }
 }
 
-class ScholarshipCacheService {
-  ScholarshipCacheService({this.ttl = const Duration(minutes: 2)});
+class AssistancePlanCacheService {
+  AssistancePlanCacheService({this.ttl = const Duration(minutes: 2)});
 
   final Duration ttl;
-  final Map<String, _ScholarshipCacheEntry> _modules = {};
-  final Map<String, _ScholarshipCacheEntry> _periodDetails = {};
-  _ScholarshipCacheEntry? _lastModule;
-  _ScholarshipCacheEntry? _rulesOnly;
+  final Map<String, _AssistancePlanCacheEntry> _modules = {};
+  final Map<String, _AssistancePlanCacheEntry> _periodDetails = {};
+  _AssistancePlanCacheEntry? _lastModule;
+  _AssistancePlanCacheEntry? _rulesOnly;
 
-  ScholarshipState? getModule(String? selectedPeriodId) {
+  AssistancePlanState? getModule(String? selectedPeriodId) {
     if (selectedPeriodId == null) return null;
     return _get(_modules, selectedPeriodId);
   }
 
-  ScholarshipState? getLastModule() {
+  AssistancePlanState? getLastModule() {
     final entry = _lastModule;
     if (entry == null) return null;
     if (_isExpired(entry.cachedAt)) {
@@ -411,8 +411,8 @@ class ScholarshipCacheService {
     return entry.state;
   }
 
-  void putModule(String? selectedPeriodId, ScholarshipState state) {
-    final entry = _ScholarshipCacheEntry(
+  void putModule(String? selectedPeriodId, AssistancePlanState state) {
+    final entry = _AssistancePlanCacheEntry(
       state: state.copyWith(isLoading: false, error: null),
       cachedAt: DateTime.now(),
     );
@@ -423,20 +423,20 @@ class ScholarshipCacheService {
     }
   }
 
-  ScholarshipState? getPeriodDetail(String? selectedPeriodId) {
+  AssistancePlanState? getPeriodDetail(String? selectedPeriodId) {
     if (selectedPeriodId == null) return null;
     return _get(_periodDetails, selectedPeriodId);
   }
 
-  void putPeriodDetail(String? selectedPeriodId, ScholarshipState state) {
+  void putPeriodDetail(String? selectedPeriodId, AssistancePlanState state) {
     if (selectedPeriodId == null) return;
-    _periodDetails[selectedPeriodId] = _ScholarshipCacheEntry(
+    _periodDetails[selectedPeriodId] = _AssistancePlanCacheEntry(
       state: state.copyWith(isLoading: false, error: null),
       cachedAt: DateTime.now(),
     );
   }
 
-  ScholarshipState? getRulesOnly() {
+  AssistancePlanState? getRulesOnly() {
     final entry = _rulesOnly;
     if (entry == null) return null;
     if (_isExpired(entry.cachedAt)) {
@@ -446,8 +446,8 @@ class ScholarshipCacheService {
     return entry.state;
   }
 
-  void putRulesOnly(ScholarshipState state) {
-    _rulesOnly = _ScholarshipCacheEntry(
+  void putRulesOnly(AssistancePlanState state) {
+    _rulesOnly = _AssistancePlanCacheEntry(
       state: state.copyWith(isLoading: false, error: null),
       cachedAt: DateTime.now(),
     );
@@ -460,8 +460,8 @@ class ScholarshipCacheService {
     _rulesOnly = null;
   }
 
-  ScholarshipState? _get(
-    Map<String, _ScholarshipCacheEntry> cache,
+  AssistancePlanState? _get(
+    Map<String, _AssistancePlanCacheEntry> cache,
     String key,
   ) {
     final entry = cache[key];
@@ -478,12 +478,12 @@ class ScholarshipCacheService {
   }
 }
 
-class _ScholarshipCacheEntry {
-  const _ScholarshipCacheEntry({
+class _AssistancePlanCacheEntry {
+  const _AssistancePlanCacheEntry({
     required this.state,
     required this.cachedAt,
   });
 
-  final ScholarshipState state;
+  final AssistancePlanState state;
   final DateTime cachedAt;
 }

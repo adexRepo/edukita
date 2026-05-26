@@ -87,15 +87,16 @@ lib/
     storage/
     helper/
   features/
-    assistance_program/
-    assistance_programs/
+    assistance/
+      plans/
+      periods/
+      programs/
     auth/
     dashboard/
     parameters/
     reports/
     report_definitions/
     schedule/
-    scholarships/
     schools/
     settings/
     strategy/

@@ -1,7 +1,7 @@
-part of 'scholarship_cubit.dart';
+part of 'assistance_plan_cubit.dart';
 
-class ScholarshipState {
-  const ScholarshipState({
+class AssistancePlanState {
+  const AssistancePlanState({
     this.periods = const [],
     this.scholarshipRules = const [],
     this.rules = const [],
@@ -38,7 +38,7 @@ class ScholarshipState {
 
   static const Object _unset = Object();
 
-  ScholarshipState copyWith({
+  AssistancePlanState copyWith({
     List<ScholarshipPeriod>? periods,
     List<ScholarshipRule>? scholarshipRules,
     List<StudentScholarshipRule>? rules,
@@ -52,7 +52,7 @@ class ScholarshipState {
     bool? isLoading,
     String? error,
   }) {
-    return ScholarshipState(
+    return AssistancePlanState(
       periods: periods ?? this.periods,
       scholarshipRules: scholarshipRules ?? this.scholarshipRules,
       rules: rules ?? this.rules,

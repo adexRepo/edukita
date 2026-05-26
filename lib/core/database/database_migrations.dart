@@ -1282,7 +1282,7 @@ class DatabaseMigrations {
         'rule_name': rule.$2,
         'rule_type': rule.$3,
         'selection_mode': rule.$4,
-        'description': '${rule.$2} scholarship rule.',
+        'description': '${rule.$2} assistance rule.',
         'is_system_default': 1,
         'is_active': 1,
         'created_at': now,

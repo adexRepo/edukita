@@ -4,12 +4,12 @@ import 'dart:io' as io;
 
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
-import 'package:edukita/features/scholarships/data/scholarship_models.dart';
+import 'package:edukita/features/assistance/plans/data/assistance_plan_models.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
-class ScholarshipRepository {
-  ScholarshipRepository(this._dbProvider);
+class AssistancePlanRepository {
+  AssistancePlanRepository(this._dbProvider);
 
   final DatabaseProvider _dbProvider;
 
@@ -61,7 +61,7 @@ class ScholarshipRepository {
         ruleName: ScholarshipType.fixedPriority.label,
         ruleType: ScholarshipType.fixedPriority,
         selectionMode: ScholarshipSelectionMode.manual,
-        description: 'Manual fixed-priority scholarship candidates.',
+        description: 'Manual fixed-priority assistance candidates.',
         isSystemDefault: true,
         createdAt: now,
         updatedAt: now,
@@ -122,7 +122,7 @@ class ScholarshipRepository {
         ruleType: ScholarshipType.rollingAttendance,
         selectionMode: ScholarshipSelectionMode.auto,
         description:
-            'Auto rolling candidates using attendance and scholarship history.',
+            'Auto rolling candidates using attendance and assistance history.',
         isSystemDefault: true,
         createdAt: now,
         updatedAt: now,
@@ -170,7 +170,7 @@ class ScholarshipRepository {
     }
   }
 
-  Future<List<ScholarshipRule>> getScholarshipRules() async {
+  Future<List<ScholarshipRule>> getAssistanceRules() async {
     await preloadDefaultScholarshipRules();
     final db = await _dbProvider.database;
     final rows = await db.query(
@@ -180,7 +180,7 @@ class ScholarshipRepository {
     return rows.map(ScholarshipRule.fromMap).toList();
   }
 
-  Future<void> saveScholarshipRule(ScholarshipRule rule) async {
+  Future<void> saveAssistanceRule(ScholarshipRule rule) async {
     if (rule.ruleName.trim().isEmpty) {
       throw Exception('Rule name is required.');
     }
@@ -210,7 +210,7 @@ class ScholarshipRepository {
     }
   }
 
-  Future<void> toggleScholarshipRule(String id, bool isActive) async {
+  Future<void> toggleAssistanceRule(String id, bool isActive) async {
     final db = await _dbProvider.database;
     await db.update(
       'assistance_rules',
@@ -442,11 +442,11 @@ class ScholarshipRepository {
     }
     if (existingRule != null && existingRule.ruleType.isCorePeriodRule) {
       if (rule.ruleType != existingRule.ruleType) {
-        throw Exception('Default scholarship rules cannot change type.');
+        throw Exception('Default assistance rules cannot change type.');
       }
     } else if (normalizedType != ScholarshipType.customRule) {
       throw Exception(
-        'Additional scholarship rules must be custom manual rules.',
+        'Additional assistance rules must be custom manual rules.',
       );
     }
 
@@ -605,7 +605,7 @@ class ScholarshipRepository {
       limit: 1,
     );
     if (existing.isNotEmpty) {
-      throw Exception('Scholarship period already exists.');
+      throw Exception('Assistance period already exists.');
     }
 
     final fixedQuota = await countActiveFixedRulesForPeriod(month, year);
@@ -1296,7 +1296,7 @@ class ScholarshipRepository {
 
   Future<void> markPlanSubmitted(String scholarshipPeriodId) async {
     final period = await getPeriodById(scholarshipPeriodId);
-    if (period == null) throw Exception('Scholarship period not found.');
+    if (period == null) throw Exception('Assistance period not found.');
     if (period.status == ScholarshipPeriodStatus.approved) {
       throw Exception('Approved periods are locked.');
     }
@@ -1353,7 +1353,7 @@ class ScholarshipRepository {
     String? remarks,
   }) async {
     final period = await getPeriodById(scholarshipPeriodId);
-    if (period == null) throw Exception('Scholarship period not found.');
+    if (period == null) throw Exception('Assistance period not found.');
     if (period.status == ScholarshipPeriodStatus.approved) {
       throw Exception('This period is already approved.');
     }
@@ -1476,7 +1476,7 @@ class ScholarshipRepository {
   }) async {
     final storagePath = await AppStoragePaths.storageDirectory();
     final baseDir = io.Directory(
-      p.join(storagePath, 'scholarship_approvals', periodId),
+      p.join(storagePath, 'assistance_approvals', periodId),
     );
     if (!await baseDir.exists()) {
       await baseDir.create(recursive: true);
@@ -1490,10 +1490,10 @@ class ScholarshipRepository {
     return storedPath;
   }
 
-  Future<void> generateScholarshipPeriod(String scholarshipPeriodId) async {
+  Future<void> generateAssistancePeriod(String scholarshipPeriodId) async {
     final db = await _dbProvider.database;
     final period = await getPeriodById(scholarshipPeriodId);
-    if (period == null) throw Exception('Scholarship period not found.');
+    if (period == null) throw Exception('Assistance period not found.');
     if (period.status == ScholarshipPeriodStatus.approved) {
       throw Exception('Approved periods cannot be regenerated.');
     }
@@ -1503,7 +1503,7 @@ class ScholarshipRepository {
             period.id,
           )).where((rule) => rule.isActive).toList()
           ..sort((a, b) => a.priorityOrder.compareTo(b.priorityOrder));
-    if (rules.isEmpty) throw Exception('Add at least one scholarship rule.');
+    if (rules.isEmpty) throw Exception('Add at least one assistance rule.');
 
     final allocatedQuota = rules.fold<int>(0, (sum, rule) => sum + rule.quota);
     if (allocatedQuota > period.targetQuota) {
@@ -1887,14 +1887,14 @@ class ScholarshipRepository {
     return 'Rp ${buffer.toString()}';
   }
 
-  Future<void> approveScholarshipPeriod(
+  Future<void> approveAssistancePeriod(
     String scholarshipPeriodId,
     String approvedBy,
   ) async {
     final period = await getPeriodById(scholarshipPeriodId);
-    if (period == null) throw Exception('Scholarship period not found.');
+    if (period == null) throw Exception('Assistance period not found.');
     if (period.status == ScholarshipPeriodStatus.approved) {
-      throw Exception('Scholarship period is already approved.');
+      throw Exception('Assistance period is already approved.');
     }
 
     final approvedAssessments = await getAssessments(
@@ -1969,7 +1969,7 @@ class ScholarshipRepository {
   Future<void> updateAssessment(StudentScholarshipAssessment assessment) async {
     final db = await _dbProvider.database;
     final period = await getPeriodById(assessment.scholarshipPeriodId);
-    if (period == null) throw Exception('Scholarship period not found.');
+    if (period == null) throw Exception('Assistance period not found.');
     if (period.status == ScholarshipPeriodStatus.approved) {
       throw Exception('Approved period target candidates cannot be changed.');
     }
@@ -2259,7 +2259,7 @@ class ScholarshipRepository {
           totalScore: attendance + rotationBonus,
           priorityReason: monthsSince == null
               ? 'Never received scholarship'
-              : 'Last scholarship $monthsSince month(s) ago',
+              : 'Last assistance $monthsSince month(s) ago',
           monthsSinceLastScholarship: monthsSince,
           eligibilityStatus: ScholarshipEligibilityStatus.eligible,
         ),

@@ -4,8 +4,8 @@ import 'dart:io' as io;
 import 'dart:typed_data';
 
 import 'package:edukita/core/helper/pageable.dart';
-import 'package:edukita/features/scholarships/data/scholarship_models.dart';
-import 'package:edukita/features/scholarships/domain/scholarship_cubit.dart';
+import 'package:edukita/features/assistance/plans/data/assistance_plan_models.dart';
+import 'package:edukita/features/assistance/plans/domain/assistance_plan_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_loading.dart';
@@ -16,8 +16,8 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class ScholarshipPage extends StatefulWidget {
-  const ScholarshipPage({
+class AssistanceRulesPage extends StatefulWidget {
+  const AssistanceRulesPage({
     super.key,
     this.embedded = false,
     this.initialSection,
@@ -27,10 +27,10 @@ class ScholarshipPage extends StatefulWidget {
   final String? initialSection;
 
   @override
-  State<ScholarshipPage> createState() => _ScholarshipPageState();
+  State<AssistanceRulesPage> createState() => _AssistanceRulesPageState();
 }
 
-class _ScholarshipPageState extends State<ScholarshipPage> {
+class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
   ScholarshipDecisionStatus? _assessmentStatusFilter;
   ScholarshipType? _assessmentTypeFilter;
   _ScholarshipView _selectedView = _ScholarshipView.periods;
@@ -43,11 +43,11 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
   void initState() {
     super.initState();
     _selectedView = _viewForSection(widget.initialSection);
-    final cubit = context.read<ScholarshipCubit>();
+    final cubit = context.read<AssistancePlanCubit>();
     final state = cubit.state;
     if (widget.embedded && _selectedView == _ScholarshipView.rules) {
       if (state.scholarshipRules.isEmpty && !state.isLoading) {
-        cubit.loadScholarshipRulesOnly();
+        cubit.loadAssistanceRulesOnly();
       }
       return;
     }
@@ -58,20 +58,20 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
   }
 
   @override
-  void didUpdateWidget(covariant ScholarshipPage oldWidget) {
+  void didUpdateWidget(covariant AssistanceRulesPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialSection == widget.initialSection) return;
     final nextView = _viewForSection(widget.initialSection);
     if (nextView == _selectedView) return;
     setState(() => _selectedView = nextView);
     if (widget.embedded && nextView == _ScholarshipView.rules) {
-      context.read<ScholarshipCubit>().loadScholarshipRulesOnly();
+      context.read<AssistancePlanCubit>().loadAssistanceRulesOnly();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final content = BlocBuilder<ScholarshipCubit, ScholarshipState>(
+    final content = BlocBuilder<AssistancePlanCubit, AssistancePlanState>(
       builder: (context, state) {
         if (widget.embedded) {
           if (state.error != null) {
@@ -83,7 +83,7 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
               _ScholarshipContentHeader(
                 view: _selectedView,
                 onRefresh: () =>
-                    context.read<ScholarshipCubit>().loadScholarshipRulesOnly(
+                    context.read<AssistancePlanCubit>().loadAssistanceRulesOnly(
                       forceRefresh: true,
                     ),
                 primaryAction: _selectedView == _ScholarshipView.rules
@@ -147,7 +147,7 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
                                 _ScholarshipContentHeader(
                                   view: _selectedView,
                                   onRefresh: () => context
-                                      .read<ScholarshipCubit>()
+                                      .read<AssistancePlanCubit>()
                                       .loadModule(forceRefresh: true),
                                 ),
                                 AppLoadingStrip(isLoading: state.isLoading),
@@ -182,7 +182,7 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
     };
   }
 
-  Widget _buildSelectedContent(ScholarshipState state) {
+  Widget _buildSelectedContent(AssistancePlanState state) {
     return switch (_selectedView) {
       _ScholarshipView.periods => _PeriodsTab(state: state),
       _ScholarshipView.rules => _ScholarshipRulesTab(
@@ -215,17 +215,17 @@ class _ScholarshipPageState extends State<ScholarshipPage> {
     BuildContext context, {
     ScholarshipRule? rule,
   }) async {
-    final cubit = context.read<ScholarshipCubit>();
+    final cubit = context.read<AssistancePlanCubit>();
     await showDialog<void>(
       context: context,
       builder: (_) =>
-          _ScholarshipRuleDialog(rule: rule, onSave: cubit.saveScholarshipRule),
+          _ScholarshipRuleDialog(rule: rule, onSave: cubit.saveAssistanceRule),
     );
   }
 }
 
 enum _ScholarshipView {
-  periods('Scholarship Periods', Icons.calendar_month_outlined),
+  periods('Assistance Periods', Icons.calendar_month_outlined),
   rules('Assistance Rules', Icons.rule_folder_outlined),
   fixedPriority('Student Rules', Icons.star_border),
   generate('Target Candidates', Icons.group_add_outlined),
@@ -241,11 +241,11 @@ enum _ScholarshipView {
   String get description {
     return switch (this) {
       _ScholarshipView.periods =>
-        'Manage monthly scholarship periods and eligibility settings.',
+        'Manage assistance periods and eligibility settings.',
       _ScholarshipView.rules =>
         'Maintain assistance rule master data and custom manual rules.',
       _ScholarshipView.fixedPriority =>
-        'Maintain long-term student scholarship rules.',
+        'Maintain long-term student assistance rules.',
       _ScholarshipView.generate =>
         'Allocate rules and build the monthly target candidate plan.',
       _ScholarshipView.assessments =>
@@ -253,7 +253,7 @@ enum _ScholarshipView {
       _ScholarshipView.approvalDocument =>
         'Upload the signed approval document to finalize recipients.',
       _ScholarshipView.recipients =>
-        'View approved scholarship recipient history.',
+        'View approved assistance recipient history.',
     };
   }
 
@@ -350,7 +350,7 @@ class _ScholarshipNavigator extends StatelessWidget {
     return Column(
       children: [
         Tooltip(
-          message: 'Expand scholarship menu',
+          message: 'Expand assistance menu',
           child: InkWell(
             borderRadius: BorderRadius.circular(8),
             onTap: onToggleWidth,
@@ -414,7 +414,7 @@ class _ScholarshipNavigator extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Scholarship',
+                  'Assistance',
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: AppColors.textPrimary,
@@ -423,7 +423,7 @@ class _ScholarshipNavigator extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip: 'Minimize scholarship menu',
+                tooltip: 'Minimize assistance menu',
                 onPressed: onToggleWidth,
                 constraints: const BoxConstraints.tightFor(
                   width: 30,
@@ -633,13 +633,13 @@ class _ScholarshipContentHeader extends StatelessWidget {
 class _PeriodsTab extends StatelessWidget {
   const _PeriodsTab({required this.state});
 
-  final ScholarshipState state;
+  final AssistancePlanState state;
 
   Future<void> _showPeriodDialog(
     BuildContext context, {
     ScholarshipPeriod? period,
   }) async {
-    final cubit = context.read<ScholarshipCubit>();
+    final cubit = context.read<AssistancePlanCubit>();
     await showDialog<void>(
       context: context,
       builder: (_) => _ScholarshipPeriodDialog(
@@ -708,10 +708,10 @@ class _PeriodsTab extends StatelessWidget {
     if (confirmed != true || !context.mounted) return;
 
     try {
-      await context.read<ScholarshipCubit>().deletePeriod(period.id);
+      await context.read<AssistancePlanCubit>().deletePeriod(period.id);
       AppToast.showSubmissionSuccess(
         action: SubmissionAction.delete,
-        subject: 'scholarship period',
+        subject: 'assistance period',
       );
     } catch (e) {
       AppToast.showFailed(e.toString());
@@ -734,7 +734,7 @@ class _PeriodsTab extends StatelessWidget {
         Expanded(
           child: AppTable<ScholarshipPeriod>(
             data: state.periods,
-            emptyMessage: 'No scholarship periods yet',
+            emptyMessage: 'No assistance periods yet',
             pageable: Pageable(
               page: 0,
               size: state.periods.length,
@@ -742,7 +742,7 @@ class _PeriodsTab extends StatelessWidget {
               totalPages: 1,
             ),
             onRowTap: (period) =>
-                context.read<ScholarshipCubit>().selectPeriod(period.id),
+                context.read<AssistancePlanCubit>().selectPeriod(period.id),
             columns: [
               AppTableColumn(
                 title: 'Period',
@@ -865,18 +865,18 @@ class _PeriodsTab extends StatelessWidget {
 class _ScholarshipRulesTab extends StatelessWidget {
   const _ScholarshipRulesTab({required this.state, this.showAddButton = true});
 
-  final ScholarshipState state;
+  final AssistancePlanState state;
   final bool showAddButton;
 
   Future<void> _showRuleDialog(
     BuildContext context, {
     ScholarshipRule? rule,
   }) async {
-    final cubit = context.read<ScholarshipCubit>();
+    final cubit = context.read<AssistancePlanCubit>();
     await showDialog<void>(
       context: context,
       builder: (_) =>
-          _ScholarshipRuleDialog(rule: rule, onSave: cubit.saveScholarshipRule),
+          _ScholarshipRuleDialog(rule: rule, onSave: cubit.saveAssistanceRule),
     );
   }
 
@@ -898,7 +898,7 @@ class _ScholarshipRulesTab extends StatelessWidget {
         Expanded(
           child: AppTable<ScholarshipRule>(
             data: state.scholarshipRules,
-            emptyMessage: 'No scholarship rules yet',
+            emptyMessage: 'No assistance rules yet',
             pageable: Pageable(
               page: 0,
               size: state.scholarshipRules.length,
@@ -954,8 +954,8 @@ class _ScholarshipRulesTab extends StatelessWidget {
                 cell: (rule) => Switch(
                   value: rule.isActive,
                   onChanged: (value) => context
-                      .read<ScholarshipCubit>()
-                      .toggleScholarshipRule(rule.id, value),
+                      .read<AssistancePlanCubit>()
+                      .toggleAssistanceRule(rule.id, value),
                 ),
               ),
               AppTableColumn(
@@ -986,13 +986,13 @@ class _ScholarshipRulesTab extends StatelessWidget {
 class _FixedPriorityTab extends StatelessWidget {
   const _FixedPriorityTab({required this.state});
 
-  final ScholarshipState state;
+  final AssistancePlanState state;
 
   Future<void> _showRuleDialog(
     BuildContext context, {
     StudentScholarshipRule? rule,
   }) async {
-    final cubit = context.read<ScholarshipCubit>();
+    final cubit = context.read<AssistancePlanCubit>();
     await showDialog<void>(
       context: context,
       builder: (_) => _FixedPriorityRuleDialog(
@@ -1026,7 +1026,7 @@ class _FixedPriorityTab extends StatelessWidget {
     );
     if (confirmed != true || !context.mounted) return;
     try {
-      await context.read<ScholarshipCubit>().deleteRule(rule.id);
+      await context.read<AssistancePlanCubit>().deleteRule(rule.id);
       AppToast.showSubmissionSuccess(
         action: SubmissionAction.delete,
         subject: 'priority rule',
@@ -1054,7 +1054,7 @@ class _FixedPriorityTab extends StatelessWidget {
         Expanded(
           child: AppTable<StudentScholarshipRule>(
             data: state.rules,
-            emptyMessage: 'No student scholarship rules yet',
+            emptyMessage: 'No student assistance rules yet',
             pageable: Pageable(
               page: 0,
               size: state.rules.length,
@@ -1119,7 +1119,7 @@ class _FixedPriorityTab extends StatelessWidget {
                 cell: (rule) => Switch(
                   value: rule.isActive,
                   onChanged: (value) => context
-                      .read<ScholarshipCubit>()
+                      .read<AssistancePlanCubit>()
                       .toggleRule(rule.id, value),
                 ),
               ),
@@ -1168,7 +1168,7 @@ class _FixedPriorityTab extends StatelessWidget {
 class _GenerateTab extends StatelessWidget {
   const _GenerateTab({required this.state});
 
-  final ScholarshipState state;
+  final AssistancePlanState state;
 
   Future<void> _showPeriodRuleDialog(
     BuildContext context, {
@@ -1176,7 +1176,7 @@ class _GenerateTab extends StatelessWidget {
   }) async {
     final period = state.selectedPeriod;
     if (period == null) return;
-    final cubit = context.read<ScholarshipCubit>();
+    final cubit = context.read<AssistancePlanCubit>();
     final nextOrder = state.periodRules.isEmpty
         ? 0
         : state.periodRules
@@ -1220,7 +1220,7 @@ class _GenerateTab extends StatelessWidget {
     );
     if (confirmed != true || !context.mounted) return;
     try {
-      await context.read<ScholarshipCubit>().deletePeriodRule(rule.id);
+      await context.read<AssistancePlanCubit>().deletePeriodRule(rule.id);
       AppToast.showSubmissionSuccess(
         action: SubmissionAction.delete,
         subject: 'allocation rule',
@@ -1260,7 +1260,7 @@ class _GenerateTab extends StatelessWidget {
           await showDialog<bool>(
             context: context,
             builder: (dialogContext) => AlertDialog(
-              title: const AppDialogTitle('Regenerate Scholarship?'),
+              title: const AppDialogTitle('Regenerate Assistance Plan?'),
               content: const Text(
                 'Existing target candidates for this unapproved period will be replaced.',
               ),
@@ -1281,8 +1281,8 @@ class _GenerateTab extends StatelessWidget {
     if (!proceed || !context.mounted) return;
 
     try {
-      await context.read<ScholarshipCubit>().generateSelectedPeriod();
-      AppToast.showSuccess('Scholarship target plan has been saved.');
+      await context.read<AssistancePlanCubit>().generateSelectedPeriod();
+      AppToast.showSuccess('Assistance target plan has been saved.');
     } catch (e) {
       AppToast.showFailed(e.toString());
     }
@@ -1372,7 +1372,7 @@ class _GenerateTab extends StatelessWidget {
                         ? null
                         : () => _generate(context),
                     icon: const Icon(Icons.auto_awesome),
-                    label: const Text('Save Target Scholarship'),
+                    label: const Text('Save Target Assistance'),
                   ),
                 ],
               ),
@@ -1593,7 +1593,7 @@ class _AssessmentTab extends StatelessWidget {
     required this.onTypeChanged,
   });
 
-  final ScholarshipState state;
+  final AssistancePlanState state;
   final ScholarshipDecisionStatus? statusFilter;
   final ScholarshipType? typeFilter;
   final ValueChanged<ScholarshipDecisionStatus?> onStatusChanged;
@@ -1605,11 +1605,11 @@ class _AssessmentTab extends StatelessWidget {
   ) async {
     if (state.assessments.isEmpty) return;
     final period = state.selectedPeriod;
-    final periodLabel = period?.label ?? 'Scholarship Plan';
+    final periodLabel = period?.label ?? 'Assistance Plan';
     final safePeriod = _safeFileName(periodLabel.toLowerCase());
     final isPdf = format == _RecipientExportFormat.pdf;
     final location = await getSaveLocation(
-      suggestedName: 'scholarship-plan-$safePeriod.${isPdf ? 'pdf' : 'xls'}',
+      suggestedName: 'assistance-plan-$safePeriod.${isPdf ? 'pdf' : 'xls'}',
       acceptedTypeGroups: [
         XTypeGroup(
           label: isPdf ? 'PDF' : 'Excel',
@@ -1633,10 +1633,10 @@ class _AssessmentTab extends StatelessWidget {
           );
     await io.File(location.path).writeAsBytes(bytes, flush: true);
     if (context.mounted) {
-      await context.read<ScholarshipCubit>().markPlanSubmitted();
+      await context.read<AssistancePlanCubit>().markPlanSubmitted();
     }
     AppToast.showSuccess(
-      'Scholarship plan exported as ${isPdf ? 'PDF' : 'Excel'}.',
+      'Assistance plan exported as ${isPdf ? 'PDF' : 'Excel'}.',
     );
   }
 
@@ -1817,7 +1817,7 @@ class _AssessmentTab extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             PopupMenuButton<_RecipientExportFormat>(
-              tooltip: 'Export scholarship plan',
+              tooltip: 'Export assistance plan',
               enabled: state.assessments.isNotEmpty,
               onSelected: (format) => _exportPlan(context, format),
               itemBuilder: (context) => const [
@@ -1866,7 +1866,7 @@ class _AssessmentTab extends StatelessWidget {
 class _RecipientsTab extends StatelessWidget {
   const _RecipientsTab({required this.state});
 
-  final ScholarshipState state;
+  final AssistancePlanState state;
 
   Future<void> _exportRecipients(
     BuildContext context,
@@ -1878,7 +1878,7 @@ class _RecipientsTab extends StatelessWidget {
     final safePeriod = _safeFileName(periodLabel.toLowerCase());
     final isPdf = format == _RecipientExportFormat.pdf;
     final suggestedName =
-        'scholarship-recipients-$safePeriod.${isPdf ? 'pdf' : 'xls'}';
+        'assistance-recipients-$safePeriod.${isPdf ? 'pdf' : 'xls'}';
     final typeGroup = XTypeGroup(
       label: isPdf ? 'PDF' : 'Excel',
       extensions: [isPdf ? 'pdf' : 'xls'],
@@ -2074,7 +2074,7 @@ class _RecipientsTab extends StatelessWidget {
 class _ApprovalDocumentTab extends StatefulWidget {
   const _ApprovalDocumentTab({required this.state});
 
-  final ScholarshipState state;
+  final AssistancePlanState state;
 
   @override
   State<_ApprovalDocumentTab> createState() => _ApprovalDocumentTabState();
@@ -2210,7 +2210,7 @@ class _ApprovalDocumentTabState extends State<_ApprovalDocumentTab> {
     }
     setState(() => _saving = true);
     try {
-      await context.read<ScholarshipCubit>().uploadApprovalDocument(
+      await context.read<AssistancePlanCubit>().uploadApprovalDocument(
         sourcePath: file.path,
         fileName: file.name,
         uploadedBy: uploadedBy,
@@ -2427,7 +2427,7 @@ class _AssessmentGroup extends StatelessWidget {
                                 builder: (_) => _AssessmentOverrideDialog(
                                   assessment: item,
                                   onSave: context
-                                      .read<ScholarshipCubit>()
+                                      .read<AssistancePlanCubit>()
                                       .updateAssessment,
                                 ),
                               ),
@@ -2448,7 +2448,7 @@ class _AssessmentGroup extends StatelessWidget {
                             : () async {
                                 try {
                                   await context
-                                      .read<ScholarshipCubit>()
+                                      .read<AssistancePlanCubit>()
                                       .updateAssessment(
                                         item.copyWith(
                                           decisionStatus:
@@ -2494,7 +2494,7 @@ class _AssessmentGroup extends StatelessWidget {
 class _PeriodPicker extends StatelessWidget {
   const _PeriodPicker({required this.state});
 
-  final ScholarshipState state;
+  final AssistancePlanState state;
 
   @override
   Widget build(BuildContext context) {
@@ -2504,7 +2504,7 @@ class _PeriodPicker extends StatelessWidget {
           ? state.selectedPeriodId
           : null,
       isExpanded: false,
-      decoration: const InputDecoration(labelText: 'Scholarship Period'),
+      decoration: const InputDecoration(labelText: 'Assistance Period'),
       items: state.periods
           .map(
             (period) => DropdownMenuItem(
@@ -2528,7 +2528,7 @@ class _PeriodPicker extends StatelessWidget {
       menuMaxHeight: AppDropdownStyle.menuMaxHeight,
       style: AppDropdownStyle.textStyle,
       onChanged: (value) =>
-          context.read<ScholarshipCubit>().selectPeriod(value),
+          context.read<AssistancePlanCubit>().selectPeriod(value),
     );
   }
 }
@@ -2714,7 +2714,7 @@ class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
   }
 
   Future<void> _load() async {
-    final candidates = await context.read<ScholarshipCubit>().getRuleCandidates(
+    final candidates = await context.read<AssistancePlanCubit>().getRuleCandidates(
       widget.rule.id,
     );
     if (!mounted) return;
@@ -2826,7 +2826,7 @@ class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
     StudentScholarshipRuleCandidate? selected,
     bool value,
   ) async {
-    final cubit = context.read<ScholarshipCubit>();
+    final cubit = context.read<AssistancePlanCubit>();
     if (!value && selected != null) {
       await cubit.deleteRuleCandidate(selected.id);
       await _load();
@@ -3059,7 +3059,7 @@ class _ScholarshipPeriodDialogState extends State<_ScholarshipPeriodDialog> {
       );
       AppToast.showSubmissionSuccess(
         action: action,
-        subject: 'scholarship period',
+        subject: 'assistance period',
       );
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -3542,7 +3542,7 @@ class _ScholarshipRuleDialogState extends State<_ScholarshipRuleDialog> {
         action: widget.rule == null
             ? SubmissionAction.create
             : SubmissionAction.update,
-        subject: 'scholarship rule',
+        subject: 'assistance rule',
       );
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -3892,7 +3892,7 @@ String _buildPlanExcelHtml(
         </style>
       </head>
       <body>
-        <h3>Scholarship Plan - ${_escapeHtml(periodLabel)}</h3>
+        <h3>Assistance Plan - ${_escapeHtml(periodLabel)}</h3>
         <p>
           Target quota: ${summary.targetQuota}<br>
           Allocated quota: ${summary.allocatedQuota}<br>
@@ -3939,7 +3939,7 @@ Uint8List _buildPlanPdf(
   const linesPerPage = 31;
 
   final lines = <String>[
-    'Scholarship Plan - $periodLabel',
+    'Assistance Plan - $periodLabel',
     'Target quota: ${summary.targetQuota} | Allocated: ${summary.allocatedQuota} | Selected: ${summary.approvedCount}',
     'Minimum attendance: ${period?.minimumAttendancePercentage.toStringAsFixed(0) ?? '-'}% | Window: ${period?.calculationWindowMonths ?? '-'} month(s)',
     '',
@@ -4082,13 +4082,13 @@ String _buildRecipientsExcelHtml(
         </style>
       </head>
       <body>
-        <h3>Scholarship Recipients - ${_escapeHtml(periodLabel)}</h3>
+        <h3>Assistance Recipients - ${_escapeHtml(periodLabel)}</h3>
         <table>
           <thead>
             <tr>
               <th>Student</th>
               <th>Month/Year</th>
-              <th>Scholarship Type</th>
+              <th>Assistance Rule</th>
               <th>Final Score</th>
               <th>Rank No</th>
               <th>Status</th>
@@ -4160,7 +4160,7 @@ Uint8List _buildRecipientsPdf(
 
   for (var pageIndex = 0; pageIndex < chunks.length; pageIndex++) {
     final lines = [
-      'Scholarship Recipients - $periodLabel',
+      'Assistance Recipients - $periodLabel',
       'Page ${pageIndex + 1} of ${chunks.length}',
       '',
       header,

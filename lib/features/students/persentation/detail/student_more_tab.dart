@@ -69,7 +69,7 @@ class _AssistanceHistoryTable extends StatelessWidget {
                     )
                     .toList(),
                 emptyText:
-                    'No assistance or scholarship recipient history is available.',
+                    'No assistance recipient history is available.',
               ),
           ],
         );

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:edukita/features/assistance_programs/data/assistance_program_model.dart';
+import 'package:edukita/features/assistance/programs/data/assistance_program_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';

@@ -1,5 +1,5 @@
-import 'package:edukita/features/assistance_programs/data/assistance_program_model.dart';
-import 'package:edukita/features/assistance_programs/domain/assistance_program_repository.dart';
+import 'package:edukita/features/assistance/programs/data/assistance_program_model.dart';
+import 'package:edukita/features/assistance/programs/domain/assistance_program_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 part 'assistance_program_state.dart';

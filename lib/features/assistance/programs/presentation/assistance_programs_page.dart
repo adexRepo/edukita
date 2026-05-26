@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:edukita/core/helper/pageable.dart';
-import 'package:edukita/features/assistance_programs/data/assistance_program_model.dart';
-import 'package:edukita/features/assistance_programs/domain/assistance_program_cubit.dart';
-import 'package:edukita/features/assistance_programs/presentation/assistance_program_form_dialog.dart';
+import 'package:edukita/features/assistance/programs/data/assistance_program_model.dart';
+import 'package:edukita/features/assistance/programs/domain/assistance_program_cubit.dart';
+import 'package:edukita/features/assistance/programs/presentation/assistance_program_form_dialog.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_loading.dart';

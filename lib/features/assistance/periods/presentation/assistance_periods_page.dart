@@ -3,11 +3,11 @@ import 'dart:io' as io;
 import 'dart:typed_data';
 
 import 'package:edukita/core/helper/pageable.dart';
-import 'package:edukita/features/assistance_programs/data/assistance_program_model.dart';
-import 'package:edukita/features/assistance_programs/domain/assistance_program_cubit.dart';
+import 'package:edukita/features/assistance/programs/data/assistance_program_model.dart';
+import 'package:edukita/features/assistance/programs/domain/assistance_program_cubit.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
-import 'package:edukita/features/scholarships/data/scholarship_models.dart';
-import 'package:edukita/features/scholarships/domain/scholarship_cubit.dart';
+import 'package:edukita/features/assistance/plans/data/assistance_plan_models.dart';
+import 'package:edukita/features/assistance/plans/domain/assistance_plan_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
@@ -19,14 +19,14 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class AssistanceProgramPage extends StatefulWidget {
-  const AssistanceProgramPage({super.key});
+class AssistancePeriodsPage extends StatefulWidget {
+  const AssistancePeriodsPage({super.key});
 
   @override
-  State<AssistanceProgramPage> createState() => _AssistanceProgramPageState();
+  State<AssistancePeriodsPage> createState() => _AssistancePeriodsPageState();
 }
 
-class _AssistanceProgramPageState extends State<AssistanceProgramPage> {
+class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
   final TextEditingController _searchController = TextEditingController();
   ScholarshipPeriod? _selectedPeriod;
   String _query = '';
@@ -43,7 +43,7 @@ class _AssistanceProgramPageState extends State<AssistanceProgramPage> {
   @override
   Widget build(BuildContext context) {
     final assistanceState = context.watch<AssistanceProgramCubit>().state;
-    final scholarshipState = context.watch<ScholarshipCubit>().state;
+    final scholarshipState = context.watch<AssistancePlanCubit>().state;
     final programs = assistanceState.programs;
 
     if (_selectedPeriod != null) {
@@ -161,7 +161,7 @@ class _AssistanceProgramPageState extends State<AssistanceProgramPage> {
   Widget _buildFilters(List<AssistanceProgram> programs) {
     final years = {
       DateTime.now().year,
-      ...context.watch<ScholarshipCubit>().state.periods.map(
+      ...context.watch<AssistancePlanCubit>().state.periods.map(
             (period) => period.periodYear,
           ),
     }.toList()
@@ -290,7 +290,7 @@ class _AssistanceProgramPageState extends State<AssistanceProgramPage> {
         totalPages: periods.isEmpty ? 0 : 1,
       ),
       onRowTap: (period) {
-        context.read<ScholarshipCubit>().selectPeriod(period.id);
+        context.read<AssistancePlanCubit>().selectPeriod(period.id);
         setState(() => _selectedPeriod = period);
       },
       columns: [
@@ -327,7 +327,7 @@ class _AssistanceProgramPageState extends State<AssistanceProgramPage> {
             children: [
               TextButton(
                 onPressed: () {
-                  context.read<ScholarshipCubit>().selectPeriod(period.id);
+                  context.read<AssistancePlanCubit>().selectPeriod(period.id);
                   setState(() => _selectedPeriod = period);
                 },
                 child: Text(_actionForStatus(period.status)),
@@ -382,7 +382,7 @@ class _AssistanceProgramPageState extends State<AssistanceProgramPage> {
     if (confirmed != true || !context.mounted) return;
 
     try {
-      await context.read<ScholarshipCubit>().deletePeriod(period.id);
+      await context.read<AssistancePlanCubit>().deletePeriod(period.id);
       AppToast.showSuccess('Assistance period deleted.');
     } catch (e) {
       AppToast.showFailed(e.toString());
@@ -390,7 +390,7 @@ class _AssistanceProgramPageState extends State<AssistanceProgramPage> {
   }
 
   int _selectedCount(ScholarshipPeriod period) {
-    final state = context.read<ScholarshipCubit>().state;
+    final state = context.read<AssistancePlanCubit>().state;
     if (state.selectedPeriodId != period.id) return 0;
     return state.assessments
         .where((item) => item.decisionStatus == ScholarshipDecisionStatus.approved)
@@ -445,7 +445,7 @@ class _AssistanceProgramPageState extends State<AssistanceProgramPage> {
       context: context,
       builder: (_) => MultiBlocProvider(
         providers: [
-          BlocProvider.value(value: context.read<ScholarshipCubit>()),
+          BlocProvider.value(value: context.read<AssistancePlanCubit>()),
           BlocProvider.value(value: context.read<AssistanceProgramCubit>()),
         ],
         child: _CreateAssistancePeriodDialog(programs: programs),
@@ -463,7 +463,7 @@ class _AssistancePeriodDetail extends StatefulWidget {
   });
 
   final ScholarshipPeriod period;
-  final ScholarshipState state;
+  final AssistancePlanState state;
   final List<AssistanceProgram> programs;
   final VoidCallback onBack;
 
@@ -641,7 +641,7 @@ class _SetupTab extends StatelessWidget {
   const _SetupTab({required this.period, required this.state});
 
   final ScholarshipPeriod period;
-  final ScholarshipState state;
+  final AssistancePlanState state;
 
   @override
   Widget build(BuildContext context) {
@@ -832,7 +832,7 @@ class _TargetsTab extends StatelessWidget {
   const _TargetsTab({required this.period, required this.state});
 
   final ScholarshipPeriod period;
-  final ScholarshipState state;
+  final AssistancePlanState state;
 
   @override
   Widget build(BuildContext context) {
@@ -850,7 +850,7 @@ class _TargetsTab extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: () async {
                 try {
-                  await context.read<ScholarshipCubit>().generateSelectedPeriod();
+                  await context.read<AssistancePlanCubit>().generateSelectedPeriod();
                   AppToast.showSuccess('Target candidates generated.');
                 } catch (e) {
                   showErrorToastWithDetails(
@@ -867,7 +867,7 @@ class _TargetsTab extends StatelessWidget {
             FilledButton.icon(
               onPressed: () async {
                 try {
-                  await context.read<ScholarshipCubit>().markPlanTargeted();
+                  await context.read<AssistancePlanCubit>().markPlanTargeted();
                   AppToast.showSuccess('Target plan saved.');
                 } catch (e) {
                   AppToast.showFailed(e.toString());
@@ -898,7 +898,7 @@ class _RuleTargetSection extends StatelessWidget {
   const _RuleTargetSection({required this.rule, required this.state});
 
   final ScholarshipPeriodRule rule;
-  final ScholarshipState state;
+  final AssistancePlanState state;
 
   @override
   Widget build(BuildContext context) {
@@ -933,7 +933,7 @@ class _RuleTargetSection extends StatelessWidget {
                     if (rule.selectionMode == ScholarshipSelectionMode.auto) {
                       try {
                         await context
-                            .read<ScholarshipCubit>()
+                            .read<AssistancePlanCubit>()
                             .generateSelectedPeriod();
                         AppToast.showSuccess('Auto targets generated.');
                       } catch (e) {
@@ -948,7 +948,7 @@ class _RuleTargetSection extends StatelessWidget {
                     await showDialog<void>(
                       context: context,
                       builder: (_) => BlocProvider.value(
-                        value: context.read<ScholarshipCubit>(),
+                        value: context.read<AssistancePlanCubit>(),
                         child: _SelectStudentsDialog(rule: rule, state: state),
                       ),
                     );
@@ -1035,7 +1035,7 @@ class _RuleTargetSection extends StatelessWidget {
     if (confirmed != true || !context.mounted) return;
 
     try {
-      await context.read<ScholarshipCubit>().updateAssessment(
+      await context.read<AssistancePlanCubit>().updateAssessment(
             item.copyWith(
               decisionStatus: ScholarshipDecisionStatus.cancelled,
               priorityReason: item.priorityReason ?? 'Removed from target plan',
@@ -1052,7 +1052,7 @@ class _ReviewTab extends StatelessWidget {
   const _ReviewTab({required this.period, required this.state});
 
   final ScholarshipPeriod period;
-  final ScholarshipState state;
+  final AssistancePlanState state;
 
   @override
   Widget build(BuildContext context) {
@@ -1118,7 +1118,7 @@ class _ReviewTab extends StatelessWidget {
               FilledButton.icon(
                 onPressed: () async {
                   try {
-                    await context.read<ScholarshipCubit>().markPlanSubmitted();
+                    await context.read<AssistancePlanCubit>().markPlanSubmitted();
                     AppToast.showSuccess('Assistance plan marked as submitted.');
                   } catch (e) {
                     AppToast.showFailed(e.toString());
@@ -1139,7 +1139,7 @@ class _ApprovalTab extends StatefulWidget {
   const _ApprovalTab({required this.period, required this.state});
 
   final ScholarshipPeriod period;
-  final ScholarshipState state;
+  final AssistancePlanState state;
 
   @override
   State<_ApprovalTab> createState() => _ApprovalTabState();
@@ -1447,7 +1447,7 @@ class _ApprovalTabState extends State<_ApprovalTab> {
     }
     setState(() => _saving = true);
     try {
-      await context.read<ScholarshipCubit>().uploadApprovalDocument(
+      await context.read<AssistancePlanCubit>().uploadApprovalDocument(
             sourcePath: file.path,
             fileName: file.name,
             uploadedBy: uploadedBy,
@@ -1475,7 +1475,7 @@ class _RecipientsTab extends StatefulWidget {
   });
 
   final ScholarshipPeriod period;
-  final ScholarshipState state;
+  final AssistancePlanState state;
   final AssistanceProgram program;
 
   @override
@@ -1641,7 +1641,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                         : () async {
                             try {
                               await context
-                                  .read<ScholarshipCubit>()
+                                  .read<AssistancePlanCubit>()
                                   .updateRecipientStatus(
                                     recipientId: item.id,
                                     status: nextStatus,
@@ -1688,7 +1688,7 @@ class _SelectStudentsDialog extends StatefulWidget {
   const _SelectStudentsDialog({required this.rule, required this.state});
 
   final ScholarshipPeriodRule rule;
-  final ScholarshipState state;
+  final AssistancePlanState state;
 
   @override
   State<_SelectStudentsDialog> createState() => _SelectStudentsDialogState();
@@ -1847,7 +1847,7 @@ class _SelectStudentsDialogState extends State<_SelectStudentsDialog> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      final cubit = context.read<ScholarshipCubit>();
+      final cubit = context.read<AssistancePlanCubit>();
       for (final studentId in _selectedStudentIds) {
         final reason = _reasonController(studentId).text.trim();
         await cubit.saveManualTarget(
@@ -2503,7 +2503,7 @@ class _CreateAssistancePeriodDialogState
     }
     setState(() => _saving = true);
     try {
-      await context.read<ScholarshipCubit>().createAssistancePeriod(
+      await context.read<AssistancePlanCubit>().createAssistancePeriod(
             assistanceProgramId: _program.id,
             periodName: _periodName,
             startDate: _dateOnly(_startDate),
@@ -2607,7 +2607,7 @@ enum _AssistanceExportFormat { pdf, excel }
 Future<void> _exportPlan({
   required BuildContext context,
   required ScholarshipPeriod period,
-  required ScholarshipState state,
+  required AssistancePlanState state,
   required _AssistanceExportFormat format,
 }) async {
   final isPdf = format == _AssistanceExportFormat.pdf;
@@ -2633,7 +2633,7 @@ Future<void> _exportPlan({
   await io.File(location.path).writeAsBytes(bytes);
   if (!context.mounted) return;
   try {
-    await context.read<ScholarshipCubit>().markPlanSubmitted();
+    await context.read<AssistancePlanCubit>().markPlanSubmitted();
     AppToast.showSuccess('Plan exported and marked as submitted.');
   } catch (e) {
     AppToast.showSuccess('Plan exported.');
@@ -2673,7 +2673,7 @@ Future<void> _exportRecipients({
 
 List<String> _planExportLines(
   ScholarshipPeriod period,
-  ScholarshipState state,
+  AssistancePlanState state,
 ) {
   return [
     'Assistance Plan',
@@ -2693,7 +2693,7 @@ List<String> _planExportLines(
   ];
 }
 
-String _planExportHtml(ScholarshipPeriod period, ScholarshipState state) {
+String _planExportHtml(ScholarshipPeriod period, AssistancePlanState state) {
   String escape(String value) => const HtmlEscape().convert(value);
   final rows = state.assessments.map((item) {
     return '''

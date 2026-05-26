@@ -1,8 +1,8 @@
 import 'package:edukita/app_shell.dart';
 import 'package:edukita/core/router/root_navigator.dart';
 import 'package:edukita/core/router/service_locator.dart';
-import 'package:edukita/features/assistance_program/presentation/assistance_program_page.dart';
-import 'package:edukita/features/assistance_programs/domain/assistance_program_cubit.dart';
+import 'package:edukita/features/assistance/periods/presentation/assistance_periods_page.dart';
+import 'package:edukita/features/assistance/programs/domain/assistance_program_cubit.dart';
 import 'package:edukita/features/auth/presentation/login_page.dart';
 import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
 import 'package:edukita/features/dashboard/presentation/dashboard_page.dart';
@@ -11,7 +11,7 @@ import 'package:edukita/features/report_definitions/domain/report_definition_cub
 import 'package:edukita/features/reports/reports_page.dart';
 import 'package:edukita/features/schedule/domain/schedule_cubit.dart';
 import 'package:edukita/features/schedule/presentation/schedule_page.dart';
-import 'package:edukita/features/scholarships/domain/scholarship_cubit.dart';
+import 'package:edukita/features/assistance/plans/domain/assistance_plan_cubit.dart';
 import 'package:edukita/features/schools/domain/class_cubit.dart';
 import 'package:edukita/features/schools/domain/school_cubit.dart';
 import 'package:edukita/features/settings/presentation/settings_page.dart';
@@ -133,8 +133,8 @@ final GoRouter appRouter = GoRouter(
                 BlocProvider<StrategyCubit>(
                   create: (_) => getIt<StrategyCubit>()..loadStrategies(),
                 ),
-                BlocProvider<ScholarshipCubit>(
-                  create: (_) => getIt<ScholarshipCubit>(),
+                BlocProvider<AssistancePlanCubit>(
+                  create: (_) => getIt<AssistancePlanCubit>(),
                 ),
                 BlocProvider<AssistanceProgramCubit>(
                   create: (_) =>
@@ -223,15 +223,15 @@ final GoRouter appRouter = GoRouter(
                 state: state,
                 child: MultiBlocProvider(
                   providers: [
-                    BlocProvider<ScholarshipCubit>(
-                      create: (_) => getIt<ScholarshipCubit>()..loadModule(),
+                    BlocProvider<AssistancePlanCubit>(
+                      create: (_) => getIt<AssistancePlanCubit>()..loadModule(),
                     ),
                     BlocProvider<AssistanceProgramCubit>(
                       create: (_) =>
                           getIt<AssistanceProgramCubit>()..loadPrograms(),
                     ),
                   ],
-                  child: const AssistanceProgramPage(),
+                  child: const AssistancePeriodsPage(),
                 ),
               ),
             ),
@@ -246,10 +246,6 @@ final GoRouter appRouter = GoRouter(
               child: const ReportsPage(),
             ),
           ),
-        ),
-        GoRoute(
-          path: '/scholarships',
-          redirect: (_, _) => '/assistance-programs/periods',
         ),
         GoRoute(
           path: '/settings',

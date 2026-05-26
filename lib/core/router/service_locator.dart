@@ -1,10 +1,10 @@
 import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
-import 'package:edukita/features/assistance_programs/domain/assistance_program_cubit.dart';
-import 'package:edukita/features/assistance_programs/domain/assistance_program_repository.dart';
+import 'package:edukita/features/assistance/programs/domain/assistance_program_cubit.dart';
+import 'package:edukita/features/assistance/programs/domain/assistance_program_repository.dart';
 import 'package:edukita/features/schedule/domain/schedule_cubit.dart';
 import 'package:edukita/features/schedule/domain/schedule_repository.dart';
-import 'package:edukita/features/scholarships/domain/scholarship_cubit.dart';
-import 'package:edukita/features/scholarships/domain/scholarship_repository.dart';
+import 'package:edukita/features/assistance/plans/domain/assistance_plan_cubit.dart';
+import 'package:edukita/features/assistance/plans/domain/assistance_plan_repository.dart';
 import 'package:edukita/features/strategy/domain/strategy_cubit.dart';
 import 'package:edukita/features/strategy/domain/strategy_repository.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
@@ -46,8 +46,8 @@ Future<void> setupLocator() async {
     () => AssistanceProgramRepository(db),
   );
   getIt.registerLazySingleton<ScheduleRepository>(() => ScheduleRepository(db));
-  getIt.registerLazySingleton<ScholarshipRepository>(
-    () => ScholarshipRepository(db),
+  getIt.registerLazySingleton<AssistancePlanRepository>(
+    () => AssistancePlanRepository(db),
   );
   getIt.registerLazySingleton<AssessmentRepository>(
     () => AssessmentRepository(db),
@@ -73,8 +73,8 @@ Future<void> setupLocator() async {
   getIt.registerLazySingleton<AssistanceProgramCacheService>(
     () => AssistanceProgramCacheService(),
   );
-  getIt.registerLazySingleton<ScholarshipCacheService>(
-    () => ScholarshipCacheService(),
+  getIt.registerLazySingleton<AssistancePlanCacheService>(
+    () => AssistancePlanCacheService(),
   );
   getIt.registerLazySingleton<ReportDefinitionCacheService>(
     () => ReportDefinitionCacheService(),
@@ -165,10 +165,10 @@ Future<void> setupLocator() async {
     ),
   );
 
-  getIt.registerFactory<ScholarshipCubit>(
-    () => ScholarshipCubit(
-      getIt<ScholarshipRepository>(),
-      getIt<ScholarshipCacheService>(),
+  getIt.registerFactory<AssistancePlanCubit>(
+    () => AssistancePlanCubit(
+      getIt<AssistancePlanRepository>(),
+      getIt<AssistancePlanCacheService>(),
     ),
   );
 
