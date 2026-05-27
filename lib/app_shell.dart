@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io' as io;
 
 import 'package:edukita/core/storage/app_storage_paths.dart';
+import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/common/title_bar.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
@@ -99,6 +100,8 @@ class _AppShellState extends State<AppShell> {
     );
 
     if (!context.mounted || confirmed != true) return;
+    await AuthSessionCache.instance.clear();
+    if (!context.mounted) return;
     context.go('/login');
   }
 

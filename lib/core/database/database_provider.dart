@@ -129,6 +129,18 @@ class DatabaseProvider {
     return result.isEmpty ? null : result.first;
   }
 
+  Future<Map<String, Object?>?> getUserById(String id) async {
+    final db = await database;
+    await DatabaseSeed.ensureAdmin(db);
+    final result = await db.query(
+      'users',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    return result.isEmpty ? null : result.first;
+  }
+
   Future<int> count(String table) async {
     final db = await database;
     final result = await db.rawQuery('SELECT COUNT(*) as count FROM $table');

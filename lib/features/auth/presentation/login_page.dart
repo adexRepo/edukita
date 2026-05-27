@@ -1,4 +1,5 @@
 import 'package:edukita/features/common/title_bar.dart';
+import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:edukita/core/database/database_provider.dart';
@@ -19,10 +20,12 @@ class _LoginPageState extends State<LoginPage> {
   final FocusNode _passwordFocusNode = FocusNode();
   String? _errorMessage;
   bool _loading = false;
+  bool _checkingSession = true;
 
   @override
   void initState() {
     super.initState();
+    _restoreCachedSession();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _usernameFocusNode.requestFocus();
@@ -39,6 +42,29 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  Future<void> _restoreCachedSession() async {
+    try {
+      final session = await AuthSessionCache.instance.read();
+      if (session == null) {
+        if (mounted) setState(() => _checkingSession = false);
+        return;
+      }
+
+      final user = await DatabaseProvider.instance.getUserById(session.userId);
+      if (!mounted) return;
+      if (user != null) {
+        widget.onAuthenticated();
+        return;
+      }
+
+      await AuthSessionCache.instance.clear();
+    } catch (_) {
+      await AuthSessionCache.instance.clear();
+    } finally {
+      if (mounted) setState(() => _checkingSession = false);
+    }
+  }
+
   Future<void> _login() async {
     setState(() {
       _loading = true;
@@ -51,6 +77,12 @@ class _LoginPageState extends State<LoginPage> {
         _passwordController.text,
       );
       if (user != null) {
+        await AuthSessionCache.instance.save(
+          userId: user['id']?.toString() ?? '',
+          username: user['username']?.toString() ?? '',
+          fullName: user['full_name']?.toString(),
+          nickName: user['nick_name']?.toString(),
+        );
         widget.onAuthenticated();
       } else {
         if (!mounted) return;
@@ -74,6 +106,26 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_checkingSession) {
+      return Scaffold(
+        backgroundColor: AppColors.surface,
+        body: Column(
+          children: [
+            buildTitleBar(-1, context),
+            const Expanded(
+              child: Center(
+                child: SizedBox(
+                  height: 22,
+                  width: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: LayoutBuilder(

@@ -1,0 +1,99 @@
+import 'dart:convert';
+import 'dart:io' as io;
+
+import 'package:edukita/core/storage/app_storage_paths.dart';
+import 'package:path/path.dart' as p;
+
+class AuthSessionCache {
+  AuthSessionCache._();
+
+  static final AuthSessionCache instance = AuthSessionCache._();
+  static const Duration sessionTtl = Duration(hours: 6);
+
+  Future<AuthSession?> read() async {
+    final file = await _sessionFile();
+    if (!await file.exists()) return null;
+
+    try {
+      final raw = await file.readAsString();
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      final session = AuthSession.fromJson(data);
+      if (session.expiresAt.isBefore(DateTime.now())) {
+        await clear();
+        return null;
+      }
+      return session;
+    } catch (_) {
+      await clear();
+      return null;
+    }
+  }
+
+  Future<void> save({
+    required String userId,
+    required String username,
+    String? fullName,
+    String? nickName,
+  }) async {
+    final file = await _sessionFile();
+    await file.parent.create(recursive: true);
+    final session = AuthSession(
+      userId: userId,
+      username: username,
+      fullName: fullName,
+      nickName: nickName,
+      expiresAt: DateTime.now().add(sessionTtl),
+    );
+    await file.writeAsString(jsonEncode(session.toJson()), flush: true);
+  }
+
+  Future<void> clear() async {
+    final file = await _sessionFile();
+    if (await file.exists()) {
+      await file.delete();
+    }
+  }
+
+  Future<io.File> _sessionFile() async {
+    final root = await AppStoragePaths.appDataRoot();
+    return io.File(p.join(root, 'cache', 'auth_session.json'));
+  }
+}
+
+class AuthSession {
+  const AuthSession({
+    required this.userId,
+    required this.username,
+    required this.expiresAt,
+    this.fullName,
+    this.nickName,
+  });
+
+  final String userId;
+  final String username;
+  final String? fullName;
+  final String? nickName;
+  final DateTime expiresAt;
+
+  factory AuthSession.fromJson(Map<String, dynamic> json) {
+    return AuthSession(
+      userId: json['user_id']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
+      fullName: json['full_name']?.toString(),
+      nickName: json['nick_name']?.toString(),
+      expiresAt:
+          DateTime.tryParse(json['expires_at']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+    );
+  }
+
+  Map<String, Object?> toJson() {
+    return {
+      'user_id': userId,
+      'username': username,
+      'full_name': fullName,
+      'nick_name': nickName,
+      'expires_at': expiresAt.toIso8601String(),
+    };
+  }
+}
