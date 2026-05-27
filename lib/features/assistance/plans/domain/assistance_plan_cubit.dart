@@ -1,3 +1,4 @@
+import 'package:edukita/core/cache/app_memory_cache.dart';
 import 'package:edukita/features/assistance/plans/data/assistance_plan_models.dart';
 import 'package:edukita/features/assistance/plans/domain/assistance_plan_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -34,7 +35,7 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
     _emitIfOpen(state.copyWith(isLoading: true, error: null));
     try {
       final periods = await _repository.getPeriods();
-      final scholarshipRules = await _repository.getAssistanceRules();
+      final assistanceRules = await _repository.getAssistanceRules();
       if (isClosed) return;
 
       final selectedId =
@@ -43,7 +44,7 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
           (periods.isEmpty ? null : periods.first.id);
       final rules = await _repository.getRules();
       final periodRules = selectedId == null
-          ? const <ScholarshipPeriodRule>[]
+          ? const <AssistancePeriodRule>[]
           : await _repository.getPeriodRules(selectedId);
       final students = await _repository.getActiveStudents();
       final assessments = await _repository.getAssessments(
@@ -59,7 +60,7 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
       final nextState = state.copyWith(
         isLoading: false,
         periods: periods,
-        scholarshipRules: scholarshipRules,
+        assistanceRules: assistanceRules,
         selectedPeriodId: selectedId,
         rules: rules,
         periodRules: periodRules,
@@ -89,11 +90,11 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
 
     _emitIfOpen(state.copyWith(isLoading: true, error: null));
     try {
-      final scholarshipRules = await _repository.getAssistanceRules();
+      final assistanceRules = await _repository.getAssistanceRules();
       if (isClosed) return;
       final nextState = state.copyWith(
         isLoading: false,
-        scholarshipRules: scholarshipRules,
+        assistanceRules: assistanceRules,
         error: null,
       );
       _cacheService.putRulesOnly(nextState);
@@ -128,7 +129,7 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
     try {
       final assessments = await _repository.getAssessments(periodId: periodId);
       final periodRules = periodId == null
-          ? const <ScholarshipPeriodRule>[]
+          ? const <AssistancePeriodRule>[]
           : await _repository.getPeriodRules(periodId);
       final recipients = await _repository.getRecipients(periodId: periodId);
       final approvalDocuments = await _repository.getApprovalDocuments(
@@ -170,12 +171,12 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
     );
     _cacheService.clear();
     await loadModule(
-      selectedPeriodId: ScholarshipPeriod.periodId(year, month),
+      selectedPeriodId: AssistancePeriod.periodId(year, month),
       forceRefresh: true,
     );
   }
 
-  Future<ScholarshipPeriod> createAssistancePeriod({
+  Future<AssistancePeriod> createAssistancePeriod({
     required String assistanceProgramId,
     required String periodName,
     required String startDate,
@@ -188,7 +189,7 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
     int calculationWindowMonths = 3,
     double minimumAttendancePercentage = 75,
     bool allowManualOverrideBelowAttendance = true,
-    required List<ScholarshipPeriodRule> rules,
+    required List<AssistancePeriodRule> rules,
   }) async {
     final period = await _repository.createAssistancePeriod(
       assistanceProgramId: assistanceProgramId,
@@ -210,7 +211,7 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
     return period;
   }
 
-  Future<void> updatePeriod(ScholarshipPeriod period) async {
+  Future<void> updatePeriod(AssistancePeriod period) async {
     await _repository.updatePeriod(period);
     _cacheService.clear();
     await loadModule(selectedPeriodId: period.id, forceRefresh: true);
@@ -222,7 +223,7 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
     await loadModule(forceRefresh: true);
   }
 
-  Future<void> saveRule(StudentScholarshipRule rule) async {
+  Future<void> saveRule(StudentAssistanceRule rule) async {
     await _repository.saveRule(rule);
     _cacheService.clear();
     await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
@@ -240,7 +241,7 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
     await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
   }
 
-  Future<void> saveAssistanceRule(ScholarshipRule rule) async {
+  Future<void> saveAssistanceRule(AssistanceRule rule) async {
     await _repository.saveAssistanceRule(rule);
     _cacheService.clear();
     if (_isRulesOnlyState) {
@@ -271,7 +272,7 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
         state.selectedPeriodId == null;
   }
 
-  Future<void> savePeriodRule(ScholarshipPeriodRule rule) async {
+  Future<void> savePeriodRule(AssistancePeriodRule rule) async {
     await _repository.savePeriodRule(rule);
     _cacheService.clear();
     await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
@@ -283,14 +284,14 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
     await loadModule(selectedPeriodId: state.selectedPeriodId, forceRefresh: true);
   }
 
-  Future<List<StudentScholarshipRuleCandidate>> getRuleCandidates(
+  Future<List<StudentAssistanceRuleCandidate>> getRuleCandidates(
     String periodRuleId,
   ) {
     return _repository.getRuleCandidates(periodRuleId: periodRuleId);
   }
 
   Future<void> saveRuleCandidate(
-    StudentScholarshipRuleCandidate candidate,
+    StudentAssistanceRuleCandidate candidate,
   ) async {
     await _repository.saveRuleCandidate(candidate);
     _cacheService.clear();
@@ -298,7 +299,7 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
   }
 
   Future<void> saveManualTarget({
-    required ScholarshipPeriodRule rule,
+    required AssistancePeriodRule rule,
     required String studentId,
     String? reason,
   }) async {
@@ -308,7 +309,7 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
       reason: reason,
     );
     _cacheService.clear();
-    await selectPeriod(rule.scholarshipPeriodId, force: true);
+    await selectPeriod(rule.assistancePeriodId, force: true);
   }
 
   Future<void> deleteRuleCandidate(String id) async {
@@ -358,7 +359,7 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
     final id = state.selectedPeriodId;
     if (id == null) throw Exception('Select an assistance period first.');
     await _repository.uploadApprovalDocument(
-      scholarshipPeriodId: id,
+      assistancePeriodId: id,
       sourcePath: sourcePath,
       fileName: fileName,
       uploadedBy: uploadedBy,
@@ -368,15 +369,15 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
     await loadModule(selectedPeriodId: id, forceRefresh: true);
   }
 
-  Future<void> updateAssessment(StudentScholarshipAssessment assessment) async {
+  Future<void> updateAssessment(StudentAssistanceAssessment assessment) async {
     await _repository.updateAssessment(assessment);
     _cacheService.clear();
-    await selectPeriod(assessment.scholarshipPeriodId, force: true);
+    await selectPeriod(assessment.assistancePeriodId, force: true);
   }
 
   Future<void> updateRecipientStatus({
     required String recipientId,
-    required ScholarshipRecipientStatus status,
+    required AssistanceRecipientStatus status,
   }) async {
     await _repository.updateRecipientStatus(
       recipientId: recipientId,
@@ -388,102 +389,95 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
 }
 
 class AssistancePlanCacheService {
-  AssistancePlanCacheService({this.ttl = const Duration(minutes: 2)});
+  AssistancePlanCacheService({
+    Duration ttl = const Duration(seconds: 75),
+    int maxModuleEntries = 2,
+    int maxPeriodDetailEntries = 3,
+  }) : _ttl = ttl,
+       _modules = AppMemoryCache<AssistancePlanState>(
+         ttl: ttl,
+         maxEntries: maxModuleEntries,
+       ),
+       _periodDetails = AppMemoryCache<AssistancePlanState>(
+         ttl: ttl,
+         maxEntries: maxPeriodDetailEntries,
+       );
 
-  final Duration ttl;
-  final Map<String, _AssistancePlanCacheEntry> _modules = {};
-  final Map<String, _AssistancePlanCacheEntry> _periodDetails = {};
-  _AssistancePlanCacheEntry? _lastModule;
-  _AssistancePlanCacheEntry? _rulesOnly;
+  final Duration _ttl;
+  final AppMemoryCache<AssistancePlanState> _modules;
+  final AppMemoryCache<AssistancePlanState> _periodDetails;
+  AssistancePlanState? _lastModule;
+  DateTime? _lastModuleCachedAt;
+  AssistancePlanState? _rulesOnly;
+  DateTime? _rulesOnlyCachedAt;
 
   AssistancePlanState? getModule(String? selectedPeriodId) {
     if (selectedPeriodId == null) return null;
-    return _get(_modules, selectedPeriodId);
+    return _modules.get(selectedPeriodId);
   }
 
   AssistancePlanState? getLastModule() {
-    final entry = _lastModule;
-    if (entry == null) return null;
-    if (_isExpired(entry.cachedAt)) {
+    final state = _lastModule;
+    final cachedAt = _lastModuleCachedAt;
+    if (state == null || cachedAt == null) return null;
+    if (_isExpired(cachedAt)) {
       _lastModule = null;
+      _lastModuleCachedAt = null;
       return null;
     }
-    return entry.state;
+    return state;
   }
 
   void putModule(String? selectedPeriodId, AssistancePlanState state) {
-    final entry = _AssistancePlanCacheEntry(
-      state: state.copyWith(isLoading: false, error: null),
-      cachedAt: DateTime.now(),
-    );
-    _lastModule = entry;
+    final cachedState = state.copyWith(isLoading: false, error: null);
+    _lastModule = cachedState;
+    _lastModuleCachedAt = DateTime.now();
     if (selectedPeriodId != null) {
-      _modules[selectedPeriodId] = entry;
-      _periodDetails[selectedPeriodId] = entry;
+      _modules.put(selectedPeriodId, cachedState);
+      _periodDetails.put(selectedPeriodId, cachedState);
     }
   }
 
   AssistancePlanState? getPeriodDetail(String? selectedPeriodId) {
     if (selectedPeriodId == null) return null;
-    return _get(_periodDetails, selectedPeriodId);
+    return _periodDetails.get(selectedPeriodId);
   }
 
   void putPeriodDetail(String? selectedPeriodId, AssistancePlanState state) {
     if (selectedPeriodId == null) return;
-    _periodDetails[selectedPeriodId] = _AssistancePlanCacheEntry(
-      state: state.copyWith(isLoading: false, error: null),
-      cachedAt: DateTime.now(),
+    _periodDetails.put(
+      selectedPeriodId,
+      state.copyWith(isLoading: false, error: null),
     );
   }
 
   AssistancePlanState? getRulesOnly() {
-    final entry = _rulesOnly;
-    if (entry == null) return null;
-    if (_isExpired(entry.cachedAt)) {
+    final state = _rulesOnly;
+    final cachedAt = _rulesOnlyCachedAt;
+    if (state == null || cachedAt == null) return null;
+    if (_isExpired(cachedAt)) {
       _rulesOnly = null;
+      _rulesOnlyCachedAt = null;
       return null;
     }
-    return entry.state;
+    return state;
   }
 
   void putRulesOnly(AssistancePlanState state) {
-    _rulesOnly = _AssistancePlanCacheEntry(
-      state: state.copyWith(isLoading: false, error: null),
-      cachedAt: DateTime.now(),
-    );
+    _rulesOnly = state.copyWith(isLoading: false, error: null);
+    _rulesOnlyCachedAt = DateTime.now();
   }
 
   void clear() {
     _modules.clear();
     _periodDetails.clear();
     _lastModule = null;
+    _lastModuleCachedAt = null;
     _rulesOnly = null;
-  }
-
-  AssistancePlanState? _get(
-    Map<String, _AssistancePlanCacheEntry> cache,
-    String key,
-  ) {
-    final entry = cache[key];
-    if (entry == null) return null;
-    if (_isExpired(entry.cachedAt)) {
-      cache.remove(key);
-      return null;
-    }
-    return entry.state;
+    _rulesOnlyCachedAt = null;
   }
 
   bool _isExpired(DateTime cachedAt) {
-    return DateTime.now().difference(cachedAt) > ttl;
+    return DateTime.now().difference(cachedAt) > _ttl;
   }
-}
-
-class _AssistancePlanCacheEntry {
-  const _AssistancePlanCacheEntry({
-    required this.state,
-    required this.cachedAt,
-  });
-
-  final AssistancePlanState state;
-  final DateTime cachedAt;
 }

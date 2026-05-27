@@ -17,7 +17,6 @@ class DashboardPage extends StatelessWidget {
     return BlocBuilder<DashboardCubit, DashboardStat>(
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: AppColors.surface,
           body: Padding(
             padding: AppPageHeaderStyle.pagePadding,
             child: Column(
@@ -449,13 +448,9 @@ class _MetricGrid extends StatelessWidget {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: _StudentGenderCard(state: state),
-            ),
+            Expanded(child: _StudentGenderCard(state: state)),
             const SizedBox(width: spacing),
-            Expanded(
-              child: _AttendanceDonutCard(state: state),
-            ),
+            Expanded(child: _AttendanceDonutCard(state: state)),
             const SizedBox(width: spacing),
             Expanded(
               flex: width >= 1120 ? 2 : 1,
@@ -672,6 +667,7 @@ class _StudentGenderLegend extends StatelessWidget {
     );
   }
 }
+
 class _AttendanceDonutCard extends StatelessWidget {
   const _AttendanceDonutCard({required this.state});
 
@@ -783,7 +779,7 @@ class _AttendanceDonutCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: AppColors.textPrimary,
-                              fontSize: 22,
+                              fontSize: AppTypography.sectionTitle,
                               fontWeight: FontWeight.w800,
                             ),
                           ),

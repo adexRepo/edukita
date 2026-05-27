@@ -43,8 +43,8 @@ Widget buildTitleBar(
                   const SizedBox(width: 8),
                   Text(
                     isLoginPage ? '' : 'Edukita',
-                    style: TextStyle(
-                      fontSize: 15,
+                    style: const TextStyle(
+                      fontSize: AppTypography.sectionTitle,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
                     ),
@@ -55,10 +55,7 @@ Widget buildTitleBar(
                   if (!isLoginPage && (pageTitle != null || hasSelectedPage))
                     Text(
                       pageTitle ?? navigationPageItems[selectedIndex].label,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                      ),
+                      style: AppTypography.secondaryStyle,
                     ),
                 ],
               ),

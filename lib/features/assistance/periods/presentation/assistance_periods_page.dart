@@ -28,10 +28,10 @@ class AssistancePeriodsPage extends StatefulWidget {
 
 class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
   final TextEditingController _searchController = TextEditingController();
-  ScholarshipPeriod? _selectedPeriod;
+  AssistancePeriod? _selectedPeriod;
   String _query = '';
   String _programFilter = '';
-  ScholarshipPeriodStatus? _statusFilter;
+  AssistancePeriodStatus? _statusFilter;
   int _yearFilter = DateTime.now().year;
 
   @override
@@ -42,18 +42,18 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final assistanceState = context.watch<AssistanceProgramCubit>().state;
-    final scholarshipState = context.watch<AssistancePlanCubit>().state;
-    final programs = assistanceState.programs;
+    final programState = context.watch<AssistanceProgramCubit>().state;
+    final planState = context.watch<AssistancePlanCubit>().state;
+    final programs = programState.programs;
 
     if (_selectedPeriod != null) {
-      final selected = scholarshipState.periods
+      final selected = planState.periods
           .where((period) => period.id == _selectedPeriod!.id)
-          .cast<ScholarshipPeriod?>()
+          .cast<AssistancePeriod?>()
           .firstWhere((period) => period != null, orElse: () => _selectedPeriod);
       return _AssistancePeriodDetail(
         period: selected ?? _selectedPeriod!,
-        state: scholarshipState,
+        state: planState,
         programs: programs,
         onBack: () => setState(() => _selectedPeriod = null),
       );
@@ -77,17 +77,17 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
             ),
           ),
           AppLoadingStrip(
-            isLoading: scholarshipState.isLoading || assistanceState.isLoading,
+            isLoading: programState.isLoading || planState.isLoading,
           ),
           const SizedBox(height: AppPageHeaderStyle.bottomGap),
-          _buildSummaryCards(scholarshipState.periods),
+          _buildSummaryCards(planState.periods),
           const SizedBox(height: 12),
           _buildFilters(programs),
           const SizedBox(height: 12),
           Expanded(
             child: _buildPeriodTable(
               context,
-              periods: _filteredPeriods(scholarshipState.periods, programs),
+              periods: _filteredPeriods(planState.periods, programs),
               programs: programs,
             ),
           ),
@@ -96,16 +96,16 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
     );
   }
 
-  Widget _buildSummaryCards(List<ScholarshipPeriod> periods) {
+  Widget _buildSummaryCards(List<AssistancePeriod> periods) {
     final now = DateTime.now();
     final draft = periods
-        .where((period) => period.status == ScholarshipPeriodStatus.draft)
+        .where((period) => period.status == AssistancePeriodStatus.draft)
         .length;
     final targeted = periods
-        .where((period) => period.status == ScholarshipPeriodStatus.generated)
+        .where((period) => period.status == AssistancePeriodStatus.targeted)
         .length;
     final approved = periods
-        .where((period) => period.status == ScholarshipPeriodStatus.approved)
+        .where((period) => period.status == AssistancePeriodStatus.approved)
         .length;
     final thisMonth = periods
         .where(
@@ -150,7 +150,9 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
             const SizedBox(height: 6),
             Text(
               value,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              style: AppTypography.sectionTitleStyle.copyWith(
+                color: AppColors.textPrimary,
+              ),
             ),
           ],
         ),
@@ -209,9 +211,9 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
             ),
             SizedBox(
               width: 170,
-              child: CommonFormWidgets.dropdownFieldTyped<ScholarshipPeriodStatus>(
+              child: CommonFormWidgets.dropdownFieldTyped<AssistancePeriodStatus>(
                 label: 'Status',
-                items: ScholarshipPeriodStatus.values,
+                items: AssistancePeriodStatus.values,
                 labelBuilder: (status) => status.label,
                 valueBuilder: (status) => status.value,
                 value: _statusFilter,
@@ -239,8 +241,8 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
     );
   }
 
-  List<ScholarshipPeriod> _filteredPeriods(
-    List<ScholarshipPeriod> periods,
+  List<AssistancePeriod> _filteredPeriods(
+    List<AssistancePeriod> periods,
     List<AssistanceProgram> programs,
   ) {
     final programNames = {for (final program in programs) program.id: program.name};
@@ -258,7 +260,7 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
       final programName = programNames[period.assistanceProgramId] ?? '';
       return period.label.toLowerCase().contains(query) ||
           programName.toLowerCase().contains(query) ||
-          ScholarshipPeriod.monthName(period.periodMonth)
+          AssistancePeriod.monthName(period.periodMonth)
               .toLowerCase()
               .contains(query);
     }).toList();
@@ -276,11 +278,11 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
 
   Widget _buildPeriodTable(
     BuildContext context, {
-    required List<ScholarshipPeriod> periods,
+    required List<AssistancePeriod> periods,
     required List<AssistanceProgram> programs,
   }) {
     final programNames = {for (final program in programs) program.id: program.name};
-    return AppTable<ScholarshipPeriod>(
+    return AppTable<AssistancePeriod>(
       data: periods,
       emptyMessage: 'No assistance periods found',
       pageable: Pageable(
@@ -333,10 +335,10 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
                 child: Text(_actionForStatus(period.status)),
               ),
               IconButton(
-                tooltip: period.status == ScholarshipPeriodStatus.approved
+                tooltip: period.status == AssistancePeriodStatus.approved
                     ? 'Approved period cannot be deleted'
                     : 'Delete period',
-                onPressed: period.status == ScholarshipPeriodStatus.approved
+                onPressed: period.status == AssistancePeriodStatus.approved
                     ? null
                     : () => _confirmDeletePeriod(context, period),
                 icon: const Icon(
@@ -355,14 +357,14 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
 
   Future<void> _confirmDeletePeriod(
     BuildContext context,
-    ScholarshipPeriod period,
+    AssistancePeriod period,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Assistance Period?'),
         content: Text(
-          'This will delete "${period.label}" with its rules, target candidates, and generated data. This action cannot be undone.',
+          'This will delete "${period.label}" with its rules, target candidates, and recipient data. This action cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -389,21 +391,21 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
     }
   }
 
-  int _selectedCount(ScholarshipPeriod period) {
+  int _selectedCount(AssistancePeriod period) {
     final state = context.read<AssistancePlanCubit>().state;
     if (state.selectedPeriodId != period.id) return 0;
     return state.assessments
-        .where((item) => item.decisionStatus == ScholarshipDecisionStatus.approved)
+        .where((item) => item.decisionStatus == AssistanceDecisionStatus.approved)
         .length;
   }
 
-  String _actionForStatus(ScholarshipPeriodStatus status) {
+  String _actionForStatus(AssistancePeriodStatus status) {
     return switch (status) {
-      ScholarshipPeriodStatus.draft => 'Setup',
-      ScholarshipPeriodStatus.generated => 'Open',
-      ScholarshipPeriodStatus.pendingReview => 'Upload Doc',
-      ScholarshipPeriodStatus.approved => 'Recipients',
-      ScholarshipPeriodStatus.cancelled => 'Open',
+      AssistancePeriodStatus.draft => 'Setup',
+      AssistancePeriodStatus.targeted => 'Open',
+      AssistancePeriodStatus.submitted => 'Upload Doc',
+      AssistancePeriodStatus.approved => 'Recipients',
+      AssistancePeriodStatus.cancelled => 'Open',
     };
   }
 
@@ -462,7 +464,7 @@ class _AssistancePeriodDetail extends StatefulWidget {
     required this.onBack,
   });
 
-  final ScholarshipPeriod period;
+  final AssistancePeriod period;
   final AssistancePlanState state;
   final List<AssistanceProgram> programs;
   final VoidCallback onBack;
@@ -500,7 +502,7 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
       ),
     );
     final selected = widget.state.assessments
-        .where((item) => item.decisionStatus == ScholarshipDecisionStatus.approved)
+        .where((item) => item.decisionStatus == AssistanceDecisionStatus.approved)
         .length;
     final remaining = (widget.period.targetQuota - selected).clamp(0, 999999);
 
@@ -640,7 +642,7 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
 class _SetupTab extends StatelessWidget {
   const _SetupTab({required this.period, required this.state});
 
-  final ScholarshipPeriod period;
+  final AssistancePeriod period;
   final AssistancePlanState state;
 
   @override
@@ -722,7 +724,7 @@ class _SetupTab extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Expanded(
-          child: AppTable<ScholarshipPeriodRule>(
+          child: AppTable<AssistancePeriodRule>(
             data: state.periodRules,
             pageable: Pageable(
               page: 0,
@@ -743,12 +745,12 @@ class _SetupTab extends StatelessWidget {
     );
   }
 
-  int _selectedForRule(ScholarshipPeriodRule rule) {
+  int _selectedForRule(AssistancePeriodRule rule) {
     return state.assessments
         .where(
           (item) =>
-              item.scholarshipPeriodRuleId == rule.id &&
-              item.decisionStatus == ScholarshipDecisionStatus.approved,
+              item.assistancePeriodRuleId == rule.id &&
+              item.decisionStatus == AssistanceDecisionStatus.approved,
         )
         .length;
   }
@@ -831,13 +833,13 @@ class _SetupInfoTile extends StatelessWidget {
 class _TargetsTab extends StatelessWidget {
   const _TargetsTab({required this.period, required this.state});
 
-  final ScholarshipPeriod period;
+  final AssistancePeriod period;
   final AssistancePlanState state;
 
   @override
   Widget build(BuildContext context) {
     final selected = state.assessments
-        .where((item) => item.decisionStatus == ScholarshipDecisionStatus.approved)
+        .where((item) => item.decisionStatus == AssistanceDecisionStatus.approved)
         .length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -851,7 +853,7 @@ class _TargetsTab extends StatelessWidget {
               onPressed: () async {
                 try {
                   await context.read<AssistancePlanCubit>().generateSelectedPeriod();
-                  AppToast.showSuccess('Target candidates generated.');
+                  AppToast.showSuccess('Target candidates saved.');
                 } catch (e) {
                   showErrorToastWithDetails(
                     context,
@@ -897,7 +899,7 @@ class _TargetsTab extends StatelessWidget {
 class _RuleTargetSection extends StatelessWidget {
   const _RuleTargetSection({required this.rule, required this.state});
 
-  final ScholarshipPeriodRule rule;
+  final AssistancePeriodRule rule;
   final AssistancePlanState state;
 
   @override
@@ -905,8 +907,8 @@ class _RuleTargetSection extends StatelessWidget {
     final rows = state.assessments
         .where(
           (item) =>
-              item.scholarshipPeriodRuleId == rule.id &&
-              item.decisionStatus == ScholarshipDecisionStatus.approved,
+              item.assistancePeriodRuleId == rule.id &&
+              item.decisionStatus == AssistanceDecisionStatus.approved,
         )
         .toList();
     return DecoratedBox(
@@ -930,12 +932,12 @@ class _RuleTargetSection extends StatelessWidget {
                 ),
                 OutlinedButton.icon(
                   onPressed: () async {
-                    if (rule.selectionMode == ScholarshipSelectionMode.auto) {
+                    if (rule.selectionMode == AssistanceSelectionMode.auto) {
                       try {
                         await context
                             .read<AssistancePlanCubit>()
                             .generateSelectedPeriod();
-                        AppToast.showSuccess('Auto targets generated.');
+                        AppToast.showSuccess('Auto targets saved.');
                       } catch (e) {
                         showErrorToastWithDetails(
                           context,
@@ -953,10 +955,10 @@ class _RuleTargetSection extends StatelessWidget {
                       ),
                     );
                   },
-                  icon: Icon(rule.selectionMode == ScholarshipSelectionMode.auto
+                  icon: Icon(rule.selectionMode == AssistanceSelectionMode.auto
                       ? Icons.auto_awesome
                       : Icons.person_add_alt),
-                  label: Text(rule.selectionMode == ScholarshipSelectionMode.auto
+                  label: Text(rule.selectionMode == AssistanceSelectionMode.auto
                       ? 'Auto Target'
                       : 'Select Students'),
                 ),
@@ -967,7 +969,7 @@ class _RuleTargetSection extends StatelessWidget {
               height: rows.isEmpty ? 90 : 220,
               child: rows.isEmpty
                   ? const Center(child: Text('No candidates selected yet.'))
-                  : AppTable<StudentScholarshipAssessment>(
+                  : AppTable<StudentAssistanceAssessment>(
                       data: rows,
                       pageable: Pageable(
                         page: 0,
@@ -986,7 +988,7 @@ class _RuleTargetSection extends StatelessWidget {
                           cell: (item) => IconButton(
                             tooltip: 'Remove target',
                             onPressed: item.decisionStatus ==
-                                    ScholarshipDecisionStatus.cancelled
+                                    AssistanceDecisionStatus.cancelled
                                 ? null
                                 : () => _removeTargetCandidate(context, item),
                             icon: const Icon(
@@ -1008,7 +1010,7 @@ class _RuleTargetSection extends StatelessWidget {
 
   Future<void> _removeTargetCandidate(
     BuildContext context,
-    StudentScholarshipAssessment item,
+    StudentAssistanceAssessment item,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1037,7 +1039,7 @@ class _RuleTargetSection extends StatelessWidget {
     try {
       await context.read<AssistancePlanCubit>().updateAssessment(
             item.copyWith(
-              decisionStatus: ScholarshipDecisionStatus.cancelled,
+              decisionStatus: AssistanceDecisionStatus.cancelled,
               priorityReason: item.priorityReason ?? 'Removed from target plan',
             ),
           );
@@ -1051,16 +1053,16 @@ class _RuleTargetSection extends StatelessWidget {
 class _ReviewTab extends StatelessWidget {
   const _ReviewTab({required this.period, required this.state});
 
-  final ScholarshipPeriod period;
+  final AssistancePeriod period;
   final AssistancePlanState state;
 
   @override
   Widget build(BuildContext context) {
     final eligible = state.assessments
-        .where((item) => item.eligibilityStatus == ScholarshipEligibilityStatus.eligible)
+        .where((item) => item.eligibilityStatus == AssistanceEligibilityStatus.eligible)
         .length;
     final manual = state.assessments
-        .where((item) => item.selectionMode == ScholarshipSelectionMode.manual)
+        .where((item) => item.selectionMode == AssistanceSelectionMode.manual)
         .length;
     final auto = state.assessments.length - manual;
     return Column(
@@ -1071,7 +1073,7 @@ class _ReviewTab extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: AppTable<StudentScholarshipAssessment>(
+          child: AppTable<StudentAssistanceAssessment>(
             data: state.assessments,
             pageable: Pageable(
               page: 0,
@@ -1081,7 +1083,7 @@ class _ReviewTab extends StatelessWidget {
             ),
             columns: [
               AppTableColumn(title: 'Student', flex: 3, cell: (item) => _text(item.studentName ?? item.studentId, bold: true)),
-              AppTableColumn(title: 'Rule', flex: 2, cell: (item) => _text(item.ruleName ?? item.scholarshipType.label)),
+              AppTableColumn(title: 'Rule', flex: 2, cell: (item) => _text(item.ruleName ?? item.ruleType.label)),
               AppTableColumn(title: 'Source', cell: (item) => _text(item.selectionMode.label)),
               AppTableColumn(title: 'Attendance', cell: (item) => _text('${(item.attendanceScore ?? 0).toStringAsFixed(0)}%')),
               AppTableColumn(title: 'Score', cell: (item) => _text(item.totalScore.toStringAsFixed(0))),
@@ -1138,7 +1140,7 @@ class _ReviewTab extends StatelessWidget {
 class _ApprovalTab extends StatefulWidget {
   const _ApprovalTab({required this.period, required this.state});
 
-  final ScholarshipPeriod period;
+  final AssistancePeriod period;
   final AssistancePlanState state;
 
   @override
@@ -1164,7 +1166,7 @@ class _ApprovalTabState extends State<_ApprovalTab> {
     final doc = widget.state.approvalDocuments.isEmpty
         ? null
         : widget.state.approvalDocuments.first;
-    final locked = widget.period.status == ScholarshipPeriodStatus.approved;
+    final locked = widget.period.status == AssistancePeriodStatus.approved;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1256,7 +1258,7 @@ class _ApprovalTabState extends State<_ApprovalTab> {
     );
   }
 
-  Widget _documentPanel(ScholarshipApprovalDocument doc) {
+  Widget _documentPanel(AssistanceApprovalDocument doc) {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: AppColors.white,
@@ -1474,7 +1476,7 @@ class _RecipientsTab extends StatefulWidget {
     required this.program,
   });
 
-  final ScholarshipPeriod period;
+  final AssistancePeriod period;
   final AssistancePlanState state;
   final AssistanceProgram program;
 
@@ -1484,8 +1486,8 @@ class _RecipientsTab extends StatefulWidget {
 
 class _RecipientsTabState extends State<_RecipientsTab> {
   final TextEditingController _searchController = TextEditingController();
-  ScholarshipRecipientStatus? _statusFilter;
-  ScholarshipType? _ruleFilter;
+  AssistanceRecipientStatus? _statusFilter;
+  AssistanceRuleType? _ruleFilter;
   String _query = '';
 
   @override
@@ -1498,7 +1500,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
   Widget build(BuildContext context) {
     final recipients = _filteredRecipients();
     final ruleOptions = widget.state.recipients
-        .map((item) => item.scholarshipType)
+        .map((item) => item.ruleType)
         .toSet()
         .toList()
       ..sort((a, b) => a.label.compareTo(b.label));
@@ -1532,9 +1534,9 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                 ),
                 SizedBox(
                   width: 170,
-                  child: CommonFormWidgets.dropdownFieldTyped<ScholarshipRecipientStatus>(
+                  child: CommonFormWidgets.dropdownFieldTyped<AssistanceRecipientStatus>(
                     label: 'Status',
-                    items: ScholarshipRecipientStatus.values,
+                    items: AssistanceRecipientStatus.values,
                     labelBuilder: (status) => status.label,
                     valueBuilder: (status) => status.value,
                     value: _statusFilter,
@@ -1547,7 +1549,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                 ),
                 SizedBox(
                   width: 220,
-                  child: CommonFormWidgets.dropdownFieldTyped<ScholarshipType>(
+                  child: CommonFormWidgets.dropdownFieldTyped<AssistanceRuleType>(
                     label: 'Rule',
                     items: ruleOptions,
                     labelBuilder: (rule) => rule.label,
@@ -1604,7 +1606,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: AppTable<ScholarshipRecipient>(
+          child: AppTable<AssistanceRecipient>(
             data: recipients,
             emptyMessage: widget.state.recipients.isEmpty
                 ? 'No recipients yet. Upload approval document first.'
@@ -1618,7 +1620,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
             columns: [
               AppTableColumn(title: 'Student', flex: 3, cell: (item) => _text(item.studentName ?? item.studentId, bold: true)),
               AppTableColumn(title: 'Program', flex: 2, cell: (_) => _text(widget.program.name)),
-              AppTableColumn(title: 'Rule', flex: 2, cell: (item) => _text(item.ruleName ?? item.scholarshipType.label)),
+              AppTableColumn(title: 'Rule', flex: 2, cell: (item) => _text(item.ruleName ?? item.ruleType.label)),
               AppTableColumn(title: 'Benefit', cell: (item) => _text(_recipientBenefit(item, widget.program))),
               AppTableColumn(title: 'Status', cell: (item) => _text(item.status.label)),
               AppTableColumn(
@@ -1629,9 +1631,9 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                     item.benefitType ?? widget.program.benefitType.value,
                   );
                   final nextStatus = benefitType == AssistanceBenefitType.cash
-                      ? ScholarshipRecipientStatus.paid
-                      : ScholarshipRecipientStatus.distributed;
-                  final label = nextStatus == ScholarshipRecipientStatus.paid
+                      ? AssistanceRecipientStatus.paid
+                      : AssistanceRecipientStatus.distributed;
+                  final label = nextStatus == AssistanceRecipientStatus.paid
                       ? 'Mark Paid'
                       : 'Mark Distributed';
                   final done = item.status == nextStatus;
@@ -1665,18 +1667,18 @@ class _RecipientsTabState extends State<_RecipientsTab> {
   bool get _hasFilter =>
       _query.trim().isNotEmpty || _statusFilter != null || _ruleFilter != null;
 
-  List<ScholarshipRecipient> _filteredRecipients() {
+  List<AssistanceRecipient> _filteredRecipients() {
     final query = _query.trim().toLowerCase();
     return widget.state.recipients.where((item) {
       if (_statusFilter != null && item.status != _statusFilter) {
         return false;
       }
-      if (_ruleFilter != null && item.scholarshipType != _ruleFilter) {
+      if (_ruleFilter != null && item.ruleType != _ruleFilter) {
         return false;
       }
       if (query.isEmpty) return true;
       final student = item.studentName ?? item.studentId;
-      final rule = item.ruleName ?? item.scholarshipType.label;
+      final rule = item.ruleName ?? item.ruleType.label;
       return student.toLowerCase().contains(query) ||
           rule.toLowerCase().contains(query) ||
           item.status.label.toLowerCase().contains(query);
@@ -1687,7 +1689,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
 class _SelectStudentsDialog extends StatefulWidget {
   const _SelectStudentsDialog({required this.rule, required this.state});
 
-  final ScholarshipPeriodRule rule;
+  final AssistancePeriodRule rule;
   final AssistancePlanState state;
 
   @override
@@ -1714,15 +1716,15 @@ class _SelectStudentsDialogState extends State<_SelectStudentsDialog> {
   Widget build(BuildContext context) {
     final alreadyTargeted = widget.state.assessments
         .where(
-          (item) => item.decisionStatus == ScholarshipDecisionStatus.approved,
+          (item) => item.decisionStatus == AssistanceDecisionStatus.approved,
         )
         .map((item) => item.studentId)
         .toSet();
     final currentRuleCount = widget.state.assessments
         .where(
           (item) =>
-              item.scholarshipPeriodRuleId == widget.rule.id &&
-              item.decisionStatus == ScholarshipDecisionStatus.approved,
+              item.assistancePeriodRuleId == widget.rule.id &&
+              item.decisionStatus == AssistanceDecisionStatus.approved,
         )
         .length;
     final remaining = (widget.rule.quota - currentRuleCount).clamp(0, 999999);
@@ -1758,7 +1760,7 @@ class _SelectStudentsDialogState extends State<_SelectStudentsDialog> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: AppTable<ScholarshipStudentOption>(
+              child: AppTable<AssistanceStudentOption>(
                 data: students,
                 pageable: Pageable(
                   page: 0,
@@ -1898,11 +1900,11 @@ class _CreateAssistancePeriodDialogState
     _startDate = DateTime(now.year, now.month, 1);
     _endDate = DateTime(now.year, now.month + 1, 0);
     _periodName =
-        '${ScholarshipPeriod.monthName(_startDate.month)} ${_startDate.year} ${_program.name}';
+        '${AssistancePeriod.monthName(_startDate.month)} ${_startDate.year} ${_program.name}';
     _rules = [
-      _RuleDraft(ScholarshipType.fixedPriority, 10),
-      _RuleDraft(ScholarshipType.needBased, 30),
-      _RuleDraft(ScholarshipType.rollingAttendance, 60),
+      _RuleDraft(AssistanceRuleType.fixedPriority, 10),
+      _RuleDraft(AssistanceRuleType.needBased, 30),
+      _RuleDraft(AssistanceRuleType.rollingAttendance, 60),
     ];
   }
 
@@ -1960,7 +1962,7 @@ class _CreateAssistancePeriodDialogState
             setState(() {
               _program = program;
               _periodName =
-                  '${ScholarshipPeriod.monthName(_startDate.month)} ${_startDate.year} ${program.name}';
+                  '${AssistancePeriod.monthName(_startDate.month)} ${_startDate.year} ${program.name}';
             });
           },
           onSaved: (program) => _program = program ?? _program,
@@ -2455,8 +2457,8 @@ class _CreateAssistancePeriodDialogState
     );
   }
 
-  Widget _modePill(ScholarshipSelectionMode mode) {
-    final auto = mode == ScholarshipSelectionMode.auto;
+  Widget _modePill(AssistanceSelectionMode mode) {
+    final auto = mode == AssistanceSelectionMode.auto;
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
@@ -2518,9 +2520,9 @@ class _CreateAssistancePeriodDialogState
             allowManualOverrideBelowAttendance: _allowOverride,
             rules: [
               for (var i = 0; i < _rules.length; i++)
-                ScholarshipPeriodRule(
-                  scholarshipPeriodId: '',
-                  scholarshipRuleId: null,
+                AssistancePeriodRule(
+                  assistancePeriodId: '',
+                  assistanceRuleId: null,
                   ruleType: _rules[i].type,
                   quota: _rules[i].quota,
                   priorityOrder: i,
@@ -2537,10 +2539,10 @@ class _CreateAssistancePeriodDialogState
   }
 
   Future<void> _showAddRuleDialog() async {
-    final available = ScholarshipType.corePeriodRuleTypes
+    final available = AssistanceRuleType.corePeriodRuleTypes
         .where((type) => !_rules.any((rule) => rule.type == type))
         .toList();
-    final selected = <ScholarshipType>{};
+    final selected = <AssistanceRuleType>{};
     await showDialog<void>(
       context: context,
       builder: (context) {
@@ -2606,7 +2608,7 @@ enum _AssistanceExportFormat { pdf, excel }
 
 Future<void> _exportPlan({
   required BuildContext context,
-  required ScholarshipPeriod period,
+  required AssistancePeriod period,
   required AssistancePlanState state,
   required _AssistanceExportFormat format,
 }) async {
@@ -2642,9 +2644,9 @@ Future<void> _exportPlan({
 }
 
 Future<void> _exportRecipients({
-  required ScholarshipPeriod period,
+  required AssistancePeriod period,
   required AssistanceProgram program,
-  required List<ScholarshipRecipient> recipients,
+  required List<AssistanceRecipient> recipients,
   required _AssistanceExportFormat format,
 }) async {
   final isPdf = format == _AssistanceExportFormat.pdf;
@@ -2672,7 +2674,7 @@ Future<void> _exportRecipients({
 }
 
 List<String> _planExportLines(
-  ScholarshipPeriod period,
+  AssistancePeriod period,
   AssistancePlanState state,
 ) {
   return [
@@ -2685,7 +2687,7 @@ List<String> _planExportLines(
     '',
     'Student | Rule | Source | Attendance | Score | Status',
     for (final item in state.assessments)
-      '${item.studentName ?? item.studentId} | ${item.ruleName ?? item.scholarshipType.label} | ${item.selectionMode.label} | ${(item.attendanceScore ?? 0).toStringAsFixed(0)}% | ${item.totalScore.toStringAsFixed(0)} | ${item.decisionStatus.label}',
+      '${item.studentName ?? item.studentId} | ${item.ruleName ?? item.ruleType.label} | ${item.selectionMode.label} | ${(item.attendanceScore ?? 0).toStringAsFixed(0)}% | ${item.totalScore.toStringAsFixed(0)} | ${item.decisionStatus.label}',
     '',
     'Prepared by: ______________________    Date: ______________________',
     'Reviewed by: ______________________    Date: ______________________',
@@ -2693,13 +2695,13 @@ List<String> _planExportLines(
   ];
 }
 
-String _planExportHtml(ScholarshipPeriod period, AssistancePlanState state) {
+String _planExportHtml(AssistancePeriod period, AssistancePlanState state) {
   String escape(String value) => const HtmlEscape().convert(value);
   final rows = state.assessments.map((item) {
     return '''
       <tr>
         <td>${escape(item.studentName ?? item.studentId)}</td>
-        <td>${escape(item.ruleName ?? item.scholarshipType.label)}</td>
+        <td>${escape(item.ruleName ?? item.ruleType.label)}</td>
         <td>${escape(item.selectionMode.label)}</td>
         <td>${(item.attendanceScore ?? 0).toStringAsFixed(0)}%</td>
         <td>${item.totalScore.toStringAsFixed(0)}</td>
@@ -2735,9 +2737,9 @@ String _planExportHtml(ScholarshipPeriod period, AssistancePlanState state) {
 }
 
 List<String> _recipientExportLines(
-  ScholarshipPeriod period,
+  AssistancePeriod period,
   AssistanceProgram program,
-  List<ScholarshipRecipient> recipients,
+  List<AssistanceRecipient> recipients,
 ) {
   return [
     'Assistance Recipients',
@@ -2749,21 +2751,21 @@ List<String> _recipientExportLines(
     '',
     'Student | Rule | Benefit | Score | Status | Approved At',
     for (final item in recipients)
-      '${item.studentName ?? item.studentId} | ${item.ruleName ?? item.scholarshipType.label} | ${_recipientBenefit(item, program)} | ${item.finalScore.toStringAsFixed(0)} | ${item.status.label} | ${_formatDateTimeValue(item.approvedAt)}',
+      '${item.studentName ?? item.studentId} | ${item.ruleName ?? item.ruleType.label} | ${_recipientBenefit(item, program)} | ${item.finalScore.toStringAsFixed(0)} | ${item.status.label} | ${_formatDateTimeValue(item.approvedAt)}',
   ];
 }
 
 String _recipientExportHtml(
-  ScholarshipPeriod period,
+  AssistancePeriod period,
   AssistanceProgram program,
-  List<ScholarshipRecipient> recipients,
+  List<AssistanceRecipient> recipients,
 ) {
   String escape(String value) => const HtmlEscape().convert(value);
   final rows = recipients.map((item) {
     return '''
       <tr>
         <td>${escape(item.studentName ?? item.studentId)}</td>
-        <td>${escape(item.ruleName ?? item.scholarshipType.label)}</td>
+        <td>${escape(item.ruleName ?? item.ruleType.label)}</td>
         <td>${escape(_recipientBenefit(item, program))}</td>
         <td>${item.finalScore.toStringAsFixed(0)}</td>
         <td>${escape(item.status.label)}</td>
@@ -2838,7 +2840,7 @@ class _RuleDraft {
   _RuleDraft(this.type, this.quota);
 
   final String id = UniqueKey().toString();
-  final ScholarshipType type;
+  final AssistanceRuleType type;
   int quota;
 }
 
@@ -2901,7 +2903,7 @@ Widget _text(String text, {bool bold = false}) {
 }
 
 String _recipientBenefit(
-  ScholarshipRecipient recipient,
+  AssistanceRecipient recipient,
   AssistanceProgram program,
 ) {
   final snapshot = recipient.benefitSummary;
@@ -2919,7 +2921,7 @@ DateTime? _parseDateValue(String? value) {
 }
 
 String _formatDisplayDate(DateTime value) {
-  return '${value.day} ${ScholarshipPeriod.monthName(value.month)} ${value.year}';
+  return '${value.day} ${AssistancePeriod.monthName(value.month)} ${value.year}';
 }
 
 String _formatDateTimeValue(String? value) {
@@ -2934,7 +2936,7 @@ String _dateRange(DateTime start, DateTime end) {
   return '${_formatDisplayDate(start)} - ${_formatDisplayDate(end)}';
 }
 
-String _periodDateRange(ScholarshipPeriod period) {
+String _periodDateRange(AssistancePeriod period) {
   final start = _parseDateValue(period.startDate);
   final end = _parseDateValue(period.endDate);
   if (start != null && end != null) return _dateRange(start, end);
@@ -2943,7 +2945,7 @@ String _periodDateRange(ScholarshipPeriod period) {
   return '-';
 }
 
-String _calculationRange(ScholarshipPeriod period) {
+String _calculationRange(AssistancePeriod period) {
   final baseDate =
       _parseDateValue(period.startDate) ??
       DateTime(period.periodYear, period.periodMonth);

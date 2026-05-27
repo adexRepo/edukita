@@ -1,6 +1,6 @@
 import 'package:uuid/uuid.dart';
 
-enum ScholarshipType {
+enum AssistanceRuleType {
   fixedPriority('fixed_priority', 'Fixed Priority'),
   needBased('need_based', 'Need-Based'),
   meritBased('merit_based', 'Merit-Based'),
@@ -14,193 +14,193 @@ enum ScholarshipType {
   temporarySupport('temporary_support', 'Temporary Support'),
   attendanceBased('attendance_based', 'Attendance Based');
 
-  const ScholarshipType(this.value, this.label);
+  const AssistanceRuleType(this.value, this.label);
 
   final String value;
   final String label;
 
   bool get isManualDefault {
     return switch (this) {
-      ScholarshipType.fixedPriority ||
-      ScholarshipType.needBased ||
-      ScholarshipType.specialCase ||
-      ScholarshipType.teacherRecommendation ||
-      ScholarshipType.customRule ||
-      ScholarshipType.manualOverride ||
-      ScholarshipType.manualPriority ||
-      ScholarshipType.temporarySupport => true,
-      ScholarshipType.meritBased ||
-      ScholarshipType.growthBased ||
-      ScholarshipType.rollingAttendance ||
-      ScholarshipType.attendanceBased => false,
+      AssistanceRuleType.fixedPriority ||
+      AssistanceRuleType.needBased ||
+      AssistanceRuleType.specialCase ||
+      AssistanceRuleType.teacherRecommendation ||
+      AssistanceRuleType.customRule ||
+      AssistanceRuleType.manualOverride ||
+      AssistanceRuleType.manualPriority ||
+      AssistanceRuleType.temporarySupport => true,
+      AssistanceRuleType.meritBased ||
+      AssistanceRuleType.growthBased ||
+      AssistanceRuleType.rollingAttendance ||
+      AssistanceRuleType.attendanceBased => false,
     };
   }
 
-  ScholarshipType get normalized {
-    if (this == ScholarshipType.attendanceBased) {
-      return ScholarshipType.rollingAttendance;
+  AssistanceRuleType get normalized {
+    if (this == AssistanceRuleType.attendanceBased) {
+      return AssistanceRuleType.rollingAttendance;
     }
-    if (this == ScholarshipType.manualPriority ||
-        this == ScholarshipType.temporarySupport) {
-      return ScholarshipType.customRule;
+    if (this == AssistanceRuleType.manualPriority ||
+        this == AssistanceRuleType.temporarySupport) {
+      return AssistanceRuleType.customRule;
     }
     return this;
   }
 
-  static List<ScholarshipType> get ruleTypes => const [
-    ScholarshipType.fixedPriority,
-    ScholarshipType.needBased,
-    ScholarshipType.meritBased,
-    ScholarshipType.growthBased,
-    ScholarshipType.specialCase,
-    ScholarshipType.teacherRecommendation,
-    ScholarshipType.rollingAttendance,
-    ScholarshipType.customRule,
-    ScholarshipType.manualOverride,
+  static List<AssistanceRuleType> get ruleTypes => const [
+    AssistanceRuleType.fixedPriority,
+    AssistanceRuleType.needBased,
+    AssistanceRuleType.meritBased,
+    AssistanceRuleType.growthBased,
+    AssistanceRuleType.specialCase,
+    AssistanceRuleType.teacherRecommendation,
+    AssistanceRuleType.rollingAttendance,
+    AssistanceRuleType.customRule,
+    AssistanceRuleType.manualOverride,
   ];
 
-  static List<ScholarshipType> get corePeriodRuleTypes => const [
-    ScholarshipType.fixedPriority,
-    ScholarshipType.needBased,
-    ScholarshipType.meritBased,
-    ScholarshipType.growthBased,
-    ScholarshipType.specialCase,
-    ScholarshipType.teacherRecommendation,
-    ScholarshipType.rollingAttendance,
+  static List<AssistanceRuleType> get corePeriodRuleTypes => const [
+    AssistanceRuleType.fixedPriority,
+    AssistanceRuleType.needBased,
+    AssistanceRuleType.meritBased,
+    AssistanceRuleType.growthBased,
+    AssistanceRuleType.specialCase,
+    AssistanceRuleType.teacherRecommendation,
+    AssistanceRuleType.rollingAttendance,
   ];
 
   bool get isCorePeriodRule => corePeriodRuleTypes.contains(this);
 
-  ScholarshipSelectionMode get defaultSelectionMode {
+  AssistanceSelectionMode get defaultSelectionMode {
     return isManualDefault
-        ? ScholarshipSelectionMode.manual
-        : ScholarshipSelectionMode.auto;
+        ? AssistanceSelectionMode.manual
+        : AssistanceSelectionMode.auto;
   }
 
-  static List<ScholarshipType> get studentRuleTypes => const [
-    ScholarshipType.fixedPriority,
-    ScholarshipType.needBased,
-    ScholarshipType.specialCase,
-    ScholarshipType.teacherRecommendation,
-    ScholarshipType.temporarySupport,
-    ScholarshipType.customRule,
+  static List<AssistanceRuleType> get studentRuleTypes => const [
+    AssistanceRuleType.fixedPriority,
+    AssistanceRuleType.needBased,
+    AssistanceRuleType.specialCase,
+    AssistanceRuleType.teacherRecommendation,
+    AssistanceRuleType.temporarySupport,
+    AssistanceRuleType.customRule,
   ];
 
-  static ScholarshipType fromValue(String? value) {
-    return ScholarshipType.values.firstWhere(
+  static AssistanceRuleType fromValue(String? value) {
+    return AssistanceRuleType.values.firstWhere(
       (item) => item.value == value,
-      orElse: () => ScholarshipType.rollingAttendance,
+      orElse: () => AssistanceRuleType.rollingAttendance,
     );
   }
 }
 
-enum ScholarshipSelectionMode {
+enum AssistanceSelectionMode {
   manual('manual', 'Manual'),
   auto('auto', 'Auto');
 
-  const ScholarshipSelectionMode(this.value, this.label);
+  const AssistanceSelectionMode(this.value, this.label);
 
   final String value;
   final String label;
 
-  static ScholarshipSelectionMode fromValue(String? value) {
-    return ScholarshipSelectionMode.values.firstWhere(
+  static AssistanceSelectionMode fromValue(String? value) {
+    return AssistanceSelectionMode.values.firstWhere(
       (item) => item.value == value,
-      orElse: () => ScholarshipSelectionMode.manual,
+      orElse: () => AssistanceSelectionMode.manual,
     );
   }
 }
 
-enum ScholarshipPeriodStatus {
+enum AssistancePeriodStatus {
   draft('draft', 'Draft'),
-  generated('generated', 'Targeted'),
-  pendingReview('pending_review', 'Submitted'),
+  targeted('targeted', 'Targeted'),
+  submitted('submitted', 'Submitted'),
   approved('approved', 'Approved'),
   cancelled('cancelled', 'Cancelled');
 
-  const ScholarshipPeriodStatus(this.value, this.label);
+  const AssistancePeriodStatus(this.value, this.label);
 
   final String value;
   final String label;
 
-  static ScholarshipPeriodStatus fromValue(String? value) {
+  static AssistancePeriodStatus fromValue(String? value) {
     if (value == 'targeted' || value == 'generated') {
-      return ScholarshipPeriodStatus.generated;
+      return AssistancePeriodStatus.targeted;
     }
     if (value == 'submitted' || value == 'pending_review') {
-      return ScholarshipPeriodStatus.pendingReview;
+      return AssistancePeriodStatus.submitted;
     }
-    return ScholarshipPeriodStatus.values.firstWhere(
+    return AssistancePeriodStatus.values.firstWhere(
       (item) => item.value == value,
-      orElse: () => ScholarshipPeriodStatus.draft,
+      orElse: () => AssistancePeriodStatus.draft,
     );
   }
 }
 
-enum ScholarshipDecisionStatus {
+enum AssistanceDecisionStatus {
   draft('draft', 'Draft'),
   approved('approved', 'Selected'),
   waitlist('waitlist', 'Waitlist'),
   rejected('rejected', 'Rejected'),
   cancelled('cancelled', 'Cancelled');
 
-  const ScholarshipDecisionStatus(this.value, this.label);
+  const AssistanceDecisionStatus(this.value, this.label);
 
   final String value;
   final String label;
 
-  static ScholarshipDecisionStatus fromValue(String? value) {
-    return ScholarshipDecisionStatus.values.firstWhere(
+  static AssistanceDecisionStatus fromValue(String? value) {
+    return AssistanceDecisionStatus.values.firstWhere(
       (item) => item.value == value,
-      orElse: () => ScholarshipDecisionStatus.draft,
+      orElse: () => AssistanceDecisionStatus.draft,
     );
   }
 }
 
-enum ScholarshipEligibilityStatus {
+enum AssistanceEligibilityStatus {
   pending('pending', 'Pending'),
   eligible('eligible', 'Eligible'),
   ineligible('ineligible', 'Ineligible'),
   overridden('overridden', 'Overridden');
 
-  const ScholarshipEligibilityStatus(this.value, this.label);
+  const AssistanceEligibilityStatus(this.value, this.label);
 
   final String value;
   final String label;
 
-  static ScholarshipEligibilityStatus fromValue(String? value) {
-    return ScholarshipEligibilityStatus.values.firstWhere(
+  static AssistanceEligibilityStatus fromValue(String? value) {
+    return AssistanceEligibilityStatus.values.firstWhere(
       (item) => item.value == value,
-      orElse: () => ScholarshipEligibilityStatus.eligible,
+      orElse: () => AssistanceEligibilityStatus.eligible,
     );
   }
 }
 
-enum ScholarshipRecipientStatus {
+enum AssistanceRecipientStatus {
   approved('approved', 'Approved'),
   paid('paid', 'Paid'),
   distributed('distributed', 'Distributed'),
   cancelled('cancelled', 'Cancelled');
 
-  const ScholarshipRecipientStatus(this.value, this.label);
+  const AssistanceRecipientStatus(this.value, this.label);
 
   final String value;
   final String label;
 
-  static ScholarshipRecipientStatus fromValue(String? value) {
-    return ScholarshipRecipientStatus.values.firstWhere(
+  static AssistanceRecipientStatus fromValue(String? value) {
+    return AssistanceRecipientStatus.values.firstWhere(
       (item) => item.value == value,
-      orElse: () => ScholarshipRecipientStatus.approved,
+      orElse: () => AssistanceRecipientStatus.approved,
     );
   }
 }
 
-class ScholarshipRule {
-  ScholarshipRule({
+class AssistanceRule {
+  AssistanceRule({
     String? id,
     required this.ruleName,
     required this.ruleType,
-    ScholarshipSelectionMode? selectionMode,
+    AssistanceSelectionMode? selectionMode,
     this.description,
     this.isSystemDefault = false,
     this.isActive = true,
@@ -213,8 +213,8 @@ class ScholarshipRule {
 
   final String id;
   final String ruleName;
-  final ScholarshipType ruleType;
-  final ScholarshipSelectionMode selectionMode;
+  final AssistanceRuleType ruleType;
+  final AssistanceSelectionMode selectionMode;
   final String? description;
   final bool isSystemDefault;
   final bool isActive;
@@ -222,17 +222,17 @@ class ScholarshipRule {
   final String updatedAt;
 
   String get displayName {
-    if (ruleType == ScholarshipType.customRule && ruleName.trim().isNotEmpty) {
+    if (ruleType == AssistanceRuleType.customRule && ruleName.trim().isNotEmpty) {
       return ruleName.trim();
     }
     return ruleType.label;
   }
 
-  ScholarshipRule copyWith({
+  AssistanceRule copyWith({
     String? id,
     String? ruleName,
-    ScholarshipType? ruleType,
-    ScholarshipSelectionMode? selectionMode,
+    AssistanceRuleType? ruleType,
+    AssistanceSelectionMode? selectionMode,
     String? description,
     bool? isSystemDefault,
     bool? isActive,
@@ -240,7 +240,7 @@ class ScholarshipRule {
     String? updatedAt,
   }) {
     final nextType = ruleType ?? this.ruleType;
-    return ScholarshipRule(
+    return AssistanceRule(
       id: id ?? this.id,
       ruleName: ruleName ?? this.ruleName,
       ruleType: nextType,
@@ -253,13 +253,13 @@ class ScholarshipRule {
     );
   }
 
-  factory ScholarshipRule.fromMap(Map<String, Object?> map) {
-    final type = ScholarshipType.fromValue(map['rule_type']?.toString());
-    return ScholarshipRule(
+  factory AssistanceRule.fromMap(Map<String, Object?> map) {
+    final type = AssistanceRuleType.fromValue(map['rule_type']?.toString());
+    return AssistanceRule(
       id: map['id']?.toString(),
       ruleName: map['rule_name']?.toString() ?? type.label,
       ruleType: type,
-      selectionMode: ScholarshipSelectionMode.fromValue(
+      selectionMode: AssistanceSelectionMode.fromValue(
         map['selection_mode']?.toString(),
       ),
       description: map['description'] as String?,
@@ -286,8 +286,8 @@ class ScholarshipRule {
   }
 }
 
-class ScholarshipPeriod {
-  ScholarshipPeriod({
+class AssistancePeriod {
+  AssistancePeriod({
     String? id,
     this.assistanceProgramId,
     this.periodName,
@@ -303,8 +303,7 @@ class ScholarshipPeriod {
     this.calculationWindowMonths = 3,
     this.minimumAttendancePercentage = 75,
     this.allowManualOverrideBelowAttendance = true,
-    this.status = ScholarshipPeriodStatus.draft,
-    this.generatedAt,
+    this.status = AssistancePeriodStatus.draft,
     this.targetedAt,
     this.submittedAt,
     this.approvedAt,
@@ -330,8 +329,7 @@ class ScholarshipPeriod {
   final int calculationWindowMonths;
   final double minimumAttendancePercentage;
   final bool allowManualOverrideBelowAttendance;
-  final ScholarshipPeriodStatus status;
-  final String? generatedAt;
+  final AssistancePeriodStatus status;
   final String? targetedAt;
   final String? submittedAt;
   final String? approvedAt;
@@ -340,7 +338,7 @@ class ScholarshipPeriod {
   final String updatedAt;
 
   static String periodId(int year, int month) {
-    return 'sch-$year-${month.toString().padLeft(2, '0')}';
+    return 'asst-$year-${month.toString().padLeft(2, '0')}';
   }
 
   String get label {
@@ -368,7 +366,7 @@ class ScholarshipPeriod {
     return names[month - 1];
   }
 
-  ScholarshipPeriod copyWith({
+  AssistancePeriod copyWith({
     String? id,
     String? assistanceProgramId,
     String? periodName,
@@ -384,8 +382,7 @@ class ScholarshipPeriod {
     int? calculationWindowMonths,
     double? minimumAttendancePercentage,
     bool? allowManualOverrideBelowAttendance,
-    ScholarshipPeriodStatus? status,
-    String? generatedAt,
+    AssistancePeriodStatus? status,
     String? targetedAt,
     String? submittedAt,
     String? approvedAt,
@@ -393,7 +390,7 @@ class ScholarshipPeriod {
     String? createdAt,
     String? updatedAt,
   }) {
-    return ScholarshipPeriod(
+    return AssistancePeriod(
       id: id ?? this.id,
       assistanceProgramId: assistanceProgramId ?? this.assistanceProgramId,
       periodName: periodName ?? this.periodName,
@@ -414,7 +411,6 @@ class ScholarshipPeriod {
       allowManualOverrideBelowAttendance: allowManualOverrideBelowAttendance ??
           this.allowManualOverrideBelowAttendance,
       status: status ?? this.status,
-      generatedAt: generatedAt ?? this.generatedAt,
       targetedAt: targetedAt ?? this.targetedAt,
       submittedAt: submittedAt ?? this.submittedAt,
       approvedAt: approvedAt ?? this.approvedAt,
@@ -424,8 +420,8 @@ class ScholarshipPeriod {
     );
   }
 
-  factory ScholarshipPeriod.fromMap(Map<String, Object?> map) {
-    return ScholarshipPeriod(
+  factory AssistancePeriod.fromMap(Map<String, Object?> map) {
+    return AssistancePeriod(
       id: map['id']?.toString(),
       assistanceProgramId: map['assistance_program_id']?.toString(),
       periodName: map['period_name']?.toString(),
@@ -436,8 +432,6 @@ class ScholarshipPeriod {
       periodMonth: (map['period_month'] as num).toInt(),
       periodYear: (map['period_year'] as num).toInt(),
       targetQuota: (map['target_quota'] as num).toInt(),
-      fixedQuota: (map['fixed_quota'] as num?)?.toInt() ?? 0,
-      rollingQuota: (map['rolling_quota'] as num?)?.toInt() ?? 0,
       calculationWindowMonths:
           (map['calculation_window_months'] as num?)?.toInt() ?? 3,
       minimumAttendancePercentage:
@@ -446,8 +440,7 @@ class ScholarshipPeriod {
           ((map['allow_manual_override_below_attendance'] as num?)?.toInt() ??
               1) ==
           1,
-      status: ScholarshipPeriodStatus.fromValue(map['status']?.toString()),
-      generatedAt: map['generated_at'] as String?,
+      status: AssistancePeriodStatus.fromValue(map['status']?.toString()),
       targetedAt:
           (map['targeted_at'] as String?) ?? (map['generated_at'] as String?),
       submittedAt: map['submitted_at'] as String?,
@@ -470,14 +463,11 @@ class ScholarshipPeriod {
       'period_month': periodMonth,
       'period_year': periodYear,
       'target_quota': targetQuota,
-      'fixed_quota': fixedQuota,
-      'rolling_quota': rollingQuota,
       'calculation_window_months': calculationWindowMonths,
       'minimum_attendance_percentage': minimumAttendancePercentage,
       'allow_manual_override_below_attendance':
           allowManualOverrideBelowAttendance ? 1 : 0,
       'status': status.value,
-      'generated_at': generatedAt,
       'targeted_at': targetedAt,
       'submitted_at': submittedAt,
       'approved_at': approvedAt,
@@ -488,16 +478,16 @@ class ScholarshipPeriod {
   }
 }
 
-class ScholarshipPeriodRule {
-  ScholarshipPeriodRule({
+class AssistancePeriodRule {
+  AssistancePeriodRule({
     String? id,
-    required this.scholarshipPeriodId,
-    this.scholarshipRuleId,
+    required this.assistancePeriodId,
+    this.assistanceRuleId,
     required this.ruleType,
     String? ruleName,
     required this.quota,
     required this.priorityOrder,
-    ScholarshipSelectionMode? selectionMode,
+    AssistanceSelectionMode? selectionMode,
     this.minScore,
     this.allowQuotaCarryOver = true,
     this.carryOverToRuleType,
@@ -511,55 +501,55 @@ class ScholarshipPeriodRule {
            : ruleType.label,
        selectionMode = selectionMode ??
            (ruleType.isManualDefault
-               ? ScholarshipSelectionMode.manual
-               : ScholarshipSelectionMode.auto),
+               ? AssistanceSelectionMode.manual
+               : AssistanceSelectionMode.auto),
        createdAt = createdAt ?? DateTime.now().toIso8601String(),
        updatedAt = updatedAt ?? DateTime.now().toIso8601String();
 
   final String id;
-  final String scholarshipPeriodId;
-  final String? scholarshipRuleId;
-  final ScholarshipType ruleType;
+  final String assistancePeriodId;
+  final String? assistanceRuleId;
+  final AssistanceRuleType ruleType;
   final String ruleName;
   final int quota;
   final int priorityOrder;
-  final ScholarshipSelectionMode selectionMode;
+  final AssistanceSelectionMode selectionMode;
   final double? minScore;
   final bool allowQuotaCarryOver;
-  final ScholarshipType? carryOverToRuleType;
+  final AssistanceRuleType? carryOverToRuleType;
   final String? weightConfigJson;
   final bool isActive;
   final String createdAt;
   final String updatedAt;
 
   String get displayName {
-    if (ruleType == ScholarshipType.customRule && ruleName.trim().isNotEmpty) {
+    if (ruleType == AssistanceRuleType.customRule && ruleName.trim().isNotEmpty) {
       return ruleName;
     }
     return ruleType.label;
   }
 
-  ScholarshipPeriodRule copyWith({
+  AssistancePeriodRule copyWith({
     String? id,
-    String? scholarshipPeriodId,
-    String? scholarshipRuleId,
-    ScholarshipType? ruleType,
+    String? assistancePeriodId,
+    String? assistanceRuleId,
+    AssistanceRuleType? ruleType,
     String? ruleName,
     int? quota,
     int? priorityOrder,
-    ScholarshipSelectionMode? selectionMode,
+    AssistanceSelectionMode? selectionMode,
     double? minScore,
     bool? allowQuotaCarryOver,
-    ScholarshipType? carryOverToRuleType,
+    AssistanceRuleType? carryOverToRuleType,
     String? weightConfigJson,
     bool? isActive,
     String? createdAt,
     String? updatedAt,
   }) {
-    return ScholarshipPeriodRule(
+    return AssistancePeriodRule(
       id: id ?? this.id,
-      scholarshipPeriodId: scholarshipPeriodId ?? this.scholarshipPeriodId,
-      scholarshipRuleId: scholarshipRuleId ?? this.scholarshipRuleId,
+      assistancePeriodId: assistancePeriodId ?? this.assistancePeriodId,
+      assistanceRuleId: assistanceRuleId ?? this.assistanceRuleId,
       ruleType: ruleType ?? this.ruleType,
       ruleName: ruleName ?? this.ruleName,
       quota: quota ?? this.quota,
@@ -575,20 +565,16 @@ class ScholarshipPeriodRule {
     );
   }
 
-  factory ScholarshipPeriodRule.fromMap(Map<String, Object?> map) {
-    return ScholarshipPeriodRule(
+  factory AssistancePeriodRule.fromMap(Map<String, Object?> map) {
+    return AssistancePeriodRule(
       id: map['id']?.toString(),
-      scholarshipPeriodId:
-          (map['assistance_period_id'] ?? map['scholarship_period_id'])
-              as String,
-      scholarshipRuleId:
-          (map['assistance_rule_id'] ?? map['scholarship_rule_id'])
-              as String?,
-      ruleType: ScholarshipType.fromValue(map['rule_type']?.toString()),
+      assistancePeriodId: map['assistance_period_id'] as String,
+      assistanceRuleId: map['assistance_rule_id'] as String?,
+      ruleType: AssistanceRuleType.fromValue(map['rule_type']?.toString()),
       ruleName: map['rule_name']?.toString(),
       quota: (map['quota'] as num?)?.toInt() ?? 0,
       priorityOrder: (map['priority_order'] as num?)?.toInt() ?? 0,
-      selectionMode: ScholarshipSelectionMode.fromValue(
+      selectionMode: AssistanceSelectionMode.fromValue(
         map['selection_mode']?.toString(),
       ),
       minScore: (map['min_score'] as num?)?.toDouble(),
@@ -596,7 +582,7 @@ class ScholarshipPeriodRule {
           ((map['allow_quota_carry_over'] as num?)?.toInt() ?? 1) == 1,
       carryOverToRuleType: map['carry_over_to_rule_type'] == null
           ? null
-          : ScholarshipType.fromValue(map['carry_over_to_rule_type']?.toString()),
+          : AssistanceRuleType.fromValue(map['carry_over_to_rule_type']?.toString()),
       weightConfigJson: map['weight_config_json'] as String?,
       isActive: ((map['is_active'] as num?)?.toInt() ?? 1) == 1,
       createdAt: map['created_at']?.toString(),
@@ -607,10 +593,8 @@ class ScholarshipPeriodRule {
   Map<String, Object?> toMap() {
     return {
       'id': id,
-      'scholarship_period_id': scholarshipPeriodId,
-      'scholarship_rule_id': scholarshipRuleId,
-      'assistance_period_id': scholarshipPeriodId,
-      'assistance_rule_id': scholarshipRuleId,
+      'assistance_period_id': assistancePeriodId,
+      'assistance_rule_id': assistanceRuleId,
       'rule_type': ruleType.normalized.value,
       'rule_name': ruleName,
       'quota': quota,
@@ -627,11 +611,11 @@ class ScholarshipPeriodRule {
   }
 }
 
-class StudentScholarshipRule {
-  StudentScholarshipRule({
+class StudentAssistanceRule {
+  StudentAssistanceRule({
     String? id,
     required this.studentId,
-    required this.scholarshipType,
+    required this.ruleType,
     this.ruleName,
     required this.reason,
     this.scoreOverride,
@@ -647,7 +631,7 @@ class StudentScholarshipRule {
 
   final String id;
   final String studentId;
-  final ScholarshipType scholarshipType;
+  final AssistanceRuleType ruleType;
   final String? ruleName;
   final String reason;
   final double? scoreOverride;
@@ -659,17 +643,17 @@ class StudentScholarshipRule {
   final String? studentName;
 
   String get displayName {
-    if (scholarshipType == ScholarshipType.customRule &&
+    if (ruleType == AssistanceRuleType.customRule &&
         (ruleName ?? '').trim().isNotEmpty) {
       return ruleName!.trim();
     }
-    return scholarshipType.label;
+    return ruleType.label;
   }
 
-  StudentScholarshipRule copyWith({
+  StudentAssistanceRule copyWith({
     String? id,
     String? studentId,
-    ScholarshipType? scholarshipType,
+    AssistanceRuleType? ruleType,
     String? ruleName,
     String? reason,
     double? scoreOverride,
@@ -680,10 +664,10 @@ class StudentScholarshipRule {
     String? updatedAt,
     String? studentName,
   }) {
-    return StudentScholarshipRule(
+    return StudentAssistanceRule(
       id: id ?? this.id,
       studentId: studentId ?? this.studentId,
-      scholarshipType: scholarshipType ?? this.scholarshipType,
+      ruleType: ruleType ?? this.ruleType,
       ruleName: ruleName ?? this.ruleName,
       reason: reason ?? this.reason,
       scoreOverride: scoreOverride ?? this.scoreOverride,
@@ -696,13 +680,11 @@ class StudentScholarshipRule {
     );
   }
 
-  factory StudentScholarshipRule.fromMap(Map<String, Object?> map) {
-    return StudentScholarshipRule(
+  factory StudentAssistanceRule.fromMap(Map<String, Object?> map) {
+    return StudentAssistanceRule(
       id: map['id']?.toString(),
       studentId: map['student_id'] as String,
-      scholarshipType: ScholarshipType.fromValue(
-        map['rule_type']?.toString() ?? map['scholarship_type']?.toString(),
-      ),
+      ruleType: AssistanceRuleType.fromValue(map['rule_type']?.toString()),
       ruleName: map['rule_name'] as String?,
       reason: map['reason']?.toString() ?? '',
       scoreOverride: (map['score_override'] as num?)?.toDouble(),
@@ -719,8 +701,7 @@ class StudentScholarshipRule {
     return {
       'id': id,
       'student_id': studentId,
-      'scholarship_type': scholarshipType.normalized.value,
-      'rule_type': scholarshipType.normalized.value,
+      'rule_type': ruleType.normalized.value,
       'rule_name': ruleName,
       'reason': reason,
       'score_override': scoreOverride,
@@ -733,16 +714,16 @@ class StudentScholarshipRule {
   }
 }
 
-class StudentScholarshipRuleCandidate {
-  StudentScholarshipRuleCandidate({
+class StudentAssistanceRuleCandidate {
+  StudentAssistanceRuleCandidate({
     String? id,
-    required this.scholarshipPeriodId,
-    required this.scholarshipPeriodRuleId,
+    required this.assistancePeriodId,
+    required this.assistancePeriodRuleId,
     required this.studentId,
     this.nominatedBy,
     this.reason,
     this.attendanceScore,
-    this.eligibilityStatus = ScholarshipEligibilityStatus.pending,
+    this.eligibilityStatus = AssistanceEligibilityStatus.pending,
     String? createdAt,
     String? updatedAt,
     this.studentName,
@@ -751,32 +732,27 @@ class StudentScholarshipRuleCandidate {
        updatedAt = updatedAt ?? DateTime.now().toIso8601String();
 
   final String id;
-  final String scholarshipPeriodId;
-  final String scholarshipPeriodRuleId;
+  final String assistancePeriodId;
+  final String assistancePeriodRuleId;
   final String studentId;
   final String? nominatedBy;
   final String? reason;
   final double? attendanceScore;
-  final ScholarshipEligibilityStatus eligibilityStatus;
+  final AssistanceEligibilityStatus eligibilityStatus;
   final String createdAt;
   final String updatedAt;
   final String? studentName;
 
-  factory StudentScholarshipRuleCandidate.fromMap(Map<String, Object?> map) {
-    return StudentScholarshipRuleCandidate(
+  factory StudentAssistanceRuleCandidate.fromMap(Map<String, Object?> map) {
+    return StudentAssistanceRuleCandidate(
       id: map['id']?.toString(),
-      scholarshipPeriodId:
-          (map['assistance_period_id'] ?? map['scholarship_period_id'])
-              as String,
-      scholarshipPeriodRuleId:
-          (map['assistance_period_rule_id'] ??
-                  map['scholarship_period_rule_id'])
-              as String,
+      assistancePeriodId: map['assistance_period_id'] as String,
+      assistancePeriodRuleId: map['assistance_period_rule_id'] as String,
       studentId: map['student_id'] as String,
       nominatedBy: map['nominated_by'] as String?,
       reason: map['reason'] as String?,
       attendanceScore: (map['attendance_score'] as num?)?.toDouble(),
-      eligibilityStatus: ScholarshipEligibilityStatus.fromValue(
+      eligibilityStatus: AssistanceEligibilityStatus.fromValue(
         map['eligibility_status']?.toString(),
       ),
       createdAt: map['created_at']?.toString(),
@@ -788,10 +764,8 @@ class StudentScholarshipRuleCandidate {
   Map<String, Object?> toMap() {
     return {
       'id': id,
-      'scholarship_period_id': scholarshipPeriodId,
-      'scholarship_period_rule_id': scholarshipPeriodRuleId,
-      'assistance_period_id': scholarshipPeriodId,
-      'assistance_period_rule_id': scholarshipPeriodRuleId,
+      'assistance_period_id': assistancePeriodId,
+      'assistance_period_rule_id': assistancePeriodRuleId,
       'student_id': studentId,
       'nominated_by': nominatedBy,
       'reason': reason,
@@ -803,17 +777,17 @@ class StudentScholarshipRuleCandidate {
   }
 }
 
-class StudentScholarshipAssessment {
-  StudentScholarshipAssessment({
+class StudentAssistanceAssessment {
+  StudentAssistanceAssessment({
     String? id,
-    required this.scholarshipPeriodId,
+    required this.assistancePeriodId,
     required this.studentId,
     this.ruleId,
-    this.scholarshipPeriodRuleId,
+    this.assistancePeriodRuleId,
     this.ruleCandidateId,
-    required this.scholarshipType,
+    required this.ruleType,
     this.ruleName,
-    ScholarshipSelectionMode? selectionMode,
+    AssistanceSelectionMode? selectionMode,
     required this.priorityLevel,
     this.priorityReason,
     this.economicScore,
@@ -828,8 +802,8 @@ class StudentScholarshipAssessment {
     this.specialCaseNote,
     this.totalScore = 0,
     this.rankNo,
-    this.decisionStatus = ScholarshipDecisionStatus.draft,
-    this.eligibilityStatus = ScholarshipEligibilityStatus.eligible,
+    this.decisionStatus = AssistanceDecisionStatus.draft,
+    this.eligibilityStatus = AssistanceEligibilityStatus.eligible,
     this.approvedAmountOrSupport,
     this.reviewDate,
     this.reviewedBy,
@@ -838,21 +812,21 @@ class StudentScholarshipAssessment {
     this.studentName,
   }) : id = id ?? const Uuid().v4(),
        selectionMode = selectionMode ??
-           (scholarshipType.isManualDefault
-               ? ScholarshipSelectionMode.manual
-               : ScholarshipSelectionMode.auto),
+           (ruleType.isManualDefault
+               ? AssistanceSelectionMode.manual
+               : AssistanceSelectionMode.auto),
        createdAt = createdAt ?? DateTime.now().toIso8601String(),
        updatedAt = updatedAt ?? DateTime.now().toIso8601String();
 
   final String id;
-  final String scholarshipPeriodId;
+  final String assistancePeriodId;
   final String studentId;
   final String? ruleId;
-  final String? scholarshipPeriodRuleId;
+  final String? assistancePeriodRuleId;
   final String? ruleCandidateId;
-  final ScholarshipType scholarshipType;
+  final AssistanceRuleType ruleType;
   final String? ruleName;
-  final ScholarshipSelectionMode selectionMode;
+  final AssistanceSelectionMode selectionMode;
   final int priorityLevel;
   final String? priorityReason;
   final double? economicScore;
@@ -867,8 +841,8 @@ class StudentScholarshipAssessment {
   final String? specialCaseNote;
   final double totalScore;
   final int? rankNo;
-  final ScholarshipDecisionStatus decisionStatus;
-  final ScholarshipEligibilityStatus eligibilityStatus;
+  final AssistanceDecisionStatus decisionStatus;
+  final AssistanceEligibilityStatus eligibilityStatus;
   final String? approvedAmountOrSupport;
   final String? reviewDate;
   final String? reviewedBy;
@@ -877,23 +851,23 @@ class StudentScholarshipAssessment {
   final String? studentName;
 
   String get displayName {
-    if (scholarshipType == ScholarshipType.customRule &&
+    if (ruleType == AssistanceRuleType.customRule &&
         (ruleName ?? '').trim().isNotEmpty) {
       return ruleName!.trim();
     }
-    return scholarshipType.label;
+    return ruleType.label;
   }
 
-  StudentScholarshipAssessment copyWith({
+  StudentAssistanceAssessment copyWith({
     String? id,
-    String? scholarshipPeriodId,
+    String? assistancePeriodId,
     String? studentId,
     String? ruleId,
-    String? scholarshipPeriodRuleId,
+    String? assistancePeriodRuleId,
     String? ruleCandidateId,
-    ScholarshipType? scholarshipType,
+    AssistanceRuleType? ruleType,
     String? ruleName,
-    ScholarshipSelectionMode? selectionMode,
+    AssistanceSelectionMode? selectionMode,
     int? priorityLevel,
     String? priorityReason,
     double? economicScore,
@@ -908,8 +882,8 @@ class StudentScholarshipAssessment {
     String? specialCaseNote,
     double? totalScore,
     int? rankNo,
-    ScholarshipDecisionStatus? decisionStatus,
-    ScholarshipEligibilityStatus? eligibilityStatus,
+    AssistanceDecisionStatus? decisionStatus,
+    AssistanceEligibilityStatus? eligibilityStatus,
     String? approvedAmountOrSupport,
     String? reviewDate,
     String? reviewedBy,
@@ -917,15 +891,15 @@ class StudentScholarshipAssessment {
     String? updatedAt,
     String? studentName,
   }) {
-    return StudentScholarshipAssessment(
+    return StudentAssistanceAssessment(
       id: id ?? this.id,
-      scholarshipPeriodId: scholarshipPeriodId ?? this.scholarshipPeriodId,
+      assistancePeriodId: assistancePeriodId ?? this.assistancePeriodId,
       studentId: studentId ?? this.studentId,
       ruleId: ruleId ?? this.ruleId,
-      scholarshipPeriodRuleId:
-          scholarshipPeriodRuleId ?? this.scholarshipPeriodRuleId,
+      assistancePeriodRuleId:
+          assistancePeriodRuleId ?? this.assistancePeriodRuleId,
       ruleCandidateId: ruleCandidateId ?? this.ruleCandidateId,
-      scholarshipType: scholarshipType ?? this.scholarshipType,
+      ruleType: ruleType ?? this.ruleType,
       ruleName: ruleName ?? this.ruleName,
       selectionMode: selectionMode ?? this.selectionMode,
       priorityLevel: priorityLevel ?? this.priorityLevel,
@@ -955,30 +929,21 @@ class StudentScholarshipAssessment {
     );
   }
 
-  factory StudentScholarshipAssessment.fromMap(Map<String, Object?> map) {
+  factory StudentAssistanceAssessment.fromMap(Map<String, Object?> map) {
     double? doubleValue(String key) => (map[key] as num?)?.toDouble();
-    final type = ScholarshipType.fromValue(
-      map['rule_type']?.toString() ?? map['scholarship_type']?.toString(),
-    );
+    final type = AssistanceRuleType.fromValue(map['rule_type']?.toString());
 
-    return StudentScholarshipAssessment(
+    return StudentAssistanceAssessment(
       id: map['id']?.toString(),
-      scholarshipPeriodId:
-          (map['assistance_period_id'] ?? map['scholarship_period_id'])
-              as String,
+      assistancePeriodId: map['assistance_period_id'] as String,
       studentId: map['student_id'] as String,
       ruleId:
           (map['student_rule_id'] as String?) ?? (map['rule_id'] as String?),
-      scholarshipPeriodRuleId:
-          (map['assistance_period_rule_id'] ??
-                  map['scholarship_period_rule_id'])
-              as String?,
-      ruleCandidateId:
-          (map['assistance_rule_candidate_id'] ?? map['rule_candidate_id'])
-              as String?,
-      scholarshipType: type,
+      assistancePeriodRuleId: map['assistance_period_rule_id'] as String?,
+      ruleCandidateId: map['rule_candidate_id'] as String?,
+      ruleType: type,
       ruleName: map['rule_name'] as String?,
-      selectionMode: ScholarshipSelectionMode.fromValue(
+      selectionMode: AssistanceSelectionMode.fromValue(
         map['selection_mode']?.toString(),
       ),
       priorityLevel:
@@ -998,10 +963,10 @@ class StudentScholarshipAssessment {
       specialCaseNote: map['special_case_note'] as String?,
       totalScore: doubleValue('total_score') ?? 0,
       rankNo: (map['rank_no'] as num?)?.toInt(),
-      decisionStatus: ScholarshipDecisionStatus.fromValue(
+      decisionStatus: AssistanceDecisionStatus.fromValue(
         map['decision_status']?.toString(),
       ),
-      eligibilityStatus: ScholarshipEligibilityStatus.fromValue(
+      eligibilityStatus: AssistanceEligibilityStatus.fromValue(
         map['eligibility_status']?.toString(),
       ),
       approvedAmountOrSupport: map['approved_amount_or_support'] as String?,
@@ -1016,17 +981,13 @@ class StudentScholarshipAssessment {
   Map<String, Object?> toMap() {
     return {
       'id': id,
-      'scholarship_period_id': scholarshipPeriodId,
-      'assistance_period_id': scholarshipPeriodId,
+      'assistance_period_id': assistancePeriodId,
       'student_id': studentId,
       'rule_id': ruleId,
       'student_rule_id': ruleId,
-      'scholarship_period_rule_id': scholarshipPeriodRuleId,
-      'assistance_period_rule_id': scholarshipPeriodRuleId,
+      'assistance_period_rule_id': assistancePeriodRuleId,
       'rule_candidate_id': ruleCandidateId,
-      'assistance_rule_candidate_id': ruleCandidateId,
-      'scholarship_type': scholarshipType.normalized.value,
-      'rule_type': scholarshipType.normalized.value,
+      'rule_type': ruleType.normalized.value,
       'rule_name': ruleName,
       'selection_mode': selectionMode.value,
       'priority_level': priorityLevel,
@@ -1055,15 +1016,15 @@ class StudentScholarshipAssessment {
   }
 }
 
-class ScholarshipRecipient {
-  ScholarshipRecipient({
+class AssistanceRecipient {
+  AssistanceRecipient({
     String? id,
-    required this.scholarshipPeriodId,
+    required this.assistancePeriodId,
     required this.studentId,
     required this.assessmentId,
-    this.scholarshipRuleTargetId,
-    this.scholarshipPeriodRuleId,
-    required this.scholarshipType,
+    this.assistanceRuleTargetId,
+    this.assistancePeriodRuleId,
+    required this.ruleType,
     this.ruleName,
     this.finalScore = 0,
     this.rankNo,
@@ -1073,7 +1034,7 @@ class ScholarshipRecipient {
     this.benefitAmount,
     this.benefitDescription,
     this.benefitItemsJson,
-    this.status = ScholarshipRecipientStatus.approved,
+    this.status = AssistanceRecipientStatus.approved,
     this.approvedBy,
     this.approvedAt,
     String? createdAt,
@@ -1086,12 +1047,12 @@ class ScholarshipRecipient {
        updatedAt = updatedAt ?? DateTime.now().toIso8601String();
 
   final String id;
-  final String scholarshipPeriodId;
+  final String assistancePeriodId;
   final String studentId;
   final String assessmentId;
-  final String? scholarshipRuleTargetId;
-  final String? scholarshipPeriodRuleId;
-  final ScholarshipType scholarshipType;
+  final String? assistanceRuleTargetId;
+  final String? assistancePeriodRuleId;
+  final AssistanceRuleType ruleType;
   final String? ruleName;
   final double finalScore;
   final int? rankNo;
@@ -1101,7 +1062,7 @@ class ScholarshipRecipient {
   final double? benefitAmount;
   final String? benefitDescription;
   final String? benefitItemsJson;
-  final ScholarshipRecipientStatus status;
+  final AssistanceRecipientStatus status;
   final String? approvedBy;
   final String? approvedAt;
   final String createdAt;
@@ -1111,11 +1072,11 @@ class ScholarshipRecipient {
   final int? periodYear;
 
   String get displayName {
-    if (scholarshipType == ScholarshipType.customRule &&
+    if (ruleType == AssistanceRuleType.customRule &&
         (ruleName ?? '').trim().isNotEmpty) {
       return ruleName!.trim();
     }
-    return scholarshipType.label;
+    return ruleType.label;
   }
 
   String get benefitSummary {
@@ -1125,25 +1086,15 @@ class ScholarshipRecipient {
     return '-';
   }
 
-  factory ScholarshipRecipient.fromMap(Map<String, Object?> map) {
-    return ScholarshipRecipient(
+  factory AssistanceRecipient.fromMap(Map<String, Object?> map) {
+    return AssistanceRecipient(
       id: map['id']?.toString(),
-      scholarshipPeriodId:
-          (map['assistance_period_id'] ?? map['scholarship_period_id'])
-              as String,
+      assistancePeriodId: map['assistance_period_id'] as String,
       studentId: map['student_id'] as String,
       assessmentId: map['assessment_id'] as String,
-      scholarshipRuleTargetId:
-          (map['assistance_rule_target_id'] ??
-                  map['scholarship_rule_target_id'])
-              as String?,
-      scholarshipPeriodRuleId:
-          (map['assistance_period_rule_id'] ??
-                  map['scholarship_period_rule_id'])
-              as String?,
-      scholarshipType: ScholarshipType.fromValue(
-        map['rule_type']?.toString() ?? map['scholarship_type']?.toString(),
-      ),
+      assistanceRuleTargetId: map['assistance_rule_target_id'] as String?,
+      assistancePeriodRuleId: map['assistance_period_rule_id'] as String?,
+      ruleType: AssistanceRuleType.fromValue(map['rule_type']?.toString()),
       ruleName: map['rule_name'] as String?,
       finalScore: (map['final_score'] as num?)?.toDouble() ?? 0,
       rankNo: (map['rank_no'] as num?)?.toInt(),
@@ -1153,7 +1104,7 @@ class ScholarshipRecipient {
       benefitAmount: (map['benefit_amount'] as num?)?.toDouble(),
       benefitDescription: map['benefit_description'] as String?,
       benefitItemsJson: map['benefit_items_json'] as String?,
-      status: ScholarshipRecipientStatus.fromValue(map['status']?.toString()),
+      status: AssistanceRecipientStatus.fromValue(map['status']?.toString()),
       approvedBy: map['approved_by'] as String?,
       approvedAt: map['approved_at'] as String?,
       createdAt: map['created_at']?.toString(),
@@ -1167,16 +1118,12 @@ class ScholarshipRecipient {
   Map<String, Object?> toMap() {
     return {
       'id': id,
-      'scholarship_period_id': scholarshipPeriodId,
-      'assistance_period_id': scholarshipPeriodId,
+      'assistance_period_id': assistancePeriodId,
       'student_id': studentId,
       'assessment_id': assessmentId,
-      'scholarship_rule_target_id': scholarshipRuleTargetId,
-      'scholarship_period_rule_id': scholarshipPeriodRuleId,
-      'assistance_rule_target_id': scholarshipRuleTargetId,
-      'assistance_period_rule_id': scholarshipPeriodRuleId,
-      'scholarship_type': scholarshipType.normalized.value,
-      'rule_type': scholarshipType.normalized.value,
+      'assistance_rule_target_id': assistanceRuleTargetId,
+      'assistance_period_rule_id': assistancePeriodRuleId,
+      'rule_type': ruleType.normalized.value,
       'rule_name': ruleName,
       'final_score': finalScore,
       'rank_no': rankNo,
@@ -1214,10 +1161,10 @@ String _formatRupiah(double amount) {
   return 'Rp ${buffer.toString()}';
 }
 
-class ScholarshipApprovalDocument {
-  ScholarshipApprovalDocument({
+class AssistanceApprovalDocument {
+  AssistanceApprovalDocument({
     String? id,
-    required this.scholarshipPeriodId,
+    required this.assistancePeriodId,
     required this.fileName,
     required this.filePath,
     this.fileType,
@@ -1232,7 +1179,7 @@ class ScholarshipApprovalDocument {
        updatedAt = updatedAt ?? DateTime.now().toIso8601String();
 
   final String id;
-  final String scholarshipPeriodId;
+  final String assistancePeriodId;
   final String fileName;
   final String filePath;
   final String? fileType;
@@ -1242,12 +1189,10 @@ class ScholarshipApprovalDocument {
   final String createdAt;
   final String updatedAt;
 
-  factory ScholarshipApprovalDocument.fromMap(Map<String, Object?> map) {
-    return ScholarshipApprovalDocument(
+  factory AssistanceApprovalDocument.fromMap(Map<String, Object?> map) {
+    return AssistanceApprovalDocument(
       id: map['id']?.toString(),
-      scholarshipPeriodId:
-          (map['assistance_period_id'] ?? map['scholarship_period_id'])
-              as String,
+      assistancePeriodId: map['assistance_period_id'] as String,
       fileName: map['file_name']?.toString() ?? '',
       filePath: map['file_path']?.toString() ?? '',
       fileType: map['file_type'] as String?,
@@ -1262,8 +1207,7 @@ class ScholarshipApprovalDocument {
   Map<String, Object?> toMap() {
     return {
       'id': id,
-      'scholarship_period_id': scholarshipPeriodId,
-      'assistance_period_id': scholarshipPeriodId,
+      'assistance_period_id': assistancePeriodId,
       'file_name': fileName,
       'file_path': filePath,
       'file_type': fileType,
@@ -1276,8 +1220,8 @@ class ScholarshipApprovalDocument {
   }
 }
 
-class ScholarshipStudentOption {
-  const ScholarshipStudentOption({
+class AssistanceStudentOption {
+  const AssistanceStudentOption({
     required this.id,
     required this.name,
     this.className,
@@ -1289,8 +1233,8 @@ class ScholarshipStudentOption {
   final String? className;
   final String? level;
 
-  factory ScholarshipStudentOption.fromMap(Map<String, Object?> map) {
-    return ScholarshipStudentOption(
+  factory AssistanceStudentOption.fromMap(Map<String, Object?> map) {
+    return AssistanceStudentOption(
       id: map['id'] as String,
       name: map['full_name']?.toString() ?? '-',
       className: map['class_name']?.toString(),
@@ -1299,8 +1243,8 @@ class ScholarshipStudentOption {
   }
 }
 
-class ScholarshipSummary {
-  const ScholarshipSummary({
+class AssistanceSummary {
+  const AssistanceSummary({
     this.targetQuota = 0,
     this.fixedQuota = 0,
     this.rollingQuota = 0,

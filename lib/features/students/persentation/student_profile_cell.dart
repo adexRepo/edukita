@@ -3,6 +3,7 @@ import 'dart:io' as io;
 import 'package:edukita/features/students/data/student_table.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
 
 class StudentProfileCell extends StatelessWidget {
   const StudentProfileCell({super.key, required this.student});
@@ -21,7 +22,14 @@ class StudentProfileCell extends StatelessWidget {
         CircleAvatar(
           radius: 15,
           backgroundColor: AppColors.primaryLight.withValues(alpha: 0.22),
-          backgroundImage: hasPhoto ? FileImage(io.File(photoPath)) : null,
+          backgroundImage: hasPhoto
+              ? ResizeImage(
+                  FileImage(io.File(photoPath)),
+                  width: 64,
+                  height: 64,
+                  policy: ResizeImagePolicy.fit,
+                )
+              : null,
           child: hasPhoto
               ? null
               : Text(

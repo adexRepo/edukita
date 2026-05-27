@@ -1,3 +1,4 @@
+import 'package:edukita/core/cache/app_memory_cache.dart';
 import 'package:edukita/features/report_definitions/data/report_definition_model.dart';
 import 'package:edukita/features/report_definitions/domain/report_definition_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -174,69 +175,42 @@ class ReportDefinitionCubit extends Cubit<ReportDefinitionState> {
 }
 
 class ReportDefinitionCacheService {
-  ReportDefinitionCacheService({this.ttl = const Duration(minutes: 2)});
+  ReportDefinitionCacheService({
+    Duration ttl = const Duration(seconds: 75),
+    int maxDefinitionEntries = 3,
+    int maxResultEntries = 1,
+  }) : _definitionStates = AppMemoryCache<ReportDefinitionState>(
+         ttl: ttl,
+         maxEntries: maxDefinitionEntries,
+       ),
+       _resultRows = AppMemoryCache<List<Map<String, Object?>>>(
+         ttl: ttl,
+         maxEntries: maxResultEntries,
+       );
 
-  final Duration ttl;
-  final Map<String, _ReportDefinitionStateCacheEntry> _definitionStates = {};
-  final Map<String, _ReportRowsCacheEntry> _resultRows = {};
+  final AppMemoryCache<ReportDefinitionState> _definitionStates;
+  final AppMemoryCache<List<Map<String, Object?>>> _resultRows;
 
-  ReportDefinitionState? getDefinitions(String key) {
-    final entry = _definitionStates[key];
-    if (entry == null) return null;
-    if (_isExpired(entry.cachedAt)) {
-      _definitionStates.remove(key);
-      return null;
-    }
-    return entry.state;
-  }
+  ReportDefinitionState? getDefinitions(String key) =>
+      _definitionStates.get(key);
 
   void putDefinitions(String key, ReportDefinitionState state) {
-    _definitionStates[key] = _ReportDefinitionStateCacheEntry(
-      state: state.copyWith(isLoading: false, isRunning: false, error: null),
-      cachedAt: DateTime.now(),
+    _definitionStates.put(
+      key,
+      state.copyWith(isLoading: false, isRunning: false, error: null),
     );
   }
 
-  List<Map<String, Object?>>? getResultRows(String key) {
-    final entry = _resultRows[key];
-    if (entry == null) return null;
-    if (_isExpired(entry.cachedAt)) {
-      _resultRows.remove(key);
-      return null;
-    }
-    return entry.rows;
-  }
+  List<Map<String, Object?>>? getResultRows(String key) =>
+      _resultRows.get(key);
 
   void putResultRows(String key, List<Map<String, Object?>> rows) {
-    _resultRows[key] = _ReportRowsCacheEntry(
-      rows: rows,
-      cachedAt: DateTime.now(),
-    );
+    if (rows.length > 200) return;
+    _resultRows.put(key, rows);
   }
 
   void clear() {
     _definitionStates.clear();
     _resultRows.clear();
   }
-
-  bool _isExpired(DateTime cachedAt) {
-    return DateTime.now().difference(cachedAt) > ttl;
-  }
-}
-
-class _ReportDefinitionStateCacheEntry {
-  const _ReportDefinitionStateCacheEntry({
-    required this.state,
-    required this.cachedAt,
-  });
-
-  final ReportDefinitionState state;
-  final DateTime cachedAt;
-}
-
-class _ReportRowsCacheEntry {
-  const _ReportRowsCacheEntry({required this.rows, required this.cachedAt});
-
-  final List<Map<String, Object?>> rows;
-  final DateTime cachedAt;
 }

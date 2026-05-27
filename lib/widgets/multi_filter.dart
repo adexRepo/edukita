@@ -112,7 +112,10 @@ class _MultiFilterButtonState extends State<MultiFilterButton> {
               ),
               child: Text(
                 activeFilters.length.toString(),
-                style: const TextStyle(color: AppColors.white, fontSize: 12),
+                style: const TextStyle(
+                  color: AppColors.white,
+                  fontSize: AppTypography.body,
+                ),
               ),
             ),
           ),
@@ -243,7 +246,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: AppColors.white,
-                fontSize: 16,
+                fontSize: AppTypography.sectionTitle,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -340,7 +343,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
                 child: Text(
                   "Active Filters",
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  style: AppTypography.sectionTitleStyle,
                 ),
               ),
               TextButton(
@@ -359,7 +362,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
                       "No active filters",
                       style: const TextStyle(
                         color: AppColors.grey600,
-                        fontSize: 12,
+                        fontSize: AppTypography.body,
                       ),
                     ),
                   )
@@ -389,7 +392,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
                                     f.label,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
-                                      fontSize: 13,
+                                      fontSize: AppTypography.body,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -397,7 +400,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
                                   Text(
                                     _operatorLabel(f.operator),
                                     style: const TextStyle(
-                                      fontSize: 11,
+                                      fontSize: AppTypography.bodySmall,
                                       color: AppColors.grey600,
                                     ),
                                   ),
@@ -406,7 +409,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
                                     f.value ?? "-",
                                     overflow: TextOverflow.ellipsis,
                                     maxLines: 2,
-                                    style: const TextStyle(fontSize: 12),
+                                    style: AppTypography.bodyStyle,
                                   ),
                                 ],
                               ),

@@ -32,7 +32,11 @@ class StudentInfoTile extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(photoSize / 2),
                 child: Image(
-                  image: getImageByLocalPath(student.photoPath),
+                  image: getImageByLocalPath(
+                    student.photoPath,
+                    cacheWidth: (photoSize * 2).round(),
+                    cacheHeight: (photoSize * 2).round(),
+                  ),
                   width: photoSize,
                   height: photoSize,
                   fit: BoxFit.cover,

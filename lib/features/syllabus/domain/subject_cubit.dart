@@ -1,3 +1,4 @@
+import 'package:edukita/core/cache/app_memory_cache.dart';
 import 'package:edukita/features/syllabus/data/subject_model.dart';
 import 'package:edukita/features/syllabus/data/syllabus_model.dart';
 import 'package:edukita/features/syllabus/domain/subject_repository.dart';
@@ -389,34 +390,21 @@ class SubjectCubit extends Cubit<SubjectState> {
 }
 
 class SubjectCacheService {
-  SubjectCacheService({this.ttl = const Duration(minutes: 2)});
+  SubjectCacheService({
+    Duration ttl = const Duration(seconds: 75),
+    int maxEntries = 4,
+  }) : _items = AppMemoryCache<SubjectState>(
+         ttl: ttl,
+         maxEntries: maxEntries,
+       );
 
-  final Duration ttl;
-  final Map<String, _SubjectCacheEntry> _items = {};
+  final AppMemoryCache<SubjectState> _items;
 
-  SubjectState? get(String key) {
-    final entry = _items[key];
-    if (entry == null) return null;
-    if (DateTime.now().difference(entry.cachedAt) > ttl) {
-      _items.remove(key);
-      return null;
-    }
-    return entry.state;
-  }
+  SubjectState? get(String key) => _items.get(key);
 
   void put(String key, SubjectState state) {
-    _items[key] = _SubjectCacheEntry(
-      state: state.copyWith(isLoading: false, error: null),
-      cachedAt: DateTime.now(),
-    );
+    _items.put(key, state.copyWith(isLoading: false, error: null));
   }
 
   void clear() => _items.clear();
-}
-
-class _SubjectCacheEntry {
-  const _SubjectCacheEntry({required this.state, required this.cachedAt});
-
-  final SubjectState state;
-  final DateTime cachedAt;
 }

@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart';
 import 'dart:math' as math;
+
+import 'package:edukita/theme/app_theme.dart';
+import 'package:flutter/material.dart';
 
 typedef StepProcessContinueGuard = Future<bool> Function(int currentIndex);
 
@@ -163,7 +165,7 @@ class _StepIndicator extends StatelessWidget {
     final textPainter = TextPainter(
       text: TextSpan(
         text: title,
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+        style: AppTypography.bodyStrongStyle,
       ),
       textDirection: TextDirection.ltr,
       maxLines: 1,
@@ -349,7 +351,7 @@ class _AnimatedActiveStepChip extends StatelessWidget {
                 '$number',
                 key: ValueKey(number),
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.bodySmall,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF061A40),
                 ),
@@ -371,7 +373,7 @@ class _AnimatedActiveStepChip extends StatelessWidget {
                 softWrap: false,
                 overflow: TextOverflow.visible,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: AppTypography.body,
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
                 ),
@@ -397,11 +399,7 @@ class _Header extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF061A40),
-            ),
+            style: AppTypography.pageTitleStyle,
           ),
         ),
         IconButton(

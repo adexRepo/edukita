@@ -333,7 +333,7 @@ class CommonFormWidgets {
       padding: const EdgeInsets.symmetric(vertical: 16.0),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        style: AppTypography.sectionTitleStyle,
       ),
     );
   }

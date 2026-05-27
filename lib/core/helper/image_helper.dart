@@ -1,7 +1,11 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
 
-ImageProvider getImageByLocalPath(String? path) {
+ImageProvider getImageByLocalPath(
+  String? path, {
+  int? cacheWidth,
+  int? cacheHeight,
+}) {
   if (path == null || path.isEmpty) {
     return const AssetImage('assets/images/default_user.webp');
   }
@@ -9,7 +13,16 @@ ImageProvider getImageByLocalPath(String? path) {
   final file = File(path);
 
   if (file.existsSync()) {
-    return FileImage(file);
+    final image = FileImage(file);
+    if (cacheWidth != null || cacheHeight != null) {
+      return ResizeImage(
+        image,
+        width: cacheWidth,
+        height: cacheHeight,
+        policy: ResizeImagePolicy.fit,
+      );
+    }
+    return image;
   }
 
   return const AssetImage('assets/images/default_user.webp');

@@ -13,25 +13,19 @@ class AssistancePlanRepository {
 
   final DatabaseProvider _dbProvider;
 
-  List<ScholarshipPeriodRule> _defaultCorePeriodRules({
+  List<AssistancePeriodRule> _defaultCorePeriodRules({
     required String periodId,
-    required int fixedQuota,
-    required int rollingQuota,
     String? createdAt,
   }) {
     final now = createdAt ?? DateTime.now().toIso8601String();
     return [
-      for (final type in ScholarshipType.corePeriodRuleTypes)
-        ScholarshipPeriodRule(
-          scholarshipPeriodId: periodId,
-          scholarshipRuleId: _systemRuleIdForType(type),
+      for (final type in AssistanceRuleType.corePeriodRuleTypes)
+        AssistancePeriodRule(
+          assistancePeriodId: periodId,
+          assistanceRuleId: _systemRuleIdForType(type),
           ruleType: type,
-          quota: switch (type) {
-            ScholarshipType.fixedPriority => fixedQuota,
-            ScholarshipType.rollingAttendance => rollingQuota,
-            _ => 0,
-          },
-          priorityOrder: ScholarshipType.corePeriodRuleTypes.indexOf(type),
+          quota: 0,
+          priorityOrder: AssistanceRuleType.corePeriodRuleTypes.indexOf(type),
           selectionMode: type.defaultSelectionMode,
           createdAt: now,
           updatedAt: now,
@@ -39,99 +33,99 @@ class AssistancePlanRepository {
     ];
   }
 
-  String? _systemRuleIdForType(ScholarshipType type) {
+  String? _systemRuleIdForType(AssistanceRuleType type) {
     return switch (type.normalized) {
-      ScholarshipType.fixedPriority => 'system-fixed-priority',
-      ScholarshipType.needBased => 'system-need-based',
-      ScholarshipType.meritBased => 'system-merit-based',
-      ScholarshipType.growthBased => 'system-growth-based',
-      ScholarshipType.specialCase => 'system-special-case',
-      ScholarshipType.teacherRecommendation => 'system-teacher-recommendation',
-      ScholarshipType.rollingAttendance => 'system-rolling-attendance',
-      ScholarshipType.manualOverride => 'system-manual-override',
+      AssistanceRuleType.fixedPriority => 'system-fixed-priority',
+      AssistanceRuleType.needBased => 'system-need-based',
+      AssistanceRuleType.meritBased => 'system-merit-based',
+      AssistanceRuleType.growthBased => 'system-growth-based',
+      AssistanceRuleType.specialCase => 'system-special-case',
+      AssistanceRuleType.teacherRecommendation => 'system-teacher-recommendation',
+      AssistanceRuleType.rollingAttendance => 'system-rolling-attendance',
+      AssistanceRuleType.manualOverride => 'system-manual-override',
       _ => null,
     };
   }
 
-  List<ScholarshipRule> _defaultScholarshipRules({String? createdAt}) {
+  List<AssistanceRule> _defaultAssistanceRules({String? createdAt}) {
     final now = createdAt ?? DateTime.now().toIso8601String();
     return [
-      ScholarshipRule(
+      AssistanceRule(
         id: 'system-fixed-priority',
-        ruleName: ScholarshipType.fixedPriority.label,
-        ruleType: ScholarshipType.fixedPriority,
-        selectionMode: ScholarshipSelectionMode.manual,
+        ruleName: AssistanceRuleType.fixedPriority.label,
+        ruleType: AssistanceRuleType.fixedPriority,
+        selectionMode: AssistanceSelectionMode.manual,
         description: 'Manual fixed-priority assistance candidates.',
         isSystemDefault: true,
         createdAt: now,
         updatedAt: now,
       ),
-      ScholarshipRule(
+      AssistanceRule(
         id: 'system-need-based',
-        ruleName: ScholarshipType.needBased.label,
-        ruleType: ScholarshipType.needBased,
-        selectionMode: ScholarshipSelectionMode.manual,
+        ruleName: AssistanceRuleType.needBased.label,
+        ruleType: AssistanceRuleType.needBased,
+        selectionMode: AssistanceSelectionMode.manual,
         description: 'Manual candidates based on economic need.',
         isSystemDefault: true,
         createdAt: now,
         updatedAt: now,
       ),
-      ScholarshipRule(
+      AssistanceRule(
         id: 'system-merit-based',
-        ruleName: ScholarshipType.meritBased.label,
-        ruleType: ScholarshipType.meritBased,
-        selectionMode: ScholarshipSelectionMode.auto,
+        ruleName: AssistanceRuleType.meritBased.label,
+        ruleType: AssistanceRuleType.meritBased,
+        selectionMode: AssistanceSelectionMode.auto,
         description: 'Auto candidates from academic merit when data exists.',
         isSystemDefault: true,
         createdAt: now,
         updatedAt: now,
       ),
-      ScholarshipRule(
+      AssistanceRule(
         id: 'system-growth-based',
-        ruleName: ScholarshipType.growthBased.label,
-        ruleType: ScholarshipType.growthBased,
-        selectionMode: ScholarshipSelectionMode.auto,
+        ruleName: AssistanceRuleType.growthBased.label,
+        ruleType: AssistanceRuleType.growthBased,
+        selectionMode: AssistanceSelectionMode.auto,
         description: 'Auto candidates from improvement data when available.',
         isSystemDefault: true,
         createdAt: now,
         updatedAt: now,
       ),
-      ScholarshipRule(
+      AssistanceRule(
         id: 'system-special-case',
-        ruleName: ScholarshipType.specialCase.label,
-        ruleType: ScholarshipType.specialCase,
-        selectionMode: ScholarshipSelectionMode.manual,
+        ruleName: AssistanceRuleType.specialCase.label,
+        ruleType: AssistanceRuleType.specialCase,
+        selectionMode: AssistanceSelectionMode.manual,
         description: 'Manual special-case support.',
         isSystemDefault: true,
         createdAt: now,
         updatedAt: now,
       ),
-      ScholarshipRule(
+      AssistanceRule(
         id: 'system-teacher-recommendation',
-        ruleName: ScholarshipType.teacherRecommendation.label,
-        ruleType: ScholarshipType.teacherRecommendation,
-        selectionMode: ScholarshipSelectionMode.manual,
+        ruleName: AssistanceRuleType.teacherRecommendation.label,
+        ruleType: AssistanceRuleType.teacherRecommendation,
+        selectionMode: AssistanceSelectionMode.manual,
         description: 'Manual candidates recommended by teachers.',
         isSystemDefault: true,
         createdAt: now,
         updatedAt: now,
       ),
-      ScholarshipRule(
+      AssistanceRule(
         id: 'system-rolling-attendance',
-        ruleName: ScholarshipType.rollingAttendance.label,
-        ruleType: ScholarshipType.rollingAttendance,
-        selectionMode: ScholarshipSelectionMode.auto,
+        ruleName: AssistanceRuleType.rollingAttendance.label,
+        ruleType: AssistanceRuleType.rollingAttendance,
+        selectionMode: AssistanceSelectionMode.auto,
         description:
             'Auto rolling candidates using attendance and assistance history.',
         isSystemDefault: true,
         createdAt: now,
         updatedAt: now,
       ),
-      ScholarshipRule(
+      AssistanceRule(
         id: 'system-manual-override',
-        ruleName: ScholarshipType.manualOverride.label,
-        ruleType: ScholarshipType.manualOverride,
-        selectionMode: ScholarshipSelectionMode.manual,
+        ruleName: AssistanceRuleType.manualOverride.label,
+        ruleType: AssistanceRuleType.manualOverride,
+        selectionMode: AssistanceSelectionMode.manual,
         description: 'Manual override with required reason.',
         isSystemDefault: true,
         createdAt: now,
@@ -140,9 +134,9 @@ class AssistancePlanRepository {
     ];
   }
 
-  Future<void> preloadDefaultScholarshipRules() async {
+  Future<void> preloadDefaultAssistanceRules() async {
     final db = await _dbProvider.database;
-    for (final rule in _defaultScholarshipRules()) {
+    for (final rule in _defaultAssistanceRules()) {
       final existing = await db.query(
         'assistance_rules',
         where: 'id = ? OR rule_type = ?',
@@ -152,7 +146,7 @@ class AssistancePlanRepository {
       if (existing.isEmpty) {
         await db.insert('assistance_rules', rule.toMap());
       } else {
-        final existingRule = ScholarshipRule.fromMap(existing.first);
+        final existingRule = AssistanceRule.fromMap(existing.first);
         await db.update(
           'assistance_rules',
           rule
@@ -170,27 +164,27 @@ class AssistancePlanRepository {
     }
   }
 
-  Future<List<ScholarshipRule>> getAssistanceRules() async {
-    await preloadDefaultScholarshipRules();
+  Future<List<AssistanceRule>> getAssistanceRules() async {
+    await preloadDefaultAssistanceRules();
     final db = await _dbProvider.database;
     final rows = await db.query(
       'assistance_rules',
       orderBy: 'is_system_default DESC, rule_type ASC, rule_name ASC',
     );
-    return rows.map(ScholarshipRule.fromMap).toList();
+    return rows.map(AssistanceRule.fromMap).toList();
   }
 
-  Future<void> saveAssistanceRule(ScholarshipRule rule) async {
+  Future<void> saveAssistanceRule(AssistanceRule rule) async {
     if (rule.ruleName.trim().isEmpty) {
       throw Exception('Rule name is required.');
     }
     final effective = rule.isSystemDefault
         ? rule.copyWith(selectionMode: rule.ruleType.defaultSelectionMode)
-        : ScholarshipRule(
+        : AssistanceRule(
             id: rule.id,
             ruleName: rule.ruleName.trim(),
-            ruleType: ScholarshipType.customRule,
-            selectionMode: ScholarshipSelectionMode.manual,
+            ruleType: AssistanceRuleType.customRule,
+            selectionMode: AssistanceSelectionMode.manual,
             description: rule.description,
             isSystemDefault: false,
             isActive: rule.isActive,
@@ -223,21 +217,23 @@ class AssistancePlanRepository {
     );
   }
 
-  Future<List<ScholarshipPeriod>> getPeriods() async {
-    await preloadDefaultScholarshipRules();
+  Future<List<AssistancePeriod>> getPeriods() async {
+    await preloadDefaultAssistanceRules();
     final db = await _dbProvider.database;
     final rows = await db.query(
       'assistance_periods',
       orderBy: 'period_year DESC, period_month DESC',
     );
-    final periods = rows.map(ScholarshipPeriod.fromMap).toList();
-    for (final period in periods) {
+    final periods = <AssistancePeriod>[];
+    for (final row in rows) {
+      final period = AssistancePeriod.fromMap(row);
       await ensureDefaultPeriodRules(period);
+      periods.add(await _withRuleQuotaSnapshot(period));
     }
     return periods;
   }
 
-  Future<ScholarshipPeriod?> getPeriodById(String id) async {
+  Future<AssistancePeriod?> getPeriodById(String id) async {
     final db = await _dbProvider.database;
     final rows = await db.query(
       'assistance_periods',
@@ -246,12 +242,29 @@ class AssistancePlanRepository {
       limit: 1,
     );
     if (rows.isEmpty) return null;
-    final period = ScholarshipPeriod.fromMap(rows.first);
+    final period = AssistancePeriod.fromMap(rows.first);
     await ensureDefaultPeriodRules(period);
-    return period;
+    return _withRuleQuotaSnapshot(period);
   }
 
-  Future<List<ScholarshipPeriodRule>> getPeriodRules(String periodId) async {
+  Future<AssistancePeriod> _withRuleQuotaSnapshot(AssistancePeriod period) async {
+    final db = await _dbProvider.database;
+    final rows = await db.query(
+      'assistance_period_rules',
+      where: 'assistance_period_id = ? AND is_active = 1',
+      whereArgs: [period.id],
+    );
+    final rules = rows.map(AssistancePeriodRule.fromMap).toList();
+    final fixedQuota = rules
+        .where((rule) => rule.ruleType == AssistanceRuleType.fixedPriority)
+        .fold<int>(0, (sum, rule) => sum + rule.quota);
+    final rollingQuota = rules
+        .where((rule) => rule.ruleType == AssistanceRuleType.rollingAttendance)
+        .fold<int>(0, (sum, rule) => sum + rule.quota);
+    return period.copyWith(fixedQuota: fixedQuota, rollingQuota: rollingQuota);
+  }
+
+  Future<List<AssistancePeriodRule>> getPeriodRules(String periodId) async {
     if (periodId.isEmpty) return const [];
     final period = await getPeriodById(periodId);
     if (period == null) return const [];
@@ -259,39 +272,26 @@ class AssistancePlanRepository {
     final db = await _dbProvider.database;
     final rows = await db.query(
       'assistance_period_rules',
-      where: 'scholarship_period_id = ?',
+      where: 'assistance_period_id = ?',
       whereArgs: [periodId],
       orderBy: 'priority_order ASC, created_at ASC',
     );
-    return rows.map(ScholarshipPeriodRule.fromMap).toList();
+    return rows.map(AssistancePeriodRule.fromMap).toList();
   }
 
-  Future<void> ensureDefaultPeriodRules(ScholarshipPeriod period) async {
+  Future<void> ensureDefaultPeriodRules(AssistancePeriod period) async {
     final db = await _dbProvider.database;
     final existingRows = await db.query(
       'assistance_period_rules',
-      where: 'scholarship_period_id = ?',
+      where: 'assistance_period_id = ?',
       whereArgs: [period.id],
       orderBy: 'priority_order ASC, created_at ASC',
     );
 
-    final fixedQuota = period.fixedQuota > 0
-        ? period.fixedQuota
-        : await countActiveFixedRulesForPeriod(
-            period.periodMonth,
-            period.periodYear,
-          );
-    final rollingQuota = period.rollingQuota > 0
-        ? period.rollingQuota
-        : (period.targetQuota - fixedQuota)
-              .clamp(0, period.targetQuota)
-              .toInt();
     final now = DateTime.now().toIso8601String();
     if (existingRows.isEmpty) {
       for (final rule in _defaultCorePeriodRules(
         periodId: period.id,
-        fixedQuota: fixedQuota,
-        rollingQuota: rollingQuota,
         createdAt: now,
       )) {
         await db.insert('assistance_period_rules', rule.toMap());
@@ -300,30 +300,30 @@ class AssistancePlanRepository {
     }
 
     var existingRules = existingRows
-        .map(ScholarshipPeriodRule.fromMap)
+        .map(AssistancePeriodRule.fromMap)
         .toList();
     final existingTypes = existingRules.map((rule) => rule.ruleType).toSet();
-    ScholarshipPeriodRule? fixedRule;
-    ScholarshipPeriodRule? rollingRule;
+    AssistancePeriodRule? fixedRule;
+    AssistancePeriodRule? rollingRule;
     for (final rule in existingRules) {
-      if (rule.ruleType == ScholarshipType.fixedPriority) fixedRule = rule;
-      if (rule.ruleType == ScholarshipType.rollingAttendance) {
+      if (rule.ruleType == AssistanceRuleType.fixedPriority) fixedRule = rule;
+      if (rule.ruleType == AssistanceRuleType.rollingAttendance) {
         rollingRule = rule;
       }
     }
-    final legacyTwoRuleSetup =
+    final twoRuleSetup =
         existingRules.length == 2 &&
-        existingTypes.contains(ScholarshipType.fixedPriority) &&
-        existingTypes.contains(ScholarshipType.rollingAttendance) &&
+        existingTypes.contains(AssistanceRuleType.fixedPriority) &&
+        existingTypes.contains(AssistanceRuleType.rollingAttendance) &&
         fixedRule?.priorityOrder == 0 &&
         rollingRule?.priorityOrder == 1;
 
-    if (legacyTwoRuleSetup && rollingRule != null) {
+    if (twoRuleSetup && rollingRule != null) {
       final updatedRolling = rollingRule.copyWith(
-        priorityOrder: ScholarshipType.corePeriodRuleTypes.indexOf(
-          ScholarshipType.rollingAttendance,
+        priorityOrder: AssistanceRuleType.corePeriodRuleTypes.indexOf(
+          AssistanceRuleType.rollingAttendance,
         ),
-        selectionMode: ScholarshipSelectionMode.auto,
+        selectionMode: AssistanceSelectionMode.auto,
         updatedAt: now,
       );
       await db.update(
@@ -357,7 +357,7 @@ class AssistancePlanRepository {
     final existingByType = {
       for (final rule in existingRules) rule.ruleType: rule,
     };
-    for (final type in ScholarshipType.corePeriodRuleTypes) {
+    for (final type in AssistanceRuleType.corePeriodRuleTypes) {
       final existingRule = existingByType[type];
       if (existingRule != null) {
         final expectedMode = type.defaultSelectionMode;
@@ -374,7 +374,7 @@ class AssistancePlanRepository {
         continue;
       }
 
-      var priorityOrder = ScholarshipType.corePeriodRuleTypes.indexOf(type);
+      var priorityOrder = AssistanceRuleType.corePeriodRuleTypes.indexOf(type);
       while (usedOrders.contains(priorityOrder)) {
         priorityOrder++;
       }
@@ -382,15 +382,11 @@ class AssistancePlanRepository {
 
       await db.insert(
         'assistance_period_rules',
-        ScholarshipPeriodRule(
-          scholarshipPeriodId: period.id,
-          scholarshipRuleId: _systemRuleIdForType(type),
+        AssistancePeriodRule(
+          assistancePeriodId: period.id,
+          assistanceRuleId: _systemRuleIdForType(type),
           ruleType: type,
-          quota: switch (type) {
-            ScholarshipType.fixedPriority => fixedQuota,
-            ScholarshipType.rollingAttendance => rollingQuota,
-            _ => 0,
-          },
+          quota: 0,
           priorityOrder: priorityOrder,
           selectionMode: type.defaultSelectionMode,
           createdAt: now,
@@ -400,15 +396,15 @@ class AssistancePlanRepository {
     }
   }
 
-  Future<void> savePeriodRule(ScholarshipPeriodRule rule) async {
+  Future<void> savePeriodRule(AssistancePeriodRule rule) async {
     if (rule.quota < 0) throw Exception('Rule quota cannot be negative.');
-    if (rule.ruleType == ScholarshipType.customRule &&
+    if (rule.ruleType == AssistanceRuleType.customRule &&
         rule.ruleName.trim().isEmpty) {
       throw Exception('Rule name is required for custom rules.');
     }
 
-    final period = await getPeriodById(rule.scholarshipPeriodId);
-    if (period?.status == ScholarshipPeriodStatus.approved) {
+    final period = await getPeriodById(rule.assistancePeriodId);
+    if (period?.status == AssistancePeriodStatus.approved) {
       throw Exception('Approved periods cannot be edited.');
     }
 
@@ -421,17 +417,17 @@ class AssistancePlanRepository {
     );
     final existingRule = existingRows.isEmpty
         ? null
-        : ScholarshipPeriodRule.fromMap(existingRows.first);
+        : AssistancePeriodRule.fromMap(existingRows.first);
     final isNew = existingRule == null;
     final normalizedType = isNew && !rule.ruleType.isCorePeriodRule
-        ? ScholarshipType.customRule
+        ? AssistanceRuleType.customRule
         : rule.ruleType;
 
     if (isNew && normalizedType.isCorePeriodRule) {
       final duplicate = await db.query(
         'assistance_period_rules',
-        where: 'scholarship_period_id = ? AND rule_type = ?',
-        whereArgs: [rule.scholarshipPeriodId, normalizedType.value],
+        where: 'assistance_period_id = ? AND rule_type = ?',
+        whereArgs: [rule.assistancePeriodId, normalizedType.value],
         limit: 1,
       );
       if (duplicate.isNotEmpty) {
@@ -444,7 +440,7 @@ class AssistancePlanRepository {
       if (rule.ruleType != existingRule.ruleType) {
         throw Exception('Default assistance rules cannot change type.');
       }
-    } else if (normalizedType != ScholarshipType.customRule) {
+    } else if (normalizedType != AssistanceRuleType.customRule) {
       throw Exception(
         'Additional assistance rules must be custom manual rules.',
       );
@@ -463,9 +459,9 @@ class AssistancePlanRepository {
           existingRule.priorityOrder != effective.priorityOrder) {
         final conflictingRows = await txn.query(
           'assistance_period_rules',
-          where: 'scholarship_period_id = ? AND priority_order = ? AND id <> ?',
+          where: 'assistance_period_id = ? AND priority_order = ? AND id <> ?',
           whereArgs: [
-            effective.scholarshipPeriodId,
+            effective.assistancePeriodId,
             effective.priorityOrder,
             effective.id,
           ],
@@ -480,7 +476,7 @@ class AssistancePlanRepository {
         );
 
         if (conflictingRows.isNotEmpty) {
-          final conflicting = ScholarshipPeriodRule.fromMap(
+          final conflicting = AssistancePeriodRule.fromMap(
             conflictingRows.first,
           );
           await txn.update(
@@ -508,8 +504,8 @@ class AssistancePlanRepository {
         final usedRows = await txn.query(
           'assistance_period_rules',
           columns: const ['priority_order'],
-          where: 'scholarship_period_id = ?',
-          whereArgs: [effective.scholarshipPeriodId],
+          where: 'assistance_period_id = ?',
+          whereArgs: [effective.assistancePeriodId],
         );
         final usedOrders = usedRows
             .map((row) => (row['priority_order'] as num?)?.toInt())
@@ -532,7 +528,7 @@ class AssistancePlanRepository {
         whereArgs: [effective.id],
       );
     });
-    await _syncPeriodLegacyQuota(rule.scholarshipPeriodId);
+    await _touchPeriodUpdatedAt(rule.assistancePeriodId);
   }
 
   Future<void> deletePeriodRule(String id) async {
@@ -544,9 +540,9 @@ class AssistancePlanRepository {
       limit: 1,
     );
     if (rows.isEmpty) return;
-    final rule = ScholarshipPeriodRule.fromMap(rows.first);
-    final period = await getPeriodById(rule.scholarshipPeriodId);
-    if (period?.status == ScholarshipPeriodStatus.approved) {
+    final rule = AssistancePeriodRule.fromMap(rows.first);
+    final period = await getPeriodById(rule.assistancePeriodId);
+    if (period?.status == AssistancePeriodStatus.approved) {
       throw Exception('Approved periods cannot be edited.');
     }
     if (rule.ruleType.isCorePeriodRule) {
@@ -557,17 +553,17 @@ class AssistancePlanRepository {
     await db.transaction((txn) async {
       await txn.delete(
         'student_assistance_rule_candidates',
-        where: 'scholarship_period_rule_id = ?',
+        where: 'assistance_period_rule_id = ?',
         whereArgs: [id],
       );
       await txn.delete(
         'student_assistance_assessments',
-        where: 'scholarship_period_rule_id = ?',
+        where: 'assistance_period_rule_id = ?',
         whereArgs: [id],
       );
       await txn.delete(
         'assistance_rule_targets',
-        where: 'scholarship_period_rule_id = ?',
+        where: 'assistance_period_rule_id = ?',
         whereArgs: [id],
       );
       await txn.delete(
@@ -576,7 +572,7 @@ class AssistancePlanRepository {
         whereArgs: [id],
       );
     });
-    await _syncPeriodLegacyQuota(rule.scholarshipPeriodId);
+    await _touchPeriodUpdatedAt(rule.assistancePeriodId);
   }
 
   Future<void> createPeriod({
@@ -608,14 +604,11 @@ class AssistancePlanRepository {
       throw Exception('Assistance period already exists.');
     }
 
-    final fixedQuota = await countActiveFixedRulesForPeriod(month, year);
-    final period = ScholarshipPeriod(
-      id: ScholarshipPeriod.periodId(year, month),
+    final period = AssistancePeriod(
+      id: AssistancePeriod.periodId(year, month),
       periodMonth: month,
       periodYear: year,
       targetQuota: targetQuota,
-      fixedQuota: fixedQuota,
-      rollingQuota: (targetQuota - fixedQuota).clamp(0, targetQuota).toInt(),
       calculationWindowMonths: calculationWindowMonths,
       minimumAttendancePercentage: minimumAttendancePercentage,
       allowManualOverrideBelowAttendance: allowManualOverrideBelowAttendance,
@@ -624,15 +617,13 @@ class AssistancePlanRepository {
       await txn.insert('assistance_periods', period.toMap());
       for (final rule in _defaultCorePeriodRules(
         periodId: period.id,
-        fixedQuota: period.fixedQuota,
-        rollingQuota: period.rollingQuota,
       )) {
         await txn.insert('assistance_period_rules', rule.toMap());
       }
     });
   }
 
-  Future<ScholarshipPeriod> createAssistancePeriod({
+  Future<AssistancePeriod> createAssistancePeriod({
     required String assistanceProgramId,
     required String periodName,
     required String startDate,
@@ -645,7 +636,7 @@ class AssistancePlanRepository {
     int calculationWindowMonths = 3,
     double minimumAttendancePercentage = 75,
     bool allowManualOverrideBelowAttendance = true,
-    required List<ScholarshipPeriodRule> rules,
+    required List<AssistancePeriodRule> rules,
   }) async {
     if (assistanceProgramId.trim().isEmpty) {
       throw Exception('Assistance program is required.');
@@ -661,7 +652,7 @@ class AssistancePlanRepository {
       throw Exception('Allocated quota must equal target quota.');
     }
 
-    final period = ScholarshipPeriod(
+    final period = AssistancePeriod(
       assistanceProgramId: assistanceProgramId,
       periodName: periodName.trim(),
       startDate: startDate,
@@ -671,12 +662,6 @@ class AssistancePlanRepository {
       periodMonth: month,
       periodYear: year,
       targetQuota: targetQuota,
-      fixedQuota: rules
-          .where((rule) => rule.ruleType == ScholarshipType.fixedPriority)
-          .fold<int>(0, (total, rule) => total + rule.quota),
-      rollingQuota: rules
-          .where((rule) => rule.ruleType == ScholarshipType.rollingAttendance)
-          .fold<int>(0, (total, rule) => total + rule.quota),
       calculationWindowMonths: calculationWindowMonths,
       minimumAttendancePercentage: minimumAttendancePercentage,
       allowManualOverrideBelowAttendance: allowManualOverrideBelowAttendance,
@@ -688,7 +673,7 @@ class AssistancePlanRepository {
       await txn.insert('assistance_periods', period.toMap());
       for (var index = 0; index < rules.length; index++) {
         final rule = rules[index].copyWith(
-          scholarshipPeriodId: period.id,
+          assistancePeriodId: period.id,
           priorityOrder: index,
           selectionMode: rules[index].ruleType.defaultSelectionMode,
           createdAt: now,
@@ -701,8 +686,8 @@ class AssistancePlanRepository {
     return period;
   }
 
-  Future<void> updatePeriod(ScholarshipPeriod period) async {
-    if (period.status == ScholarshipPeriodStatus.approved) {
+  Future<void> updatePeriod(AssistancePeriod period) async {
+    if (period.status == AssistancePeriodStatus.approved) {
       throw Exception('Approved periods cannot be edited.');
     }
 
@@ -717,13 +702,13 @@ class AssistancePlanRepository {
       where: 'id = ?',
       whereArgs: [period.id],
     );
-    await _syncPeriodLegacyQuota(period.id);
+    await _touchPeriodUpdatedAt(period.id);
   }
 
   Future<void> deletePeriod(String id) async {
     final period = await getPeriodById(id);
     if (period == null) return;
-    if (period.status == ScholarshipPeriodStatus.approved) {
+    if (period.status == AssistancePeriodStatus.approved) {
       throw Exception('Approved periods cannot be deleted.');
     }
 
@@ -731,39 +716,39 @@ class AssistancePlanRepository {
     await db.transaction((txn) async {
       await txn.delete(
         'student_assistance_assessments',
-        where: 'scholarship_period_id = ?',
+        where: 'assistance_period_id = ?',
         whereArgs: [id],
       );
       await txn.delete(
         'student_assistance_rule_candidates',
-        where: 'scholarship_period_id = ?',
+        where: 'assistance_period_id = ?',
         whereArgs: [id],
       );
       await txn.delete(
         'assistance_rule_targets',
-        where: 'scholarship_period_id = ?',
+        where: 'assistance_period_id = ?',
         whereArgs: [id],
       );
       await txn.delete(
         'assistance_approval_documents',
-        where: 'scholarship_period_id = ?',
+        where: 'assistance_period_id = ?',
         whereArgs: [id],
       );
       await txn.delete(
         'assistance_recipients',
-        where: 'scholarship_period_id = ?',
+        where: 'assistance_period_id = ?',
         whereArgs: [id],
       );
       await txn.delete(
         'assistance_period_rules',
-        where: 'scholarship_period_id = ?',
+        where: 'assistance_period_id = ?',
         whereArgs: [id],
       );
       await txn.delete('assistance_periods', where: 'id = ?', whereArgs: [id]);
     });
   }
 
-  Future<List<StudentScholarshipRule>> getRules() async {
+  Future<List<StudentAssistanceRule>> getRules() async {
     final db = await _dbProvider.database;
     final rows = await db.rawQuery('''
       SELECT r.*, s.full_name AS student_name
@@ -771,11 +756,11 @@ class AssistancePlanRepository {
       INNER JOIN students s ON s.id = r.student_id
       ORDER BY r.is_active DESC, s.full_name ASC, r.start_date DESC
     ''');
-    return rows.map(StudentScholarshipRule.fromMap).toList();
+    return rows.map(StudentAssistanceRule.fromMap).toList();
   }
 
-  Future<void> saveRule(StudentScholarshipRule rule) async {
-    if (rule.scholarshipType == ScholarshipType.customRule &&
+  Future<void> saveRule(StudentAssistanceRule rule) async {
+    if (rule.ruleType == AssistanceRuleType.customRule &&
         (rule.ruleName ?? '').trim().isEmpty) {
       throw Exception('Rule name is required for custom rules.');
     }
@@ -817,31 +802,31 @@ class AssistancePlanRepository {
     );
   }
 
-  Future<List<StudentScholarshipRuleCandidate>> getRuleCandidates({
+  Future<List<StudentAssistanceRuleCandidate>> getRuleCandidates({
     required String periodRuleId,
   }) async {
     final db = await _dbProvider.database;
     if (!await _tableExists(db, 'student_assistance_rule_candidates')) {
-      return const <StudentScholarshipRuleCandidate>[];
+      return const <StudentAssistanceRuleCandidate>[];
     }
     final rows = await db.rawQuery(
       '''
       SELECT c.*, s.full_name AS student_name
       FROM student_assistance_rule_candidates c
       INNER JOIN students s ON s.id = c.student_id
-      WHERE c.scholarship_period_rule_id = ?
+      WHERE c.assistance_period_rule_id = ?
       ORDER BY s.full_name ASC
     ''',
       [periodRuleId],
     );
-    return rows.map(StudentScholarshipRuleCandidate.fromMap).toList();
+    return rows.map(StudentAssistanceRuleCandidate.fromMap).toList();
   }
 
   Future<void> saveRuleCandidate(
-    StudentScholarshipRuleCandidate candidate,
+    StudentAssistanceRuleCandidate candidate,
   ) async {
     final db = await _dbProvider.database;
-    final period = await getPeriodById(candidate.scholarshipPeriodId);
+    final period = await getPeriodById(candidate.assistancePeriodId);
     var effective = candidate;
     if (period != null) {
       final calculation = _calculationWindow(
@@ -863,14 +848,14 @@ class AssistancePlanRepository {
           hasOverrideReason;
       final eligibilityStatus = belowMinimum
           ? canOverride
-                ? ScholarshipEligibilityStatus.overridden
-                : ScholarshipEligibilityStatus.ineligible
-          : ScholarshipEligibilityStatus.eligible;
+                ? AssistanceEligibilityStatus.overridden
+                : AssistanceEligibilityStatus.ineligible
+          : AssistanceEligibilityStatus.eligible;
 
-      effective = StudentScholarshipRuleCandidate(
+      effective = StudentAssistanceRuleCandidate(
         id: candidate.id,
-        scholarshipPeriodId: candidate.scholarshipPeriodId,
-        scholarshipPeriodRuleId: candidate.scholarshipPeriodRuleId,
+        assistancePeriodId: candidate.assistancePeriodId,
+        assistancePeriodRuleId: candidate.assistancePeriodRuleId,
         studentId: candidate.studentId,
         nominatedBy: candidate.nominatedBy,
         reason: candidate.reason,
@@ -900,29 +885,29 @@ class AssistancePlanRepository {
   }
 
   Future<void> saveManualTarget({
-    required ScholarshipPeriodRule rule,
+    required AssistancePeriodRule rule,
     required String studentId,
     String? reason,
   }) async {
-    final period = await getPeriodById(rule.scholarshipPeriodId);
+    final period = await getPeriodById(rule.assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
-    if (period.status == ScholarshipPeriodStatus.approved) {
+    if (period.status == AssistancePeriodStatus.approved) {
       throw Exception('Approved period target candidates cannot be changed.');
     }
 
     final db = await _dbProvider.database;
     final existingRows = await db.query(
       'student_assistance_assessments',
-      where: 'scholarship_period_id = ? AND student_id = ?',
-      whereArgs: [rule.scholarshipPeriodId, studentId],
+      where: 'assistance_period_id = ? AND student_id = ?',
+      whereArgs: [rule.assistancePeriodId, studentId],
       limit: 1,
     );
     final existing = existingRows.isEmpty
         ? null
-        : StudentScholarshipAssessment.fromMap(existingRows.first);
+        : StudentAssistanceAssessment.fromMap(existingRows.first);
     final wasSelected =
-        existing?.decisionStatus == ScholarshipDecisionStatus.approved;
-    final sameRule = existing?.scholarshipPeriodRuleId == rule.id;
+        existing?.decisionStatus == AssistanceDecisionStatus.approved;
+    final sameRule = existing?.assistancePeriodRuleId == rule.id;
 
     if (!wasSelected || !sameRule) {
       final selectedInRule = Sqflite.firstIntValue(
@@ -930,11 +915,11 @@ class AssistancePlanRepository {
               '''
               SELECT COUNT(*) AS count
               FROM student_assistance_assessments
-              WHERE scholarship_period_rule_id = ?
+              WHERE assistance_period_rule_id = ?
                 AND decision_status = ?
                 AND student_id <> ?
               ''',
-              [rule.id, ScholarshipDecisionStatus.approved.value, studentId],
+              [rule.id, AssistanceDecisionStatus.approved.value, studentId],
             ),
           ) ??
           0;
@@ -948,13 +933,13 @@ class AssistancePlanRepository {
             '''
             SELECT COUNT(*) AS count
             FROM student_assistance_assessments
-            WHERE scholarship_period_id = ?
+            WHERE assistance_period_id = ?
               AND decision_status = ?
               AND student_id <> ?
             ''',
             [
-              rule.scholarshipPeriodId,
-              ScholarshipDecisionStatus.approved.value,
+              rule.assistancePeriodId,
+              AssistanceDecisionStatus.approved.value,
               studentId,
             ],
           ),
@@ -987,13 +972,13 @@ class AssistancePlanRepository {
       );
     }
     final eligibilityStatus = canOverride
-        ? ScholarshipEligibilityStatus.overridden
-        : ScholarshipEligibilityStatus.eligible;
+        ? AssistanceEligibilityStatus.overridden
+        : AssistanceEligibilityStatus.eligible;
 
     final now = DateTime.now().toIso8601String();
-    final candidate = StudentScholarshipRuleCandidate(
-      scholarshipPeriodId: rule.scholarshipPeriodId,
-      scholarshipPeriodRuleId: rule.id,
+    final candidate = StudentAssistanceRuleCandidate(
+      assistancePeriodId: rule.assistancePeriodId,
+      assistancePeriodRuleId: rule.id,
       studentId: studentId,
       reason: reason,
       attendanceScore: attendance,
@@ -1002,14 +987,14 @@ class AssistancePlanRepository {
       updatedAt: now,
     );
     final totalScore = _manualTotalScore(rule.ruleType, attendance, null);
-    final assessment = StudentScholarshipAssessment(
+    final assessment = StudentAssistanceAssessment(
       id: existing?.id,
-      scholarshipPeriodId: rule.scholarshipPeriodId,
+      assistancePeriodId: rule.assistancePeriodId,
       studentId: studentId,
       ruleId: existing?.ruleId,
-      scholarshipPeriodRuleId: rule.id,
+      assistancePeriodRuleId: rule.id,
       ruleCandidateId: candidate.id,
-      scholarshipType: rule.ruleType,
+      ruleType: rule.ruleType,
       ruleName: rule.displayName,
       selectionMode: rule.selectionMode,
       priorityLevel: rule.priorityOrder,
@@ -1028,7 +1013,7 @@ class AssistancePlanRepository {
       specialCaseNote: reason?.trim().isEmpty == true ? null : reason?.trim(),
       totalScore: totalScore,
       rankNo: existing?.rankNo,
-      decisionStatus: ScholarshipDecisionStatus.approved,
+      decisionStatus: AssistanceDecisionStatus.approved,
       eligibilityStatus: eligibilityStatus,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
@@ -1057,8 +1042,8 @@ class AssistancePlanRepository {
       );
       await txn.delete(
         'assistance_rule_targets',
-        where: 'scholarship_period_id = ? AND student_id = ?',
-        whereArgs: [rule.scholarshipPeriodId, studentId],
+        where: 'assistance_period_id = ? AND student_id = ?',
+        whereArgs: [rule.assistancePeriodId, studentId],
       );
       await txn.insert(
         'assistance_rule_targets',
@@ -1077,7 +1062,7 @@ class AssistancePlanRepository {
     );
   }
 
-  Future<List<ScholarshipStudentOption>> getActiveStudents() async {
+  Future<List<AssistanceStudentOption>> getActiveStudents() async {
     final db = await _dbProvider.database;
     final rows = await db.rawQuery('''
       SELECT s.id, s.full_name, c.name AS class_name, c.level
@@ -1086,77 +1071,40 @@ class AssistancePlanRepository {
       WHERE s.status = 'active'
       ORDER BY s.full_name ASC
     ''');
-    return rows.map(ScholarshipStudentOption.fromMap).toList();
+    return rows.map(AssistanceStudentOption.fromMap).toList();
   }
 
-  Future<int> countActiveFixedRulesForPeriod(int month, int year) async {
-    final db = await _dbProvider.database;
-    if (!await _tableExists(db, 'student_assistance_rules')) return 0;
-    final ruleColumns = await _tableColumns(db, 'student_assistance_rules');
-    if (!ruleColumns.contains('rule_type') &&
-        !ruleColumns.contains('scholarship_type')) {
-      return 0;
-    }
-    final ruleTypeExpression =
-        ruleColumns.contains('rule_type') &&
-            ruleColumns.contains('scholarship_type')
-        ? 'COALESCE(rule_type, scholarship_type)'
-        : ruleColumns.contains('rule_type')
-        ? 'rule_type'
-        : 'scholarship_type';
-    final range = _periodRange(month, year);
-    final result = await db.rawQuery(
-      '''
-      SELECT COUNT(DISTINCT student_id) AS count
-      FROM student_assistance_rules
-      WHERE $ruleTypeExpression = ?
-        AND is_active = 1
-        AND start_date <= ?
-        AND (end_date IS NULL OR end_date = '' OR end_date >= ?)
-      ''',
-      [ScholarshipType.fixedPriority.value, range.end, range.start],
-    );
-    return Sqflite.firstIntValue(result) ?? 0;
-  }
-
-  Future<List<StudentScholarshipAssessment>> getAssessments({
+  Future<List<StudentAssistanceAssessment>> getAssessments({
     String? periodId,
-    ScholarshipDecisionStatus? decisionStatus,
-    ScholarshipType? scholarshipType,
+    AssistanceDecisionStatus? decisionStatus,
+    AssistanceRuleType? ruleType,
   }) async {
     final db = await _dbProvider.database;
     if (!await _tableExists(db, 'student_assistance_assessments')) {
-      return const <StudentScholarshipAssessment>[];
+      return const <StudentAssistanceAssessment>[];
     }
     final assessmentColumns = await _tableColumns(
       db,
       'student_assistance_assessments',
     );
-    if (!assessmentColumns.contains('rule_type') &&
-        !assessmentColumns.contains('scholarship_type')) {
-      return const <StudentScholarshipAssessment>[];
+    if (!assessmentColumns.contains('rule_type')) {
+      return const <StudentAssistanceAssessment>[];
     }
-    final assessmentTypeExpression =
-        assessmentColumns.contains('rule_type') &&
-            assessmentColumns.contains('scholarship_type')
-        ? 'COALESCE(a.rule_type, a.scholarship_type)'
-        : assessmentColumns.contains('rule_type')
-        ? 'a.rule_type'
-        : 'a.scholarship_type';
+    const assessmentTypeExpression = 'a.rule_type';
     final where = <String>[];
     final args = <Object?>[];
 
     if (periodId != null && periodId.isNotEmpty) {
-      where.add('a.scholarship_period_id = ?');
+      where.add('a.assistance_period_id = ?');
       args.add(periodId);
     }
     if (decisionStatus != null) {
       where.add('a.decision_status = ?');
       args.add(decisionStatus.value);
     }
-    if (scholarshipType != null) {
+    if (ruleType != null) {
       where.add('$assessmentTypeExpression = ?');
-      args.add(scholarshipType.normalized.value);
+      args.add(ruleType.normalized.value);
     }
 
     final whereSql = where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}';
@@ -1177,14 +1125,14 @@ class AssistancePlanRepository {
         COALESCE(a.attendance_score, 0) DESC,
         s.full_name ASC
       ''', args);
-    return rows.map(StudentScholarshipAssessment.fromMap).toList();
+    return rows.map(StudentAssistanceAssessment.fromMap).toList();
   }
 
-  Future<ScholarshipSummary> getSummary(String? periodId) async {
-    if (periodId == null || periodId.isEmpty) return const ScholarshipSummary();
+  Future<AssistanceSummary> getSummary(String? periodId) async {
+    if (periodId == null || periodId.isEmpty) return const AssistanceSummary();
 
     final period = await getPeriodById(periodId);
-    if (period == null) return const ScholarshipSummary();
+    if (period == null) return const AssistanceSummary();
     final rules = await getPeriodRules(periodId);
     final activeRules = rules.where((rule) => rule.isActive).toList();
     final allocatedQuota = activeRules.fold<int>(
@@ -1192,15 +1140,15 @@ class AssistancePlanRepository {
       (sum, rule) => sum + rule.quota,
     );
     final fixedQuota = activeRules
-        .where((rule) => rule.ruleType == ScholarshipType.fixedPriority)
+        .where((rule) => rule.ruleType == AssistanceRuleType.fixedPriority)
         .fold<int>(0, (sum, rule) => sum + rule.quota);
     final rollingQuota = activeRules
-        .where((rule) => rule.ruleType == ScholarshipType.rollingAttendance)
+        .where((rule) => rule.ruleType == AssistanceRuleType.rollingAttendance)
         .fold<int>(0, (sum, rule) => sum + rule.quota);
 
     final db = await _dbProvider.database;
     if (!await _tableExists(db, 'student_assistance_assessments')) {
-      return ScholarshipSummary(
+      return AssistanceSummary(
         targetQuota: period.targetQuota,
         fixedQuota: fixedQuota,
         rollingQuota: rollingQuota,
@@ -1211,22 +1159,15 @@ class AssistancePlanRepository {
       db,
       'student_assistance_assessments',
     );
-    if (!assessmentColumns.contains('rule_type') &&
-        !assessmentColumns.contains('scholarship_type')) {
-      return ScholarshipSummary(
+    if (!assessmentColumns.contains('rule_type')) {
+      return AssistanceSummary(
         targetQuota: period.targetQuota,
         fixedQuota: fixedQuota,
         rollingQuota: rollingQuota,
         allocatedQuota: allocatedQuota,
       );
     }
-    final assessmentTypeExpression =
-        assessmentColumns.contains('rule_type') &&
-            assessmentColumns.contains('scholarship_type')
-        ? 'COALESCE(rule_type, scholarship_type)'
-        : assessmentColumns.contains('rule_type')
-        ? 'rule_type'
-        : 'scholarship_type';
+    const assessmentTypeExpression = 'rule_type';
     final rows = await db.rawQuery(
       '''
       SELECT
@@ -1236,18 +1177,18 @@ class AssistancePlanRepository {
         COALESCE(SUM(CASE WHEN eligibility_status = ? THEN 1 ELSE 0 END), 0) AS ineligible_count,
         COALESCE(SUM(CASE WHEN $assessmentTypeExpression = ? THEN 1 ELSE 0 END), 0) AS manual_override_count
       FROM student_assistance_assessments
-      WHERE scholarship_period_id = ?
+      WHERE assistance_period_id = ?
       ''',
       [
-        ScholarshipDecisionStatus.approved.value,
-        ScholarshipDecisionStatus.waitlist.value,
-        ScholarshipEligibilityStatus.ineligible.value,
-        ScholarshipType.manualOverride.value,
+        AssistanceDecisionStatus.approved.value,
+        AssistanceDecisionStatus.waitlist.value,
+        AssistanceEligibilityStatus.ineligible.value,
+        AssistanceRuleType.manualOverride.value,
         periodId,
       ],
     );
     final row = rows.first;
-    return ScholarshipSummary(
+    return AssistanceSummary(
       targetQuota: period.targetQuota,
       fixedQuota: fixedQuota,
       rollingQuota: rollingQuota,
@@ -1260,11 +1201,11 @@ class AssistancePlanRepository {
     );
   }
 
-  Future<List<ScholarshipRecipient>> getRecipients({String? periodId}) async {
+  Future<List<AssistanceRecipient>> getRecipients({String? periodId}) async {
     final db = await _dbProvider.database;
     final where = periodId == null || periodId.isEmpty
         ? ''
-        : 'WHERE r.scholarship_period_id = ?';
+        : 'WHERE r.assistance_period_id = ?';
     final args = periodId == null || periodId.isEmpty
         ? const <Object?>[]
         : <Object?>[periodId];
@@ -1272,14 +1213,14 @@ class AssistancePlanRepository {
       SELECT r.*, s.full_name AS student_name, p.period_month, p.period_year
       FROM assistance_recipients r
       INNER JOIN students s ON s.id = r.student_id
-      INNER JOIN assistance_periods p ON p.id = r.scholarship_period_id
+      INNER JOIN assistance_periods p ON p.id = r.assistance_period_id
       $where
       ORDER BY p.period_year DESC, p.period_month DESC, r.rank_no ASC, s.full_name ASC
       ''', args);
-    return rows.map(ScholarshipRecipient.fromMap).toList();
+    return rows.map(AssistanceRecipient.fromMap).toList();
   }
 
-  Future<List<ScholarshipApprovalDocument>> getApprovalDocuments({
+  Future<List<AssistanceApprovalDocument>> getApprovalDocuments({
     String? periodId,
   }) async {
     final db = await _dbProvider.database;
@@ -1287,17 +1228,17 @@ class AssistancePlanRepository {
       'assistance_approval_documents',
       where: periodId == null || periodId.isEmpty
           ? null
-          : 'scholarship_period_id = ?',
+          : 'assistance_period_id = ?',
       whereArgs: periodId == null || periodId.isEmpty ? null : [periodId],
       orderBy: 'uploaded_at DESC',
     );
-    return rows.map(ScholarshipApprovalDocument.fromMap).toList();
+    return rows.map(AssistanceApprovalDocument.fromMap).toList();
   }
 
-  Future<void> markPlanSubmitted(String scholarshipPeriodId) async {
-    final period = await getPeriodById(scholarshipPeriodId);
+  Future<void> markPlanSubmitted(String assistancePeriodId) async {
+    final period = await getPeriodById(assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
-    if (period.status == ScholarshipPeriodStatus.approved) {
+    if (period.status == AssistancePeriodStatus.approved) {
       throw Exception('Approved periods are locked.');
     }
     final db = await _dbProvider.database;
@@ -1305,25 +1246,25 @@ class AssistancePlanRepository {
     await db.update(
       'assistance_periods',
       {
-        'status': ScholarshipPeriodStatus.pendingReview.value,
+        'status': AssistancePeriodStatus.submitted.value,
         'submitted_at': now,
         'updated_at': now,
       },
       where: 'id = ?',
-      whereArgs: [scholarshipPeriodId],
+      whereArgs: [assistancePeriodId],
     );
   }
 
-  Future<void> markPlanTargeted(String scholarshipPeriodId) async {
-    final period = await getPeriodById(scholarshipPeriodId);
+  Future<void> markPlanTargeted(String assistancePeriodId) async {
+    final period = await getPeriodById(assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
-    if (period.status == ScholarshipPeriodStatus.approved) {
+    if (period.status == AssistancePeriodStatus.approved) {
       throw Exception('Approved periods are locked.');
     }
 
     final selectedTargets = await getAssessments(
-      periodId: scholarshipPeriodId,
-      decisionStatus: ScholarshipDecisionStatus.approved,
+      periodId: assistancePeriodId,
+      decisionStatus: AssistanceDecisionStatus.approved,
     );
     if (selectedTargets.length > period.targetQuota) {
       throw Exception(
@@ -1336,25 +1277,25 @@ class AssistancePlanRepository {
     await db.update(
       'assistance_periods',
       {
-        'status': ScholarshipPeriodStatus.generated.value,
+        'status': AssistancePeriodStatus.targeted.value,
         'targeted_at': now,
         'updated_at': now,
       },
       where: 'id = ?',
-      whereArgs: [scholarshipPeriodId],
+      whereArgs: [assistancePeriodId],
     );
   }
 
   Future<void> uploadApprovalDocument({
-    required String scholarshipPeriodId,
+    required String assistancePeriodId,
     required String sourcePath,
     required String fileName,
     required String uploadedBy,
     String? remarks,
   }) async {
-    final period = await getPeriodById(scholarshipPeriodId);
+    final period = await getPeriodById(assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
-    if (period.status == ScholarshipPeriodStatus.approved) {
+    if (period.status == AssistancePeriodStatus.approved) {
       throw Exception('This period is already approved.');
     }
 
@@ -1364,8 +1305,8 @@ class AssistancePlanRepository {
     }
 
     final approvedTargets = await getAssessments(
-      periodId: scholarshipPeriodId,
-      decisionStatus: ScholarshipDecisionStatus.approved,
+      periodId: assistancePeriodId,
+      decisionStatus: AssistanceDecisionStatus.approved,
     );
     if (approvedTargets.isEmpty) {
       throw Exception('Create target candidates before uploading approval.');
@@ -1377,15 +1318,15 @@ class AssistancePlanRepository {
     }
 
     final storedPath = await _copyApprovalDocument(
-      periodId: scholarshipPeriodId,
+      periodId: assistancePeriodId,
       sourcePath: sourcePath,
       fileName: fileName,
     );
 
     final db = await _dbProvider.database;
     final now = DateTime.now().toIso8601String();
-    final document = ScholarshipApprovalDocument(
-      scholarshipPeriodId: scholarshipPeriodId,
+    final document = AssistanceApprovalDocument(
+      assistancePeriodId: assistancePeriodId,
       fileName: p.basename(storedPath),
       filePath: storedPath,
       fileType: ext,
@@ -1409,13 +1350,13 @@ class AssistancePlanRepository {
           period: period,
           studentId: target.studentId,
         );
-        final recipient = ScholarshipRecipient(
-          scholarshipPeriodId: scholarshipPeriodId,
+        final recipient = AssistanceRecipient(
+          assistancePeriodId: assistancePeriodId,
           studentId: target.studentId,
           assessmentId: target.id,
-          scholarshipRuleTargetId: target.id,
-          scholarshipPeriodRuleId: target.scholarshipPeriodRuleId,
-          scholarshipType: target.scholarshipType,
+          assistanceRuleTargetId: target.id,
+          assistancePeriodRuleId: target.assistancePeriodRuleId,
+          ruleType: target.ruleType,
           ruleName: target.displayName,
           finalScore: target.totalScore,
           rankNo: target.rankNo,
@@ -1440,31 +1381,31 @@ class AssistancePlanRepository {
       await txn.update(
         'student_assistance_assessments',
         {
-          'decision_status': ScholarshipDecisionStatus.approved.value,
+          'decision_status': AssistanceDecisionStatus.approved.value,
           'updated_at': now,
         },
-        where: 'scholarship_period_id = ? AND decision_status = ?',
+        where: 'assistance_period_id = ? AND decision_status = ?',
         whereArgs: [
-          scholarshipPeriodId,
-          ScholarshipDecisionStatus.approved.value,
+          assistancePeriodId,
+          AssistanceDecisionStatus.approved.value,
         ],
       );
       await txn.update(
         'assistance_rule_targets',
         {'target_status': 'approved', 'updated_at': now},
-        where: 'scholarship_period_id = ? AND target_status = ?',
-        whereArgs: [scholarshipPeriodId, 'selected'],
+        where: 'assistance_period_id = ? AND target_status = ?',
+        whereArgs: [assistancePeriodId, 'selected'],
       );
       await txn.update(
         'assistance_periods',
         {
-          'status': ScholarshipPeriodStatus.approved.value,
+          'status': AssistancePeriodStatus.approved.value,
           'approved_at': now,
           'approved_by': uploadedBy,
           'updated_at': now,
         },
         where: 'id = ?',
-        whereArgs: [scholarshipPeriodId],
+        whereArgs: [assistancePeriodId],
       );
     });
   }
@@ -1490,12 +1431,12 @@ class AssistancePlanRepository {
     return storedPath;
   }
 
-  Future<void> generateAssistancePeriod(String scholarshipPeriodId) async {
+  Future<void> generateAssistancePeriod(String assistancePeriodId) async {
     final db = await _dbProvider.database;
-    final period = await getPeriodById(scholarshipPeriodId);
+    final period = await getPeriodById(assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
-    if (period.status == ScholarshipPeriodStatus.approved) {
-      throw Exception('Approved periods cannot be regenerated.');
+    if (period.status == AssistancePeriodStatus.approved) {
+      throw Exception('Approved periods cannot be targeted again.');
     }
 
     final rules =
@@ -1526,7 +1467,7 @@ class AssistancePlanRepository {
       calculation.start,
       calculation.end,
     );
-    final scholarshipHistory = await _lastScholarshipHistory(
+    final assistanceHistory = await _lastAssistanceHistory(
       period.periodMonth,
       period.periodYear,
     );
@@ -1535,7 +1476,7 @@ class AssistancePlanRepository {
     final assessedStudentIds = <String>{};
     final carryToRule = <String, int>{};
     var carryToNext = 0;
-    final generatedAssessments = <StudentScholarshipAssessment>[];
+    final targetAssessments = <StudentAssistanceAssessment>[];
 
     for (final rule in rules) {
       final explicitCarry = carryToRule.remove(rule.ruleType.value) ?? 0;
@@ -1548,7 +1489,7 @@ class AssistancePlanRepository {
         calculation: calculation,
         students: activeStudentMap,
         attendanceScores: attendanceScores,
-        scholarshipHistory: scholarshipHistory,
+        assistanceHistory: assistanceHistory,
         selectedStudentIds: selectedStudentIds,
       );
 
@@ -1556,7 +1497,7 @@ class AssistancePlanRepository {
           .where(
             (candidate) =>
                 candidate.eligibilityStatus !=
-                ScholarshipEligibilityStatus.ineligible,
+                AssistanceEligibilityStatus.ineligible,
           )
           .toList();
       final selected = selectable.take(quota).toList();
@@ -1572,14 +1513,14 @@ class AssistancePlanRepository {
       for (final candidate in candidates) {
         if (assessedStudentIds.contains(candidate.studentId)) continue;
         final selectedForRule = selectedIds.contains(candidate.studentId);
-        generatedAssessments.add(
-          StudentScholarshipAssessment(
-            scholarshipPeriodId: period.id,
+        targetAssessments.add(
+          StudentAssistanceAssessment(
+            assistancePeriodId: period.id,
             studentId: candidate.studentId,
             ruleId: candidate.studentRuleId,
-            scholarshipPeriodRuleId: rule.id,
+            assistancePeriodRuleId: rule.id,
             ruleCandidateId: candidate.ruleCandidateId,
-            scholarshipType: rule.ruleType,
+            ruleType: rule.ruleType,
             ruleName: rule.displayName,
             selectionMode: rule.selectionMode,
             priorityLevel: rule.priorityOrder,
@@ -1598,15 +1539,15 @@ class AssistancePlanRepository {
             rankNo:
                 selectedForRule ||
                     candidate.eligibilityStatus !=
-                        ScholarshipEligibilityStatus.ineligible
+                        AssistanceEligibilityStatus.ineligible
                 ? rank
                 : null,
             decisionStatus: selectedForRule
-                ? ScholarshipDecisionStatus.approved
+                ? AssistanceDecisionStatus.approved
                 : candidate.eligibilityStatus ==
-                      ScholarshipEligibilityStatus.ineligible
-                ? ScholarshipDecisionStatus.rejected
-                : ScholarshipDecisionStatus.waitlist,
+                      AssistanceEligibilityStatus.ineligible
+                ? AssistanceDecisionStatus.rejected
+                : AssistanceDecisionStatus.waitlist,
             eligibilityStatus: candidate.eligibilityStatus,
             createdAt: now,
             updatedAt: now,
@@ -1614,7 +1555,7 @@ class AssistancePlanRepository {
         );
         assessedStudentIds.add(candidate.studentId);
         if (candidate.eligibilityStatus !=
-            ScholarshipEligibilityStatus.ineligible) {
+            AssistanceEligibilityStatus.ineligible) {
           rank++;
         }
       }
@@ -1636,12 +1577,12 @@ class AssistancePlanRepository {
     await db.transaction((txn) async {
       await txn.delete(
         'assistance_rule_targets',
-        where: 'scholarship_period_id = ?',
+        where: 'assistance_period_id = ?',
         whereArgs: [period.id],
       );
       await txn.delete(
         'student_assistance_assessments',
-        where: 'scholarship_period_id = ?',
+        where: 'assistance_period_id = ?',
         whereArgs: [period.id],
       );
 
@@ -1653,7 +1594,7 @@ class AssistancePlanRepository {
         txn,
         'assistance_rule_targets',
       );
-      for (final assessment in generatedAssessments) {
+      for (final assessment in targetAssessments) {
         await txn.insert(
           'student_assistance_assessments',
           _filterMapForColumns(assessment.toMap(), assessmentColumns),
@@ -1669,19 +1610,10 @@ class AssistancePlanRepository {
         );
       }
 
-      final fixedQuota = rules
-          .where((rule) => rule.ruleType == ScholarshipType.fixedPriority)
-          .fold<int>(0, (sum, rule) => sum + rule.quota);
-      final rollingQuota = rules
-          .where((rule) => rule.ruleType == ScholarshipType.rollingAttendance)
-          .fold<int>(0, (sum, rule) => sum + rule.quota);
       await txn.update(
         'assistance_periods',
         {
-          'fixed_quota': fixedQuota,
-          'rolling_quota': rollingQuota,
-          'status': ScholarshipPeriodStatus.generated.value,
-          'generated_at': now,
+          'status': AssistancePeriodStatus.targeted.value,
           'targeted_at': now,
           'updated_at': now,
         },
@@ -1692,30 +1624,27 @@ class AssistancePlanRepository {
   }
 
   Map<String, Object?> _targetMapForAssessment(
-    StudentScholarshipAssessment assessment,
+    StudentAssistanceAssessment assessment,
   ) {
     final targetStatus = switch (assessment.decisionStatus) {
-      ScholarshipDecisionStatus.approved => 'selected',
-      ScholarshipDecisionStatus.waitlist => 'draft',
-      ScholarshipDecisionStatus.rejected => 'rejected',
-      ScholarshipDecisionStatus.cancelled => 'removed',
-      ScholarshipDecisionStatus.draft => 'draft',
+      AssistanceDecisionStatus.approved => 'selected',
+      AssistanceDecisionStatus.waitlist => 'draft',
+      AssistanceDecisionStatus.rejected => 'rejected',
+      AssistanceDecisionStatus.cancelled => 'removed',
+      AssistanceDecisionStatus.draft => 'draft',
     };
-    final source = assessment.scholarshipType == ScholarshipType.manualOverride
+    final source = assessment.ruleType == AssistanceRuleType.manualOverride
         ? 'override'
         : assessment.selectionMode.value;
     return {
       'id': assessment.id,
-      'scholarship_period_id': assessment.scholarshipPeriodId,
-      'scholarship_period_rule_id': assessment.scholarshipPeriodRuleId ?? '',
-      'scholarship_rule_id': null,
-      'assistance_period_id': assessment.scholarshipPeriodId,
-      'assistance_period_rule_id': assessment.scholarshipPeriodRuleId ?? '',
+      'assistance_period_id': assessment.assistancePeriodId,
+      'assistance_period_rule_id': assessment.assistancePeriodRuleId ?? '',
       'assistance_rule_id': null,
       'student_rule_id': assessment.ruleId,
       'student_id': assessment.studentId,
       'rule_name': assessment.displayName,
-      'rule_type': assessment.scholarshipType.normalized.value,
+      'rule_type': assessment.ruleType.normalized.value,
       'selection_mode': assessment.selectionMode.value,
       'target_source': source,
       'priority_order': assessment.priorityLevel,
@@ -1752,7 +1681,7 @@ class AssistancePlanRepository {
   >
   _benefitSnapshotForStudent(
     DatabaseExecutor db, {
-    required ScholarshipPeriod period,
+    required AssistancePeriod period,
     required String studentId,
   }) async {
     final programId = period.assistanceProgramId;
@@ -1812,7 +1741,7 @@ class AssistancePlanRepository {
   }
 
   ({String? schoolType, String? benefitType, double? amount, String? description, String? itemsJson})
-  _periodBenefitFallback(ScholarshipPeriod period) {
+  _periodBenefitFallback(AssistancePeriod period) {
     final parts = <String>[
       if (period.benefitAmount != null) _formatRupiah(period.benefitAmount!),
       if ((period.benefitItemDescription ?? '').trim().isNotEmpty)
@@ -1888,18 +1817,18 @@ class AssistancePlanRepository {
   }
 
   Future<void> approveAssistancePeriod(
-    String scholarshipPeriodId,
+    String assistancePeriodId,
     String approvedBy,
   ) async {
-    final period = await getPeriodById(scholarshipPeriodId);
+    final period = await getPeriodById(assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
-    if (period.status == ScholarshipPeriodStatus.approved) {
+    if (period.status == AssistancePeriodStatus.approved) {
       throw Exception('Assistance period is already approved.');
     }
 
     final approvedAssessments = await getAssessments(
-      periodId: scholarshipPeriodId,
-      decisionStatus: ScholarshipDecisionStatus.approved,
+      periodId: assistancePeriodId,
+      decisionStatus: AssistanceDecisionStatus.approved,
     );
     if (approvedAssessments.length > period.targetQuota) {
       throw Exception(
@@ -1917,13 +1846,13 @@ class AssistancePlanRepository {
           period: period,
           studentId: assessment.studentId,
         );
-        final recipient = ScholarshipRecipient(
-          scholarshipPeriodId: scholarshipPeriodId,
+        final recipient = AssistanceRecipient(
+          assistancePeriodId: assistancePeriodId,
           studentId: assessment.studentId,
           assessmentId: assessment.id,
-          scholarshipRuleTargetId: assessment.id,
-          scholarshipPeriodRuleId: assessment.scholarshipPeriodRuleId,
-          scholarshipType: assessment.scholarshipType,
+          assistanceRuleTargetId: assessment.id,
+          assistancePeriodRuleId: assessment.assistancePeriodRuleId,
+          ruleType: assessment.ruleType,
           ruleName: assessment.displayName,
           finalScore: assessment.totalScore,
           rankNo: assessment.rankNo,
@@ -1948,36 +1877,36 @@ class AssistancePlanRepository {
       await txn.update(
         'assistance_rule_targets',
         {'target_status': 'approved', 'updated_at': now},
-        where: 'scholarship_period_id = ? AND target_status = ?',
-        whereArgs: [scholarshipPeriodId, 'selected'],
+        where: 'assistance_period_id = ? AND target_status = ?',
+        whereArgs: [assistancePeriodId, 'selected'],
       );
 
       await txn.update(
         'assistance_periods',
         {
-          'status': ScholarshipPeriodStatus.approved.value,
+          'status': AssistancePeriodStatus.approved.value,
           'approved_at': now,
           'approved_by': approvedBy,
           'updated_at': now,
         },
         where: 'id = ?',
-        whereArgs: [scholarshipPeriodId],
+        whereArgs: [assistancePeriodId],
       );
     });
   }
 
-  Future<void> updateAssessment(StudentScholarshipAssessment assessment) async {
+  Future<void> updateAssessment(StudentAssistanceAssessment assessment) async {
     final db = await _dbProvider.database;
-    final period = await getPeriodById(assessment.scholarshipPeriodId);
+    final period = await getPeriodById(assessment.assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
-    if (period.status == ScholarshipPeriodStatus.approved) {
+    if (period.status == AssistancePeriodStatus.approved) {
       throw Exception('Approved period target candidates cannot be changed.');
     }
 
-    final updatedType = assessment.scholarshipType;
-    if (updatedType == ScholarshipType.manualOverride &&
+    final updatedType = assessment.ruleType;
+    if (updatedType == AssistanceRuleType.manualOverride &&
         assessment.eligibilityStatus ==
-            ScholarshipEligibilityStatus.ineligible &&
+            AssistanceEligibilityStatus.ineligible &&
         (!period.allowManualOverrideBelowAttendance ||
             (assessment.specialCaseNote ?? '').trim().isEmpty)) {
       throw Exception('Manual override below attendance requires a reason.');
@@ -1989,15 +1918,15 @@ class AssistancePlanRepository {
     }
 
     final updated = assessment.copyWith(
-      scholarshipType: updatedType,
-      selectionMode: updatedType == ScholarshipType.manualOverride
-          ? ScholarshipSelectionMode.manual
+      ruleType: updatedType,
+      selectionMode: updatedType == AssistanceRuleType.manualOverride
+          ? AssistanceSelectionMode.manual
           : assessment.selectionMode,
       eligibilityStatus:
-          updatedType == ScholarshipType.manualOverride &&
+          updatedType == AssistanceRuleType.manualOverride &&
               assessment.eligibilityStatus ==
-                  ScholarshipEligibilityStatus.ineligible
-          ? ScholarshipEligibilityStatus.overridden
+                  AssistanceEligibilityStatus.ineligible
+          ? AssistanceEligibilityStatus.overridden
           : assessment.eligibilityStatus,
       reviewDate: DateTime.now().toIso8601String(),
       updatedAt: DateTime.now().toIso8601String(),
@@ -2020,7 +1949,7 @@ class AssistancePlanRepository {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     }
-    if (updated.scholarshipPeriodRuleId != null) {
+    if (updated.assistancePeriodRuleId != null) {
       await db.insert(
         'assistance_rule_targets',
         _filterMapForColumns(_targetMapForAssessment(updated), targetColumns),
@@ -2031,7 +1960,7 @@ class AssistancePlanRepository {
 
   Future<void> updateRecipientStatus({
     required String recipientId,
-    required ScholarshipRecipientStatus status,
+    required AssistanceRecipientStatus status,
   }) async {
     final db = await _dbProvider.database;
     await db.update(
@@ -2043,16 +1972,16 @@ class AssistancePlanRepository {
   }
 
   Future<List<_RuleCandidate>> _candidatesForRule({
-    required ScholarshipPeriodRule rule,
-    required ScholarshipPeriod period,
+    required AssistancePeriodRule rule,
+    required AssistancePeriod period,
     required ({String start, String end}) periodRange,
     required ({String start, String end}) calculation,
     required Map<String, _StudentRow> students,
     required Map<String, double> attendanceScores,
-    required Map<String, _ScholarshipHistory> scholarshipHistory,
+    required Map<String, _AssistanceHistory> assistanceHistory,
     required Set<String> selectedStudentIds,
   }) async {
-    if (rule.selectionMode == ScholarshipSelectionMode.manual) {
+    if (rule.selectionMode == AssistanceSelectionMode.manual) {
       return _manualCandidatesForRule(
         rule: rule,
         period: period,
@@ -2064,18 +1993,18 @@ class AssistancePlanRepository {
     }
 
     return switch (rule.ruleType) {
-      ScholarshipType.rollingAttendance ||
-      ScholarshipType.attendanceBased => Future.value(
+      AssistanceRuleType.rollingAttendance ||
+      AssistanceRuleType.attendanceBased => Future.value(
         _rollingCandidatesForRule(
           rule: rule,
           period: period,
           students: students,
           attendanceScores: attendanceScores,
-          scholarshipHistory: scholarshipHistory,
+          assistanceHistory: assistanceHistory,
           selectedStudentIds: selectedStudentIds,
         ),
       ),
-      ScholarshipType.growthBased => _growthCandidatesForRule(
+      AssistanceRuleType.growthBased => _growthCandidatesForRule(
         rule: rule,
         period: period,
         calculation: calculation,
@@ -2083,7 +2012,7 @@ class AssistancePlanRepository {
         attendanceScores: attendanceScores,
         selectedStudentIds: selectedStudentIds,
       ),
-      ScholarshipType.meritBased => _meritCandidatesForRule(
+      AssistanceRuleType.meritBased => _meritCandidatesForRule(
         rule: rule,
         period: period,
         calculation: calculation,
@@ -2103,8 +2032,8 @@ class AssistancePlanRepository {
   }
 
   Future<List<_RuleCandidate>> _manualCandidatesForRule({
-    required ScholarshipPeriodRule rule,
-    required ScholarshipPeriod period,
+    required AssistancePeriodRule rule,
+    required AssistancePeriod period,
     required ({String start, String end}) periodRange,
     required Map<String, _StudentRow> students,
     required Map<String, double> attendanceScores,
@@ -2115,17 +2044,10 @@ class AssistancePlanRepository {
       return const <_RuleCandidate>[];
     }
     final ruleColumns = await _tableColumns(db, 'student_assistance_rules');
-    if (!ruleColumns.contains('rule_type') &&
-        !ruleColumns.contains('scholarship_type')) {
+    if (!ruleColumns.contains('rule_type')) {
       return const <_RuleCandidate>[];
     }
-    final ruleTypeExpression =
-        ruleColumns.contains('rule_type') &&
-            ruleColumns.contains('scholarship_type')
-        ? 'COALESCE(r.rule_type, r.scholarship_type)'
-        : ruleColumns.contains('rule_type')
-        ? 'r.rule_type'
-        : 'r.scholarship_type';
+    const ruleTypeExpression = 'r.rule_type';
     final rows = await db.rawQuery(
       '''
       SELECT r.*, s.full_name AS student_name
@@ -2139,7 +2061,7 @@ class AssistancePlanRepository {
       ''',
       [rule.ruleType.value, periodRange.end, periodRange.start],
     );
-    final longTermRules = rows.map(StudentScholarshipRule.fromMap).toList();
+    final longTermRules = rows.map(StudentAssistanceRule.fromMap).toList();
     final candidateRows = await getRuleCandidates(periodRuleId: rule.id);
     final byStudent = <String, _RuleCandidate>{};
 
@@ -2153,11 +2075,11 @@ class AssistancePlanRepository {
         studentName: student.name,
         studentRuleId: item.id,
         attendanceScore: attendance,
-        economicScore: rule.ruleType == ScholarshipType.needBased
+        economicScore: rule.ruleType == AssistanceRuleType.needBased
             ? item.scoreOverride
             : null,
         teacherRecommendationScore:
-            rule.ruleType == ScholarshipType.teacherRecommendation
+            rule.ruleType == AssistanceRuleType.teacherRecommendation
             ? item.scoreOverride
             : null,
         totalScore: _manualTotalScore(
@@ -2168,8 +2090,8 @@ class AssistancePlanRepository {
         priorityReason: item.reason,
         specialCaseNote: item.displayName,
         eligibilityStatus: attendance >= period.minimumAttendancePercentage
-            ? ScholarshipEligibilityStatus.eligible
-            : ScholarshipEligibilityStatus.ineligible,
+            ? AssistanceEligibilityStatus.eligible
+            : AssistanceEligibilityStatus.ineligible,
       );
     }
 
@@ -2180,7 +2102,7 @@ class AssistancePlanRepository {
       final attendance =
           attendanceScores[item.studentId] ?? item.attendanceScore ?? 0;
       final overridden =
-          item.eligibilityStatus == ScholarshipEligibilityStatus.overridden &&
+          item.eligibilityStatus == AssistanceEligibilityStatus.overridden &&
           period.allowManualOverrideBelowAttendance &&
           (item.reason ?? '').trim().isNotEmpty;
       byStudent[item.studentId] = _RuleCandidate(
@@ -2192,21 +2114,21 @@ class AssistancePlanRepository {
         priorityReason: item.reason ?? rule.displayName,
         specialCaseNote: item.reason,
         eligibilityStatus: attendance >= period.minimumAttendancePercentage
-            ? ScholarshipEligibilityStatus.eligible
+            ? AssistanceEligibilityStatus.eligible
             : overridden
-            ? ScholarshipEligibilityStatus.overridden
-            : ScholarshipEligibilityStatus.ineligible,
+            ? AssistanceEligibilityStatus.overridden
+            : AssistanceEligibilityStatus.ineligible,
       );
     }
 
     final candidates = byStudent.values.toList();
     candidates.sort((a, b) {
       final eligibility =
-          a.eligibilityStatus == ScholarshipEligibilityStatus.ineligible
+          a.eligibilityStatus == AssistanceEligibilityStatus.ineligible
           ? 1
           : 0;
       final otherEligibility =
-          b.eligibilityStatus == ScholarshipEligibilityStatus.ineligible
+          b.eligibilityStatus == AssistanceEligibilityStatus.ineligible
           ? 1
           : 0;
       if (eligibility != otherEligibility) {
@@ -2222,11 +2144,11 @@ class AssistancePlanRepository {
   }
 
   List<_RuleCandidate> _rollingCandidatesForRule({
-    required ScholarshipPeriodRule rule,
-    required ScholarshipPeriod period,
+    required AssistancePeriodRule rule,
+    required AssistancePeriod period,
     required Map<String, _StudentRow> students,
     required Map<String, double> attendanceScores,
-    required Map<String, _ScholarshipHistory> scholarshipHistory,
+    required Map<String, _AssistanceHistory> assistanceHistory,
     required Set<String> selectedStudentIds,
   }) {
     final candidates = <_RuleCandidate>[];
@@ -2241,13 +2163,13 @@ class AssistancePlanRepository {
             attendanceScore: attendance,
             totalScore: attendance,
             priorityReason: 'Below minimum attendance',
-            eligibilityStatus: ScholarshipEligibilityStatus.ineligible,
+            eligibilityStatus: AssistanceEligibilityStatus.ineligible,
           ),
         );
         continue;
       }
 
-      final history = scholarshipHistory[student.id];
+      final history = assistanceHistory[student.id];
       final monthsSince = history?.monthsSince;
       final rotationBonus = _rotationBonus(monthsSince);
       candidates.add(
@@ -2258,20 +2180,20 @@ class AssistancePlanRepository {
           rotationBonus: rotationBonus,
           totalScore: attendance + rotationBonus,
           priorityReason: monthsSince == null
-              ? 'Never received scholarship'
+              ? 'Never received assistance'
               : 'Last assistance $monthsSince month(s) ago',
-          monthsSinceLastScholarship: monthsSince,
-          eligibilityStatus: ScholarshipEligibilityStatus.eligible,
+          monthsSinceLastAssistance: monthsSince,
+          eligibilityStatus: AssistanceEligibilityStatus.eligible,
         ),
       );
     }
 
     candidates.sort((a, b) {
-      final aNever = a.monthsSinceLastScholarship == null ? 1 : 0;
-      final bNever = b.monthsSinceLastScholarship == null ? 1 : 0;
+      final aNever = a.monthsSinceLastAssistance == null ? 1 : 0;
+      final bNever = b.monthsSinceLastAssistance == null ? 1 : 0;
       if (aNever != bNever) return bNever.compareTo(aNever);
-      final months = (b.monthsSinceLastScholarship ?? 9999).compareTo(
-        a.monthsSinceLastScholarship ?? 9999,
+      final months = (b.monthsSinceLastAssistance ?? 9999).compareTo(
+        a.monthsSinceLastAssistance ?? 9999,
       );
       if (months != 0) return months;
       final total = b.totalScore.compareTo(a.totalScore);
@@ -2284,8 +2206,8 @@ class AssistancePlanRepository {
   }
 
   Future<List<_RuleCandidate>> _meritCandidatesForRule({
-    required ScholarshipPeriodRule rule,
-    required ScholarshipPeriod period,
+    required AssistancePeriodRule rule,
+    required AssistancePeriod period,
     required ({String start, String end}) calculation,
     required Map<String, _StudentRow> students,
     required Map<String, double> attendanceScores,
@@ -2325,8 +2247,8 @@ class AssistancePlanRepository {
           totalScore: (combined * 0.70) + (attendance * 0.30),
           priorityReason: 'Average session score ${combined.toStringAsFixed(1)}',
           eligibilityStatus: eligible
-              ? ScholarshipEligibilityStatus.eligible
-              : ScholarshipEligibilityStatus.ineligible,
+              ? AssistanceEligibilityStatus.eligible
+              : AssistanceEligibilityStatus.ineligible,
         ),
       );
     }
@@ -2342,8 +2264,8 @@ class AssistancePlanRepository {
   }
 
   Future<List<_RuleCandidate>> _growthCandidatesForRule({
-    required ScholarshipPeriodRule rule,
-    required ScholarshipPeriod period,
+    required AssistancePeriodRule rule,
+    required AssistancePeriod period,
     required ({String start, String end}) calculation,
     required Map<String, _StudentRow> students,
     required Map<String, double> attendanceScores,
@@ -2375,8 +2297,8 @@ class AssistancePlanRepository {
           priorityReason:
               'Score growth ${improvement >= 0 ? '+' : ''}${improvement.toStringAsFixed(1)}',
           eligibilityStatus: eligible
-              ? ScholarshipEligibilityStatus.eligible
-              : ScholarshipEligibilityStatus.ineligible,
+              ? AssistanceEligibilityStatus.eligible
+              : AssistanceEligibilityStatus.ineligible,
         ),
       );
     }
@@ -2465,74 +2387,58 @@ class AssistancePlanRepository {
   }
 
   double _manualTotalScore(
-    ScholarshipType type,
+    AssistanceRuleType type,
     double attendanceScore,
     double? scoreOverride,
   ) {
     return switch (type) {
-      ScholarshipType.fixedPriority ||
-      ScholarshipType.specialCase => scoreOverride ?? 100,
-      ScholarshipType.needBased =>
+      AssistanceRuleType.fixedPriority ||
+      AssistanceRuleType.specialCase => scoreOverride ?? 100,
+      AssistanceRuleType.needBased =>
         scoreOverride == null
             ? attendanceScore
             : (scoreOverride * 0.70) + (attendanceScore * 0.30),
-      ScholarshipType.teacherRecommendation =>
+      AssistanceRuleType.teacherRecommendation =>
         scoreOverride == null
             ? attendanceScore
             : (scoreOverride * 0.60) + (attendanceScore * 0.40),
-      ScholarshipType.customRule ||
-      ScholarshipType.manualPriority ||
-      ScholarshipType.temporarySupport => scoreOverride ?? attendanceScore,
+      AssistanceRuleType.customRule ||
+      AssistanceRuleType.manualPriority ||
+      AssistanceRuleType.temporarySupport => scoreOverride ?? attendanceScore,
       _ => scoreOverride ?? attendanceScore,
     };
   }
 
   Future<int> _approvedCountIfUpdated(
-    StudentScholarshipAssessment assessment,
+    StudentAssistanceAssessment assessment,
   ) async {
     final db = await _dbProvider.database;
     final rows = await db.rawQuery(
       '''
       SELECT COUNT(*) AS count
       FROM student_assistance_assessments
-      WHERE scholarship_period_id = ?
+      WHERE assistance_period_id = ?
         AND decision_status = ?
         AND id <> ?
       ''',
       [
-        assessment.scholarshipPeriodId,
-        ScholarshipDecisionStatus.approved.value,
+        assessment.assistancePeriodId,
+        AssistanceDecisionStatus.approved.value,
         assessment.id,
       ],
     );
     final current = Sqflite.firstIntValue(rows) ?? 0;
     return current +
-        (assessment.decisionStatus == ScholarshipDecisionStatus.approved
+        (assessment.decisionStatus == AssistanceDecisionStatus.approved
             ? 1
             : 0);
   }
 
-  Future<void> _syncPeriodLegacyQuota(String periodId) async {
-    final rules = await getPeriodRules(periodId);
-    final fixedQuota = rules
-        .where(
-          (rule) =>
-              rule.isActive && rule.ruleType == ScholarshipType.fixedPriority,
-        )
-        .fold<int>(0, (sum, rule) => sum + rule.quota);
-    final rollingQuota = rules
-        .where(
-          (rule) =>
-              rule.isActive &&
-              rule.ruleType == ScholarshipType.rollingAttendance,
-        )
-        .fold<int>(0, (sum, rule) => sum + rule.quota);
+  Future<void> _touchPeriodUpdatedAt(String periodId) async {
     final db = await _dbProvider.database;
     await db.update(
       'assistance_periods',
       {
-        'fixed_quota': fixedQuota,
-        'rolling_quota': rollingQuota,
         'updated_at': DateTime.now().toIso8601String(),
       },
       where: 'id = ?',
@@ -2614,33 +2520,33 @@ class AssistancePlanRepository {
     return scores;
   }
 
-  Future<Map<String, _ScholarshipHistory>> _lastScholarshipHistory(
+  Future<Map<String, _AssistanceHistory>> _lastAssistanceHistory(
     int month,
     int year,
   ) async {
     final db = await _dbProvider.database;
     if (!await _tableExists(db, 'assistance_recipients') ||
         !await _tableExists(db, 'assistance_periods')) {
-      return const <String, _ScholarshipHistory>{};
+      return const <String, _AssistanceHistory>{};
     }
     final rows = await db.rawQuery(
       '''
       SELECT r.student_id, p.period_month, p.period_year
       FROM assistance_recipients r
-      INNER JOIN assistance_periods p ON p.id = r.scholarship_period_id
+      INNER JOIN assistance_periods p ON p.id = r.assistance_period_id
       WHERE (p.period_year < ? OR (p.period_year = ? AND p.period_month < ?))
         AND r.status IN ('approved', 'paid', 'distributed')
       ORDER BY p.period_year DESC, p.period_month DESC
       ''',
       [year, year, month],
     );
-    final history = <String, _ScholarshipHistory>{};
+    final history = <String, _AssistanceHistory>{};
     for (final row in rows) {
       final studentId = row['student_id']?.toString();
       if (studentId == null || history.containsKey(studentId)) continue;
       final receivedMonth = (row['period_month'] as num?)?.toInt() ?? month;
       final receivedYear = (row['period_year'] as num?)?.toInt() ?? year;
-      history[studentId] = _ScholarshipHistory(
+      history[studentId] = _AssistanceHistory(
         monthsSince: ((year - receivedYear) * 12) + month - receivedMonth,
       );
     }
@@ -2737,7 +2643,7 @@ class _RuleCandidate {
     required this.totalScore,
     required this.priorityReason,
     this.specialCaseNote,
-    this.monthsSinceLastScholarship,
+    this.monthsSinceLastAssistance,
     required this.eligibilityStatus,
   });
 
@@ -2755,12 +2661,12 @@ class _RuleCandidate {
   final double totalScore;
   final String priorityReason;
   final String? specialCaseNote;
-  final int? monthsSinceLastScholarship;
-  final ScholarshipEligibilityStatus eligibilityStatus;
+  final int? monthsSinceLastAssistance;
+  final AssistanceEligibilityStatus eligibilityStatus;
 }
 
-class _ScholarshipHistory {
-  const _ScholarshipHistory({required this.monthsSince});
+class _AssistanceHistory {
+  const _AssistanceHistory({required this.monthsSince});
 
   final int monthsSince;
 }

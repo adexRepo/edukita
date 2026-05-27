@@ -52,29 +52,86 @@ class AppColors {
   static const Color contentColorCyan = Color(0xFF50E4FF);
 }
 
+class AppTypography {
+  AppTypography._();
+
+  static const double appTextScale = 0.94;
+
+  static const double pageTitle = 18;
+  static const double dialogTitle = 15;
+  static const double sectionTitle = 14;
+  static const double body = 12;
+  static const double bodyLarge = 13;
+  static const double bodySmall = 11;
+  static const double caption = 10;
+  static const double tableHeader = 11;
+
+  static const TextStyle pageTitleStyle = TextStyle(
+    color: AppColors.textPrimary,
+    fontSize: pageTitle,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+  );
+
+  static const TextStyle sectionTitleStyle = TextStyle(
+    color: AppColors.textPrimary,
+    fontSize: sectionTitle,
+    fontWeight: FontWeight.w700,
+    height: 1.25,
+  );
+
+  static const TextStyle bodyStyle = TextStyle(
+    color: AppColors.textPrimary,
+    fontSize: body,
+    fontWeight: FontWeight.w400,
+    height: 1.35,
+  );
+
+  static const TextStyle bodyStrongStyle = TextStyle(
+    color: AppColors.textPrimary,
+    fontSize: body,
+    fontWeight: FontWeight.w700,
+    height: 1.35,
+  );
+
+  static const TextStyle secondaryStyle = TextStyle(
+    color: AppColors.textSecondary,
+    fontSize: bodySmall,
+    fontWeight: FontWeight.w500,
+    height: 1.35,
+  );
+
+  static const TextStyle captionStyle = TextStyle(
+    color: AppColors.textSecondary,
+    fontSize: caption,
+    fontWeight: FontWeight.w500,
+    height: 1.3,
+  );
+}
+
 class AppFormFieldStyle {
   AppFormFieldStyle._();
 
   static const EdgeInsets contentPadding = EdgeInsets.symmetric(
     horizontal: 12,
-    vertical: 12,
+    vertical: 10,
   );
 
   static const TextStyle hintStyle = TextStyle(
     color: AppColors.textHint,
-    fontSize: 12,
+    fontSize: AppTypography.bodySmall,
     fontWeight: FontWeight.w400,
   );
 
   static const TextStyle labelStyle = TextStyle(
     color: AppColors.textSecondary,
-    fontSize: 12,
+    fontSize: AppTypography.bodySmall,
     fontWeight: FontWeight.w500,
   );
 
   static const TextStyle floatingLabelStyle = TextStyle(
     color: AppColors.primaryDark,
-    fontSize: 12,
+    fontSize: AppTypography.bodySmall,
     fontWeight: FontWeight.w600,
   );
 
@@ -96,25 +153,18 @@ class AppPageHeaderStyle {
   static TextStyle titleStyle(BuildContext context) {
     return Theme.of(context).textTheme.headlineSmall?.copyWith(
           color: AppColors.textPrimary,
-          fontSize: 21,
-          fontWeight: FontWeight.w600,
+          fontSize: AppTypography.pageTitle,
+          fontWeight: FontWeight.w700,
+          height: 1.2,
         ) ??
-        const TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 21,
-          fontWeight: FontWeight.w600,
-        );
+        AppTypography.pageTitleStyle;
   }
 
   static TextStyle subtitleStyle(BuildContext context) {
     return Theme.of(
           context,
         ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary) ??
-        const TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 12,
-          fontWeight: FontWeight.w400,
-        );
+        AppTypography.secondaryStyle;
   }
 }
 
@@ -128,7 +178,7 @@ class AppDropdownStyle {
 
   static const TextStyle textStyle = TextStyle(
     color: AppColors.textPrimary,
-    fontSize: 13,
+    fontSize: AppTypography.body,
     fontWeight: FontWeight.w500,
   );
 
@@ -372,7 +422,7 @@ class _AppDropdownMenuItemLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 44,
+      height: 38,
       width: double.infinity,
       child: DecoratedBox(
         decoration: const BoxDecoration(
@@ -401,7 +451,7 @@ class _AppDropdownMenuItemLabel extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 13,
+                    fontSize: AppTypography.body,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                   ),
                 ),
@@ -452,14 +502,48 @@ class AppTheme {
         displayColor: AppColors.textPrimary,
       )
       .copyWith(
-        titleLarge: const TextStyle(fontWeight: FontWeight.w700),
-        titleMedium: const TextStyle(fontWeight: FontWeight.w600),
-        titleSmall: const TextStyle(color: AppColors.textSecondary),
-        bodyLarge: const TextStyle(color: AppColors.textPrimary),
-        bodyMedium: const TextStyle(color: AppColors.textPrimary),
-        bodySmall: const TextStyle(color: AppColors.textSecondary),
-        labelLarge: const TextStyle(color: AppColors.textPrimary),
-        labelMedium: const TextStyle(color: AppColors.textSecondary),
+        displayLarge: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          height: 1.2,
+        ),
+        displayMedium: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          height: 1.2,
+        ),
+        displaySmall: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          height: 1.2,
+        ),
+        headlineLarge: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          height: 1.2,
+        ),
+        headlineMedium: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 19,
+          fontWeight: FontWeight.w700,
+          height: 1.2,
+        ),
+        headlineSmall: AppTypography.pageTitleStyle,
+        titleLarge: AppTypography.sectionTitleStyle.copyWith(fontSize: 16),
+        titleMedium: AppTypography.sectionTitleStyle,
+        titleSmall: AppTypography.bodyStrongStyle,
+        bodyLarge: AppTypography.bodyStyle.copyWith(
+          fontSize: AppTypography.bodyLarge,
+        ),
+        bodyMedium: AppTypography.bodyStyle,
+        bodySmall: AppTypography.secondaryStyle,
+        labelLarge: AppTypography.bodyStrongStyle,
+        labelMedium: AppTypography.secondaryStyle,
+        labelSmall: AppTypography.captionStyle,
       );
 
   static final ThemeData theme = ThemeData(
@@ -475,6 +559,7 @@ class AppTheme {
     highlightColor: AppColors.primaryLight.withValues(alpha: 0.18),
     iconTheme: const IconThemeData(color: AppColors.textPrimary),
     textTheme: textTheme,
+    visualDensity: VisualDensity.compact,
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       color: AppColors.primary,
       linearTrackColor: AppColors.white,
@@ -496,12 +581,12 @@ class AppTheme {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       titleTextStyle: const TextStyle(
         color: AppColors.textPrimary,
-        fontSize: 17,
+        fontSize: AppTypography.dialogTitle,
         fontWeight: FontWeight.w700,
       ),
       contentTextStyle: const TextStyle(
         color: AppColors.textPrimary,
-        fontSize: 12,
+        fontSize: AppTypography.body,
         height: 1.35,
       ),
     ),
@@ -512,6 +597,8 @@ class AppTheme {
         disabledBackgroundColor: AppColors.primaryLight.withValues(alpha: 0.5),
         shadowColor: AppColors.primaryDark.withValues(alpha: 0.24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        textStyle: AppTypography.bodyStrongStyle,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -519,10 +606,16 @@ class AppTheme {
         foregroundColor: AppColors.primary,
         side: const BorderSide(color: AppColors.primaryLight),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        textStyle: AppTypography.bodyStrongStyle,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        textStyle: AppTypography.bodyStrongStyle,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      ),
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(
       style: ButtonStyle(
@@ -603,7 +696,7 @@ class AppTheme {
     dropdownMenuTheme: DropdownMenuThemeData(
       textStyle: const TextStyle(
         color: AppColors.textPrimary,
-        fontSize: 13,
+        fontSize: AppTypography.body,
         fontWeight: FontWeight.w500,
       ),
       menuStyle: MenuStyle(
@@ -652,7 +745,7 @@ class AppTheme {
       ),
       textStyle: const TextStyle(
         color: AppColors.textPrimary,
-        fontSize: 13,
+        fontSize: AppTypography.body,
         fontWeight: FontWeight.w500,
       ),
     ),
@@ -672,6 +765,8 @@ class AppTheme {
     tabBarTheme: const TabBarThemeData(
       labelColor: AppColors.primary,
       unselectedLabelColor: AppColors.textSecondary,
+      labelStyle: AppTypography.bodyStrongStyle,
+      unselectedLabelStyle: AppTypography.secondaryStyle,
       indicator: UnderlineTabIndicator(
         borderSide: BorderSide(color: AppColors.primary, width: 2),
       ),

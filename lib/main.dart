@@ -5,11 +5,14 @@ import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  PaintingBinding.instance.imageCache.maximumSize = 120;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 24 << 20;
   await dotenv.load(fileName: ".env");
   await windowManager.ensureInitialized();
 
@@ -57,7 +60,13 @@ class _EdukitaAppState extends State<EdukitaApp> {
       theme: AppTheme.theme,
       routerConfig: appRouter,
       builder: (context, child) {
-        return AppToastHost(child: child ?? const SizedBox.shrink());
+        final mediaQuery = MediaQuery.of(context);
+        return MediaQuery(
+          data: mediaQuery.copyWith(
+            textScaler: TextScaler.linear(AppTypography.appTextScale),
+          ),
+          child: AppToastHost(child: child ?? const SizedBox.shrink()),
+        );
       },
     );
   }

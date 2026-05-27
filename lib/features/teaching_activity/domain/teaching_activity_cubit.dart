@@ -1,3 +1,4 @@
+import 'package:edukita/core/cache/app_memory_cache.dart';
 import 'package:edukita/features/teaching_activity/data/teaching_activity_data.dart';
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -257,37 +258,21 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
 }
 
 class TeachingActivityCacheService {
-  TeachingActivityCacheService({this.ttl = const Duration(minutes: 2)});
+  TeachingActivityCacheService({
+    Duration ttl = const Duration(seconds: 75),
+    int maxEntries = 4,
+  }) : _items = AppMemoryCache<TeachingActivityState>(
+         ttl: ttl,
+         maxEntries: maxEntries,
+       );
 
-  final Duration ttl;
-  final Map<String, _TeachingActivityCacheEntry> _items = {};
+  final AppMemoryCache<TeachingActivityState> _items;
 
-  TeachingActivityState? get(String key) {
-    final entry = _items[key];
-    if (entry == null) return null;
-    if (DateTime.now().difference(entry.cachedAt) > ttl) {
-      _items.remove(key);
-      return null;
-    }
-    return entry.state;
-  }
+  TeachingActivityState? get(String key) => _items.get(key);
 
   void put(String key, TeachingActivityState state) {
-    _items[key] = _TeachingActivityCacheEntry(
-      state: state.copyWith(isLoading: false, isSaving: false),
-      cachedAt: DateTime.now(),
-    );
+    _items.put(key, state.copyWith(isLoading: false, isSaving: false));
   }
 
   void clear() => _items.clear();
-}
-
-class _TeachingActivityCacheEntry {
-  const _TeachingActivityCacheEntry({
-    required this.state,
-    required this.cachedAt,
-  });
-
-  final TeachingActivityState state;
-  final DateTime cachedAt;
 }

@@ -52,7 +52,7 @@ class DatabaseMigrations {
     }
 
     if (oldVersion < 14) {
-      await _ensureScholarshipSchema(db);
+      await _ensureAssistanceSchema(db);
     }
 
     if (oldVersion < 15) {
@@ -72,7 +72,7 @@ class DatabaseMigrations {
     }
 
     if (oldVersion < 19) {
-      await _ensureRuleBasedScholarshipSchema(db);
+      await _ensureRuleBasedAssistanceSchema(db);
     }
 
     if (oldVersion < 20) {
@@ -80,7 +80,7 @@ class DatabaseMigrations {
     }
 
     if (oldVersion < 21) {
-      await _ensureScholarshipPlanSchema(db);
+      await _ensureAssistancePlanSchema(db);
     }
 
     if (oldVersion < 22) {
@@ -89,10 +89,6 @@ class DatabaseMigrations {
 
     if (oldVersion < 23) {
       await _ensureAssistanceProgramSchema(db);
-    }
-
-    if (oldVersion < 24) {
-      await _renameScholarshipTablesToAssistance(db);
     }
 
     if (oldVersion < 25) {
@@ -107,11 +103,9 @@ class DatabaseMigrations {
   }
 
   static Future<void> ensureCriticalSchema(Database db) async {
-    await _renameScholarshipTablesToAssistance(db);
     await DatabaseTables.createAll(db);
-    await _copyLegacyScholarshipTablesIfNeeded(db);
     await _ensureStrategySampleFileSchema(db);
-    await _ensureScholarshipPlanSchema(db);
+    await _ensureAssistancePlanSchema(db);
     await _ensureAssistanceProgramSchema(db);
     await _ensureAssistancePeriodProgramSchema(db);
     await _ensureScheduleLevelSchema(db);
@@ -119,55 +113,7 @@ class DatabaseMigrations {
     await _ensureAssessmentEvidenceSchema(db);
     await _ensureStudentExamScoreSchema(db);
     await _normalizeAcademicRelationFlow(db);
-    await _ensureAssistanceRelationAliases(db);
     await _ensureSubjectTimestampSchema(db);
-  }
-
-  static const List<(String oldName, String newName)> _assistanceTableRenames =
-      [
-        ('scholarship_periods', 'assistance_periods'),
-        ('scholarship_rules', 'assistance_rules'),
-        ('scholarship_period_rules', 'assistance_period_rules'),
-        ('student_scholarship_rules', 'student_assistance_rules'),
-        (
-          'student_scholarship_rule_candidates',
-          'student_assistance_rule_candidates',
-        ),
-        ('student_scholarship_assessments', 'student_assistance_assessments'),
-        ('scholarship_rule_targets', 'assistance_rule_targets'),
-        ('scholarship_approval_documents', 'assistance_approval_documents'),
-        ('scholarship_recipients', 'assistance_recipients'),
-      ];
-
-  static Future<void> _renameScholarshipTablesToAssistance(Database db) async {
-    for (final rename in _assistanceTableRenames) {
-      final oldName = rename.$1;
-      final newName = rename.$2;
-      final oldExists = await _tableExists(db, oldName);
-      if (!oldExists) continue;
-
-      final newExists = await _tableExists(db, newName);
-      if (!newExists) {
-        await db.execute('ALTER TABLE $oldName RENAME TO $newName');
-      }
-    }
-  }
-
-  static Future<void> _copyLegacyScholarshipTablesIfNeeded(Database db) async {
-    for (final rename in _assistanceTableRenames) {
-      final oldName = rename.$1;
-      final newName = rename.$2;
-      final oldExists = await _tableExists(db, oldName);
-      final newExists = await _tableExists(db, newName);
-      if (!oldExists || !newExists) continue;
-
-      try {
-        await db.execute('INSERT OR IGNORE INTO $newName SELECT * FROM $oldName');
-      } catch (_) {
-        // If a legacy table shape differs, keep both tables and let the
-        // current schema continue on the assistance_* table.
-      }
-    }
   }
 
   static Future<void> _fixUsers(Database db) async {
@@ -486,7 +432,7 @@ class DatabaseMigrations {
 
   static Future<void> _ensureAssistancePeriodProgramSchema(Database db) async {
     await DatabaseTables.assistancePrograms(db);
-    await DatabaseTables.scholarshipPeriods(db);
+    await DatabaseTables.assistancePeriods(db);
     await _addColumnIfMissing(
       db,
       table: 'assistance_periods',
@@ -523,10 +469,91 @@ class DatabaseMigrations {
       column: 'benefit_item_description',
       definition: 'TEXT',
     );
+    await _rebuildAssistancePeriodsForStatusFlow(db);
     await _rebuildAssistanceRecipientsForDistributionStatus(db);
     await db.execute('DROP INDEX IF EXISTS idx_assistance_periods_month_year');
-    await db.execute('DROP INDEX IF EXISTS idx_scholarship_periods_month_year');
     await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _rebuildAssistancePeriodsForStatusFlow(Database db) async {
+    if (!await _tableExists(db, 'assistance_periods')) return;
+
+    final sql = await db.rawQuery(
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'assistance_periods'",
+    );
+    final createSql = sql.isEmpty ? '' : sql.first['sql']?.toString() ?? '';
+    final hasOldPeriodShape =
+        createSql.contains("'generated'") ||
+        createSql.contains("'pending_review'") ||
+        createSql.contains('fixed_quota') ||
+        createSql.contains('rolling_quota') ||
+        createSql.contains('generated_at');
+    if (!hasOldPeriodShape) return;
+
+    await db.execute('DROP INDEX IF EXISTS idx_assistance_periods_month_year');
+    await db.execute('DROP INDEX IF EXISTS idx_assistance_periods_program_id');
+
+    await db.execute('PRAGMA foreign_keys = OFF');
+    try {
+      final oldColumns = await _tableColumnNames(db, 'assistance_periods');
+      await db.execute('DROP TABLE IF EXISTS assistance_periods_new');
+      await db.execute('''
+        CREATE TABLE assistance_periods_new(
+          id TEXT PRIMARY KEY NOT NULL,
+          assistance_program_id TEXT,
+          period_name TEXT,
+          start_date TEXT,
+          end_date TEXT,
+          benefit_amount REAL,
+          benefit_item_description TEXT,
+          period_month INTEGER NOT NULL,
+          period_year INTEGER NOT NULL,
+          target_quota INTEGER NOT NULL,
+          calculation_window_months INTEGER NOT NULL DEFAULT 3,
+          minimum_attendance_percentage REAL NOT NULL DEFAULT 75,
+          allow_manual_override_below_attendance INTEGER NOT NULL DEFAULT 1,
+          status TEXT NOT NULL DEFAULT 'draft'
+            CHECK(status IN ('draft', 'targeted', 'submitted', 'approved', 'cancelled')),
+          targeted_at TEXT,
+          submitted_at TEXT,
+          approved_at TEXT,
+          approved_by TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY(assistance_program_id) REFERENCES assistance_programs(id) ON DELETE SET NULL
+        )
+      ''');
+      final newColumns = await _tableColumnNames(db, 'assistance_periods_new');
+      final commonColumns = [
+        for (final column in oldColumns)
+          if (newColumns.contains(column)) column,
+      ];
+      if (commonColumns.isNotEmpty) {
+        final columns = commonColumns.join(', ');
+        final values = commonColumns.map((column) {
+          if (column == 'status') {
+            return '''
+              CASE status
+                WHEN 'generated' THEN 'targeted'
+                WHEN 'pending_review' THEN 'submitted'
+                ELSE status
+              END
+            ''';
+          }
+          return column;
+        }).join(', ');
+        await db.execute('''
+          INSERT OR IGNORE INTO assistance_periods_new($columns)
+          SELECT $values FROM assistance_periods
+        ''');
+      }
+      await db.execute('DROP TABLE assistance_periods');
+      await db.execute(
+        'ALTER TABLE assistance_periods_new RENAME TO assistance_periods',
+      );
+    } finally {
+      await db.execute('PRAGMA foreign_keys = ON');
+    }
   }
 
   static Future<void> _rebuildAssistanceRecipientsForDistributionStatus(
@@ -542,7 +569,7 @@ class DatabaseMigrations {
 
     final oldColumns = await _tableColumnNames(db, 'assistance_recipients');
     await db.execute('ALTER TABLE assistance_recipients RENAME TO assistance_recipients_old');
-    await DatabaseTables.scholarshipRecipients(db);
+    await DatabaseTables.assistanceRecipients(db);
     final newColumns = await _tableColumnNames(db, 'assistance_recipients');
     final commonColumns = [
       for (final column in oldColumns)
@@ -664,127 +691,6 @@ class DatabaseMigrations {
     ''');
   }
 
-  static Future<void> _ensureAssistanceRelationAliases(Database db) async {
-    await _syncRelationAlias(
-      db,
-      table: 'assistance_period_rules',
-      legacyColumn: 'scholarship_period_id',
-      currentColumn: 'assistance_period_id',
-    );
-    await _syncRelationAlias(
-      db,
-      table: 'assistance_period_rules',
-      legacyColumn: 'scholarship_rule_id',
-      currentColumn: 'assistance_rule_id',
-    );
-    await _syncRelationAlias(
-      db,
-      table: 'student_assistance_rule_candidates',
-      legacyColumn: 'scholarship_period_id',
-      currentColumn: 'assistance_period_id',
-    );
-    await _syncRelationAlias(
-      db,
-      table: 'student_assistance_rule_candidates',
-      legacyColumn: 'scholarship_period_rule_id',
-      currentColumn: 'assistance_period_rule_id',
-    );
-    await _syncRelationAlias(
-      db,
-      table: 'student_assistance_assessments',
-      legacyColumn: 'scholarship_period_id',
-      currentColumn: 'assistance_period_id',
-    );
-    await _syncRelationAlias(
-      db,
-      table: 'student_assistance_assessments',
-      legacyColumn: 'scholarship_period_rule_id',
-      currentColumn: 'assistance_period_rule_id',
-    );
-    await _syncRelationAlias(
-      db,
-      table: 'student_assistance_assessments',
-      legacyColumn: 'rule_candidate_id',
-      currentColumn: 'assistance_rule_candidate_id',
-    );
-    await _syncRelationAlias(
-      db,
-      table: 'assistance_rule_targets',
-      legacyColumn: 'scholarship_period_id',
-      currentColumn: 'assistance_period_id',
-    );
-    await _syncRelationAlias(
-      db,
-      table: 'assistance_rule_targets',
-      legacyColumn: 'scholarship_period_rule_id',
-      currentColumn: 'assistance_period_rule_id',
-    );
-    await _syncRelationAlias(
-      db,
-      table: 'assistance_rule_targets',
-      legacyColumn: 'scholarship_rule_id',
-      currentColumn: 'assistance_rule_id',
-    );
-    await _syncRelationAlias(
-      db,
-      table: 'assistance_approval_documents',
-      legacyColumn: 'scholarship_period_id',
-      currentColumn: 'assistance_period_id',
-    );
-    await _syncRelationAlias(
-      db,
-      table: 'assistance_recipients',
-      legacyColumn: 'scholarship_period_id',
-      currentColumn: 'assistance_period_id',
-    );
-    await _syncRelationAlias(
-      db,
-      table: 'assistance_recipients',
-      legacyColumn: 'scholarship_rule_target_id',
-      currentColumn: 'assistance_rule_target_id',
-    );
-    await _syncRelationAlias(
-      db,
-      table: 'assistance_recipients',
-      legacyColumn: 'scholarship_period_rule_id',
-      currentColumn: 'assistance_period_rule_id',
-    );
-    await DatabaseTables.indexes(db);
-  }
-
-  static Future<void> _syncRelationAlias(
-    Database db, {
-    required String table,
-    required String legacyColumn,
-    required String currentColumn,
-  }) async {
-    if (!await _tableExists(db, table)) return;
-    if (!await _columnExists(db, table, legacyColumn)) return;
-
-    await _addColumnIfMissing(
-      db,
-      table: table,
-      column: currentColumn,
-      definition: 'TEXT',
-    );
-    if (!await _columnExists(db, table, currentColumn)) return;
-
-    await db.execute('''
-      UPDATE $table
-      SET $currentColumn = $legacyColumn
-      WHERE ($currentColumn IS NULL OR $currentColumn = '')
-        AND $legacyColumn IS NOT NULL
-        AND $legacyColumn <> ''
-    ''');
-    await db.execute('''
-      UPDATE $table
-      SET $legacyColumn = $currentColumn
-      WHERE ($legacyColumn IS NULL OR $legacyColumn = '')
-        AND $currentColumn IS NOT NULL
-        AND $currentColumn <> ''
-    ''');
-  }
-
   static Future<void> _ensureStudentAdvancedInputSchema(Database db) async {
     await DatabaseTables.studentHealth(db);
     await DatabaseTables.activities(db);
@@ -795,18 +701,18 @@ class DatabaseMigrations {
     await DatabaseTables.indexes(db);
   }
 
-  static Future<void> _ensureScholarshipSchema(Database db) async {
-    await DatabaseTables.scholarshipPeriods(db);
-    await DatabaseTables.scholarshipPeriodRules(db);
-    await DatabaseTables.studentScholarshipRules(db);
-    await DatabaseTables.studentScholarshipRuleCandidates(db);
-    await DatabaseTables.studentScholarshipAssessments(db);
-    await DatabaseTables.scholarshipRecipients(db);
+  static Future<void> _ensureAssistanceSchema(Database db) async {
+    await DatabaseTables.assistancePeriods(db);
+    await DatabaseTables.assistancePeriodRules(db);
+    await DatabaseTables.studentAssistanceRules(db);
+    await DatabaseTables.studentAssistanceRuleCandidates(db);
+    await DatabaseTables.studentAssistanceAssessments(db);
+    await DatabaseTables.assistanceRecipients(db);
     await DatabaseTables.indexes(db);
   }
 
-  static Future<void> _ensureRuleBasedScholarshipSchema(Database db) async {
-    await DatabaseTables.scholarshipPeriods(db);
+  static Future<void> _ensureRuleBasedAssistanceSchema(Database db) async {
+    await DatabaseTables.assistancePeriods(db);
     await _addColumnIfMissing(
       db,
       table: 'assistance_periods',
@@ -826,23 +732,21 @@ class DatabaseMigrations {
       definition: 'INTEGER NOT NULL DEFAULT 1',
     );
 
-    await DatabaseTables.scholarshipPeriodRules(db);
-    await DatabaseTables.studentScholarshipRuleCandidates(db);
-
-    await _rebuildScholarshipRecipients(db);
-    await _rebuildStudentScholarshipAssessments(db);
-    await _rebuildStudentScholarshipRules(db);
-    await _backfillScholarshipPeriodRules(db);
+    await DatabaseTables.assistancePeriodRules(db);
+    await DatabaseTables.studentAssistanceRuleCandidates(db);
+    await DatabaseTables.studentAssistanceRules(db);
+    await DatabaseTables.studentAssistanceAssessments(db);
+    await DatabaseTables.assistanceRecipients(db);
     await DatabaseTables.indexes(db);
   }
 
-  static Future<void> _ensureScholarshipPlanSchema(Database db) async {
-    await DatabaseTables.scholarshipRules(db);
-    await DatabaseTables.scholarshipPeriods(db);
-    await DatabaseTables.scholarshipPeriodRules(db);
-    await DatabaseTables.scholarshipRuleTargets(db);
-    await DatabaseTables.scholarshipApprovalDocuments(db);
-    await DatabaseTables.scholarshipRecipients(db);
+  static Future<void> _ensureAssistancePlanSchema(Database db) async {
+    await DatabaseTables.assistanceRules(db);
+    await DatabaseTables.assistancePeriods(db);
+    await DatabaseTables.assistancePeriodRules(db);
+    await DatabaseTables.assistanceRuleTargets(db);
+    await DatabaseTables.assistanceApprovalDocuments(db);
+    await DatabaseTables.assistanceRecipients(db);
 
     await _addColumnIfMissing(
       db,
@@ -859,17 +763,17 @@ class DatabaseMigrations {
     await _addColumnIfMissing(
       db,
       table: 'assistance_period_rules',
-      column: 'scholarship_rule_id',
+      column: 'assistance_rule_id',
       definition: 'TEXT',
     );
     await _addColumnIfMissing(
       db,
       table: 'assistance_recipients',
-      column: 'scholarship_rule_target_id',
+      column: 'assistance_rule_target_id',
       definition: 'TEXT',
     );
 
-    await _preloadDefaultScholarshipRules(db);
+    await _preloadDefaultAssistanceRules(db);
     await DatabaseTables.indexes(db);
   }
 
@@ -966,285 +870,7 @@ class DatabaseMigrations {
     await DatabaseTables.indexes(db);
   }
 
-  static Future<void> _rebuildStudentScholarshipRules(Database db) async {
-    if (!await _tableExists(db, 'student_assistance_rules')) {
-      await DatabaseTables.studentScholarshipRules(db);
-      return;
-    }
-
-    await db.execute(
-      'DROP TABLE IF EXISTS student_assistance_rules_migration',
-    );
-    await db.execute('''
-      CREATE TABLE student_assistance_rules_migration(
-        id TEXT PRIMARY KEY NOT NULL,
-        student_id TEXT NOT NULL,
-        scholarship_type TEXT NOT NULL,
-        rule_type TEXT,
-        rule_name TEXT,
-        reason TEXT NOT NULL,
-        score_override REAL,
-        start_date TEXT NOT NULL,
-        end_date TEXT,
-        is_active INTEGER NOT NULL DEFAULT 1,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      )
-    ''');
-
-    final rows = await db.query('student_assistance_rules');
-    for (final row in rows) {
-      final rawScholarshipType = row['rule_type']?.toString().isNotEmpty == true
-          ? row['rule_type']?.toString()
-          : row['scholarship_type']?.toString();
-      final scholarshipType = _normalizeScholarshipType(rawScholarshipType);
-      await db.insert('student_assistance_rules_migration', {
-        'id': row['id']?.toString(),
-        'student_id': row['student_id']?.toString(),
-        'scholarship_type': scholarshipType,
-        'rule_type': scholarshipType,
-        'rule_name': row['rule_name']?.toString(),
-        'reason': row['reason']?.toString() ?? '',
-        'score_override': row['score_override'],
-        'start_date':
-            row['start_date']?.toString() ?? _dateOnly(DateTime.now()),
-        'end_date': row['end_date']?.toString(),
-        'is_active': (row['is_active'] as num?)?.toInt() ?? 1,
-        'created_at':
-            row['created_at']?.toString() ?? DateTime.now().toIso8601String(),
-        'updated_at':
-            row['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
-      });
-    }
-
-    await db.execute('DROP TABLE student_assistance_rules');
-    await db.execute(
-      'ALTER TABLE student_assistance_rules_migration RENAME TO student_assistance_rules',
-    );
-  }
-
-  static Future<void> _rebuildStudentScholarshipAssessments(Database db) async {
-    if (!await _tableExists(db, 'student_assistance_assessments')) {
-      await DatabaseTables.studentScholarshipAssessments(db);
-      return;
-    }
-
-    await db.execute(
-      'DROP TABLE IF EXISTS student_assistance_assessments_migration',
-    );
-    await db.execute('''
-      CREATE TABLE student_assistance_assessments_migration(
-        id TEXT PRIMARY KEY NOT NULL,
-        scholarship_period_id TEXT NOT NULL,
-        student_id TEXT NOT NULL,
-        rule_id TEXT,
-        student_rule_id TEXT,
-        scholarship_period_rule_id TEXT,
-        rule_candidate_id TEXT,
-        scholarship_type TEXT NOT NULL,
-        rule_type TEXT,
-        rule_name TEXT,
-        selection_mode TEXT NOT NULL DEFAULT 'auto',
-        priority_level INTEGER NOT NULL,
-        priority_order INTEGER,
-        priority_reason TEXT,
-        economic_score REAL,
-        academic_score REAL,
-        attendance_score REAL,
-        behavior_score REAL,
-        teacher_recommendation_score REAL,
-        improvement_score REAL,
-        rotation_bonus REAL,
-        calculation_start_date TEXT,
-        calculation_end_date TEXT,
-        special_case_note TEXT,
-        total_score REAL NOT NULL DEFAULT 0,
-        rank_no INTEGER,
-        decision_status TEXT NOT NULL DEFAULT 'draft',
-        eligibility_status TEXT NOT NULL DEFAULT 'eligible',
-        approved_amount_or_support TEXT,
-        review_date TEXT,
-        reviewed_by TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      )
-    ''');
-
-    final rows = await db.query('student_assistance_assessments');
-    for (final row in rows) {
-      final scholarshipType = _normalizeScholarshipType(
-        row['rule_type']?.toString() ?? row['scholarship_type']?.toString(),
-      );
-      final priority =
-          (row['priority_order'] as num?)?.toInt() ??
-          (row['priority_level'] as num?)?.toInt() ??
-          0;
-      await db.insert('student_assistance_assessments_migration', {
-        'id': row['id']?.toString(),
-        'scholarship_period_id': row['scholarship_period_id']?.toString(),
-        'student_id': row['student_id']?.toString(),
-        'rule_id': row['rule_id']?.toString(),
-        'student_rule_id':
-            row['student_rule_id']?.toString() ?? row['rule_id']?.toString(),
-        'scholarship_period_rule_id': row['scholarship_period_rule_id']
-            ?.toString(),
-        'rule_candidate_id': row['rule_candidate_id']?.toString(),
-        'scholarship_type': scholarshipType,
-        'rule_type': scholarshipType,
-        'rule_name': row['rule_name']?.toString(),
-        'selection_mode':
-            row['selection_mode']?.toString() ??
-            (scholarshipType == 'rolling_attendance' ? 'auto' : 'manual'),
-        'priority_level': priority,
-        'priority_order': priority,
-        'priority_reason': row['priority_reason']?.toString(),
-        'economic_score': row['economic_score'],
-        'academic_score': row['academic_score'],
-        'attendance_score': row['attendance_score'],
-        'behavior_score': row['behavior_score'],
-        'teacher_recommendation_score': row['teacher_recommendation_score'],
-        'improvement_score': row['improvement_score'],
-        'rotation_bonus': row['rotation_bonus'],
-        'calculation_start_date': row['calculation_start_date']?.toString(),
-        'calculation_end_date': row['calculation_end_date']?.toString(),
-        'special_case_note': row['special_case_note']?.toString(),
-        'total_score': row['total_score'] ?? 0,
-        'rank_no': row['rank_no'],
-        'decision_status': row['decision_status']?.toString() ?? 'draft',
-        'eligibility_status':
-            row['eligibility_status']?.toString() ?? 'eligible',
-        'approved_amount_or_support': row['approved_amount_or_support']
-            ?.toString(),
-        'review_date': row['review_date']?.toString(),
-        'reviewed_by': row['reviewed_by']?.toString(),
-        'created_at':
-            row['created_at']?.toString() ?? DateTime.now().toIso8601String(),
-        'updated_at':
-            row['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
-      });
-    }
-
-    await db.execute('DROP TABLE student_assistance_assessments');
-    await db.execute(
-      'ALTER TABLE student_assistance_assessments_migration RENAME TO student_assistance_assessments',
-    );
-  }
-
-  static Future<void> _rebuildScholarshipRecipients(Database db) async {
-    if (!await _tableExists(db, 'assistance_recipients')) {
-      await DatabaseTables.scholarshipRecipients(db);
-      return;
-    }
-
-    await db.execute('DROP TABLE IF EXISTS assistance_recipients_migration');
-    await db.execute('''
-      CREATE TABLE assistance_recipients_migration(
-        id TEXT PRIMARY KEY NOT NULL,
-        scholarship_period_id TEXT NOT NULL,
-        student_id TEXT NOT NULL,
-        assessment_id TEXT NOT NULL,
-        scholarship_period_rule_id TEXT,
-        scholarship_type TEXT NOT NULL,
-        rule_type TEXT,
-        rule_name TEXT,
-        final_score REAL NOT NULL DEFAULT 0,
-        rank_no INTEGER,
-        reason TEXT,
-        status TEXT NOT NULL DEFAULT 'approved',
-        approved_by TEXT,
-        approved_at TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      )
-    ''');
-
-    final rows = await db.query('assistance_recipients');
-    for (final row in rows) {
-      final scholarshipType = _normalizeScholarshipType(
-        row['rule_type']?.toString() ?? row['scholarship_type']?.toString(),
-      );
-      await db.insert('assistance_recipients_migration', {
-        'id': row['id']?.toString(),
-        'scholarship_period_id': row['scholarship_period_id']?.toString(),
-        'student_id': row['student_id']?.toString(),
-        'assessment_id': row['assessment_id']?.toString(),
-        'scholarship_period_rule_id': row['scholarship_period_rule_id']
-            ?.toString(),
-        'scholarship_type': scholarshipType,
-        'rule_type': scholarshipType,
-        'rule_name': row['rule_name']?.toString(),
-        'final_score': row['final_score'] ?? 0,
-        'rank_no': row['rank_no'],
-        'reason': row['reason']?.toString(),
-        'status': row['status']?.toString() ?? 'approved',
-        'approved_by': row['approved_by']?.toString(),
-        'approved_at': row['approved_at']?.toString(),
-        'created_at':
-            row['created_at']?.toString() ?? DateTime.now().toIso8601String(),
-        'updated_at':
-            row['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
-      });
-    }
-
-    await db.execute('DROP TABLE assistance_recipients');
-    await db.execute(
-      'ALTER TABLE assistance_recipients_migration RENAME TO assistance_recipients',
-    );
-  }
-
-  static Future<void> _backfillScholarshipPeriodRules(Database db) async {
-    if (!await _tableExists(db, 'assistance_periods')) return;
-
-    final periods = await db.query('assistance_periods');
-    for (final period in periods) {
-      final periodId = period['id']?.toString();
-      if (periodId == null || periodId.isEmpty) continue;
-
-      final existing = await db.query(
-        'assistance_period_rules',
-        where: 'scholarship_period_id = ?',
-        whereArgs: [periodId],
-        limit: 1,
-      );
-      if (existing.isNotEmpty) continue;
-
-      final now = DateTime.now().toIso8601String();
-      final targetQuota = (period['target_quota'] as num?)?.toInt() ?? 0;
-      final fixedQuota = (period['fixed_quota'] as num?)?.toInt() ?? 0;
-      final rollingQuota =
-          (period['rolling_quota'] as num?)?.toInt() ??
-          (targetQuota - fixedQuota).clamp(0, targetQuota).toInt();
-
-      await db.insert('assistance_period_rules', {
-        'id': const Uuid().v4(),
-        'scholarship_period_id': periodId,
-        'rule_type': 'fixed_priority',
-        'rule_name': 'Fixed Priority',
-        'quota': fixedQuota,
-        'priority_order': 0,
-        'selection_mode': 'manual',
-        'allow_quota_carry_over': 1,
-        'is_active': 1,
-        'created_at': now,
-        'updated_at': now,
-      });
-      await db.insert('assistance_period_rules', {
-        'id': const Uuid().v4(),
-        'scholarship_period_id': periodId,
-        'rule_type': 'rolling_attendance',
-        'rule_name': 'Rolling Attendance',
-        'quota': rollingQuota,
-        'priority_order': 1,
-        'selection_mode': 'auto',
-        'allow_quota_carry_over': 1,
-        'is_active': 1,
-        'created_at': now,
-        'updated_at': now,
-      });
-    }
-  }
-
-  static Future<void> _preloadDefaultScholarshipRules(Database db) async {
+  static Future<void> _preloadDefaultAssistanceRules(Database db) async {
     if (!await _tableExists(db, 'assistance_rules')) return;
 
     final now = DateTime.now().toIso8601String();
@@ -1304,15 +930,6 @@ class DatabaseMigrations {
         );
       }
     }
-  }
-
-  static String _normalizeScholarshipType(String? value) {
-    if (value == 'attendance_based') return 'rolling_attendance';
-    if (value == 'manual_priority' || value == 'temporary_support') {
-      return 'custom_rule';
-    }
-    if (value == null || value.trim().isEmpty) return 'rolling_attendance';
-    return value;
   }
 
   static Future<void> _ensureScheduleEventSchema(Database db) async {

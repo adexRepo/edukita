@@ -20,6 +20,9 @@ class TeachingActivityDetailPage extends StatefulWidget {
 
 class _TeachingActivityDetailPageState
     extends State<TeachingActivityDetailPage> {
+  final GlobalKey<_TeachingSessionWorkspaceState> _workspaceKey =
+      GlobalKey<_TeachingSessionWorkspaceState>();
+
   @override
   void initState() {
     super.initState();
@@ -115,6 +118,11 @@ class _TeachingActivityDetailPageState
                       ? null
                       : () async {
                           try {
+                            final attendanceSaved =
+                                await _workspaceKey.currentState
+                                    ?.saveAttendanceFromUi(showToast: false) ??
+                                true;
+                            if (!attendanceSaved || !context.mounted) return;
                             await context
                                 .read<TeachingActivityDetailCubit>()
                                 .completeActivity();
@@ -153,7 +161,10 @@ class _TeachingActivityDetailPageState
                   detail: detail,
                   onEditSessionNotes: showSessionNotesDialog,
                 );
-                final workspace = _TeachingSessionWorkspace(detail: detail);
+                final workspace = _TeachingSessionWorkspace(
+                  key: _workspaceKey,
+                  detail: detail,
+                );
 
                 if (compactHeight) {
                   return ListView(
@@ -330,7 +341,7 @@ class _SessionOverview extends StatelessWidget {
 }
 
 class _TeachingSessionWorkspace extends StatefulWidget {
-  const _TeachingSessionWorkspace({required this.detail});
+  const _TeachingSessionWorkspace({super.key, required this.detail});
 
   final TeachingActivityDetailData detail;
 
@@ -457,7 +468,10 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
       );
     for (final record in widget.detail.attendances) {
       _attendanceStatus[record.studentId] = record.status;
-      _attendanceNoteController(record.studentId).text = record.notes ?? '';
+      final notes = record.notes?.trim();
+      if (notes != null && notes.isNotEmpty) {
+        _attendanceNoteController(record.studentId).text = notes;
+      }
     }
 
     for (final student in widget.detail.students) {
@@ -467,7 +481,6 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
       _noteComments.putIfAbsent(student.id, () => {});
       for (final noteType in StudentSessionNoteType.values) {
         _noteRatings[student.id]![noteType] = 3;
-        _noteController(student.id, noteType);
       }
     }
 
@@ -476,7 +489,9 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
     for (final note in widget.detail.studentNotes) {
       _noteRatings.putIfAbsent(note.studentId, () => {})[note.noteType] =
           note.rawScore ?? 3;
-      _noteController(note.studentId, note.noteType).text = note.comment;
+      if (note.comment.trim().isNotEmpty) {
+        _noteController(note.studentId, note.noteType).text = note.comment;
+      }
     }
   }
 
@@ -492,8 +507,10 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
       if (competencyId == null || competencyId.isEmpty) continue;
       _competencyScores.putIfAbsent(record.studentId, () => {})[competencyId] =
           _scoreTextForRecord(record);
-      _competencyNoteController(record.studentId, competencyId).text =
-          record.notes ?? '';
+      final notes = record.notes?.trim();
+      if (notes != null && notes.isNotEmpty) {
+        _competencyNoteController(record.studentId, competencyId).text = notes;
+      }
     }
   }
 
@@ -602,14 +619,52 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
                   subtitle: 'Select a student and mark attendance.',
                 ),
                 const SizedBox(height: 10),
-                TextField(
-                  controller: _searchController,
-                  decoration: const InputDecoration(
-                    labelText: 'Search student',
-                    hintText: 'Name or student no',
-                    prefixIcon: Icon(Icons.search, size: 18),
-                  ),
-                  onChanged: (_) => setState(() {}),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: const InputDecoration(
+                          labelText: 'Search student',
+                          hintText: 'Name or student no',
+                          prefixIcon: Icon(Icons.search, size: 18),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      tooltip: 'Save attendance',
+                      onPressed: _disabled
+                          ? null
+                          : () => saveAttendanceFromUi(),
+                      icon: const Icon(Icons.save_outlined, size: 18),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: _disabled
+                          ? null
+                          : () {
+                              setState(() {
+                                for (final student in widget.detail.students) {
+                                  _attendanceStatus[student.id] =
+                                      TeachingAttendanceStatus.present;
+                                }
+                              });
+                            },
+                      icon: const Icon(Icons.done_all, size: 16),
+                      label: const Text('All Present'),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${students.length} shown',
+                      style: AppTypography.secondaryStyle,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -711,9 +766,11 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
                     ),
                     const SizedBox(width: 8),
                     FilledButton.icon(
-                      onPressed: _disabled ? null : () => _saveStudent(student),
+                      onPressed: _disabled
+                          ? null
+                          : () => _saveReporting(student),
                       icon: const Icon(Icons.save_outlined, size: 18),
-                      label: const Text('Save Student'),
+                      label: const Text('Save Reporting'),
                     ),
                   ],
                 ),
@@ -859,18 +916,42 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
     );
   }
 
-  Future<void> _saveStudent(ClassStudentOption student) async {
+  Future<bool> saveAttendanceFromUi({bool showToast = true}) async {
     final activityId = widget.detail.activity.activityId;
-    if (activityId == null) return;
-    final status =
-        _attendanceStatus[student.id] ?? TeachingAttendanceStatus.present;
-    final attendanceNote = _attendanceNoteController(student.id).text.trim();
-    if (status == TeachingAttendanceStatus.permission &&
-        attendanceNote.isEmpty) {
-      AppToast.showFailed('Attendance note is required for Permission.');
-      return;
+    if (activityId == null) return false;
+    for (final student in widget.detail.students) {
+      final status =
+          _attendanceStatus[student.id] ?? TeachingAttendanceStatus.present;
+      final attendanceNote = _attendanceNotes[student.id]?.text.trim() ?? '';
+      if (status == TeachingAttendanceStatus.permission &&
+          attendanceNote.isEmpty) {
+        AppToast.showFailed(
+          'Attendance note is required for ${student.displayName}.',
+        );
+        return false;
+      }
     }
 
+    final records = widget.detail.students.map((student) {
+      return TeachingAttendanceRecord(
+        teachingActivityId: activityId,
+        studentId: student.id,
+        status:
+            _attendanceStatus[student.id] ?? TeachingAttendanceStatus.present,
+        notes: _emptyToNull(_attendanceNotes[student.id]?.text.trim() ?? ''),
+      );
+    }).toList();
+
+    try {
+      await context.read<TeachingActivityDetailCubit>().saveAttendance(records);
+      if (showToast) AppToast.showSuccess('Attendance saved.');
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _saveReporting(ClassStudentOption student) async {
     final assessments = <TeachingAssessmentBulkInput>[];
     for (final competency in widget.detail.competencies) {
       final scoreText = (_competencyScores[student.id]?[competency.id] ?? '')
@@ -929,18 +1010,14 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
     }
 
     try {
-      await context.read<TeachingActivityDetailCubit>().saveStudentReport(
-        attendance: TeachingAttendanceRecord(
-          teachingActivityId: activityId,
-          studentId: student.id,
-          status: status,
-          notes: _emptyToNull(attendanceNote),
-        ),
-        assessmentType: _assessmentType,
-        assessments: assessments,
-        notes: notes,
-      );
-      AppToast.showSuccess('${student.displayName} report saved.');
+      await context
+          .read<TeachingActivityDetailCubit>()
+          .saveStudentReportingData(
+            assessmentType: _assessmentType,
+            assessments: assessments,
+            notes: notes,
+          );
+      AppToast.showSuccess('${student.displayName} reporting saved.');
     } catch (_) {}
   }
 
@@ -1390,8 +1467,9 @@ class _StudentNoteHistoryCard extends StatelessWidget {
         ),
       ),
       child: Column(
-        crossAxisAlignment:
-            alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: alignRight
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,

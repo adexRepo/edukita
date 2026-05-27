@@ -1,3 +1,4 @@
+import 'package:edukita/core/cache/app_memory_cache.dart';
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -281,36 +282,23 @@ class DashboardRecentNote {
 }
 
 class DashboardCacheService {
-  DashboardCacheService({this.ttl = const Duration(minutes: 2)});
+  DashboardCacheService({
+    Duration ttl = const Duration(seconds: 75),
+    int maxEntries = 3,
+  }) : _items = AppMemoryCache<DashboardStat>(
+         ttl: ttl,
+         maxEntries: maxEntries,
+       );
 
-  final Duration ttl;
-  final Map<String, _DashboardCacheEntry> _items = {};
+  final AppMemoryCache<DashboardStat> _items;
 
-  DashboardStat? get(String key) {
-    final entry = _items[key];
-    if (entry == null) return null;
-    if (DateTime.now().difference(entry.cachedAt) > ttl) {
-      _items.remove(key);
-      return null;
-    }
-    return entry.state;
-  }
+  DashboardStat? get(String key) => _items.get(key);
 
   void put(String key, DashboardStat state) {
-    _items[key] = _DashboardCacheEntry(
-      state: state.copyWith(isLoading: false, clearError: true),
-      cachedAt: DateTime.now(),
-    );
+    _items.put(key, state.copyWith(isLoading: false, clearError: true));
   }
 
   void clear() => _items.clear();
-}
-
-class _DashboardCacheEntry {
-  const _DashboardCacheEntry({required this.state, required this.cachedAt});
-
-  final DashboardStat state;
-  final DateTime cachedAt;
 }
 
 class DashboardCubit extends Cubit<DashboardStat> {
@@ -980,7 +968,7 @@ class DashboardCubit extends Cubit<DashboardStat> {
       LEFT JOIN assistance_programs program
         ON program.id = period.assistance_program_id
       LEFT JOIN assistance_rule_targets target
-        ON target.scholarship_period_id = period.id
+        ON target.assistance_period_id = period.id
       WHERE period.status <> 'cancelled'
       GROUP BY period.id
       ORDER BY

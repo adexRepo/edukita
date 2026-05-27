@@ -1,3 +1,4 @@
+import 'package:edukita/core/cache/app_memory_cache.dart';
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/features/common/feature_state.dart';
 import 'package:edukita/features/management/data/guardian_model.dart';
@@ -181,66 +182,34 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
 }
 
 class StudentCacheService {
-  StudentCacheService({this.ttl = const Duration(minutes: 2)});
+  StudentCacheService({
+    Duration ttl = const Duration(seconds: 75),
+    int maxPageEntries = 4,
+    int maxDetailEntries = 3,
+  }) : _pages = AppMemoryCache<StudentPageData>(
+         ttl: ttl,
+         maxEntries: maxPageEntries,
+       ),
+       _details = AppMemoryCache<StudentDetailData>(
+         ttl: ttl,
+         maxEntries: maxDetailEntries,
+       );
 
-  final Duration ttl;
-  final Map<String, _StudentPageCacheEntry> _pages = {};
-  final Map<String, _StudentDetailCacheEntry> _details = {};
+  final AppMemoryCache<StudentPageData> _pages;
+  final AppMemoryCache<StudentDetailData> _details;
 
-  StudentPageData? getPage(String key) {
-    final entry = _pages[key];
-    if (entry == null) return null;
-    if (_isExpired(entry.cachedAt)) {
-      _pages.remove(key);
-      return null;
-    }
-    return entry.data;
-  }
+  StudentPageData? getPage(String key) => _pages.get(key);
 
-  void putPage(String key, StudentPageData data) {
-    _pages[key] = _StudentPageCacheEntry(
-      data: data,
-      cachedAt: DateTime.now(),
-    );
-  }
+  void putPage(String key, StudentPageData data) => _pages.put(key, data);
 
-  StudentDetailData? getDetail(String studentId) {
-    final entry = _details[studentId];
-    if (entry == null) return null;
-    if (_isExpired(entry.cachedAt)) {
-      _details.remove(studentId);
-      return null;
-    }
-    return entry.data;
-  }
+  StudentDetailData? getDetail(String studentId) => _details.get(studentId);
 
   void putDetail(String studentId, StudentDetailData data) {
-    _details[studentId] = _StudentDetailCacheEntry(
-      data: data,
-      cachedAt: DateTime.now(),
-    );
+    _details.put(studentId, data);
   }
 
   void clear() {
     _pages.clear();
     _details.clear();
   }
-
-  bool _isExpired(DateTime cachedAt) {
-    return DateTime.now().difference(cachedAt) > ttl;
-  }
-}
-
-class _StudentPageCacheEntry {
-  const _StudentPageCacheEntry({required this.data, required this.cachedAt});
-
-  final StudentPageData data;
-  final DateTime cachedAt;
-}
-
-class _StudentDetailCacheEntry {
-  const _StudentDetailCacheEntry({required this.data, required this.cachedAt});
-
-  final StudentDetailData data;
-  final DateTime cachedAt;
 }

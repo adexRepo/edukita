@@ -3,33 +3,33 @@ part of 'assistance_plan_cubit.dart';
 class AssistancePlanState {
   const AssistancePlanState({
     this.periods = const [],
-    this.scholarshipRules = const [],
+    this.assistanceRules = const [],
     this.rules = const [],
     this.periodRules = const [],
     this.students = const [],
     this.assessments = const [],
     this.recipients = const [],
     this.approvalDocuments = const [],
-    this.summary = const ScholarshipSummary(),
+    this.summary = const AssistanceSummary(),
     this.selectedPeriodId,
     this.isLoading = false,
     this.error,
   });
 
-  final List<ScholarshipPeriod> periods;
-  final List<ScholarshipRule> scholarshipRules;
-  final List<StudentScholarshipRule> rules;
-  final List<ScholarshipPeriodRule> periodRules;
-  final List<ScholarshipStudentOption> students;
-  final List<StudentScholarshipAssessment> assessments;
-  final List<ScholarshipRecipient> recipients;
-  final List<ScholarshipApprovalDocument> approvalDocuments;
-  final ScholarshipSummary summary;
+  final List<AssistancePeriod> periods;
+  final List<AssistanceRule> assistanceRules;
+  final List<StudentAssistanceRule> rules;
+  final List<AssistancePeriodRule> periodRules;
+  final List<AssistanceStudentOption> students;
+  final List<StudentAssistanceAssessment> assessments;
+  final List<AssistanceRecipient> recipients;
+  final List<AssistanceApprovalDocument> approvalDocuments;
+  final AssistanceSummary summary;
   final String? selectedPeriodId;
   final bool isLoading;
   final String? error;
 
-  ScholarshipPeriod? get selectedPeriod {
+  AssistancePeriod? get selectedPeriod {
     for (final period in periods) {
       if (period.id == selectedPeriodId) return period;
     }
@@ -39,22 +39,22 @@ class AssistancePlanState {
   static const Object _unset = Object();
 
   AssistancePlanState copyWith({
-    List<ScholarshipPeriod>? periods,
-    List<ScholarshipRule>? scholarshipRules,
-    List<StudentScholarshipRule>? rules,
-    List<ScholarshipPeriodRule>? periodRules,
-    List<ScholarshipStudentOption>? students,
-    List<StudentScholarshipAssessment>? assessments,
-    List<ScholarshipRecipient>? recipients,
-    List<ScholarshipApprovalDocument>? approvalDocuments,
-    ScholarshipSummary? summary,
+    List<AssistancePeriod>? periods,
+    List<AssistanceRule>? assistanceRules,
+    List<StudentAssistanceRule>? rules,
+    List<AssistancePeriodRule>? periodRules,
+    List<AssistanceStudentOption>? students,
+    List<StudentAssistanceAssessment>? assessments,
+    List<AssistanceRecipient>? recipients,
+    List<AssistanceApprovalDocument>? approvalDocuments,
+    AssistanceSummary? summary,
     Object? selectedPeriodId = _unset,
     bool? isLoading,
     String? error,
   }) {
     return AssistancePlanState(
       periods: periods ?? this.periods,
-      scholarshipRules: scholarshipRules ?? this.scholarshipRules,
+      assistanceRules: assistanceRules ?? this.assistanceRules,
       rules: rules ?? this.rules,
       periodRules: periodRules ?? this.periodRules,
       students: students ?? this.students,

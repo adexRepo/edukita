@@ -31,9 +31,9 @@ class AssistanceRulesPage extends StatefulWidget {
 }
 
 class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
-  ScholarshipDecisionStatus? _assessmentStatusFilter;
-  ScholarshipType? _assessmentTypeFilter;
-  _ScholarshipView _selectedView = _ScholarshipView.periods;
+  AssistanceDecisionStatus? _assessmentStatusFilter;
+  AssistanceRuleType? _assessmentTypeFilter;
+  _AssistanceView _selectedView = _AssistanceView.periods;
   double _navigatorWidth = 228;
   bool _setupOpen = true;
   bool _workflowOpen = true;
@@ -45,8 +45,8 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
     _selectedView = _viewForSection(widget.initialSection);
     final cubit = context.read<AssistancePlanCubit>();
     final state = cubit.state;
-    if (widget.embedded && _selectedView == _ScholarshipView.rules) {
-      if (state.scholarshipRules.isEmpty && !state.isLoading) {
+    if (widget.embedded && _selectedView == _AssistanceView.rules) {
+      if (state.assistanceRules.isEmpty && !state.isLoading) {
         cubit.loadAssistanceRulesOnly();
       }
       return;
@@ -64,7 +64,7 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
     final nextView = _viewForSection(widget.initialSection);
     if (nextView == _selectedView) return;
     setState(() => _selectedView = nextView);
-    if (widget.embedded && nextView == _ScholarshipView.rules) {
+    if (widget.embedded && nextView == _AssistanceView.rules) {
       context.read<AssistancePlanCubit>().loadAssistanceRulesOnly();
     }
   }
@@ -80,13 +80,13 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _ScholarshipContentHeader(
+              _AssistanceContentHeader(
                 view: _selectedView,
                 onRefresh: () =>
                     context.read<AssistancePlanCubit>().loadAssistanceRulesOnly(
                       forceRefresh: true,
                     ),
-                primaryAction: _selectedView == _ScholarshipView.rules
+                primaryAction: _selectedView == _AssistanceView.rules
                     ? FilledButton.icon(
                         onPressed: () => _showRuleDialog(context),
                         icon: const Icon(Icons.add),
@@ -107,7 +107,7 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
                   ? Center(child: Text('Error: ${state.error}'))
                   : Row(
                       children: [
-                        _ScholarshipNavigator(
+                        _AssistanceNavigator(
                           width: _navigatorWidth,
                           selectedView: _selectedView,
                           setupOpen: _setupOpen,
@@ -144,7 +144,7 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                _ScholarshipContentHeader(
+                                _AssistanceContentHeader(
                                   view: _selectedView,
                                   onRefresh: () => context
                                       .read<AssistancePlanCubit>()
@@ -170,28 +170,28 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
     return Scaffold(body: content);
   }
 
-  _ScholarshipView _viewForSection(String? section) {
+  _AssistanceView _viewForSection(String? section) {
     return switch (section) {
-      'rules' => _ScholarshipView.rules,
-      'studentRules' => _ScholarshipView.fixedPriority,
-      'targetCandidates' => _ScholarshipView.generate,
-      'review' => _ScholarshipView.assessments,
-      'approvalDocument' => _ScholarshipView.approvalDocument,
-      'recipients' => _ScholarshipView.recipients,
-      _ => _ScholarshipView.periods,
+      'rules' => _AssistanceView.rules,
+      'studentRules' => _AssistanceView.fixedPriority,
+      'targetCandidates' => _AssistanceView.generate,
+      'review' => _AssistanceView.assessments,
+      'approvalDocument' => _AssistanceView.approvalDocument,
+      'recipients' => _AssistanceView.recipients,
+      _ => _AssistanceView.periods,
     };
   }
 
   Widget _buildSelectedContent(AssistancePlanState state) {
     return switch (_selectedView) {
-      _ScholarshipView.periods => _PeriodsTab(state: state),
-      _ScholarshipView.rules => _ScholarshipRulesTab(
+      _AssistanceView.periods => _PeriodsTab(state: state),
+      _AssistanceView.rules => _AssistanceRulesTab(
         state: state,
         showAddButton: !widget.embedded,
       ),
-      _ScholarshipView.fixedPriority => _FixedPriorityTab(state: state),
-      _ScholarshipView.generate => _GenerateTab(state: state),
-      _ScholarshipView.assessments => _AssessmentTab(
+      _AssistanceView.fixedPriority => _FixedPriorityTab(state: state),
+      _AssistanceView.generate => _GenerateTab(state: state),
+      _AssistanceView.assessments => _AssessmentTab(
         state: state,
         statusFilter: _assessmentStatusFilter,
         typeFilter: _assessmentTypeFilter,
@@ -206,25 +206,25 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
           });
         },
       ),
-      _ScholarshipView.approvalDocument => _ApprovalDocumentTab(state: state),
-      _ScholarshipView.recipients => _RecipientsTab(state: state),
+      _AssistanceView.approvalDocument => _ApprovalDocumentTab(state: state),
+      _AssistanceView.recipients => _RecipientsTab(state: state),
     };
   }
 
   Future<void> _showRuleDialog(
     BuildContext context, {
-    ScholarshipRule? rule,
+    AssistanceRule? rule,
   }) async {
     final cubit = context.read<AssistancePlanCubit>();
     await showDialog<void>(
       context: context,
       builder: (_) =>
-          _ScholarshipRuleDialog(rule: rule, onSave: cubit.saveAssistanceRule),
+          _AssistanceRuleDialog(rule: rule, onSave: cubit.saveAssistanceRule),
     );
   }
 }
 
-enum _ScholarshipView {
+enum _AssistanceView {
   periods('Assistance Periods', Icons.calendar_month_outlined),
   rules('Assistance Rules', Icons.rule_folder_outlined),
   fixedPriority('Student Rules', Icons.star_border),
@@ -233,40 +233,40 @@ enum _ScholarshipView {
   approvalDocument('Approval Document', Icons.upload_file_outlined),
   recipients('Recipients', Icons.history);
 
-  const _ScholarshipView(this.label, this.icon);
+  const _AssistanceView(this.label, this.icon);
 
   final String label;
   final IconData icon;
 
   String get description {
     return switch (this) {
-      _ScholarshipView.periods =>
+      _AssistanceView.periods =>
         'Manage assistance periods and eligibility settings.',
-      _ScholarshipView.rules =>
+      _AssistanceView.rules =>
         'Maintain assistance rule master data and custom manual rules.',
-      _ScholarshipView.fixedPriority =>
+      _AssistanceView.fixedPriority =>
         'Maintain long-term student assistance rules.',
-      _ScholarshipView.generate =>
+      _AssistanceView.generate =>
         'Allocate rules and build the monthly target candidate plan.',
-      _ScholarshipView.assessments =>
+      _AssistanceView.assessments =>
         'Review target candidates and export the signature document.',
-      _ScholarshipView.approvalDocument =>
+      _AssistanceView.approvalDocument =>
         'Upload the signed approval document to finalize recipients.',
-      _ScholarshipView.recipients =>
+      _AssistanceView.recipients =>
         'View approved assistance recipient history.',
     };
   }
 
   String get menuLabel {
     return switch (this) {
-      _ScholarshipView.generate => 'Targets',
+      _AssistanceView.generate => 'Targets',
       _ => label,
     };
   }
 }
 
-class _ScholarshipNavigator extends StatelessWidget {
-  const _ScholarshipNavigator({
+class _AssistanceNavigator extends StatelessWidget {
+  const _AssistanceNavigator({
     required this.width,
     required this.selectedView,
     required this.setupOpen,
@@ -281,11 +281,11 @@ class _ScholarshipNavigator extends StatelessWidget {
   });
 
   final double width;
-  final _ScholarshipView selectedView;
+  final _AssistanceView selectedView;
   final bool setupOpen;
   final bool workflowOpen;
   final bool historyOpen;
-  final ValueChanged<_ScholarshipView> onSelect;
+  final ValueChanged<_AssistanceView> onSelect;
   final VoidCallback onToggleSetup;
   final VoidCallback onToggleWorkflow;
   final VoidCallback onToggleHistory;
@@ -294,12 +294,12 @@ class _ScholarshipNavigator extends StatelessWidget {
 
   bool get _compact => width < 96;
   static const _visibleViews = [
-    _ScholarshipView.periods,
-    _ScholarshipView.fixedPriority,
-    _ScholarshipView.generate,
-    _ScholarshipView.assessments,
-    _ScholarshipView.approvalDocument,
-    _ScholarshipView.recipients,
+    _AssistanceView.periods,
+    _AssistanceView.fixedPriority,
+    _AssistanceView.generate,
+    _AssistanceView.assessments,
+    _AssistanceView.approvalDocument,
+    _AssistanceView.recipients,
   ];
 
   @override
@@ -439,37 +439,37 @@ class _ScholarshipNavigator extends StatelessWidget {
         Expanded(
           child: ListView(
             children: [
-              _ScholarshipNavSection(
+              _AssistanceNavSection(
                 title: 'Setup',
                 icon: Icons.tune,
                 expanded: setupOpen,
                 onToggle: onToggleSetup,
                 items: const [
-                  _ScholarshipView.periods,
-                  _ScholarshipView.fixedPriority,
+                  _AssistanceView.periods,
+                  _AssistanceView.fixedPriority,
                 ],
                 selectedView: selectedView,
                 onSelect: onSelect,
               ),
-              _ScholarshipNavSection(
+              _AssistanceNavSection(
                 title: 'Workflow',
                 icon: Icons.playlist_add_check,
                 expanded: workflowOpen,
                 onToggle: onToggleWorkflow,
                 items: const [
-                  _ScholarshipView.generate,
-                  _ScholarshipView.assessments,
-                  _ScholarshipView.approvalDocument,
+                  _AssistanceView.generate,
+                  _AssistanceView.assessments,
+                  _AssistanceView.approvalDocument,
                 ],
                 selectedView: selectedView,
                 onSelect: onSelect,
               ),
-              _ScholarshipNavSection(
+              _AssistanceNavSection(
                 title: 'History',
                 icon: Icons.history,
                 expanded: historyOpen,
                 onToggle: onToggleHistory,
-                items: const [_ScholarshipView.recipients],
+                items: const [_AssistanceView.recipients],
                 selectedView: selectedView,
                 onSelect: onSelect,
               ),
@@ -481,8 +481,8 @@ class _ScholarshipNavigator extends StatelessWidget {
   }
 }
 
-class _ScholarshipNavSection extends StatelessWidget {
-  const _ScholarshipNavSection({
+class _AssistanceNavSection extends StatelessWidget {
+  const _AssistanceNavSection({
     required this.title,
     required this.icon,
     required this.expanded,
@@ -496,9 +496,9 @@ class _ScholarshipNavSection extends StatelessWidget {
   final IconData icon;
   final bool expanded;
   final VoidCallback onToggle;
-  final List<_ScholarshipView> items;
-  final _ScholarshipView selectedView;
-  final ValueChanged<_ScholarshipView> onSelect;
+  final List<_AssistanceView> items;
+  final _AssistanceView selectedView;
+  final ValueChanged<_AssistanceView> onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -521,7 +521,7 @@ class _ScholarshipNavSection extends StatelessWidget {
           for (final view in items)
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
-              child: _ScholarshipNavItem(
+              child: _AssistanceNavItem(
                 view: view,
                 selected: selectedView == view,
                 onTap: () => onSelect(view),
@@ -533,14 +533,14 @@ class _ScholarshipNavSection extends StatelessWidget {
   }
 }
 
-class _ScholarshipNavItem extends StatelessWidget {
-  const _ScholarshipNavItem({
+class _AssistanceNavItem extends StatelessWidget {
+  const _AssistanceNavItem({
     required this.view,
     required this.selected,
     required this.onTap,
   });
 
-  final _ScholarshipView view;
+  final _AssistanceView view;
   final bool selected;
   final VoidCallback onTap;
 
@@ -596,14 +596,14 @@ class _ScholarshipNavItem extends StatelessWidget {
   }
 }
 
-class _ScholarshipContentHeader extends StatelessWidget {
-  const _ScholarshipContentHeader({
+class _AssistanceContentHeader extends StatelessWidget {
+  const _AssistanceContentHeader({
     required this.view,
     required this.onRefresh,
     this.primaryAction,
   });
 
-  final _ScholarshipView view;
+  final _AssistanceView view;
   final VoidCallback onRefresh;
   final Widget? primaryAction;
 
@@ -637,12 +637,12 @@ class _PeriodsTab extends StatelessWidget {
 
   Future<void> _showPeriodDialog(
     BuildContext context, {
-    ScholarshipPeriod? period,
+    AssistancePeriod? period,
   }) async {
     final cubit = context.read<AssistancePlanCubit>();
     await showDialog<void>(
       context: context,
-      builder: (_) => _ScholarshipPeriodDialog(
+      builder: (_) => _AssistancePeriodDialog(
         period: period,
         onSave:
             (
@@ -684,14 +684,14 @@ class _PeriodsTab extends StatelessWidget {
 
   Future<void> _deletePeriod(
     BuildContext context,
-    ScholarshipPeriod period,
+    AssistancePeriod period,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const AppDialogTitle('Delete Period'),
         content: Text(
-          'Delete ${period.label}? Generated draft data is removed.',
+          'Delete ${period.label}? Draft target data is removed.',
         ),
         actions: [
           TextButton(
@@ -732,7 +732,7 @@ class _PeriodsTab extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: AppTable<ScholarshipPeriod>(
+          child: AppTable<AssistancePeriod>(
             data: state.periods,
             emptyMessage: 'No assistance periods yet',
             pageable: Pageable(
@@ -806,10 +806,10 @@ class _PeriodsTab extends StatelessWidget {
                 cell: (period) => _StatusChip(label: period.status.label),
               ),
               AppTableColumn(
-                title: 'Generated',
+                title: 'Targeted',
                 flex: 2,
                 cell: (period) => Text(
-                  _shortDateTime(period.generatedAt),
+                  _shortDateTime(period.targetedAt),
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 12),
                 ),
@@ -823,7 +823,7 @@ class _PeriodsTab extends StatelessWidget {
                     IconButton(
                       tooltip: 'Edit period',
                       onPressed:
-                          period.status == ScholarshipPeriodStatus.approved
+                          period.status == AssistancePeriodStatus.approved
                           ? null
                           : () => _showPeriodDialog(context, period: period),
                       constraints: const BoxConstraints.tightFor(
@@ -836,7 +836,7 @@ class _PeriodsTab extends StatelessWidget {
                     IconButton(
                       tooltip: 'Delete period',
                       onPressed:
-                          period.status == ScholarshipPeriodStatus.approved
+                          period.status == AssistancePeriodStatus.approved
                           ? null
                           : () => _deletePeriod(context, period),
                       constraints: const BoxConstraints.tightFor(
@@ -862,21 +862,21 @@ class _PeriodsTab extends StatelessWidget {
   }
 }
 
-class _ScholarshipRulesTab extends StatelessWidget {
-  const _ScholarshipRulesTab({required this.state, this.showAddButton = true});
+class _AssistanceRulesTab extends StatelessWidget {
+  const _AssistanceRulesTab({required this.state, this.showAddButton = true});
 
   final AssistancePlanState state;
   final bool showAddButton;
 
   Future<void> _showRuleDialog(
     BuildContext context, {
-    ScholarshipRule? rule,
+    AssistanceRule? rule,
   }) async {
     final cubit = context.read<AssistancePlanCubit>();
     await showDialog<void>(
       context: context,
       builder: (_) =>
-          _ScholarshipRuleDialog(rule: rule, onSave: cubit.saveAssistanceRule),
+          _AssistanceRuleDialog(rule: rule, onSave: cubit.saveAssistanceRule),
     );
   }
 
@@ -896,13 +896,13 @@ class _ScholarshipRulesTab extends StatelessWidget {
           const SizedBox(height: 12),
         ],
         Expanded(
-          child: AppTable<ScholarshipRule>(
-            data: state.scholarshipRules,
+          child: AppTable<AssistanceRule>(
+            data: state.assistanceRules,
             emptyMessage: 'No assistance rules yet',
             pageable: Pageable(
               page: 0,
-              size: state.scholarshipRules.length,
-              totalItems: state.scholarshipRules.length,
+              size: state.assistanceRules.length,
+              totalItems: state.assistanceRules.length,
               totalPages: 1,
             ),
             columns: [
@@ -990,7 +990,7 @@ class _FixedPriorityTab extends StatelessWidget {
 
   Future<void> _showRuleDialog(
     BuildContext context, {
-    StudentScholarshipRule? rule,
+    StudentAssistanceRule? rule,
   }) async {
     final cubit = context.read<AssistancePlanCubit>();
     await showDialog<void>(
@@ -1005,7 +1005,7 @@ class _FixedPriorityTab extends StatelessWidget {
 
   Future<void> _deleteRule(
     BuildContext context,
-    StudentScholarshipRule rule,
+    StudentAssistanceRule rule,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1052,7 +1052,7 @@ class _FixedPriorityTab extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: AppTable<StudentScholarshipRule>(
+          child: AppTable<StudentAssistanceRule>(
             data: state.rules,
             emptyMessage: 'No student assistance rules yet',
             pageable: Pageable(
@@ -1080,9 +1080,9 @@ class _FixedPriorityTab extends StatelessWidget {
               AppTableColumn(
                 title: 'Type',
                 flex: 2,
-                sortValue: (rule) => rule.scholarshipType.index,
+                sortValue: (rule) => rule.ruleType.index,
                 cell: (rule) => Text(
-                  rule.scholarshipType.label,
+                  rule.ruleType.label,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 12),
                 ),
@@ -1172,7 +1172,7 @@ class _GenerateTab extends StatelessWidget {
 
   Future<void> _showPeriodRuleDialog(
     BuildContext context, {
-    ScholarshipPeriodRule? rule,
+    AssistancePeriodRule? rule,
   }) async {
     final period = state.selectedPeriod;
     if (period == null) return;
@@ -1185,10 +1185,10 @@ class _GenerateTab extends StatelessWidget {
               1;
     await showDialog<void>(
       context: context,
-      builder: (_) => _ScholarshipPeriodRuleDialog(
+      builder: (_) => _AssistancePeriodRuleDialog(
         periodId: period.id,
         rule: rule,
-        scholarshipRules: state.scholarshipRules,
+        assistanceRules: state.assistanceRules,
         priorityOrder: nextOrder,
         onSave: cubit.savePeriodRule,
       ),
@@ -1197,7 +1197,7 @@ class _GenerateTab extends StatelessWidget {
 
   Future<void> _deletePeriodRule(
     BuildContext context,
-    ScholarshipPeriodRule rule,
+    AssistancePeriodRule rule,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1232,7 +1232,7 @@ class _GenerateTab extends StatelessWidget {
 
   Future<void> _showManualCandidateDialog(
     BuildContext context,
-    ScholarshipPeriodRule rule,
+    AssistancePeriodRule rule,
   ) async {
     final period = state.selectedPeriod;
     if (period == null) return;
@@ -1249,8 +1249,8 @@ class _GenerateTab extends StatelessWidget {
   Future<void> _generate(BuildContext context) async {
     final period = state.selectedPeriod;
     if (period == null) return;
-    if (period.status == ScholarshipPeriodStatus.approved) {
-      AppToast.showFailed('Approved periods cannot be regenerated.');
+    if (period.status == AssistancePeriodStatus.approved) {
+      AppToast.showFailed('Approved periods cannot be targeted again.');
       return;
     }
 
@@ -1340,22 +1340,22 @@ class _GenerateTab extends StatelessWidget {
                 allocatedQuota: state.summary.allocatedQuota,
                 onAdd:
                     period == null ||
-                        period.status == ScholarshipPeriodStatus.approved
+                        period.status == AssistancePeriodStatus.approved
                     ? null
                     : () => _showPeriodRuleDialog(context),
                 onEdit:
                     period == null ||
-                        period.status == ScholarshipPeriodStatus.approved
+                        period.status == AssistancePeriodStatus.approved
                     ? null
                     : (rule) => _showPeriodRuleDialog(context, rule: rule),
                 onDelete:
                     period == null ||
-                        period.status == ScholarshipPeriodStatus.approved
+                        period.status == AssistancePeriodStatus.approved
                     ? null
                     : (rule) => _deletePeriodRule(context, rule),
                 onManageCandidates:
                     period == null ||
-                        period.status == ScholarshipPeriodStatus.approved
+                        period.status == AssistancePeriodStatus.approved
                     ? null
                     : (rule) => _showManualCandidateDialog(context, rule),
               ),
@@ -1367,7 +1367,7 @@ class _GenerateTab extends StatelessWidget {
                   FilledButton.icon(
                     onPressed:
                         period == null ||
-                            period.status == ScholarshipPeriodStatus.approved ||
+                            period.status == AssistancePeriodStatus.approved ||
                             !allocationAllowed
                         ? null
                         : () => _generate(context),
@@ -1406,13 +1406,13 @@ class _RuleAllocationPanel extends StatelessWidget {
     required this.onManageCandidates,
   });
 
-  final List<ScholarshipPeriodRule> rules;
+  final List<AssistancePeriodRule> rules;
   final int targetQuota;
   final int allocatedQuota;
   final VoidCallback? onAdd;
-  final ValueChanged<ScholarshipPeriodRule>? onEdit;
-  final ValueChanged<ScholarshipPeriodRule>? onDelete;
-  final ValueChanged<ScholarshipPeriodRule>? onManageCandidates;
+  final ValueChanged<AssistancePeriodRule>? onEdit;
+  final ValueChanged<AssistancePeriodRule>? onDelete;
+  final ValueChanged<AssistancePeriodRule>? onManageCandidates;
 
   @override
   Widget build(BuildContext context) {
@@ -1462,7 +1462,7 @@ class _RuleAllocationPanel extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Expanded(
-            child: AppTable<ScholarshipPeriodRule>(
+            child: AppTable<AssistancePeriodRule>(
               data: rules,
               emptyMessage: 'No rule allocation yet',
               pageable: Pageable(
@@ -1527,7 +1527,7 @@ class _RuleAllocationPanel extends StatelessWidget {
                           onPressed:
                               onManageCandidates == null ||
                                   rule.selectionMode !=
-                                      ScholarshipSelectionMode.manual
+                                      AssistanceSelectionMode.manual
                               ? null
                               : () => onManageCandidates!(rule),
                           constraints: const BoxConstraints.tightFor(
@@ -1594,10 +1594,10 @@ class _AssessmentTab extends StatelessWidget {
   });
 
   final AssistancePlanState state;
-  final ScholarshipDecisionStatus? statusFilter;
-  final ScholarshipType? typeFilter;
-  final ValueChanged<ScholarshipDecisionStatus?> onStatusChanged;
-  final ValueChanged<ScholarshipType?> onTypeChanged;
+  final AssistanceDecisionStatus? statusFilter;
+  final AssistanceRuleType? typeFilter;
+  final ValueChanged<AssistanceDecisionStatus?> onStatusChanged;
+  final ValueChanged<AssistanceRuleType?> onTypeChanged;
 
   Future<void> _exportPlan(
     BuildContext context,
@@ -1647,10 +1647,10 @@ class _AssessmentTab extends StatelessWidget {
       rows = rows.where((item) => item.decisionStatus == statusFilter).toList();
     }
     if (typeFilter != null) {
-      rows = rows.where((item) => item.scholarshipType == typeFilter).toList();
+      rows = rows.where((item) => item.ruleType == typeFilter).toList();
     }
 
-    final groupedRows = <String, List<StudentScholarshipAssessment>>{};
+    final groupedRows = <String, List<StudentAssistanceAssessment>>{};
     for (final row in rows) {
       groupedRows.putIfAbsent(row.displayName, () => []).add(row);
     }
@@ -1662,20 +1662,20 @@ class _AssessmentTab extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: AppDropdownButtonFormField<ScholarshipDecisionStatus?>(
+              child: AppDropdownButtonFormField<AssistanceDecisionStatus?>(
                 initialValue: statusFilter,
                 isExpanded: false,
                 decoration: const InputDecoration(labelText: 'Target Status'),
                 items: [
-                  DropdownMenuItem<ScholarshipDecisionStatus?>(
+                  DropdownMenuItem<AssistanceDecisionStatus?>(
                     value: null,
                     child: AppDropdownStyle.menuItemLabel(
                       label: 'All',
                       selected: statusFilter == null,
                     ),
                   ),
-                  ...ScholarshipDecisionStatus.values.map(
-                    (status) => DropdownMenuItem<ScholarshipDecisionStatus?>(
+                  ...AssistanceDecisionStatus.values.map(
+                    (status) => DropdownMenuItem<AssistanceDecisionStatus?>(
                       value: status,
                       child: AppDropdownStyle.menuItemLabel(
                         label: status.label,
@@ -1687,7 +1687,7 @@ class _AssessmentTab extends StatelessWidget {
                 selectedItemBuilder: (context) =>
                     AppDropdownStyle.selectedLabels([
                       'All',
-                      ...ScholarshipDecisionStatus.values.map(
+                      ...AssistanceDecisionStatus.values.map(
                         (status) => status.label,
                       ),
                     ]),
@@ -1702,20 +1702,20 @@ class _AssessmentTab extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: AppDropdownButtonFormField<ScholarshipType?>(
+              child: AppDropdownButtonFormField<AssistanceRuleType?>(
                 initialValue: typeFilter,
                 isExpanded: false,
                 decoration: const InputDecoration(labelText: 'Rule Type'),
                 items: [
-                  DropdownMenuItem<ScholarshipType?>(
+                  DropdownMenuItem<AssistanceRuleType?>(
                     value: null,
                     child: AppDropdownStyle.menuItemLabel(
                       label: 'All',
                       selected: typeFilter == null,
                     ),
                   ),
-                  ...ScholarshipType.ruleTypes.map(
-                    (type) => DropdownMenuItem<ScholarshipType?>(
+                  ...AssistanceRuleType.ruleTypes.map(
+                    (type) => DropdownMenuItem<AssistanceRuleType?>(
                       value: type,
                       child: AppDropdownStyle.menuItemLabel(
                         label: type.label,
@@ -1727,7 +1727,7 @@ class _AssessmentTab extends StatelessWidget {
                 selectedItemBuilder: (context) =>
                     AppDropdownStyle.selectedLabels([
                       'All',
-                      ...ScholarshipType.ruleTypes.map((type) => type.label),
+                      ...AssistanceRuleType.ruleTypes.map((type) => type.label),
                     ]),
                 dropdownColor: AppColors.white,
                 focusColor: AppColors.transparent,
@@ -1743,7 +1743,7 @@ class _AssessmentTab extends StatelessWidget {
         const SizedBox(height: 12),
         Expanded(
           child: rows.isEmpty
-              ? AppTable<StudentScholarshipAssessment>(
+              ? AppTable<StudentAssistanceAssessment>(
                   data: const [],
                   emptyMessage: 'No target candidates yet',
                   pageable: const Pageable(
@@ -1807,7 +1807,7 @@ class _AssessmentTab extends StatelessWidget {
                         rows: entry.value,
                         locked:
                             state.selectedPeriod?.status ==
-                            ScholarshipPeriodStatus.approved,
+                            AssistancePeriodStatus.approved,
                       ),
                   ],
                 ),
@@ -1975,7 +1975,7 @@ class _RecipientsTab extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: AppTable<ScholarshipRecipient>(
+          child: AppTable<AssistanceRecipient>(
             data: state.recipients,
             emptyMessage: 'No approved recipients yet',
             pageable: Pageable(
@@ -2008,7 +2008,7 @@ class _RecipientsTab extends StatelessWidget {
                 cell: (item) => Text(
                   item.periodMonth == null || item.periodYear == null
                       ? '-'
-                      : '${ScholarshipPeriod.monthName(item.periodMonth!)} ${item.periodYear}',
+                      : '${AssistancePeriod.monthName(item.periodMonth!)} ${item.periodYear}',
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 12),
                 ),
@@ -2016,7 +2016,7 @@ class _RecipientsTab extends StatelessWidget {
               AppTableColumn(
                 title: 'Rule',
                 flex: 2,
-                sortValue: (item) => item.scholarshipType.index,
+                sortValue: (item) => item.ruleType.index,
                 cell: (item) => Text(
                   item.displayName,
                   overflow: TextOverflow.ellipsis,
@@ -2100,7 +2100,7 @@ class _ApprovalDocumentTabState extends State<_ApprovalDocumentTab> {
     final document = state.approvalDocuments.isEmpty
         ? null
         : state.approvalDocuments.first;
-    final locked = period?.status == ScholarshipPeriodStatus.approved;
+    final locked = period?.status == AssistancePeriodStatus.approved;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2233,8 +2233,8 @@ class _ApprovalDocumentTabState extends State<_ApprovalDocumentTab> {
 class _ApprovalStatusCard extends StatelessWidget {
   const _ApprovalStatusCard({required this.period, this.document});
 
-  final ScholarshipPeriod period;
-  final ScholarshipApprovalDocument? document;
+  final AssistancePeriod period;
+  final AssistanceApprovalDocument? document;
 
   @override
   Widget build(BuildContext context) {
@@ -2281,7 +2281,7 @@ class _AssessmentGroup extends StatelessWidget {
   });
 
   final String title;
-  final List<StudentScholarshipAssessment> rows;
+  final List<StudentAssistanceAssessment> rows;
   final bool locked;
 
   @override
@@ -2303,7 +2303,7 @@ class _AssessmentGroup extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: AppTable<StudentScholarshipAssessment>(
+            child: AppTable<StudentAssistanceAssessment>(
               data: rows,
               pageable: Pageable(
                 page: 0,
@@ -2330,7 +2330,7 @@ class _AssessmentGroup extends StatelessWidget {
                 AppTableColumn(
                   title: 'Rule',
                   flex: 2,
-                  sortValue: (item) => item.scholarshipType.index,
+                  sortValue: (item) => item.ruleType.index,
                   cell: (item) => Text(
                     item.displayName,
                     overflow: TextOverflow.ellipsis,
@@ -2401,7 +2401,7 @@ class _AssessmentGroup extends StatelessWidget {
                     label: item.eligibilityStatus.label,
                     color:
                         item.eligibilityStatus ==
-                            ScholarshipEligibilityStatus.ineligible
+                            AssistanceEligibilityStatus.ineligible
                         ? AppColors.errorDark
                         : AppColors.primary,
                   ),
@@ -2443,7 +2443,7 @@ class _AssessmentGroup extends StatelessWidget {
                         onPressed:
                             locked ||
                                 item.decisionStatus ==
-                                    ScholarshipDecisionStatus.rejected
+                                    AssistanceDecisionStatus.rejected
                             ? null
                             : () async {
                                 try {
@@ -2452,7 +2452,7 @@ class _AssessmentGroup extends StatelessWidget {
                                       .updateAssessment(
                                         item.copyWith(
                                           decisionStatus:
-                                              ScholarshipDecisionStatus
+                                              AssistanceDecisionStatus
                                                   .rejected,
                                           priorityReason:
                                               item.priorityReason ??
@@ -2565,7 +2565,7 @@ class _SummaryCard extends StatelessWidget {
           Text(
             value,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+            style: AppTypography.sectionTitleStyle,
           ),
         ],
       ),
@@ -2576,7 +2576,7 @@ class _SummaryCard extends StatelessWidget {
 class _GenerateInfo extends StatelessWidget {
   const _GenerateInfo({required this.period, required this.assessmentCount});
 
-  final ScholarshipPeriod period;
+  final AssistancePeriod period;
   final int assessmentCount;
 
   @override
@@ -2600,8 +2600,8 @@ class _GenerateInfo extends StatelessWidget {
           const SizedBox(height: 10),
           _InfoLine(label: 'Status', value: period.status.label),
           _InfoLine(
-            label: 'Generated at',
-            value: _shortDateTime(period.generatedAt),
+            label: 'Targeted at',
+            value: _shortDateTime(period.targetedAt),
           ),
           _InfoLine(
             label: 'Approved at',
@@ -2687,8 +2687,8 @@ class _ManualCandidateDialog extends StatefulWidget {
   });
 
   final String periodId;
-  final ScholarshipPeriodRule rule;
-  final List<ScholarshipStudentOption> students;
+  final AssistancePeriodRule rule;
+  final List<AssistanceStudentOption> students;
 
   @override
   State<_ManualCandidateDialog> createState() => _ManualCandidateDialogState();
@@ -2697,7 +2697,7 @@ class _ManualCandidateDialog extends StatefulWidget {
 class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
   final _searchController = TextEditingController();
   final _reasonController = TextEditingController();
-  List<StudentScholarshipRuleCandidate> _candidates = const [];
+  List<StudentAssistanceRuleCandidate> _candidates = const [];
   bool _loading = true;
 
   @override
@@ -2822,8 +2822,8 @@ class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
   }
 
   Future<void> _toggleStudent(
-    ScholarshipStudentOption student,
-    StudentScholarshipRuleCandidate? selected,
+    AssistanceStudentOption student,
+    StudentAssistanceRuleCandidate? selected,
     bool value,
   ) async {
     final cubit = context.read<AssistancePlanCubit>();
@@ -2840,9 +2840,9 @@ class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
         return;
       }
       await cubit.saveRuleCandidate(
-        StudentScholarshipRuleCandidate(
-          scholarshipPeriodId: widget.periodId,
-          scholarshipPeriodRuleId: widget.rule.id,
+        StudentAssistanceRuleCandidate(
+          assistancePeriodId: widget.periodId,
+          assistancePeriodRuleId: widget.rule.id,
           studentId: student.id,
           reason: _reasonController.text.trim().isEmpty
               ? null
@@ -2854,10 +2854,10 @@ class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
   }
 }
 
-class _ScholarshipPeriodDialog extends StatefulWidget {
-  const _ScholarshipPeriodDialog({this.period, required this.onSave});
+class _AssistancePeriodDialog extends StatefulWidget {
+  const _AssistancePeriodDialog({this.period, required this.onSave});
 
-  final ScholarshipPeriod? period;
+  final AssistancePeriod? period;
   final FutureOr<void> Function(
     int month,
     int year,
@@ -2869,11 +2869,11 @@ class _ScholarshipPeriodDialog extends StatefulWidget {
   onSave;
 
   @override
-  State<_ScholarshipPeriodDialog> createState() =>
-      _ScholarshipPeriodDialogState();
+  State<_AssistancePeriodDialog> createState() =>
+      _AssistancePeriodDialogState();
 }
 
-class _ScholarshipPeriodDialogState extends State<_ScholarshipPeriodDialog> {
+class _AssistancePeriodDialogState extends State<_AssistancePeriodDialog> {
   final _formKey = GlobalKey<FormState>();
   late int _month;
   late final TextEditingController _yearController;
@@ -2935,7 +2935,7 @@ class _ScholarshipPeriodDialogState extends State<_ScholarshipPeriodDialog> {
                   (index) => DropdownMenuItem(
                     value: index + 1,
                     child: AppDropdownStyle.menuItemLabel(
-                      label: ScholarshipPeriod.monthName(index + 1),
+                      label: AssistancePeriod.monthName(index + 1),
                       selected: index + 1 == _month,
                     ),
                   ),
@@ -2944,7 +2944,7 @@ class _ScholarshipPeriodDialogState extends State<_ScholarshipPeriodDialog> {
                     AppDropdownStyle.selectedLabels(
                       List.generate(
                         12,
-                        (index) => ScholarshipPeriod.monthName(index + 1),
+                        (index) => AssistancePeriod.monthName(index + 1),
                       ),
                     ),
                 dropdownColor: AppColors.white,
@@ -3069,36 +3069,36 @@ class _ScholarshipPeriodDialogState extends State<_ScholarshipPeriodDialog> {
   }
 }
 
-class _ScholarshipPeriodRuleDialog extends StatefulWidget {
-  const _ScholarshipPeriodRuleDialog({
+class _AssistancePeriodRuleDialog extends StatefulWidget {
+  const _AssistancePeriodRuleDialog({
     required this.periodId,
     required this.priorityOrder,
-    required this.scholarshipRules,
+    required this.assistanceRules,
     required this.onSave,
     this.rule,
   });
 
   final String periodId;
   final int priorityOrder;
-  final List<ScholarshipRule> scholarshipRules;
-  final ScholarshipPeriodRule? rule;
-  final FutureOr<void> Function(ScholarshipPeriodRule rule) onSave;
+  final List<AssistanceRule> assistanceRules;
+  final AssistancePeriodRule? rule;
+  final FutureOr<void> Function(AssistancePeriodRule rule) onSave;
 
   @override
-  State<_ScholarshipPeriodRuleDialog> createState() =>
-      _ScholarshipPeriodRuleDialogState();
+  State<_AssistancePeriodRuleDialog> createState() =>
+      _AssistancePeriodRuleDialogState();
 }
 
-class _ScholarshipPeriodRuleDialogState
-    extends State<_ScholarshipPeriodRuleDialog> {
+class _AssistancePeriodRuleDialogState
+    extends State<_AssistancePeriodRuleDialog> {
   final _formKey = GlobalKey<FormState>();
-  late ScholarshipType _ruleType;
-  late ScholarshipSelectionMode _selectionMode;
+  late AssistanceRuleType _ruleType;
+  late AssistanceSelectionMode _selectionMode;
   late final TextEditingController _ruleNameController;
   late final TextEditingController _quotaController;
   late final TextEditingController _priorityController;
   late final TextEditingController _minScoreController;
-  String? _selectedScholarshipRuleId;
+  String? _selectedAssistanceRuleId;
   bool _carryOver = true;
   bool _active = true;
   bool _saving = false;
@@ -3107,14 +3107,14 @@ class _ScholarshipPeriodRuleDialogState
   void initState() {
     super.initState();
     final rule = widget.rule;
-    _ruleType = rule?.ruleType ?? ScholarshipType.customRule;
+    _ruleType = rule?.ruleType ?? AssistanceRuleType.customRule;
     _selectionMode = rule == null
         ? _ruleType.defaultSelectionMode
         : rule.selectionMode;
     _ruleNameController = TextEditingController(
-      text: _ruleType == ScholarshipType.customRule ? rule?.ruleName ?? '' : '',
+      text: _ruleType == AssistanceRuleType.customRule ? rule?.ruleName ?? '' : '',
     );
-    _selectedScholarshipRuleId = rule?.scholarshipRuleId;
+    _selectedAssistanceRuleId = rule?.assistanceRuleId;
     _quotaController = TextEditingController(text: '${rule?.quota ?? 0}');
     _priorityController = TextEditingController(
       text: '${rule?.priorityOrder ?? widget.priorityOrder}',
@@ -3138,16 +3138,16 @@ class _ScholarshipPeriodRuleDialogState
   @override
   Widget build(BuildContext context) {
     const newCustomRuleValue = '__new_custom_rule__';
-    final customRules = widget.scholarshipRules
+    final customRules = widget.assistanceRules
         .where(
           (rule) =>
               rule.isActive &&
               !rule.isSystemDefault &&
-              rule.ruleType == ScholarshipType.customRule,
+              rule.ruleType == AssistanceRuleType.customRule,
         )
         .toList();
     final ruleTypes = widget.rule == null
-        ? const [ScholarshipType.customRule]
+        ? const [AssistanceRuleType.customRule]
         : [_ruleType];
     final selectionModes = [_ruleType.defaultSelectionMode];
     return AlertDialog(
@@ -3164,7 +3164,7 @@ class _ScholarshipPeriodRuleDialogState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                AppDropdownButtonFormField<ScholarshipType>(
+                AppDropdownButtonFormField<AssistanceRuleType>(
                   initialValue: _ruleType,
                   isExpanded: false,
                   decoration: const InputDecoration(labelText: 'Rule Type'),
@@ -3191,12 +3191,12 @@ class _ScholarshipPeriodRuleDialogState
                   style: AppDropdownStyle.textStyle,
                   onChanged: null,
                 ),
-                if (_ruleType == ScholarshipType.customRule) ...[
+                if (_ruleType == AssistanceRuleType.customRule) ...[
                   const SizedBox(height: 12),
                   AppDropdownButtonFormField<String>(
-                    initialValue: _selectedScholarshipRuleId == null
+                    initialValue: _selectedAssistanceRuleId == null
                         ? newCustomRuleValue
-                        : _selectedScholarshipRuleId,
+                        : _selectedAssistanceRuleId,
                     isExpanded: false,
                     decoration: const InputDecoration(labelText: 'Rule Master'),
                     items: [
@@ -3204,7 +3204,7 @@ class _ScholarshipPeriodRuleDialogState
                         value: newCustomRuleValue,
                         child: AppDropdownStyle.menuItemLabel(
                           label: 'New Custom Rule',
-                          selected: _selectedScholarshipRuleId == null,
+                          selected: _selectedAssistanceRuleId == null,
                         ),
                       ),
                       ...customRules.map(
@@ -3212,7 +3212,7 @@ class _ScholarshipPeriodRuleDialogState
                           value: rule.id,
                           child: AppDropdownStyle.menuItemLabel(
                             label: rule.displayName,
-                            selected: rule.id == _selectedScholarshipRuleId,
+                            selected: rule.id == _selectedAssistanceRuleId,
                           ),
                         ),
                       ),
@@ -3230,12 +3230,12 @@ class _ScholarshipPeriodRuleDialogState
                     style: AppDropdownStyle.textStyle,
                     onChanged: (value) {
                       setState(() {
-                        _selectedScholarshipRuleId = value == newCustomRuleValue
+                        _selectedAssistanceRuleId = value == newCustomRuleValue
                             ? null
                             : value;
-                        ScholarshipRule? selectedRule;
+                        AssistanceRule? selectedRule;
                         for (final rule in customRules) {
-                          if (rule.id == _selectedScholarshipRuleId) {
+                          if (rule.id == _selectedAssistanceRuleId) {
                             selectedRule = rule;
                             break;
                           }
@@ -3249,7 +3249,7 @@ class _ScholarshipPeriodRuleDialogState
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _ruleNameController,
-                    readOnly: _selectedScholarshipRuleId != null,
+                    readOnly: _selectedAssistanceRuleId != null,
                     decoration: const InputDecoration(labelText: 'Rule Name'),
                     validator: (value) => value == null || value.trim().isEmpty
                         ? 'Rule name is required'
@@ -3293,7 +3293,7 @@ class _ScholarshipPeriodRuleDialogState
                   ],
                 ),
                 const SizedBox(height: 12),
-                AppDropdownButtonFormField<ScholarshipSelectionMode>(
+                AppDropdownButtonFormField<AssistanceSelectionMode>(
                   initialValue: _selectionMode,
                   isExpanded: false,
                   decoration: const InputDecoration(
@@ -3378,12 +3378,12 @@ class _ScholarshipPeriodRuleDialogState
     setState(() => _saving = true);
     try {
       await widget.onSave(
-        ScholarshipPeriodRule(
+        AssistancePeriodRule(
           id: widget.rule?.id,
-          scholarshipPeriodId: widget.periodId,
-          scholarshipRuleId: _selectedScholarshipRuleId,
+          assistancePeriodId: widget.periodId,
+          assistanceRuleId: _selectedAssistanceRuleId,
           ruleType: _ruleType,
-          ruleName: _ruleType == ScholarshipType.customRule
+          ruleName: _ruleType == AssistanceRuleType.customRule
               ? _ruleNameController.text.trim()
               : null,
           quota: int.parse(_quotaController.text),
@@ -3412,17 +3412,17 @@ class _ScholarshipPeriodRuleDialogState
   }
 }
 
-class _ScholarshipRuleDialog extends StatefulWidget {
-  const _ScholarshipRuleDialog({required this.onSave, this.rule});
+class _AssistanceRuleDialog extends StatefulWidget {
+  const _AssistanceRuleDialog({required this.onSave, this.rule});
 
-  final ScholarshipRule? rule;
-  final FutureOr<void> Function(ScholarshipRule rule) onSave;
+  final AssistanceRule? rule;
+  final FutureOr<void> Function(AssistanceRule rule) onSave;
 
   @override
-  State<_ScholarshipRuleDialog> createState() => _ScholarshipRuleDialogState();
+  State<_AssistanceRuleDialog> createState() => _AssistanceRuleDialogState();
 }
 
-class _ScholarshipRuleDialogState extends State<_ScholarshipRuleDialog> {
+class _AssistanceRuleDialogState extends State<_AssistanceRuleDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _descriptionController;
@@ -3524,11 +3524,11 @@ class _ScholarshipRuleDialogState extends State<_ScholarshipRuleDialog> {
     setState(() => _saving = true);
     try {
       await widget.onSave(
-        ScholarshipRule(
+        AssistanceRule(
           id: widget.rule?.id,
           ruleName: _nameController.text.trim(),
-          ruleType: ScholarshipType.customRule,
-          selectionMode: ScholarshipSelectionMode.manual,
+          ruleType: AssistanceRuleType.customRule,
+          selectionMode: AssistanceSelectionMode.manual,
           description: _descriptionController.text.trim().isEmpty
               ? null
               : _descriptionController.text.trim(),
@@ -3559,9 +3559,9 @@ class _FixedPriorityRuleDialog extends StatefulWidget {
     this.rule,
   });
 
-  final List<ScholarshipStudentOption> students;
-  final StudentScholarshipRule? rule;
-  final FutureOr<void> Function(StudentScholarshipRule rule) onSave;
+  final List<AssistanceStudentOption> students;
+  final StudentAssistanceRule? rule;
+  final FutureOr<void> Function(StudentAssistanceRule rule) onSave;
 
   @override
   State<_FixedPriorityRuleDialog> createState() =>
@@ -3571,7 +3571,7 @@ class _FixedPriorityRuleDialog extends StatefulWidget {
 class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
   final _formKey = GlobalKey<FormState>();
   String? _studentId;
-  late ScholarshipType _type;
+  late AssistanceRuleType _type;
   late final TextEditingController _ruleNameController;
   late final TextEditingController _reasonController;
   late final TextEditingController _scoreController;
@@ -3586,9 +3586,9 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
     _studentId =
         widget.rule?.studentId ??
         (widget.students.isEmpty ? null : widget.students.first.id);
-    _type = widget.rule?.scholarshipType ?? ScholarshipType.fixedPriority;
+    _type = widget.rule?.ruleType ?? AssistanceRuleType.fixedPriority;
     _ruleNameController = TextEditingController(
-      text: _type == ScholarshipType.customRule
+      text: _type == AssistanceRuleType.customRule
           ? widget.rule?.ruleName ?? ''
           : '',
     );
@@ -3659,11 +3659,11 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
                       value == null ? 'Student is required' : null,
                 ),
                 const SizedBox(height: 12),
-                AppDropdownButtonFormField<ScholarshipType>(
+                AppDropdownButtonFormField<AssistanceRuleType>(
                   initialValue: _type,
                   isExpanded: false,
                   decoration: const InputDecoration(labelText: 'Rule Type'),
-                  items: ScholarshipType.studentRuleTypes
+                  items: AssistanceRuleType.studentRuleTypes
                       .map(
                         (type) => DropdownMenuItem(
                           value: type,
@@ -3676,7 +3676,7 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
                       .toList(),
                   selectedItemBuilder: (context) =>
                       AppDropdownStyle.selectedLabels(
-                        ScholarshipType.studentRuleTypes.map(
+                        AssistanceRuleType.studentRuleTypes.map(
                           (type) => type.label,
                         ),
                       ),
@@ -3690,13 +3690,13 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
                     if (value == null) return;
                     setState(() {
                       _type = value;
-                      if (_type != ScholarshipType.customRule) {
+                      if (_type != AssistanceRuleType.customRule) {
                         _ruleNameController.clear();
                       }
                     });
                   },
                 ),
-                if (_type == ScholarshipType.customRule) ...[
+                if (_type == AssistanceRuleType.customRule) ...[
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _ruleNameController,
@@ -3774,11 +3774,11 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
     final action = widget.rule == null
         ? SubmissionAction.create
         : SubmissionAction.update;
-    final rule = StudentScholarshipRule(
+    final rule = StudentAssistanceRule(
       id: widget.rule?.id,
       studentId: _studentId!,
-      scholarshipType: _type,
-      ruleName: _type == ScholarshipType.customRule
+      ruleType: _type,
+      ruleName: _type == AssistanceRuleType.customRule
           ? _ruleNameController.text.trim()
           : null,
       reason: _reasonController.text.trim(),
@@ -3848,12 +3848,12 @@ class _DateField extends StatelessWidget {
 enum _RecipientExportFormat { pdf, excel }
 
 String _buildPlanExcelHtml(
-  List<StudentScholarshipAssessment> targets,
+  List<StudentAssistanceAssessment> targets,
   String periodLabel,
-  ScholarshipSummary summary,
-  ScholarshipPeriod? period,
+  AssistanceSummary summary,
+  AssistancePeriod? period,
 ) {
-  final grouped = <String, List<StudentScholarshipAssessment>>{};
+  final grouped = <String, List<StudentAssistanceAssessment>>{};
   for (final target in targets) {
     grouped.putIfAbsent(target.displayName, () => []).add(target);
   }
@@ -3927,10 +3927,10 @@ String _buildPlanExcelHtml(
 }
 
 Uint8List _buildPlanPdf(
-  List<StudentScholarshipAssessment> targets,
+  List<StudentAssistanceAssessment> targets,
   String periodLabel,
-  ScholarshipSummary summary,
-  ScholarshipPeriod? period,
+  AssistanceSummary summary,
+  AssistancePeriod? period,
 ) {
   const pageWidth = 842.0;
   const pageHeight = 595.0;
@@ -4051,7 +4051,7 @@ Uint8List _buildPlanPdf(
 }
 
 String _buildRecipientsExcelHtml(
-  List<ScholarshipRecipient> recipients,
+  List<AssistanceRecipient> recipients,
   String periodLabel,
 ) {
   final rows = recipients.map((item) {
@@ -4104,7 +4104,7 @@ String _buildRecipientsExcelHtml(
 }
 
 Uint8List _buildRecipientsPdf(
-  List<ScholarshipRecipient> recipients,
+  List<AssistanceRecipient> recipients,
   String periodLabel,
 ) {
   const pageWidth = 842.0;
@@ -4237,9 +4237,9 @@ String _fixed(String value, int width) {
   return clean.padRight(width);
 }
 
-String _recipientPeriodLabel(ScholarshipRecipient item) {
+String _recipientPeriodLabel(AssistanceRecipient item) {
   if (item.periodMonth == null || item.periodYear == null) return '-';
-  return '${ScholarshipPeriod.monthName(item.periodMonth!)} ${item.periodYear}';
+  return '${AssistancePeriod.monthName(item.periodMonth!)} ${item.periodYear}';
 }
 
 String _safeFileName(String value) {
@@ -4273,8 +4273,8 @@ class _AssessmentOverrideDialog extends StatefulWidget {
     required this.onSave,
   });
 
-  final StudentScholarshipAssessment assessment;
-  final FutureOr<void> Function(StudentScholarshipAssessment assessment) onSave;
+  final StudentAssistanceAssessment assessment;
+  final FutureOr<void> Function(StudentAssistanceAssessment assessment) onSave;
 
   @override
   State<_AssessmentOverrideDialog> createState() =>
@@ -4283,7 +4283,7 @@ class _AssessmentOverrideDialog extends StatefulWidget {
 
 class _AssessmentOverrideDialogState extends State<_AssessmentOverrideDialog> {
   final _formKey = GlobalKey<FormState>();
-  late ScholarshipDecisionStatus _status;
+  late AssistanceDecisionStatus _status;
   late final TextEditingController _priorityController;
   late final TextEditingController _reasonController;
   late final TextEditingController _noteController;
@@ -4331,11 +4331,11 @@ class _AssessmentOverrideDialogState extends State<_AssessmentOverrideDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                AppDropdownButtonFormField<ScholarshipDecisionStatus>(
+                AppDropdownButtonFormField<AssistanceDecisionStatus>(
                   initialValue: _status,
                   isExpanded: false,
                   decoration: const InputDecoration(labelText: 'Target Status'),
-                  items: ScholarshipDecisionStatus.values
+                  items: AssistanceDecisionStatus.values
                       .map(
                         (status) => DropdownMenuItem(
                           value: status,
@@ -4348,7 +4348,7 @@ class _AssessmentOverrideDialogState extends State<_AssessmentOverrideDialog> {
                       .toList(),
                   selectedItemBuilder: (context) =>
                       AppDropdownStyle.selectedLabels(
-                        ScholarshipDecisionStatus.values.map(
+                        AssistanceDecisionStatus.values.map(
                           (status) => status.label,
                         ),
                       ),

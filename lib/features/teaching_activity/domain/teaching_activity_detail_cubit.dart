@@ -221,8 +221,7 @@ class TeachingActivityDetailCubit
     }
   }
 
-  Future<void> saveStudentReport({
-    required TeachingAttendanceRecord attendance,
+  Future<void> saveStudentReportingData({
     required String assessmentType,
     required List<TeachingAssessmentBulkInput> assessments,
     required List<StudentSessionNoteInput> notes,
@@ -231,9 +230,8 @@ class TeachingActivityDetailCubit
     if (activityId == null) return;
     _safeEmit(state.copyWith(isSaving: true, clearError: true));
     try {
-      await _repository.saveStudentReport(
+      await _repository.saveStudentReportingData(
         activityId: activityId,
-        attendance: attendance,
         assessmentType: assessmentType,
         assessments: assessments,
         notes: notes,

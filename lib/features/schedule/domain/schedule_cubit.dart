@@ -1,3 +1,4 @@
+import 'package:edukita/core/cache/app_memory_cache.dart';
 import 'package:edukita/features/schedule/data/schedule_model.dart';
 import 'package:edukita/features/schedule/domain/schedule_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -240,34 +241,21 @@ class ScheduleCubit extends Cubit<ScheduleState> {
 }
 
 class ScheduleCacheService {
-  ScheduleCacheService({this.ttl = const Duration(minutes: 2)});
+  ScheduleCacheService({
+    Duration ttl = const Duration(seconds: 75),
+    int maxEntries = 4,
+  }) : _items = AppMemoryCache<ScheduleState>(
+         ttl: ttl,
+         maxEntries: maxEntries,
+       );
 
-  final Duration ttl;
-  final Map<String, _ScheduleCacheEntry> _items = {};
+  final AppMemoryCache<ScheduleState> _items;
 
-  ScheduleState? get(String key) {
-    final entry = _items[key];
-    if (entry == null) return null;
-    if (DateTime.now().difference(entry.cachedAt) > ttl) {
-      _items.remove(key);
-      return null;
-    }
-    return entry.state;
-  }
+  ScheduleState? get(String key) => _items.get(key);
 
   void put(String key, ScheduleState state) {
-    _items[key] = _ScheduleCacheEntry(
-      state: state.copyWith(isLoading: false),
-      cachedAt: DateTime.now(),
-    );
+    _items.put(key, state.copyWith(isLoading: false));
   }
 
   void clear() => _items.clear();
-}
-
-class _ScheduleCacheEntry {
-  const _ScheduleCacheEntry({required this.state, required this.cachedAt});
-
-  final ScheduleState state;
-  final DateTime cachedAt;
 }

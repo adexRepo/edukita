@@ -595,9 +595,8 @@ class TeachingActivityRepository {
     });
   }
 
-  Future<void> saveStudentReport({
+  Future<void> saveStudentReportingData({
     required String activityId,
-    required TeachingAttendanceRecord attendance,
     required String assessmentType,
     required List<TeachingAssessmentBulkInput> assessments,
     required List<StudentSessionNoteInput> notes,
@@ -616,32 +615,6 @@ class TeachingActivityRepository {
         },
         where: 'id = ?',
         whereArgs: [activityId],
-      );
-      final attendanceExisting = await txn.query(
-        'teaching_attendances',
-        columns: const ['id', 'created_at'],
-        where: 'teaching_activity_id = ? AND student_id = ?',
-        whereArgs: [activityId, attendance.studentId],
-        limit: 1,
-      );
-      final attendanceId = attendanceExisting.isEmpty
-          ? _uuid.v4()
-          : attendanceExisting.first['id'].toString();
-      await txn.insert(
-        'teaching_attendances',
-        {
-          'id': attendanceId,
-          'teaching_activity_id': activityId,
-          'student_id': attendance.studentId,
-          'status': attendance.status,
-          'check_in_time': attendance.checkInTime,
-          'notes': attendance.notes,
-          'created_at': attendanceExisting.isEmpty
-              ? now
-              : attendanceExisting.first['created_at']?.toString() ?? now,
-          'updated_at': now,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
       for (final record in assessments) {

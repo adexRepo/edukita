@@ -1,3 +1,4 @@
+import 'package:edukita/core/cache/app_memory_cache.dart';
 import 'package:edukita/features/assistance/programs/data/assistance_program_model.dart';
 import 'package:edukita/features/assistance/programs/domain/assistance_program_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -139,37 +140,21 @@ class AssistanceProgramCubit extends Cubit<AssistanceProgramState> {
 }
 
 class AssistanceProgramCacheService {
-  AssistanceProgramCacheService({this.ttl = const Duration(minutes: 2)});
+  AssistanceProgramCacheService({
+    Duration ttl = const Duration(seconds: 75),
+    int maxEntries = 3,
+  }) : _items = AppMemoryCache<AssistanceProgramState>(
+         ttl: ttl,
+         maxEntries: maxEntries,
+       );
 
-  final Duration ttl;
-  final Map<String, _AssistanceProgramCacheEntry> _items = {};
+  final AppMemoryCache<AssistanceProgramState> _items;
 
-  AssistanceProgramState? get(String key) {
-    final entry = _items[key];
-    if (entry == null) return null;
-    if (DateTime.now().difference(entry.cachedAt) > ttl) {
-      _items.remove(key);
-      return null;
-    }
-    return entry.state;
-  }
+  AssistanceProgramState? get(String key) => _items.get(key);
 
   void put(String key, AssistanceProgramState state) {
-    _items[key] = _AssistanceProgramCacheEntry(
-      state: state.copyWith(isLoading: false, error: null),
-      cachedAt: DateTime.now(),
-    );
+    _items.put(key, state.copyWith(isLoading: false, error: null));
   }
 
   void clear() => _items.clear();
-}
-
-class _AssistanceProgramCacheEntry {
-  const _AssistanceProgramCacheEntry({
-    required this.state,
-    required this.cachedAt,
-  });
-
-  final AssistanceProgramState state;
-  final DateTime cachedAt;
 }

@@ -55,19 +55,18 @@ class _AppTableState<T> extends State<AppTable<T>> {
   String _lastColumnSignature = '';
 
   List<T> get processedData {
-    final data = [...widget.data];
+    final columnIndex = sortColumnIndex;
+    if (columnIndex == null) return widget.data;
 
-    if (sortColumnIndex != null) {
-      final column = widget.columns[sortColumnIndex!];
+    final column = widget.columns[columnIndex];
+    if (column.sortValue == null) return widget.data;
 
-      if (column.sortValue != null) {
-        data.sort((a, b) {
-          final aVal = column.sortValue!(a) ?? 0;
-          final bVal = column.sortValue!(b) ?? 0;
-          return ascending ? aVal.compareTo(bVal) : bVal.compareTo(aVal);
-        });
-      }
-    }
+    final data = List<T>.of(widget.data);
+    data.sort((a, b) {
+      final aVal = column.sortValue!(a) ?? 0;
+      final bVal = column.sortValue!(b) ?? 0;
+      return ascending ? aVal.compareTo(bVal) : bVal.compareTo(aVal);
+    });
 
     return data;
   }
@@ -308,7 +307,7 @@ class _AppTableState<T> extends State<AppTable<T>> {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 11,
+                                fontSize: AppTypography.tableHeader,
                                 height: 1.15,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textSecondary,
@@ -366,7 +365,7 @@ class _AppTableState<T> extends State<AppTable<T>> {
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: AppColors.textSecondary,
-            fontSize: 12,
+            fontSize: AppTypography.body,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -405,7 +404,7 @@ class _AppTableState<T> extends State<AppTable<T>> {
         children: [
           Text(
             "Page ${curretPage + 1} of $totalPage",
-            style: const TextStyle(fontSize: 12),
+            style: AppTypography.secondaryStyle,
           ),
           Row(
             children: [

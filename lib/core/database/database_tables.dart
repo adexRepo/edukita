@@ -66,15 +66,15 @@ class DatabaseTables {
     await assistancePrograms(db);
     await assistanceProgramBenefits(db);
     await assistanceProgramBenefitItems(db);
-    await scholarshipRules(db);
-    await scholarshipPeriods(db);
-    await scholarshipPeriodRules(db);
-    await studentScholarshipRules(db);
-    await studentScholarshipRuleCandidates(db);
-    await studentScholarshipAssessments(db);
-    await scholarshipRuleTargets(db);
-    await scholarshipApprovalDocuments(db);
-    await scholarshipRecipients(db);
+    await assistanceRules(db);
+    await assistancePeriods(db);
+    await assistancePeriodRules(db);
+    await studentAssistanceRules(db);
+    await studentAssistanceRuleCandidates(db);
+    await studentAssistanceAssessments(db);
+    await assistanceRuleTargets(db);
+    await assistanceApprovalDocuments(db);
+    await assistanceRecipients(db);
     await indexes(db);
   }
 
@@ -898,7 +898,7 @@ class DatabaseTables {
         id TEXT PRIMARY KEY NOT NULL,
         student_id TEXT,
         fee_amount REAL,
-        scholarship INTEGER NOT NULL DEFAULT 0,
+        assistance INTEGER NOT NULL DEFAULT 0,
         status TEXT,
         FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
       )
@@ -1025,7 +1025,7 @@ class DatabaseTables {
     ''');
   }
 
-  static Future<void> scholarshipPeriods(Database db) async {
+  static Future<void> assistancePeriods(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS assistance_periods(
         id TEXT PRIMARY KEY NOT NULL,
@@ -1038,14 +1038,11 @@ class DatabaseTables {
         period_month INTEGER NOT NULL,
         period_year INTEGER NOT NULL,
         target_quota INTEGER NOT NULL,
-        fixed_quota INTEGER NOT NULL DEFAULT 0,
-        rolling_quota INTEGER NOT NULL DEFAULT 0,
         calculation_window_months INTEGER NOT NULL DEFAULT 3,
         minimum_attendance_percentage REAL NOT NULL DEFAULT 75,
         allow_manual_override_below_attendance INTEGER NOT NULL DEFAULT 1,
         status TEXT NOT NULL DEFAULT 'draft'
-          CHECK(status IN ('draft', 'targeted', 'submitted', 'generated', 'pending_review', 'approved', 'cancelled')),
-        generated_at TEXT,
+          CHECK(status IN ('draft', 'targeted', 'submitted', 'approved', 'cancelled')),
         targeted_at TEXT,
         submitted_at TEXT,
         approved_at TEXT,
@@ -1057,7 +1054,7 @@ class DatabaseTables {
     ''');
   }
 
-  static Future<void> scholarshipRules(Database db) async {
+  static Future<void> assistanceRules(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS assistance_rules(
         id TEXT PRIMARY KEY NOT NULL,
@@ -1073,13 +1070,11 @@ class DatabaseTables {
     ''');
   }
 
-  static Future<void> scholarshipPeriodRules(Database db) async {
+  static Future<void> assistancePeriodRules(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS assistance_period_rules(
         id TEXT PRIMARY KEY NOT NULL,
-        scholarship_period_id TEXT NOT NULL,
-        scholarship_rule_id TEXT,
-        assistance_period_id TEXT,
+        assistance_period_id TEXT NOT NULL,
         assistance_rule_id TEXT,
         rule_type TEXT NOT NULL,
         rule_name TEXT NOT NULL,
@@ -1093,19 +1088,18 @@ class DatabaseTables {
         is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(scholarship_period_id) REFERENCES assistance_periods(id) ON DELETE CASCADE,
-        FOREIGN KEY(scholarship_rule_id) REFERENCES assistance_rules(id) ON DELETE SET NULL
+        FOREIGN KEY(assistance_period_id) REFERENCES assistance_periods(id) ON DELETE CASCADE,
+        FOREIGN KEY(assistance_rule_id) REFERENCES assistance_rules(id) ON DELETE SET NULL
       )
     ''');
   }
 
-  static Future<void> studentScholarshipRules(Database db) async {
+  static Future<void> studentAssistanceRules(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS student_assistance_rules(
         id TEXT PRIMARY KEY NOT NULL,
         student_id TEXT NOT NULL,
-        scholarship_type TEXT NOT NULL,
-        rule_type TEXT,
+        rule_type TEXT NOT NULL,
         rule_name TEXT,
         reason TEXT NOT NULL,
         score_override REAL,
@@ -1119,14 +1113,12 @@ class DatabaseTables {
     ''');
   }
 
-  static Future<void> studentScholarshipRuleCandidates(Database db) async {
+  static Future<void> studentAssistanceRuleCandidates(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS student_assistance_rule_candidates(
         id TEXT PRIMARY KEY NOT NULL,
-        scholarship_period_id TEXT NOT NULL,
-        scholarship_period_rule_id TEXT NOT NULL,
-        assistance_period_id TEXT,
-        assistance_period_rule_id TEXT,
+        assistance_period_id TEXT NOT NULL,
+        assistance_period_rule_id TEXT NOT NULL,
         student_id TEXT NOT NULL,
         nominated_by TEXT,
         reason TEXT,
@@ -1134,28 +1126,24 @@ class DatabaseTables {
         eligibility_status TEXT NOT NULL DEFAULT 'pending',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(scholarship_period_id) REFERENCES assistance_periods(id) ON DELETE CASCADE,
-        FOREIGN KEY(scholarship_period_rule_id) REFERENCES assistance_period_rules(id) ON DELETE CASCADE,
+        FOREIGN KEY(assistance_period_id) REFERENCES assistance_periods(id) ON DELETE CASCADE,
+        FOREIGN KEY(assistance_period_rule_id) REFERENCES assistance_period_rules(id) ON DELETE CASCADE,
         FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
       )
     ''');
   }
 
-  static Future<void> studentScholarshipAssessments(Database db) async {
+  static Future<void> studentAssistanceAssessments(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS student_assistance_assessments(
         id TEXT PRIMARY KEY NOT NULL,
-        scholarship_period_id TEXT NOT NULL,
-        assistance_period_id TEXT,
+        assistance_period_id TEXT NOT NULL,
         student_id TEXT NOT NULL,
         rule_id TEXT,
         student_rule_id TEXT,
-        scholarship_period_rule_id TEXT,
         assistance_period_rule_id TEXT,
         rule_candidate_id TEXT,
-        assistance_rule_candidate_id TEXT,
-        scholarship_type TEXT NOT NULL,
-        rule_type TEXT,
+        rule_type TEXT NOT NULL,
         rule_name TEXT,
         selection_mode TEXT NOT NULL DEFAULT 'auto',
         priority_level INTEGER NOT NULL,
@@ -1181,25 +1169,22 @@ class DatabaseTables {
         reviewed_by TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(scholarship_period_id) REFERENCES assistance_periods(id) ON DELETE CASCADE,
+        FOREIGN KEY(assistance_period_id) REFERENCES assistance_periods(id) ON DELETE CASCADE,
         FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
         FOREIGN KEY(rule_id) REFERENCES student_assistance_rules(id) ON DELETE SET NULL,
         FOREIGN KEY(student_rule_id) REFERENCES student_assistance_rules(id) ON DELETE SET NULL,
-        FOREIGN KEY(scholarship_period_rule_id) REFERENCES assistance_period_rules(id) ON DELETE SET NULL,
+        FOREIGN KEY(assistance_period_rule_id) REFERENCES assistance_period_rules(id) ON DELETE SET NULL,
         FOREIGN KEY(rule_candidate_id) REFERENCES student_assistance_rule_candidates(id) ON DELETE SET NULL
       )
     ''');
   }
 
-  static Future<void> scholarshipRuleTargets(Database db) async {
+  static Future<void> assistanceRuleTargets(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS assistance_rule_targets(
         id TEXT PRIMARY KEY NOT NULL,
-        scholarship_period_id TEXT NOT NULL,
-        scholarship_period_rule_id TEXT NOT NULL,
-        scholarship_rule_id TEXT,
-        assistance_period_id TEXT,
-        assistance_period_rule_id TEXT,
+        assistance_period_id TEXT NOT NULL,
+        assistance_period_rule_id TEXT NOT NULL,
         assistance_rule_id TEXT,
         student_rule_id TEXT,
         student_id TEXT NOT NULL,
@@ -1227,21 +1212,20 @@ class DatabaseTables {
         selected_at TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(scholarship_period_id) REFERENCES assistance_periods(id) ON DELETE CASCADE,
-        FOREIGN KEY(scholarship_period_rule_id) REFERENCES assistance_period_rules(id) ON DELETE CASCADE,
-        FOREIGN KEY(scholarship_rule_id) REFERENCES assistance_rules(id) ON DELETE SET NULL,
+        FOREIGN KEY(assistance_period_id) REFERENCES assistance_periods(id) ON DELETE CASCADE,
+        FOREIGN KEY(assistance_period_rule_id) REFERENCES assistance_period_rules(id) ON DELETE CASCADE,
+        FOREIGN KEY(assistance_rule_id) REFERENCES assistance_rules(id) ON DELETE SET NULL,
         FOREIGN KEY(student_rule_id) REFERENCES student_assistance_rules(id) ON DELETE SET NULL,
         FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
       )
     ''');
   }
 
-  static Future<void> scholarshipApprovalDocuments(Database db) async {
+  static Future<void> assistanceApprovalDocuments(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS assistance_approval_documents(
         id TEXT PRIMARY KEY NOT NULL,
-        scholarship_period_id TEXT NOT NULL,
-        assistance_period_id TEXT,
+        assistance_period_id TEXT NOT NULL,
         file_name TEXT NOT NULL,
         file_path TEXT NOT NULL,
         file_type TEXT,
@@ -1250,25 +1234,21 @@ class DatabaseTables {
         remarks TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(scholarship_period_id) REFERENCES assistance_periods(id) ON DELETE CASCADE
+        FOREIGN KEY(assistance_period_id) REFERENCES assistance_periods(id) ON DELETE CASCADE
       )
     ''');
   }
 
-  static Future<void> scholarshipRecipients(Database db) async {
+  static Future<void> assistanceRecipients(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS assistance_recipients(
         id TEXT PRIMARY KEY NOT NULL,
-        scholarship_period_id TEXT NOT NULL,
-        assistance_period_id TEXT,
+        assistance_period_id TEXT NOT NULL,
         student_id TEXT NOT NULL,
         assessment_id TEXT NOT NULL,
-        scholarship_rule_target_id TEXT,
-        scholarship_period_rule_id TEXT,
         assistance_rule_target_id TEXT,
         assistance_period_rule_id TEXT,
-        scholarship_type TEXT NOT NULL,
-        rule_type TEXT,
+        rule_type TEXT NOT NULL,
         rule_name TEXT,
         final_score REAL NOT NULL DEFAULT 0,
         rank_no INTEGER,
@@ -1284,11 +1264,11 @@ class DatabaseTables {
         approved_at TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(scholarship_period_id) REFERENCES assistance_periods(id) ON DELETE CASCADE,
+        FOREIGN KEY(assistance_period_id) REFERENCES assistance_periods(id) ON DELETE CASCADE,
         FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
         FOREIGN KEY(assessment_id) REFERENCES student_assistance_assessments(id) ON DELETE CASCADE,
-        FOREIGN KEY(scholarship_rule_target_id) REFERENCES assistance_rule_targets(id) ON DELETE SET NULL,
-        FOREIGN KEY(scholarship_period_rule_id) REFERENCES assistance_period_rules(id) ON DELETE SET NULL
+        FOREIGN KEY(assistance_rule_target_id) REFERENCES assistance_rule_targets(id) ON DELETE SET NULL,
+        FOREIGN KEY(assistance_period_rule_id) REFERENCES assistance_period_rules(id) ON DELETE SET NULL
       )
     ''');
   }
@@ -1311,6 +1291,90 @@ class DatabaseTables {
     );
     await _createIndexIfColumnsExist(
       db,
+      table: 'students',
+      columns: const ['status', 'full_name'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_students_status_full_name ON students(status, full_name)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'students',
+      columns: const ['status', 'class_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_students_status_class_id ON students(status, class_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'students',
+      columns: const ['full_name'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_students_full_name ON students(full_name)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'classes',
+      columns: const ['school_id', 'level'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_classes_school_level ON classes(school_id, level)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'classes',
+      columns: const ['level', 'section'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_classes_level_section ON classes(level, section)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'schools',
+      columns: const ['type', 'name'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_schools_type_name ON schools(type, name)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'teachers',
+      columns: const ['full_name'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_teachers_full_name ON teachers(full_name)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'guardians',
+      columns: const ['full_name'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_guardians_full_name ON guardians(full_name)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_schools',
+      columns: const ['student_id', 'status'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_schools_student_status ON student_schools(student_id, status)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_schools',
+      columns: const ['school_id', 'status'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_schools_school_status ON student_schools(school_id, status)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_guardians',
+      columns: const ['student_id', 'is_primary'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_guardians_student_primary ON student_guardians(student_id, is_primary)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_guardians',
+      columns: const ['guardian_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_guardians_guardian_id ON student_guardians(guardian_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
       table: 'report_definitions',
       columns: const ['code'],
       sql:
@@ -1322,6 +1386,13 @@ class DatabaseTables {
       columns: const ['is_active'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_report_definitions_active ON report_definitions(is_active)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'report_definitions',
+      columns: const ['is_active', 'name'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_report_definitions_active_name ON report_definitions(is_active, name)',
     );
     await _createIndexIfColumnsExist(
       db,
@@ -1339,6 +1410,20 @@ class DatabaseTables {
     );
     await _createIndexIfColumnsExist(
       db,
+      table: 'syllabus',
+      columns: const ['school_type', 'level', 'semester'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_syllabus_school_level_semester ON syllabus(school_type, level, semester)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'subjects',
+      columns: const ['status', 'name'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_subjects_status_name ON subjects(status, name)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
       table: 'subjects',
       columns: const ['syllabus_id'],
       sql:
@@ -1353,10 +1438,24 @@ class DatabaseTables {
     );
     await _createIndexIfColumnsExist(
       db,
+      table: 'units',
+      columns: const ['subject_id', 'sequence_no'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_units_subject_sequence ON units(subject_id, sequence_no)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
       table: 'competencies',
       columns: const ['unit_id'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_competencies_unit_id ON competencies(unit_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'competencies',
+      columns: const ['unit_id', 'sequence_no'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_competencies_unit_sequence ON competencies(unit_id, sequence_no)',
     );
     await _createIndexIfColumnsExist(
       db,
@@ -1382,6 +1481,27 @@ class DatabaseTables {
     await _createIndexIfColumnsExist(
       db,
       table: 'schedules',
+      columns: const ['teacher_id', 'date', 'start_at'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_schedules_teacher_date_start ON schedules(teacher_id, date, start_at)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'schedules',
+      columns: const ['date', 'start_at'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_schedules_date_start ON schedules(date, start_at)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'schedules',
+      columns: const ['class_level', 'date'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_schedules_level_date ON schedules(class_level, date)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'schedules',
       columns: const ['unit_id'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_schedules_unit_id ON schedules(unit_id)',
@@ -1403,6 +1523,20 @@ class DatabaseTables {
     await _createIndexIfColumnsExist(
       db,
       table: 'schedule_events',
+      columns: const ['start_date', 'end_date'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_schedule_events_start_end ON schedule_events(start_date, end_date)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'schedule_events',
+      columns: const ['event_type', 'start_date'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_schedule_events_type_start ON schedule_events(event_type, start_date)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'schedule_events',
       columns: const ['school_id'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_schedule_events_school_id ON schedule_events(school_id)',
@@ -1420,6 +1554,48 @@ class DatabaseTables {
       columns: const ['competency_id'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_assessments_competency_id ON assessments(competency_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_exam_score_groups',
+      columns: const ['student_id', 'exam_date'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_exam_score_groups_student_date ON student_exam_score_groups(student_id, exam_date)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_exam_score_groups',
+      columns: const ['scope', 'exam_date'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_exam_score_groups_scope_date ON student_exam_score_groups(scope, exam_date)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_exam_score_items',
+      columns: const ['group_id', 'subject_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_exam_score_items_group_subject ON student_exam_score_items(group_id, subject_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_exam_score_items',
+      columns: const ['subject_id', 'unit_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_exam_score_items_subject_unit ON student_exam_score_items(subject_id, unit_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_exam_scores',
+      columns: const ['student_id', 'exam_date'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_exam_scores_student_date ON student_exam_scores(student_id, exam_date)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_exam_scores',
+      columns: const ['subject_id', 'exam_date'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_exam_scores_subject_date ON student_exam_scores(subject_id, exam_date)',
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_attendance_student_id ON student_attendance(student_id)',
@@ -1444,9 +1620,23 @@ class DatabaseTables {
     await _createIndexIfColumnsExist(
       db,
       table: 'teaching_activities',
+      columns: const ['activity_date', 'status'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_teaching_activities_date_status ON teaching_activities(activity_date, status)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'teaching_activities',
       columns: const ['teacher_id'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_teaching_activities_teacher_id ON teaching_activities(teacher_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'teaching_activities',
+      columns: const ['teacher_id', 'activity_date'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_teaching_activities_teacher_date ON teaching_activities(teacher_id, activity_date)',
     );
     await _createIndexIfColumnsExist(
       db,
@@ -1461,6 +1651,13 @@ class DatabaseTables {
       columns: const ['class_level'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_teaching_activities_class_level ON teaching_activities(class_level)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'teaching_activities',
+      columns: const ['class_level', 'activity_date'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_teaching_activities_level_date ON teaching_activities(class_level, activity_date)',
     );
     await _createIndexIfColumnsExist(
       db,
@@ -1485,10 +1682,59 @@ class DatabaseTables {
     );
     await _createIndexIfColumnsExist(
       db,
+      table: 'teaching_attendances',
+      columns: const ['teaching_activity_id', 'student_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_teaching_attendances_activity_student ON teaching_attendances(teaching_activity_id, student_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'teaching_attendances',
+      columns: const ['student_id', 'status'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_teaching_attendances_student_status ON teaching_attendances(student_id, status)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'teaching_attendances',
+      columns: const ['teaching_activity_id', 'status'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_teaching_attendances_activity_status ON teaching_attendances(teaching_activity_id, status)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
       table: 'teaching_assessments',
       columns: const ['teaching_activity_id'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_teaching_assessments_activity_id ON teaching_assessments(teaching_activity_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'teaching_assessments',
+      columns: const ['student_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_teaching_assessments_student_id ON teaching_assessments(student_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'teaching_assessments',
+      columns: const ['teaching_activity_id', 'student_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_teaching_assessments_activity_student ON teaching_assessments(teaching_activity_id, student_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'teaching_assessments',
+      columns: const ['competency_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_teaching_assessments_competency_id ON teaching_assessments(competency_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'teaching_assessments',
+      columns: const ['student_id', 'created_at'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_teaching_assessments_student_created ON teaching_assessments(student_id, created_at)',
     );
     await _createIndexIfColumnsExist(
       db,
@@ -1504,8 +1750,50 @@ class DatabaseTables {
       sql:
           'CREATE INDEX IF NOT EXISTS idx_student_session_notes_activity_id ON student_session_notes(teaching_activity_id)',
     );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_session_notes',
+      columns: const ['student_id', 'created_at'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_session_notes_student_created ON student_session_notes(student_id, created_at)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_session_notes',
+      columns: const ['student_id', 'note_type'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_session_notes_student_type ON student_session_notes(student_id, note_type)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_session_notes',
+      columns: const ['created_by_teacher_id', 'created_at'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_session_notes_teacher_created ON student_session_notes(created_by_teacher_id, created_at)',
+    );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_activities_student_id ON student_activities(student_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_activities',
+      columns: const ['student_id', 'start_date'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_activities_student_start ON student_activities(student_id, start_date)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_activities',
+      columns: const ['activity_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_activities_activity_id ON student_activities(activity_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'activities',
+      columns: const ['type', 'name'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_activities_type_name ON activities(type, name)',
     );
     await _createIndexIfColumnsExist(
       db,
@@ -1524,14 +1812,42 @@ class DatabaseTables {
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_behavior_student_id ON student_behavior(student_id)',
     );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_behavior',
+      columns: const ['student_id', 'recorded_at'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_behavior_student_recorded ON student_behavior(student_id, recorded_at)',
+    );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_risks_student_id ON student_risks(student_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_risks',
+      columns: const ['student_id', 'detected_at'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_risks_student_detected ON student_risks(student_id, detected_at)',
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_interventions_student_id ON student_interventions(student_id)',
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_wellbeing_student_id ON student_wellbeing(student_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_documents',
+      columns: const ['student_id', 'document_type'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_documents_student_type ON student_documents(student_id, document_type)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_finance',
+      columns: const ['student_id', 'status'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_finance_student_status ON student_finance(student_id, status)',
     );
     await _createIndexIfColumnsExist(
       db,
@@ -1543,9 +1859,23 @@ class DatabaseTables {
     await _createIndexIfColumnsExist(
       db,
       table: 'assistance_periods',
+      columns: const ['status', 'period_year', 'period_month'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_assistance_periods_status_year_month ON assistance_periods(status, period_year, period_month)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'assistance_periods',
       columns: const ['assistance_program_id'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_assistance_periods_program_id ON assistance_periods(assistance_program_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'assistance_periods',
+      columns: const ['assistance_program_id', 'period_year', 'period_month'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_assistance_periods_program_year_month ON assistance_periods(assistance_program_id, period_year, period_month)',
     );
     await _createIndexIfColumnsExist(
       db,
@@ -1613,23 +1943,16 @@ class DatabaseTables {
     await _createIndexIfColumnsExist(
       db,
       table: 'assistance_period_rules',
-      columns: const ['scholarship_period_id'],
-      sql:
-          'CREATE INDEX IF NOT EXISTS idx_assistance_period_rules_period_id ON assistance_period_rules(scholarship_period_id)',
-    );
-    await _createIndexIfColumnsExist(
-      db,
-      table: 'assistance_period_rules',
       columns: const ['assistance_period_id'],
       sql:
-          'CREATE INDEX IF NOT EXISTS idx_assistance_period_rules_assistance_period_id ON assistance_period_rules(assistance_period_id)',
+          'CREATE INDEX IF NOT EXISTS idx_assistance_period_rules_period_id ON assistance_period_rules(assistance_period_id)',
     );
     await _createIndexIfColumnsExist(
       db,
       table: 'assistance_period_rules',
-      columns: const ['scholarship_rule_id'],
+      columns: const ['assistance_rule_id'],
       sql:
-          'CREATE INDEX IF NOT EXISTS idx_assistance_period_rules_master ON assistance_period_rules(scholarship_rule_id)',
+          'CREATE INDEX IF NOT EXISTS idx_assistance_period_rules_master ON assistance_period_rules(assistance_rule_id)',
     );
     await _createIndexIfColumnsExist(
       db,
@@ -1648,9 +1971,9 @@ class DatabaseTables {
     await _createIndexIfColumnsExist(
       db,
       table: 'assistance_period_rules',
-      columns: const ['scholarship_period_id', 'priority_order'],
+      columns: const ['assistance_period_id', 'priority_order'],
       sql:
-          'CREATE UNIQUE INDEX IF NOT EXISTS idx_assistance_period_rules_period_priority ON assistance_period_rules(scholarship_period_id, priority_order)',
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_assistance_period_rules_period_priority ON assistance_period_rules(assistance_period_id, priority_order)',
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_assistance_rules_student_id ON student_assistance_rules(student_id)',
@@ -1658,16 +1981,9 @@ class DatabaseTables {
     await _createIndexIfColumnsExist(
       db,
       table: 'student_assistance_rule_candidates',
-      columns: const ['scholarship_period_rule_id', 'student_id'],
+      columns: const ['assistance_period_rule_id', 'student_id'],
       sql:
-          'CREATE UNIQUE INDEX IF NOT EXISTS idx_scholarship_rule_candidates_rule_student ON student_assistance_rule_candidates(scholarship_period_rule_id, student_id)',
-    );
-    await _createIndexIfColumnsExist(
-      db,
-      table: 'student_assistance_rule_candidates',
-      columns: const ['scholarship_period_id'],
-      sql:
-          'CREATE INDEX IF NOT EXISTS idx_scholarship_rule_candidates_period ON student_assistance_rule_candidates(scholarship_period_id)',
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_assistance_rule_candidates_rule_student ON student_assistance_rule_candidates(assistance_period_rule_id, student_id)',
     );
     await _createIndexIfColumnsExist(
       db,
@@ -1681,76 +1997,84 @@ class DatabaseTables {
       table: 'student_assistance_rule_candidates',
       columns: const ['student_id'],
       sql:
-          'CREATE INDEX IF NOT EXISTS idx_scholarship_rule_candidates_student ON student_assistance_rule_candidates(student_id)',
+          'CREATE INDEX IF NOT EXISTS idx_assistance_rule_candidates_student ON student_assistance_rule_candidates(student_id)',
     );
     await _createIndexIfColumnsExist(
       db,
       table: 'student_assistance_rule_candidates',
       columns: const ['eligibility_status'],
       sql:
-          'CREATE INDEX IF NOT EXISTS idx_scholarship_rule_candidates_eligibility ON student_assistance_rule_candidates(eligibility_status)',
+          'CREATE INDEX IF NOT EXISTS idx_assistance_rule_candidates_eligibility ON student_assistance_rule_candidates(eligibility_status)',
     );
-    await db.execute(
-      'CREATE UNIQUE INDEX IF NOT EXISTS idx_scholarship_assessments_period_student ON student_assistance_assessments(scholarship_period_id, student_id)',
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_assistance_rules',
+      columns: const ['rule_type', 'is_active'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_assistance_rules_type_active ON student_assistance_rules(rule_type, is_active)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_assistance_rules',
+      columns: const ['student_id', 'is_active'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_assistance_rules_student_active ON student_assistance_rules(student_id, is_active)',
     );
     await _createIndexIfColumnsExist(
       db,
       table: 'student_assistance_assessments',
       columns: const ['assistance_period_id', 'student_id'],
       sql:
-          'CREATE INDEX IF NOT EXISTS idx_assistance_assessments_period_student ON student_assistance_assessments(assistance_period_id, student_id)',
-    );
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_scholarship_assessments_period_status ON student_assistance_assessments(scholarship_period_id, decision_status)',
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_assistance_assessments_period_student ON student_assistance_assessments(assistance_period_id, student_id)',
     );
     await _createIndexIfColumnsExist(
       db,
       table: 'student_assistance_assessments',
-      columns: const ['scholarship_period_rule_id'],
+      columns: const ['assistance_period_id', 'decision_status'],
       sql:
-          'CREATE INDEX IF NOT EXISTS idx_scholarship_assessments_period_rule ON student_assistance_assessments(scholarship_period_rule_id)',
+          'CREATE INDEX IF NOT EXISTS idx_assistance_assessments_period_status ON student_assistance_assessments(assistance_period_id, decision_status)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_assistance_assessments',
+      columns: const ['assistance_period_rule_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_assistance_assessments_period_rule ON student_assistance_assessments(assistance_period_rule_id)',
     );
     await _createIndexIfColumnsExist(
       db,
       table: 'student_assistance_assessments',
       columns: const ['rule_type'],
       sql:
-          'CREATE INDEX IF NOT EXISTS idx_scholarship_assessments_rule_type ON student_assistance_assessments(rule_type)',
+          'CREATE INDEX IF NOT EXISTS idx_assistance_assessments_rule_type ON student_assistance_assessments(rule_type)',
     );
     await _createIndexIfColumnsExist(
       db,
       table: 'student_assistance_assessments',
       columns: const ['eligibility_status'],
       sql:
-          'CREATE INDEX IF NOT EXISTS idx_scholarship_assessments_eligibility ON student_assistance_assessments(eligibility_status)',
-    );
-    await _createIndexIfColumnsExist(
-      db,
-      table: 'assistance_rule_targets',
-      columns: const ['scholarship_period_id', 'student_id'],
-      sql:
-          'CREATE UNIQUE INDEX IF NOT EXISTS idx_assistance_rule_targets_period_student ON assistance_rule_targets(scholarship_period_id, student_id)',
+          'CREATE INDEX IF NOT EXISTS idx_assistance_assessments_eligibility ON student_assistance_assessments(eligibility_status)',
     );
     await _createIndexIfColumnsExist(
       db,
       table: 'assistance_rule_targets',
       columns: const ['assistance_period_id', 'student_id'],
       sql:
-          'CREATE INDEX IF NOT EXISTS idx_assistance_rule_targets_assistance_period_student ON assistance_rule_targets(assistance_period_id, student_id)',
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_assistance_rule_targets_period_student ON assistance_rule_targets(assistance_period_id, student_id)',
     );
     await _createIndexIfColumnsExist(
       db,
       table: 'assistance_rule_targets',
-      columns: const ['scholarship_period_id'],
+      columns: const ['assistance_period_id'],
       sql:
-          'CREATE INDEX IF NOT EXISTS idx_assistance_rule_targets_period ON assistance_rule_targets(scholarship_period_id)',
+          'CREATE INDEX IF NOT EXISTS idx_assistance_rule_targets_period ON assistance_rule_targets(assistance_period_id)',
     );
     await _createIndexIfColumnsExist(
       db,
       table: 'assistance_rule_targets',
-      columns: const ['scholarship_period_rule_id'],
+      columns: const ['assistance_period_rule_id'],
       sql:
-          'CREATE INDEX IF NOT EXISTS idx_assistance_rule_targets_period_rule ON assistance_rule_targets(scholarship_period_rule_id)',
+          'CREATE INDEX IF NOT EXISTS idx_assistance_rule_targets_period_rule ON assistance_rule_targets(assistance_period_rule_id)',
     );
     await _createIndexIfColumnsExist(
       db,
@@ -1769,6 +2093,20 @@ class DatabaseTables {
     await _createIndexIfColumnsExist(
       db,
       table: 'assistance_rule_targets',
+      columns: const ['assistance_period_id', 'target_status'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_assistance_rule_targets_period_status ON assistance_rule_targets(assistance_period_id, target_status)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'assistance_rule_targets',
+      columns: const ['assistance_period_rule_id', 'target_status'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_assistance_rule_targets_rule_status ON assistance_rule_targets(assistance_period_rule_id, target_status)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'assistance_rule_targets',
       columns: const ['eligibility_status'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_assistance_rule_targets_eligibility ON assistance_rule_targets(eligibility_status)',
@@ -1776,33 +2114,23 @@ class DatabaseTables {
     await _createIndexIfColumnsExist(
       db,
       table: 'assistance_approval_documents',
-      columns: const ['scholarship_period_id'],
-      sql:
-          'CREATE INDEX IF NOT EXISTS idx_assistance_approval_documents_period ON assistance_approval_documents(scholarship_period_id)',
-    );
-    await _createIndexIfColumnsExist(
-      db,
-      table: 'assistance_approval_documents',
       columns: const ['assistance_period_id'],
       sql:
-          'CREATE INDEX IF NOT EXISTS idx_assistance_approval_documents_assistance_period ON assistance_approval_documents(assistance_period_id)',
-    );
-    await db.execute(
-      'CREATE UNIQUE INDEX IF NOT EXISTS idx_assistance_recipients_period_student ON assistance_recipients(scholarship_period_id, student_id)',
+          'CREATE INDEX IF NOT EXISTS idx_assistance_approval_documents_period ON assistance_approval_documents(assistance_period_id)',
     );
     await _createIndexIfColumnsExist(
       db,
       table: 'assistance_recipients',
       columns: const ['assistance_period_id', 'student_id'],
       sql:
-          'CREATE INDEX IF NOT EXISTS idx_assistance_recipients_assistance_period_student ON assistance_recipients(assistance_period_id, student_id)',
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_assistance_recipients_period_student ON assistance_recipients(assistance_period_id, student_id)',
     );
     await _createIndexIfColumnsExist(
       db,
       table: 'assistance_recipients',
-      columns: const ['scholarship_rule_target_id'],
+      columns: const ['assistance_rule_target_id'],
       sql:
-          'CREATE INDEX IF NOT EXISTS idx_assistance_recipients_target ON assistance_recipients(scholarship_rule_target_id)',
+          'CREATE INDEX IF NOT EXISTS idx_assistance_recipients_target ON assistance_recipients(assistance_rule_target_id)',
     );
     await _createIndexIfColumnsExist(
       db,
@@ -1817,6 +2145,20 @@ class DatabaseTables {
       columns: const ['status'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_assistance_recipients_status ON assistance_recipients(status)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'assistance_recipients',
+      columns: const ['student_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_assistance_recipients_student_id ON assistance_recipients(student_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'assistance_recipients',
+      columns: const ['status', 'approved_at'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_assistance_recipients_status_approved ON assistance_recipients(status, approved_at)',
     );
   }
 

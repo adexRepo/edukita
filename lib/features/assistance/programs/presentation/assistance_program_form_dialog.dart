@@ -282,7 +282,7 @@ class _AssistanceProgramFormDialogState
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 10),
                 child: Text(
-                  'No package yet. If empty, the legacy default amount/item is used.',
+                  'No package yet. If empty, the program default amount/item is used.',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,

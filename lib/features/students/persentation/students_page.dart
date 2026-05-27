@@ -191,7 +191,7 @@ class _StudentsPageState extends State<StudentsPage> {
           Text(
             value,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontSize: 20,
+              fontSize: AppTypography.sectionTitle,
               fontWeight: FontWeight.w700,
               color: AppColors.primary, // highlight number
             ),

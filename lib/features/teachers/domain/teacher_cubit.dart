@@ -1,3 +1,4 @@
+import 'package:edukita/core/cache/app_memory_cache.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/teachers/domain/teacher_repository.dart';
@@ -103,34 +104,21 @@ class TeacherCubit extends Cubit<TeacherState> {
 }
 
 class TeacherCacheService {
-  TeacherCacheService({this.ttl = const Duration(minutes: 2)});
+  TeacherCacheService({
+    Duration ttl = const Duration(seconds: 75),
+    int maxEntries = 3,
+  }) : _items = AppMemoryCache<TeacherState>(
+         ttl: ttl,
+         maxEntries: maxEntries,
+       );
 
-  final Duration ttl;
-  final Map<String, _TeacherCacheEntry> _items = {};
+  final AppMemoryCache<TeacherState> _items;
 
-  TeacherState? get(String key) {
-    final entry = _items[key];
-    if (entry == null) return null;
-    if (DateTime.now().difference(entry.cachedAt) > ttl) {
-      _items.remove(key);
-      return null;
-    }
-    return entry.state;
-  }
+  TeacherState? get(String key) => _items.get(key);
 
   void put(String key, TeacherState state) {
-    _items[key] = _TeacherCacheEntry(
-      state: state.copyWith(isLoading: false),
-      cachedAt: DateTime.now(),
-    );
+    _items.put(key, state.copyWith(isLoading: false));
   }
 
   void clear() => _items.clear();
-}
-
-class _TeacherCacheEntry {
-  const _TeacherCacheEntry({required this.state, required this.cachedAt});
-
-  final TeacherState state;
-  final DateTime cachedAt;
 }

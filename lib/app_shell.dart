@@ -320,6 +320,7 @@ class _PrimaryRailState extends State<_PrimaryRail> {
                             child: _RailButtonContent(
                               icon: item.icon,
                               selected: selected,
+                              hovered: hovered,
                             ),
                           ),
                         ),
@@ -352,6 +353,7 @@ class _PrimaryRailState extends State<_PrimaryRail> {
                     child: _RailButtonContent(
                       icon: Icons.settings_outlined,
                       selected: widget.location.startsWith('/settings'),
+                      hovered: _settingsHovered,
                     ),
                   ),
                 ),
@@ -373,9 +375,10 @@ class _PrimaryRailState extends State<_PrimaryRail> {
                     selected: false,
                     hovered: _logoutHovered,
                     height: 36,
-                    child: const _RailButtonContent(
+                    child: _RailButtonContent(
                       icon: Icons.logout,
                       selected: false,
+                      hovered: _logoutHovered,
                     ),
                   ),
                 ),
@@ -427,14 +430,18 @@ class _RailButtonContent extends StatelessWidget {
   const _RailButtonContent({
     required this.icon,
     required this.selected,
+    required this.hovered,
   });
 
   final IconData icon;
   final bool selected;
+  final bool hovered;
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.primaryDark : AppColors.textSecondary;
+    final color = selected || hovered
+        ? AppColors.primaryDark
+        : AppColors.textSecondary;
 
     return Icon(icon, size: 19, color: color);
   }

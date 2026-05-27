@@ -116,7 +116,7 @@ class _LoginPageState extends State<LoginPage> {
                                           .textTheme
                                           .headlineMedium
                                           ?.copyWith(
-                                            fontSize: 32,
+                                            fontSize: 24,
                                             fontWeight: FontWeight.w600,
                                             letterSpacing: 0.5,
                                             color: AppColors.textPrimary,
@@ -131,7 +131,7 @@ class _LoginPageState extends State<LoginPage> {
                                         .textTheme
                                         .headlineMedium
                                         ?.copyWith(
-                                          fontSize: 32,
+                                          fontSize: 24,
                                           fontWeight: FontWeight.w600,
                                           letterSpacing: 0.5,
                                           color: AppColors.textPrimary,
@@ -147,7 +147,7 @@ class _LoginPageState extends State<LoginPage> {
                                   textAlign: TextAlign.center,
                                   style: Theme.of(context).textTheme.bodyMedium
                                       ?.copyWith(
-                                        fontSize: 15,
+                                        fontSize: AppTypography.bodyLarge,
                                         fontWeight: FontWeight.w400,
                                         letterSpacing: 0.3,
                                         height: 1.5,

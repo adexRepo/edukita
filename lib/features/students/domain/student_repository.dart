@@ -2001,7 +2001,7 @@ class StudentRepository extends BaseRepository<Student> {
         ar.benefit_description,
         ar.approved_at
       FROM assistance_recipients ar
-      LEFT JOIN assistance_periods period ON period.id = ar.scholarship_period_id
+      LEFT JOIN assistance_periods period ON period.id = ar.assistance_period_id
       LEFT JOIN assistance_programs program ON program.id = period.assistance_program_id
       WHERE ar.student_id = ?
       ORDER BY COALESCE(ar.approved_at, ar.created_at) DESC
