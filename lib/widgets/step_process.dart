@@ -464,9 +464,9 @@ class _FooterButtons extends StatelessWidget {
               iconAlignment: IconAlignment.end,
               style: ElevatedButton.styleFrom(
                 backgroundColor: isCompletedStep
-                    ? const Color(0xFF059669)
-                    : const Color(0xFF059669),
-                foregroundColor: Colors.white,
+                    ? AppColors.success
+                    : AppColors.primary,
+                foregroundColor: AppColors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(4),

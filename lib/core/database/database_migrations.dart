@@ -114,6 +114,22 @@ class DatabaseMigrations {
     await _ensureStudentExamScoreSchema(db);
     await _normalizeAcademicRelationFlow(db);
     await _ensureSubjectTimestampSchema(db);
+    await _ensureUserAuthorizationSchema(db);
+  }
+
+  static Future<void> _ensureUserAuthorizationSchema(Database db) async {
+    await _addColumnIfMissing(
+      db,
+      table: 'users',
+      column: 'role',
+      definition: "TEXT NOT NULL DEFAULT 'user'",
+    );
+    await db.update(
+      'users',
+      {'role': 'admin'},
+      where: 'username = ?',
+      whereArgs: ['admin'],
+    );
   }
 
   static Future<void> _fixUsers(Database db) async {
@@ -1158,7 +1174,4 @@ class DatabaseMigrations {
     return null;
   }
 
-  static String _dateOnly(DateTime value) {
-    return value.toIso8601String().split('T').first;
-  }
 }

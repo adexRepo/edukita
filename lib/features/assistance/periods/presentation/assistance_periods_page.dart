@@ -3,12 +3,14 @@ import 'dart:io' as io;
 import 'dart:typed_data';
 
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/utils/generated_file_name.dart';
 import 'package:edukita/features/assistance/programs/data/assistance_program_model.dart';
 import 'package:edukita/features/assistance/programs/domain/assistance_program_cubit.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/features/assistance/plans/data/assistance_plan_models.dart';
 import 'package:edukita/features/assistance/plans/domain/assistance_plan_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
@@ -359,8 +361,9 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
     BuildContext context,
     AssistancePeriod period,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_assistance_period_${period.id}',
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Assistance Period?'),
         content: Text(
@@ -443,8 +446,9 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
     BuildContext context,
     List<AssistanceProgram> programs,
   ) async {
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'create_assistance_period',
       builder: (_) => MultiBlocProvider(
         providers: [
           BlocProvider.value(value: context.read<AssistancePlanCubit>()),
@@ -653,7 +657,7 @@ class _SetupTab extends StatelessWidget {
         DecoratedBox(
           decoration: BoxDecoration(
             color: AppColors.white,
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: AppColors.greyMedium, width: 1.4),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Padding(
@@ -851,10 +855,13 @@ class _TargetsTab extends StatelessWidget {
             ),
             ElevatedButton.icon(
               onPressed: () async {
+                final cubit = context.read<AssistancePlanCubit>();
                 try {
-                  await context.read<AssistancePlanCubit>().generateSelectedPeriod();
+                  await cubit.generateSelectedPeriod();
+                  if (!context.mounted) return;
                   AppToast.showSuccess('Target candidates saved.');
                 } catch (e) {
+                  if (!context.mounted) return;
                   showErrorToastWithDetails(
                     context,
                     title: 'Auto Target Failed',
@@ -868,10 +875,13 @@ class _TargetsTab extends StatelessWidget {
             const SizedBox(width: 8),
             FilledButton.icon(
               onPressed: () async {
+                final cubit = context.read<AssistancePlanCubit>();
                 try {
-                  await context.read<AssistancePlanCubit>().markPlanTargeted();
+                  await cubit.markPlanTargeted();
+                  if (!context.mounted) return;
                   AppToast.showSuccess('Target plan saved.');
                 } catch (e) {
+                  if (!context.mounted) return;
                   AppToast.showFailed(e.toString());
                 }
               },
@@ -932,13 +942,14 @@ class _RuleTargetSection extends StatelessWidget {
                 ),
                 OutlinedButton.icon(
                   onPressed: () async {
+                    final cubit = context.read<AssistancePlanCubit>();
                     if (rule.selectionMode == AssistanceSelectionMode.auto) {
                       try {
-                        await context
-                            .read<AssistancePlanCubit>()
-                            .generateSelectedPeriod();
+                        await cubit.generateSelectedPeriod();
+                        if (!context.mounted) return;
                         AppToast.showSuccess('Auto targets saved.');
                       } catch (e) {
+                        if (!context.mounted) return;
                         showErrorToastWithDetails(
                           context,
                           title: 'Auto Target Failed',
@@ -947,10 +958,11 @@ class _RuleTargetSection extends StatelessWidget {
                       }
                       return;
                     }
-                    await showDialog<void>(
+                    await showGuardedDialog<void>(
                       context: context,
+                      guardKey: 'select_assistance_students_${rule.id}',
                       builder: (_) => BlocProvider.value(
-                        value: context.read<AssistancePlanCubit>(),
+                        value: cubit,
                         child: _SelectStudentsDialog(rule: rule, state: state),
                       ),
                     );
@@ -1012,8 +1024,9 @@ class _RuleTargetSection extends StatelessWidget {
     BuildContext context,
     StudentAssistanceAssessment item,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'remove_assistance_target_${item.id}',
       builder: (dialogContext) => AlertDialog(
         title: const Text('Remove Target Candidate?'),
         content: Text(
@@ -1880,7 +1893,6 @@ class _CreateAssistancePeriodDialog extends StatefulWidget {
 class _CreateAssistancePeriodDialogState
     extends State<_CreateAssistancePeriodDialog> {
   final _formKey = GlobalKey<FormState>();
-  int _step = 0;
   late AssistanceProgram _program;
   late String _periodName;
   late DateTime _startDate;
@@ -1924,7 +1936,6 @@ class _CreateAssistancePeriodDialogState
           completedText: _saving ? 'Creating...' : 'Create Period',
           backText: 'Back',
           onClose: _saving ? null : () => Navigator.pop(context),
-          onStepChanged: (index) => setState(() => _step = index),
           onContinueRequested: _onStepContinue,
           onCompleted: () {
             _create();
@@ -1991,6 +2002,9 @@ class _CreateAssistancePeriodDialogState
                 label: 'Target Quota',
                 value: _targetQuota,
                 isRequired: true,
+                onChanged: (value) => setState(() {
+                  _targetQuota = value ?? 0;
+                }),
                 onSaved: (value) => _targetQuota = value ?? 0,
               ),
             ),
@@ -1999,6 +2013,9 @@ class _CreateAssistancePeriodDialogState
               child: CommonFormWidgets.integerField(
                 label: 'Calculation Window',
                 value: _calculationWindow,
+                onChanged: (value) => setState(() {
+                  _calculationWindow = value ?? 3;
+                }),
                 onSaved: (value) => _calculationWindow = value ?? 3,
               ),
             ),
@@ -2007,6 +2024,9 @@ class _CreateAssistancePeriodDialogState
               child: CommonFormWidgets.doubleField(
                 label: 'Minimum Attendance',
                 value: _minimumAttendance,
+                onChanged: (value) => setState(() {
+                  _minimumAttendance = value ?? 75;
+                }),
                 onSaved: (value) => _minimumAttendance = value ?? 75,
               ),
             ),
@@ -2086,34 +2106,57 @@ class _CreateAssistancePeriodDialogState
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(8),
-            ),
+          child: _RuleTableFrame(
             child: Column(
               children: [
                 Container(
-                  height: 38,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  height: 42,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: const BoxDecoration(
                     color: AppColors.surface,
-                    border: Border(
-                      bottom: BorderSide(color: AppColors.border),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(12),
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      SizedBox(width: 34),
-                      SizedBox(width: 44, child: _RuleHeaderText('No')),
-                      Expanded(flex: 3, child: _RuleHeaderText('Rule')),
-                      SizedBox(width: 96, child: _RuleHeaderText('Mode')),
-                      SizedBox(width: 92, child: _RuleHeaderText('Quota')),
-                      SizedBox(width: 42, child: _RuleHeaderText('')),
+                      _RuleTableCell(
+                        width: 44,
+                        isHeader: true,
+                        child: const SizedBox.shrink(),
+                      ),
+                      _RuleTableCell(
+                        width: 52,
+                        isHeader: true,
+                        child: const _RuleHeaderText('No'),
+                      ),
+                      const Expanded(
+                        flex: 3,
+                        child: _RuleTableCell(
+                          isHeader: true,
+                          child: _RuleHeaderText('Rule'),
+                        ),
+                      ),
+                      _RuleTableCell(
+                        width: 116,
+                        isHeader: true,
+                        child: const _RuleHeaderText('Mode'),
+                      ),
+                      _RuleTableCell(
+                        width: 112,
+                        isHeader: true,
+                        child: const _RuleHeaderText('Quota'),
+                      ),
+                      _RuleTableCell(
+                        width: 52,
+                        isHeader: true,
+                        showRightBorder: false,
+                        child: const _RuleHeaderText(''),
+                      ),
                     ],
                   ),
                 ),
+                const Divider(height: 1),
                 Expanded(
                   child: ReorderableListView.builder(
                     padding: EdgeInsets.zero,
@@ -2145,7 +2188,7 @@ class _CreateAssistancePeriodDialogState
                       return Container(
                         key: ValueKey(rule.id),
                         height: 56,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
                           color: AppColors.white,
                           border: Border(
@@ -2153,35 +2196,43 @@ class _CreateAssistancePeriodDialogState
                               color: index == _rules.length - 1
                                   ? AppColors.transparent
                                   : AppColors.border,
+                              width: index == _rules.length - 1 ? 0 : 1,
                             ),
                           ),
                         ),
                         child: Row(
                           children: [
-                            ReorderableDragStartListener(
-                              index: index,
-                              child: Tooltip(
-                                message: 'Drag to reorder',
-                                child: Container(
-                                  width: 28,
-                                  height: 28,
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surface,
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: AppColors.border),
-                                  ),
-                                  child: const Icon(
-                                    Icons.drag_indicator,
-                                    size: 17,
-                                    color: AppColors.textSecondary,
+                            _RuleTableCell(
+                              width: 44,
+                              child: Center(
+                                child: ReorderableDragStartListener(
+                                  index: index,
+                                  child: Tooltip(
+                                    message: 'Drag to reorder',
+                                    child: Container(
+                                      width: 28,
+                                      height: 28,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surface,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: AppColors.border,
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: const Icon(
+                                        Icons.drag_indicator,
+                                        size: 17,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            SizedBox(
-                              width: 44,
+                            _RuleTableCell(
+                              width: 52,
                               child: Text(
                                 '$index',
                                 style: const TextStyle(
@@ -2192,18 +2243,20 @@ class _CreateAssistancePeriodDialogState
                             ),
                             Expanded(
                               flex: 3,
-                              child: Text(
-                                rule.type.label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
+                              child: _RuleTableCell(
+                                child: Text(
+                                  rule.type.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
                             ),
-                            SizedBox(
-                              width: 96,
+                            _RuleTableCell(
+                              width: 116,
                               child: Text(
                                 rule.type.defaultSelectionMode.label,
                                 style: const TextStyle(
@@ -2213,8 +2266,8 @@ class _CreateAssistancePeriodDialogState
                                 ),
                               ),
                             ),
-                            SizedBox(
-                              width: 92,
+                            _RuleTableCell(
+                              width: 112,
                               child: TextFormField(
                                 initialValue: '${rule.quota}',
                                 keyboardType: TextInputType.number,
@@ -2232,8 +2285,9 @@ class _CreateAssistancePeriodDialogState
                                 },
                               ),
                             ),
-                            SizedBox(
-                              width: 42,
+                            _RuleTableCell(
+                              width: 52,
+                              showRightBorder: false,
                               child: IconButton(
                                 tooltip: 'Remove',
                                 onPressed: () =>
@@ -2321,32 +2375,47 @@ class _CreateAssistancePeriodDialogState
         ),
         const SizedBox(height: 8),
         Expanded(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(8),
-            ),
+          child: _RuleTableFrame(
             child: Column(
               children: [
                 Container(
-                  height: 38,
+                  height: 42,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: const BoxDecoration(
                     color: AppColors.surface,
-                    border: Border(
-                      bottom: BorderSide(color: AppColors.border),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(12),
                     ),
                   ),
                   child: const Row(
                     children: [
-                      SizedBox(width: 54, child: _RuleHeaderText('No')),
-                      Expanded(flex: 3, child: _RuleHeaderText('Rule')),
-                      SizedBox(width: 110, child: _RuleHeaderText('Mode')),
-                      SizedBox(width: 86, child: _RuleHeaderText('Quota')),
+                      _RuleTableCell(
+                        width: 54,
+                        isHeader: true,
+                        child: _RuleHeaderText('No'),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: _RuleTableCell(
+                          isHeader: true,
+                          child: _RuleHeaderText('Rule'),
+                        ),
+                      ),
+                      _RuleTableCell(
+                        width: 110,
+                        isHeader: true,
+                        child: _RuleHeaderText('Mode'),
+                      ),
+                      _RuleTableCell(
+                        width: 86,
+                        isHeader: true,
+                        showRightBorder: false,
+                        child: _RuleHeaderText('Quota'),
+                      ),
                     ],
                   ),
                 ),
+                const Divider(height: 1),
                 Expanded(
                   child: ListView.builder(
                     itemCount: _rules.length,
@@ -2366,7 +2435,7 @@ class _CreateAssistancePeriodDialogState
                         ),
                         child: Row(
                           children: [
-                            SizedBox(
+                            _RuleTableCell(
                               width: 54,
                               child: Text(
                                 '$index',
@@ -2378,22 +2447,25 @@ class _CreateAssistancePeriodDialogState
                             ),
                             Expanded(
                               flex: 3,
-                              child: Text(
-                                rule.type.label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
+                              child: _RuleTableCell(
+                                child: Text(
+                                  rule.type.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
                             ),
-                            SizedBox(
+                            _RuleTableCell(
                               width: 110,
                               child: _modePill(rule.type.defaultSelectionMode),
                             ),
-                            SizedBox(
+                            _RuleTableCell(
                               width: 86,
+                              showRightBorder: false,
                               child: Text(
                                 '${rule.quota}',
                                 style: const TextStyle(
@@ -2489,13 +2561,52 @@ class _CreateAssistancePeriodDialogState
     if (currentIndex == 0) {
       if (!_formKey.currentState!.validate()) return false;
       _formKey.currentState!.save();
+      setState(() {});
       return true;
+    }
+    if (currentIndex == 1 && _rules.any((rule) => rule.quota == 0)) {
+      final shouldRemove = await _confirmRemoveZeroQuotaRules();
+      if (!mounted || !shouldRemove) return false;
+      setState(() => _rules.removeWhere((rule) => rule.quota == 0));
     }
     if (currentIndex == 1 && _remaining != 0) {
       AppToast.showFailed('Allocated quota must equal target quota.');
       return false;
     }
     return true;
+  }
+
+  Future<bool> _confirmRemoveZeroQuotaRules() async {
+    final zeroQuotaRules = _rules
+        .where((rule) => rule.quota == 0)
+        .map((rule) => rule.type.label)
+        .join(', ');
+
+    return await showGuardedDialog<bool>(
+          context: context,
+          guardKey: 'create_assistance_remove_zero_quota_rules',
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Remove zero quota rules?'),
+              content: Text(
+                'Some selected rules have quota 0: $zeroQuotaRules.\n\n'
+                'If you continue, those rules will be removed from this '
+                'assistance period setup.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('OK, Remove & Continue'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
   }
 
   Future<void> _create() async {
@@ -2533,7 +2644,13 @@ class _CreateAssistancePeriodDialogState
       AppToast.showSuccess('Assistance period created.');
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      AppToast.showFailed(e.toString());
+      if (mounted) {
+        showErrorToastWithDetails(
+          context,
+          title: 'Create Assistance Period Failed',
+          error: e,
+        );
+      }
       if (mounted) setState(() => _saving = false);
     }
   }
@@ -2543,8 +2660,9 @@ class _CreateAssistancePeriodDialogState
         .where((type) => !_rules.any((rule) => rule.type == type))
         .toList();
     final selected = <AssistanceRuleType>{};
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'create_assistance_add_rules',
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -2618,7 +2736,9 @@ Future<void> _exportPlan({
       .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
       .replaceAll(RegExp(r'^-|-$'), '');
   final location = await getSaveLocation(
-    suggestedName: 'assistance-plan-$safeName.${isPdf ? 'pdf' : 'xls'}',
+    suggestedName: generatedFileName(
+      'assistance-plan-$safeName.${isPdf ? 'pdf' : 'xls'}',
+    ),
     acceptedTypeGroups: [
       XTypeGroup(
         label: isPdf ? 'PDF' : 'Excel',
@@ -2655,7 +2775,9 @@ Future<void> _exportRecipients({
       .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
       .replaceAll(RegExp(r'^-|-$'), '');
   final location = await getSaveLocation(
-    suggestedName: 'assistance-recipients-$safeName.${isPdf ? 'pdf' : 'xls'}',
+    suggestedName: generatedFileName(
+      'assistance-recipients-$safeName.${isPdf ? 'pdf' : 'xls'}',
+    ),
     acceptedTypeGroups: [
       XTypeGroup(
         label: isPdf ? 'PDF' : 'Excel',
@@ -2864,32 +2986,70 @@ class _RuleHeaderText extends StatelessWidget {
   }
 }
 
+class _RuleTableFrame extends StatelessWidget {
+  const _RuleTableFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _RuleTableCell extends StatelessWidget {
+  const _RuleTableCell({
+    required this.child,
+    this.width,
+    this.isHeader = false,
+    this.showRightBorder = true,
+  });
+
+  final Widget child;
+  final double? width;
+  final bool isHeader;
+  final bool showRightBorder;
+
+  @override
+  Widget build(BuildContext context) {
+    final rightPadding = showRightBorder ? 12.0 : 0.0;
+    final verticalPadding = isHeader ? 0.0 : 6.0;
+    final content = Padding(
+      padding: EdgeInsets.only(
+        right: rightPadding,
+        top: verticalPadding,
+        bottom: verticalPadding,
+      ),
+      child: Align(
+        heightFactor: 1,
+        widthFactor: 1,
+        alignment: Alignment.centerLeft,
+        child: child,
+      ),
+    );
+
+    return SizedBox(
+      width: width,
+      height: double.infinity,
+      child: content,
+    );
+  }
+}
+
 Widget _sectionTitle(String text) {
   return Text(
     text,
     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-  );
-}
-
-Widget _infoLine(String label, String value) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 160,
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        Expanded(child: Text(value)),
-      ],
-    ),
   );
 }
 

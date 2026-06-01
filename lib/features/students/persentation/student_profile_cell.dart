@@ -3,7 +3,6 @@ import 'dart:io' as io;
 import 'package:edukita/features/students/data/student_table.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/painting.dart';
 
 class StudentProfileCell extends StatelessWidget {
   const StudentProfileCell({super.key, required this.student});

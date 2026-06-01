@@ -294,7 +294,10 @@ class AssistancePlanRepository {
         periodId: period.id,
         createdAt: now,
       )) {
-        await db.insert('assistance_period_rules', rule.toMap());
+        await db.insert(
+          'assistance_period_rules',
+          await _periodRuleMap(db, rule),
+        );
       }
       return;
     }
@@ -328,7 +331,7 @@ class AssistancePlanRepository {
       );
       await db.update(
         'assistance_period_rules',
-        updatedRolling.toMap(),
+        await _periodRuleMap(db, updatedRolling),
         where: 'id = ?',
         whereArgs: [updatedRolling.id],
       );
@@ -342,9 +345,13 @@ class AssistancePlanRepository {
       for (final rule in existingRules) {
         final expectedMode = rule.ruleType.defaultSelectionMode;
         if (rule.selectionMode != expectedMode) {
+          final updatedRule = rule.copyWith(
+            selectionMode: expectedMode,
+            updatedAt: now,
+          );
           await db.update(
             'assistance_period_rules',
-            rule.copyWith(selectionMode: expectedMode, updatedAt: now).toMap(),
+            await _periodRuleMap(db, updatedRule),
             where: 'id = ?',
             whereArgs: [rule.id],
           );
@@ -362,11 +369,13 @@ class AssistancePlanRepository {
       if (existingRule != null) {
         final expectedMode = type.defaultSelectionMode;
         if (existingRule.selectionMode != expectedMode) {
+          final updatedRule = existingRule.copyWith(
+            selectionMode: expectedMode,
+            updatedAt: now,
+          );
           await db.update(
             'assistance_period_rules',
-            existingRule
-                .copyWith(selectionMode: expectedMode, updatedAt: now)
-                .toMap(),
+            await _periodRuleMap(db, updatedRule),
             where: 'id = ?',
             whereArgs: [existingRule.id],
           );
@@ -380,18 +389,19 @@ class AssistancePlanRepository {
       }
       usedOrders.add(priorityOrder);
 
+      final rule = AssistancePeriodRule(
+        assistancePeriodId: period.id,
+        assistanceRuleId: _systemRuleIdForType(type),
+        ruleType: type,
+        quota: 0,
+        priorityOrder: priorityOrder,
+        selectionMode: type.defaultSelectionMode,
+        createdAt: now,
+        updatedAt: now,
+      );
       await db.insert(
         'assistance_period_rules',
-        AssistancePeriodRule(
-          assistancePeriodId: period.id,
-          assistanceRuleId: _systemRuleIdForType(type),
-          ruleType: type,
-          quota: 0,
-          priorityOrder: priorityOrder,
-          selectionMode: type.defaultSelectionMode,
-          createdAt: now,
-          updatedAt: now,
-        ).toMap(),
+        await _periodRuleMap(db, rule),
       );
     }
   }
@@ -451,12 +461,10 @@ class AssistancePlanRepository {
       selectionMode: normalizedType.defaultSelectionMode,
       updatedAt: DateTime.now().toIso8601String(),
     );
-    final map = effective.toMap();
+    final map = await _periodRuleMap(db, effective);
 
     await db.transaction((txn) async {
-      if (!isNew &&
-          existingRule != null &&
-          existingRule.priorityOrder != effective.priorityOrder) {
+      if (!isNew && existingRule.priorityOrder != effective.priorityOrder) {
         final conflictingRows = await txn.query(
           'assistance_period_rules',
           where: 'assistance_period_id = ? AND priority_order = ? AND id <> ?',
@@ -516,7 +524,10 @@ class AssistancePlanRepository {
         }
         await txn.insert(
           'assistance_period_rules',
-          effective.copyWith(priorityOrder: priorityOrder).toMap(),
+          await _periodRuleMap(
+            txn,
+            effective.copyWith(priorityOrder: priorityOrder),
+          ),
         );
         return;
       }
@@ -618,7 +629,10 @@ class AssistancePlanRepository {
       for (final rule in _defaultCorePeriodRules(
         periodId: period.id,
       )) {
-        await txn.insert('assistance_period_rules', rule.toMap());
+        await txn.insert(
+          'assistance_period_rules',
+          await _periodRuleMap(txn, rule),
+        );
       }
     });
   }
@@ -647,9 +661,31 @@ class AssistancePlanRepository {
     if (targetQuota < 0) {
       throw Exception('Target quota cannot be negative.');
     }
+    if (month < 1 || month > 12) {
+      throw Exception('Month must be between 1 and 12.');
+    }
+    if (calculationWindowMonths < 1) {
+      throw Exception('Calculation window must be at least 1 month.');
+    }
     final allocated = rules.fold<int>(0, (total, rule) => total + rule.quota);
     if (allocated != targetQuota) {
       throw Exception('Allocated quota must equal target quota.');
+    }
+
+    final db = await _dbProvider.database;
+    final existing = await db.query(
+      'assistance_periods',
+      columns: const ['id', 'period_name'],
+      where: 'period_month = ? AND period_year = ?',
+      whereArgs: [month, year],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      final existingName = existing.first['period_name']?.toString().trim();
+      final label = existingName == null || existingName.isEmpty
+          ? '${AssistancePeriod.monthName(month)} $year'
+          : existingName;
+      throw Exception('Assistance period already exists: $label.');
     }
 
     final period = AssistancePeriod(
@@ -668,7 +704,6 @@ class AssistancePlanRepository {
     );
 
     final now = DateTime.now().toIso8601String();
-    final db = await _dbProvider.database;
     await db.transaction((txn) async {
       await txn.insert('assistance_periods', period.toMap());
       for (var index = 0; index < rules.length; index++) {
@@ -679,7 +714,10 @@ class AssistancePlanRepository {
           createdAt: now,
           updatedAt: now,
         );
-        await txn.insert('assistance_period_rules', rule.toMap());
+        await txn.insert(
+          'assistance_period_rules',
+          await _periodRuleMap(txn, rule),
+        );
       }
     });
 
@@ -2597,6 +2635,21 @@ class AssistancePlanRepository {
       for (final entry in map.entries)
         if (columns.contains(entry.key)) entry.key: entry.value,
     };
+  }
+
+  Future<Map<String, Object?>> _periodRuleMap(
+    DatabaseExecutor executor,
+    AssistancePeriodRule rule,
+  ) async {
+    final columns = await _executorTableColumns(
+      executor,
+      'assistance_period_rules',
+    );
+    final map = rule.toMap();
+    if (columns.contains('scholarship_period_id')) {
+      map['scholarship_period_id'] = rule.assistancePeriodId;
+    }
+    return _filterMapForColumns(map, columns);
   }
 
   ({String start, String end}) _periodRange(int month, int year) {

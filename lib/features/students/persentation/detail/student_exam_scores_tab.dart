@@ -1,14 +1,15 @@
 import 'dart:async';
 import 'dart:io' as io;
 
+import 'package:edukita/core/utils/generated_file_name.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/data/student_exam_score_data.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
 import 'package:edukita/features/students/persentation/detail/detail_empty_section_text.dart';
 import 'package:edukita/features/students/persentation/detail/detail_section_card.dart';
-import 'package:edukita/features/syllabus/data/subject_model.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/detail_tab_scroll.dart';
@@ -73,8 +74,9 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
 
   Future<void> _showAddScoreDialog(StudentExamScoreOptions options) async {
     final cubit = context.read<StudentDetailCubit>();
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'student_exam_score_add_${widget.student.id}',
       builder: (_) => _ScoreExamDialog(
         student: widget.student,
         options: options,
@@ -95,8 +97,9 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
     StudentExamScoreGroup group,
   ) async {
     final cubit = context.read<StudentDetailCubit>();
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'student_exam_score_edit_${group.id}',
       builder: (_) => _ScoreExamDialog(
         student: widget.student,
         options: options,
@@ -115,8 +118,9 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
 
   Future<void> _deleteScoreGroup(StudentExamScoreGroup group) async {
     final cubit = context.read<StudentDetailCubit>();
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_student_exam_score_${group.id}',
       builder: (dialogContext) {
         return AlertDialog(
           title: const AppDialogTitle('Remove Exam Score?'),
@@ -458,7 +462,9 @@ class _ExamScoreActionCell extends StatelessWidget {
     }
 
     final fileName = group.evidenceFileName ?? p.basename(sourcePath);
-    final location = await getSaveLocation(suggestedName: fileName);
+    final location = await getSaveLocation(
+      suggestedName: generatedFileName(fileName),
+    );
     if (location == null) return;
 
     try {
@@ -908,8 +914,10 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
   Future<void> _changeScope(String nextScope) async {
     if (nextScope == _scope || _saving) return;
     if (_hasInputInCurrentScope()) {
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showGuardedDialog<bool>(
         context: context,
+        guardKey:
+            'student_exam_score_change_scope_${widget.initialGroup?.id ?? 'new'}_$nextScope',
         builder: (dialogContext) {
           return AlertDialog(
             title: const AppDialogTitle('Change Score Type?'),

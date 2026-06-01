@@ -88,6 +88,9 @@ class ReportDefinitionCubit extends Cubit<ReportDefinitionState> {
   }
 
   Future<void> deleteDefinition(ReportDefinition definition) async {
+    if (definition.isDefaultSeed) {
+      throw StateError('Default reports cannot be deleted.');
+    }
     try {
       await _repository.deleteDefinition(definition.id);
       _cacheService.clear();
@@ -131,7 +134,6 @@ class ReportDefinitionCubit extends Cubit<ReportDefinitionState> {
       _safeEmit(
         state.copyWith(
           isRunning: false,
-          resultRows: const [],
           runError: e.toString(),
         ),
       );

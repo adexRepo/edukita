@@ -3,6 +3,7 @@ import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:edukita/features/teachers/presentation/teacher_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
@@ -31,8 +32,9 @@ class _TeachersPageState extends State<TeachersPage> {
   Future<void> _showTeacherFormDialog({Teacher? existingTeacher}) async {
     final cubit = context.read<TeacherCubit>();
 
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'teacher_form_${existingTeacher?.id ?? 'new'}',
       builder: (_) => TeacherFormDialog(
         teacher: existingTeacher,
         onSave: (teacher) async {
@@ -48,8 +50,9 @@ class _TeachersPageState extends State<TeachersPage> {
 
   Future<void> _confirmDelete(Teacher teacher) async {
     final cubit = context.read<TeacherCubit>();
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_teacher_${teacher.id}',
       builder: (context) {
         return AlertDialog(
           title: const AppDialogTitle('Delete Teacher'),

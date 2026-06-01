@@ -1,5 +1,6 @@
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
+import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/assistance/programs/domain/assistance_program_cubit.dart';
 import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
 import 'package:edukita/features/report_definitions/domain/report_definition_cubit.dart';
@@ -35,9 +36,17 @@ class _SettingsPageState extends State<SettingsPage> {
   late final TextEditingController _exportPrefixController;
   late final TextEditingController _minimumAttendanceController;
   String _dashboardRange = AppSettingsData.defaults.defaultDashboardRange;
+  String _language = AppSettingsData.defaults.language;
+  String _themeMode = AppSettingsData.defaults.themeMode;
+  String _uiDensity = AppSettingsData.defaults.uiDensity;
+  String _dateFormat = AppSettingsData.defaults.dateFormat;
+  String _timeFormat = AppSettingsData.defaults.timeFormat;
+  String _numberFormat = AppSettingsData.defaults.numberFormat;
   String? _databasePath;
   String? _storagePath;
   bool _loading = true;
+  bool _checkingAuthorization = true;
+  bool _isAdmin = false;
   bool _saving = false;
   bool _backingUp = false;
 
@@ -61,6 +70,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _minimumAttendanceController = TextEditingController(
       text: defaults.minimumAttendancePercentage.toStringAsFixed(0),
     );
+    _checkAuthorization();
     _load();
   }
 
@@ -72,6 +82,15 @@ class _SettingsPageState extends State<SettingsPage> {
     _exportPrefixController.dispose();
     _minimumAttendanceController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkAuthorization() async {
+    final session = await AuthSessionCache.instance.read();
+    if (!mounted) return;
+    setState(() {
+      _isAdmin = session?.isAdmin == true;
+      _checkingAuthorization = false;
+    });
   }
 
   Future<void> _load() async {
@@ -88,6 +107,12 @@ class _SettingsPageState extends State<SettingsPage> {
         _minimumAttendanceController.text = settings.minimumAttendancePercentage
             .toStringAsFixed(0);
         _dashboardRange = settings.defaultDashboardRange;
+        _language = settings.language;
+        _themeMode = settings.themeMode;
+        _uiDensity = settings.uiDensity;
+        _dateFormat = settings.dateFormat;
+        _timeFormat = settings.timeFormat;
+        _numberFormat = settings.numberFormat;
         _databasePath = databasePath;
         _storagePath = storagePath;
         _loading = false;
@@ -131,6 +156,12 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           minimumAttendancePercentage: attendance,
           defaultDashboardRange: _dashboardRange,
+          language: _language,
+          themeMode: _themeMode,
+          uiDensity: _uiDensity,
+          dateFormat: _dateFormat,
+          timeFormat: _timeFormat,
+          numberFormat: _numberFormat,
         ),
       );
       AppToast.showSuccess('Settings saved.');
@@ -212,11 +243,11 @@ class _SettingsPageState extends State<SettingsPage> {
           const AppPageHeader(
             title: 'Settings',
             subtitle:
-                'Manage application defaults, storage paths, backup, and local cache.',
+                'Manage preferences and application settings.',
           ),
           const SizedBox(height: AppPageHeaderStyle.bottomGap),
           Expanded(
-            child: _loading
+            child: _checkingAuthorization || _loading
                 ? const Center(child: CircularProgressIndicator())
                 : SingleChildScrollView(
                     child: Column(
@@ -224,12 +255,123 @@ class _SettingsPageState extends State<SettingsPage> {
                       children: [
                         _generalPanel(),
                         const SizedBox(height: 14),
-                        _pathsPanel(),
+                        _personalizationPanel(),
                         const SizedBox(height: 14),
-                        _toolsPanel(),
+                        if (_isAdmin) ...[
+                          _technicalNoticePanel(),
+                          const SizedBox(height: 14),
+                          _pathsPanel(),
+                          const SizedBox(height: 14),
+                          _toolsPanel(),
+                        ],
                       ],
                     ),
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _personalizationPanel() {
+    return _SettingsPanel(
+      title: 'Personalization',
+      description:
+          'User-facing preferences for language, visual density, and date or number display.',
+      trailing: FilledButton.icon(
+        onPressed: _saving ? null : _save,
+        icon: _saving
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.save_outlined),
+        label: Text(_saving ? 'Saving' : 'Save'),
+      ),
+      child: _responsiveGrid([
+        _settingsDropdown(
+          label: 'Language',
+          value: _language,
+          items: const [
+            _SettingsOption('en', 'English'),
+            _SettingsOption('id', 'Bahasa Indonesia'),
+          ],
+          onChanged: (value) => setState(() => _language = value),
+        ),
+        _settingsDropdown(
+          label: 'Theme Mode',
+          value: _themeMode,
+          items: const [
+            _SettingsOption('light', 'Light'),
+            _SettingsOption('dark', 'Dark'),
+            _SettingsOption('system', 'Follow System'),
+          ],
+          onChanged: (value) => setState(() => _themeMode = value),
+        ),
+        _settingsDropdown(
+          label: 'UI Density',
+          value: _uiDensity,
+          items: const [
+            _SettingsOption('compact', 'Compact'),
+            _SettingsOption('normal', 'Normal'),
+            _SettingsOption('comfortable', 'Comfortable'),
+          ],
+          onChanged: (value) => setState(() => _uiDensity = value),
+        ),
+        _settingsDropdown(
+          label: 'Date Format',
+          value: _dateFormat,
+          items: const [
+            _SettingsOption('yyyy-MM-dd', '2026-05-27'),
+            _SettingsOption('dd/MM/yyyy', '27/05/2026'),
+            _SettingsOption('dd MMM yyyy', '27 May 2026'),
+          ],
+          onChanged: (value) => setState(() => _dateFormat = value),
+        ),
+        _settingsDropdown(
+          label: 'Time Format',
+          value: _timeFormat,
+          items: const [
+            _SettingsOption('24h', '24-hour'),
+            _SettingsOption('12h', '12-hour'),
+          ],
+          onChanged: (value) => setState(() => _timeFormat = value),
+        ),
+        _settingsDropdown(
+          label: 'Number Format',
+          value: _numberFormat,
+          items: const [
+            _SettingsOption('id_ID', 'Indonesian'),
+            _SettingsOption('en_US', 'English US'),
+          ],
+          onChanged: (value) => setState(() => _numberFormat = value),
+        ),
+      ]),
+    );
+  }
+
+  Widget _technicalNoticePanel() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.primaryLight),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.admin_panel_settings_outlined, color: AppColors.primary),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Technical settings below are visible to admin users only.',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
           ),
         ],
       ),
@@ -385,6 +527,50 @@ class _SettingsPageState extends State<SettingsPage> {
       },
     );
   }
+
+  Widget _settingsDropdown({
+    required String label,
+    required String value,
+    required List<_SettingsOption> items,
+    required ValueChanged<String> onChanged,
+  }) {
+    final exists = items.any((item) => item.value == value);
+    final effectiveValue = exists ? value : items.first.value;
+    return AppDropdownButtonFormField<String>(
+      initialValue: effectiveValue,
+      items: [
+        for (final item in items)
+          DropdownMenuItem(
+            value: item.value,
+            child: AppDropdownStyle.menuItemLabel(
+              label: item.label,
+              selected: effectiveValue == item.value,
+            ),
+          ),
+      ],
+      selectedItemBuilder: (_) => AppDropdownStyle.selectedLabels(
+        items.map((item) => item.label),
+      ),
+      onChanged: (value) {
+        if (value == null) return;
+        onChanged(value);
+      },
+      decoration: InputDecoration(labelText: label),
+      dropdownColor: AppColors.white,
+      focusColor: AppColors.transparent,
+      iconEnabledColor: AppColors.primary,
+      borderRadius: AppDropdownStyle.menuBorderRadius,
+      menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+      style: AppDropdownStyle.textStyle,
+    );
+  }
+}
+
+class _SettingsOption {
+  const _SettingsOption(this.value, this.label);
+
+  final String value;
+  final String label;
 }
 
 class _SettingsPanel extends StatelessWidget {

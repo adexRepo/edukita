@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
@@ -22,7 +24,7 @@ class AppTable<T> extends StatefulWidget {
   final List<T> data;
   final List<AppTableColumn<T>> columns;
   final int rowsPerPage;
-  final void Function(T data)? onRowTap;
+  final FutureOr<void> Function(T data)? onRowTap;
   final Pageable? pageable;
   final void Function(int page)? onPageChanged;
   final String emptyMessage;
@@ -53,6 +55,7 @@ class _AppTableState<T> extends State<AppTable<T>> {
   List<double> _columnWidths = [];
   double? _lastContentWidth;
   String _lastColumnSignature = '';
+  bool _rowTapLocked = false;
 
   List<T> get processedData {
     final columnIndex = sortColumnIndex;
@@ -243,19 +246,49 @@ class _AppTableState<T> extends State<AppTable<T>> {
     });
   }
 
-  void _handleRowTap(T item) {
+  Future<void> _handleRowTap(T item) async {
     final onRowTap = widget.onRowTap;
-    if (onRowTap == null) return;
+    if (onRowTap == null || _rowTapLocked) return;
+
+    setState(() => _rowTapLocked = true);
 
     if (!widget.deferRowTap) {
-      onRowTap(item);
+      try {
+        await _runRowTap(onRowTap, item);
+      } finally {
+        _unlockRowTap();
+      }
       return;
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      onRowTap(item);
+      unawaited(_runDeferredRowTap(onRowTap, item));
     });
+  }
+
+  Future<void> _runDeferredRowTap(
+    FutureOr<void> Function(T data) onRowTap,
+    T item,
+  ) async {
+    try {
+      await _runRowTap(onRowTap, item);
+    } finally {
+      _unlockRowTap();
+    }
+  }
+
+  Future<void> _runRowTap(
+    FutureOr<void> Function(T data) onRowTap,
+    T item,
+  ) async {
+    await Future<void>.value(onRowTap(item));
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+  }
+
+  void _unlockRowTap() {
+    if (!mounted) return;
+    setState(() => _rowTapLocked = false);
   }
 
   // ================= HEADER =================
@@ -382,7 +415,9 @@ class _AppTableState<T> extends State<AppTable<T>> {
           item: item,
           columns: widget.columns,
           columnWidths: _columnWidths,
-          onTap: widget.onRowTap != null ? () => _handleRowTap(item) : null,
+          onTap: widget.onRowTap != null
+              ? () => unawaited(_handleRowTap(item))
+              : null,
         );
       },
     );

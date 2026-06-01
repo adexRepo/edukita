@@ -53,6 +53,13 @@ class _LoginPageState extends State<LoginPage> {
       final user = await DatabaseProvider.instance.getUserById(session.userId);
       if (!mounted) return;
       if (user != null) {
+        await AuthSessionCache.instance.save(
+          userId: user['id']?.toString() ?? '',
+          username: user['username']?.toString() ?? '',
+          role: user['role']?.toString() ?? 'user',
+          fullName: user['full_name']?.toString(),
+          nickName: user['nick_name']?.toString(),
+        );
         widget.onAuthenticated();
         return;
       }
@@ -80,6 +87,7 @@ class _LoginPageState extends State<LoginPage> {
         await AuthSessionCache.instance.save(
           userId: user['id']?.toString() ?? '',
           username: user['username']?.toString() ?? '',
+          role: user['role']?.toString() ?? 'user',
           fullName: user['full_name']?.toString(),
           nickName: user['nick_name']?.toString(),
         );

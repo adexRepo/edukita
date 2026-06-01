@@ -2,6 +2,7 @@ import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/management/domain/guardian_cubit.dart';
 import 'package:edukita/features/management/presentation/guardian_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_toast.dart';
@@ -26,8 +27,9 @@ class _GuardiansPageState extends State<GuardiansPage> {
     BuildContext context, {
     Guardian? existingGuardian,
   }) async {
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'guardian_form_${existingGuardian?.id ?? 'new'}',
       builder: (context) => GuardianFormDialog(
         guardian: existingGuardian,
         onSave: (guardian) async {
@@ -44,8 +46,9 @@ class _GuardiansPageState extends State<GuardiansPage> {
 
   Future<void> _confirmDelete(BuildContext context, String id) async {
     final cubit = context.read<GuardianCubit>();
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_guardian_$id',
       builder: (context) {
         return AlertDialog(
           title: const AppDialogTitle('Delete Guardian'),

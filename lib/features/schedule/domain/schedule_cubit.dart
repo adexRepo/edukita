@@ -1,6 +1,7 @@
 import 'package:edukita/core/cache/app_memory_cache.dart';
 import 'package:edukita/features/schedule/data/schedule_model.dart';
 import 'package:edukita/features/schedule/domain/schedule_repository.dart';
+import 'package:edukita/features/teaching_activity/domain/teaching_activity_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 part 'schedule_state.dart';
@@ -8,8 +9,13 @@ part 'schedule_state.dart';
 class ScheduleCubit extends Cubit<ScheduleState> {
   final ScheduleRepository _repository;
   final ScheduleCacheService _cacheService;
+  final TeachingActivityCacheService _teachingActivityCacheService;
 
-  ScheduleCubit(this._repository, this._cacheService)
+  ScheduleCubit(
+    this._repository,
+    this._cacheService,
+    this._teachingActivityCacheService,
+  )
     : super(const ScheduleState());
 
   void _safeEmit(ScheduleState nextState) {
@@ -46,7 +52,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
   Future<void> addSchedule(Schedule schedule) async {
     try {
       await _repository.insertSchedule(schedule);
-      _cacheService.clear();
+      _clearScheduleRelatedCaches();
       await loadSchedules(forceRefresh: true);
     } catch (e) {
       _safeEmit(state.copyWith(error: e.toString()));
@@ -57,7 +63,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
   Future<void> updateSchedule(Schedule schedule) async {
     try {
       await _repository.updateSchedule(schedule);
-      _cacheService.clear();
+      _clearScheduleRelatedCaches();
       await loadSchedules(forceRefresh: true);
     } catch (e) {
       _safeEmit(state.copyWith(error: e.toString()));
@@ -68,7 +74,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
   Future<void> deleteSchedule(String id) async {
     try {
       await _repository.deleteSchedule(id);
-      _cacheService.clear();
+      _clearScheduleRelatedCaches();
       await loadSchedules(forceRefresh: true);
     } catch (e) {
       _safeEmit(state.copyWith(error: e.toString()));
@@ -238,6 +244,11 @@ class ScheduleCubit extends Cubit<ScheduleState> {
       _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
+
+  void _clearScheduleRelatedCaches() {
+    _cacheService.clear();
+    _teachingActivityCacheService.clear();
+  }
 }
 
 class ScheduleCacheService {
@@ -250,6 +261,9 @@ class ScheduleCacheService {
        );
 
   final AppMemoryCache<ScheduleState> _items;
+  int _revision = 0;
+
+  int get revision => _revision;
 
   ScheduleState? get(String key) => _items.get(key);
 
@@ -257,5 +271,8 @@ class ScheduleCacheService {
     _items.put(key, state.copyWith(isLoading: false));
   }
 
-  void clear() => _items.clear();
+  void clear() {
+    _revision++;
+    _items.clear();
+  }
 }

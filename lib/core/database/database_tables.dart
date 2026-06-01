@@ -85,7 +85,8 @@ class DatabaseTables {
         username TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
         nick_name TEXT NOT NULL,
-        full_name TEXT NOT NULL
+        full_name TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'user'
       )
     ''');
   }

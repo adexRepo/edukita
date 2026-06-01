@@ -7,6 +7,7 @@ import 'package:edukita/features/students/domain/sudent_filter.dart';
 import 'package:edukita/features/students/persentation/student_form_dialog.dart';
 import 'package:edukita/features/students/persentation/student_profile_cell.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_loading.dart';
@@ -35,72 +36,79 @@ class _StudentsPageState extends State<StudentsPage> {
   }
 
   Future<void> _showAddStudentDialog() async {
-    final cubit = context.read<StudentPageCubit>();
-    final schools = await cubit.loadAvailableSchools();
-    final classes = await cubit.loadAvailableClasses();
-    final studentNo = await cubit.generateStudentNumber();
+    await AppActionGuard.run('student_form_load_new', () async {
+      final cubit = context.read<StudentPageCubit>();
+      final schools = await cubit.loadAvailableSchools();
+      final classes = await cubit.loadAvailableClasses();
+      final studentNo = await cubit.generateStudentNumber();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (schools.isEmpty) {
-      AppToast.showFailed('Create a school before adding students.');
-      return;
-    }
+      if (schools.isEmpty) {
+        AppToast.showFailed('Create a school before adding students.');
+        return;
+      }
 
-    if (classes.isEmpty) {
-      AppToast.showFailed('Create a class before adding students.');
-      return;
-    }
+      if (classes.isEmpty) {
+        AppToast.showFailed('Create a class before adding students.');
+        return;
+      }
 
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StudentFormDialog(
-        availableSchools: schools,
-        availableClasses: classes,
-        generatedStudentNo: studentNo,
-        onSiblingLookup: cubit.lookupSiblingFamily,
-        onSubmit: (student, schoolId, guardians, advanced) async {
-          await cubit.addStudent(student, schoolId, guardians, advanced);
-        },
-      ),
-    );
+      await showGuardedDialog<void>(
+        context: context,
+        guardKey: 'student_form_new',
+        builder: (dialogContext) => StudentFormDialog(
+          availableSchools: schools,
+          availableClasses: classes,
+          generatedStudentNo: studentNo,
+          onSiblingLookup: cubit.lookupSiblingFamily,
+          onSubmit: (student, schoolId, guardians, advanced) async {
+            await cubit.addStudent(student, schoolId, guardians, advanced);
+          },
+        ),
+      );
+    });
   }
 
   Future<void> _showEditStudentDialog(StudentTable row) async {
-    final cubit = context.read<StudentPageCubit>();
-    final schools = await cubit.loadAvailableSchools();
-    final classes = await cubit.loadAvailableClasses();
-    final student = await cubit.loadStudent(row.id);
-    final guardians = await cubit.loadGuardians(row.id);
-    final advancedData = await cubit.loadAdvancedFormData(row.id);
+    await AppActionGuard.run('student_form_load_${row.id}', () async {
+      final cubit = context.read<StudentPageCubit>();
+      final schools = await cubit.loadAvailableSchools();
+      final classes = await cubit.loadAvailableClasses();
+      final student = await cubit.loadStudent(row.id);
+      final guardians = await cubit.loadGuardians(row.id);
+      final advancedData = await cubit.loadAdvancedFormData(row.id);
 
-    if (!mounted || student == null) return;
+      if (!mounted || student == null) return;
 
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StudentFormDialog(
-        availableSchools: schools,
-        availableClasses: classes,
-        generatedStudentNo: student.studentId,
-        initialStudent: student,
-        initialGuardians: guardians,
-        initialAdvancedData: advancedData,
-        onSiblingLookup: cubit.lookupSiblingFamily,
-        onSubmit: (updatedStudent, schoolId, guardians, advanced) async {
-          await cubit.updateStudent(
-            updatedStudent,
-            schoolId,
-            guardians,
-            advanced,
-          );
-        },
-      ),
-    );
+      await showGuardedDialog<void>(
+        context: context,
+        guardKey: 'student_form_${row.id}',
+        builder: (dialogContext) => StudentFormDialog(
+          availableSchools: schools,
+          availableClasses: classes,
+          generatedStudentNo: student.studentId,
+          initialStudent: student,
+          initialGuardians: guardians,
+          initialAdvancedData: advancedData,
+          onSiblingLookup: cubit.lookupSiblingFamily,
+          onSubmit: (updatedStudent, schoolId, guardians, advanced) async {
+            await cubit.updateStudent(
+              updatedStudent,
+              schoolId,
+              guardians,
+              advanced,
+            );
+          },
+        ),
+      );
+    });
   }
 
   Future<void> _confirmDeleteStudent(StudentTable student) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_student_${student.id}',
       builder: (dialogContext) => AlertDialog(
         title: const AppDialogTitle('Delete Student'),
         content: Text('Delete ${student.fullName}?'),
@@ -254,7 +262,9 @@ class _StudentsPageState extends State<StudentsPage> {
     return AppTable<StudentTable>(
       data: state.data?.students ?? [],
       pageable: state.data?.pageable,
-      onRowTap: (item) => context.push('/students/${item.id}'),
+      onRowTap: (item) {
+        context.push('/students/${item.id}');
+      },
       onPageChanged: (page) => context.read<StudentPageCubit>().goToPage(page),
       columns: [
         AppTableColumn(

@@ -15,6 +15,7 @@ import 'package:edukita/features/syllabus/domain/subject_cubit.dart';
 import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
@@ -55,11 +56,16 @@ class _SchedulePageState extends State<SchedulePage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final LayerLink _searchLayerLink = LayerLink();
+  final ScrollController _timelineHeaderHorizontalController =
+      ScrollController();
+  final ScrollController _timelineGridHorizontalController =
+      ScrollController();
   OverlayEntry? _searchOverlayEntry;
   late DateTime _focusedMonth;
   late DateTime _selectedDate;
   DateTime? _rangeStartDate;
   DateTime? _rangeEndDate;
+  bool _syncingTimelineHorizontalScroll = false;
 
   @override
   void initState() {
@@ -69,6 +75,18 @@ class _SchedulePageState extends State<SchedulePage> {
     _selectedDate = DateTime(now.year, now.month, now.day);
     _searchFocusNode.addListener(() {
       if (!_searchFocusNode.hasFocus) _hideSearchOverlay();
+    });
+    _timelineHeaderHorizontalController.addListener(() {
+      _syncTimelineHorizontalScroll(
+        _timelineHeaderHorizontalController,
+        _timelineGridHorizontalController,
+      );
+    });
+    _timelineGridHorizontalController.addListener(() {
+      _syncTimelineHorizontalScroll(
+        _timelineGridHorizontalController,
+        _timelineHeaderHorizontalController,
+      );
     });
     context.read<ScheduleCubit>().loadSchedules();
     context.read<SubjectCubit>().loadCurriculum();
@@ -81,9 +99,27 @@ class _SchedulePageState extends State<SchedulePage> {
   @override
   void dispose() {
     _hideSearchOverlay();
+    _timelineHeaderHorizontalController.dispose();
+    _timelineGridHorizontalController.dispose();
     _searchFocusNode.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _syncTimelineHorizontalScroll(
+    ScrollController source,
+    ScrollController target,
+  ) {
+    if (_syncingTimelineHorizontalScroll || !target.hasClients) return;
+    final targetPosition = target.position;
+    final nextOffset = source.offset.clamp(
+      targetPosition.minScrollExtent,
+      targetPosition.maxScrollExtent,
+    ).toDouble();
+    if ((target.offset - nextOffset).abs() < 0.5) return;
+    _syncingTimelineHorizontalScroll = true;
+    target.jumpTo(nextOffset);
+    _syncingTimelineHorizontalScroll = false;
   }
 
   Future<void> _showScheduleForm({
@@ -94,8 +130,9 @@ class _SchedulePageState extends State<SchedulePage> {
     required List<Strategy> strategies,
   }) async {
     final cubit = context.read<ScheduleCubit>();
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'schedule_form_${existingSchedule?.id ?? 'new'}',
       builder: (_) => ScheduleFormDialog(
         schedule: existingSchedule,
         initialDate: _dateKey(_selectedDate),
@@ -123,8 +160,9 @@ class _SchedulePageState extends State<SchedulePage> {
     final showType = existingEvent == null
         ? isSchoolEvent
         : _schoolEventTypes.contains(existingEvent.type);
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'schedule_event_form_${existingEvent?.id ?? 'new_$isSchoolEvent'}',
       builder: (_) => ScheduleEventFormDialog(
         event: existingEvent,
         initialDate: _dateKey(_selectedDate),
@@ -146,8 +184,9 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Future<void> _confirmDeleteSchedule(Schedule schedule) async {
     final cubit = context.read<ScheduleCubit>();
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_schedule_${schedule.id}',
       builder: (context) {
         return AlertDialog(
           title: const AppDialogTitle('Delete Schedule'),
@@ -184,8 +223,9 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Future<void> _confirmDeleteEvent(ScheduleEvent event) async {
     final cubit = context.read<ScheduleCubit>();
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_event_${event.id}',
       builder: (context) {
         return AlertDialog(
           title: const AppDialogTitle('Delete Event'),
@@ -1051,7 +1091,8 @@ class _SchedulePageState extends State<SchedulePage> {
         .toList();
     const dayColumnWidth = 104.0;
     const hourColumnWidth = 116.0;
-    const timelineWidth = dayColumnWidth + (14 * hourColumnWidth);
+    const timelineRowHeight = 88.0;
+    const hoursWidth = 14 * hourColumnWidth;
 
     return Container(
       decoration: BoxDecoration(
@@ -1088,40 +1129,77 @@ class _SchedulePageState extends State<SchedulePage> {
           ),
           const Divider(height: 1),
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: timelineWidth,
-                child: Column(
-                  children: [
-                    _buildTimelineTimeHeader(
-                      dayColumnWidth: dayColumnWidth,
-                      hourColumnWidth: hourColumnWidth,
-                    ),
-                    const Divider(height: 1),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: dates.length,
-                        itemBuilder: (context, index) {
-                          final date = dates[index];
-                          return _buildTimelineDayRow(
-                            date,
-                            schedules: visibleSchedules,
-                            events: visibleEvents,
-                            classes: classes,
-                            teachers: teachers,
-                            units: units,
-                            strategies: strategies,
-                            schools: schools,
-                            dayColumnWidth: dayColumnWidth,
-                            hourColumnWidth: hourColumnWidth,
-                          );
-                        },
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 40,
+                  child: Row(
+                    children: [
+                      _buildTimelineDateHeader(width: dayColumnWidth),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          controller: _timelineHeaderHorizontalController,
+                          scrollDirection: Axis.horizontal,
+                          child: SizedBox(
+                            width: hoursWidth,
+                            child: _buildTimelineTimeHeader(
+                              hourColumnWidth: hourColumnWidth,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+                const Divider(height: 1),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: dayColumnWidth,
+                          child: Column(
+                            children: [
+                              for (final date in dates)
+                                _buildTimelineDateCell(
+                                  date,
+                                  height: timelineRowHeight,
+                                ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            controller: _timelineGridHorizontalController,
+                            scrollDirection: Axis.horizontal,
+                            child: SizedBox(
+                              width: hoursWidth,
+                              child: Column(
+                                children: [
+                                  for (final date in dates)
+                                    _buildTimelineGridRow(
+                                      date,
+                                      schedules: visibleSchedules,
+                                      events: visibleEvents,
+                                      classes: classes,
+                                      teachers: teachers,
+                                      units: units,
+                                      strategies: strategies,
+                                      schools: schools,
+                                      hourColumnWidth: hourColumnWidth,
+                                      height: timelineRowHeight,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1129,15 +1207,30 @@ class _SchedulePageState extends State<SchedulePage> {
     );
   }
 
+  Widget _buildTimelineDateHeader({required double width}) {
+    return Container(
+      width: width,
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      color: AppColors.white,
+      child: const Text(
+        'Date',
+        style: TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
   Widget _buildTimelineTimeHeader({
-    required double dayColumnWidth,
     required double hourColumnWidth,
   }) {
     return SizedBox(
       height: 40,
       child: Row(
         children: [
-          SizedBox(width: dayColumnWidth),
           for (var hour = 9; hour <= 22; hour++)
             Container(
               width: hourColumnWidth,
@@ -1159,7 +1252,62 @@ class _SchedulePageState extends State<SchedulePage> {
     );
   }
 
-  Widget _buildTimelineDayRow(
+  Widget _buildTimelineDateCell(DateTime date, {required double height}) {
+    final active = _isDateBlocked(date) || _isSameDate(date, _selectedDate);
+    final today = _isSameDate(date, DateTime.now());
+
+    return InkWell(
+      onTap: () => setState(() {
+        _selectedDate = date;
+        _clearBlockedDates();
+      }),
+      child: Container(
+        height: height,
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+        decoration: BoxDecoration(
+          color: active
+              ? AppColors.primary.withValues(alpha: 0.08)
+              : AppColors.white,
+          border: const Border(bottom: BorderSide(color: AppColors.divider)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0D000000),
+              offset: Offset(1, 0),
+              blurRadius: 4,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _shortWeekday(date),
+              style: TextStyle(
+                color: active ? AppColors.primaryDark : AppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              '${date.day}',
+              style: TextStyle(
+                color: today || active
+                    ? AppColors.primaryDark
+                    : AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimelineGridRow(
     DateTime date, {
     required List<Schedule> schedules,
     required List<ScheduleEvent> events,
@@ -1168,8 +1316,8 @@ class _SchedulePageState extends State<SchedulePage> {
     required List<Unit> units,
     required List<Strategy> strategies,
     required List<School> schools,
-    required double dayColumnWidth,
     required double hourColumnWidth,
+    required double height,
   }) {
     final key = _dateKey(date);
     final dateSchedules = schedules
@@ -1179,66 +1327,29 @@ class _SchedulePageState extends State<SchedulePage> {
         .where((event) => _eventCoversDate(event, key))
         .toList(growable: false);
 
-    return Container(
-      constraints: const BoxConstraints(minHeight: 76),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.divider)),
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              width: dayColumnWidth,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _shortWeekday(date),
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '${date.day}',
-                      style: TextStyle(
-                        color: _isSameDate(date, DateTime.now())
-                            ? AppColors.primaryDark
-                            : AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+    return SizedBox(
+      height: height,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var hour = 9; hour <= 22; hour++)
+            _buildTimelineCell(
+              hour,
+              date: date,
+              schedules: dateSchedules
+                  .where((schedule) => _scheduleCoversHour(schedule, hour))
+                  .toList(),
+              events: dateEvents
+                  .where((event) => _eventCoversHourForDate(event, date, hour))
+                  .toList(),
+              classes: classes,
+              teachers: teachers,
+              units: units,
+              strategies: strategies,
+              schools: schools,
+              width: hourColumnWidth,
             ),
-            for (var hour = 9; hour <= 22; hour++)
-              _buildTimelineCell(
-                hour,
-                date: date,
-                schedules: dateSchedules
-                    .where((schedule) => _scheduleCoversHour(schedule, hour))
-                    .toList(),
-                events: dateEvents
-                    .where(
-                      (event) => _eventCoversHourForDate(event, date, hour),
-                    )
-                    .toList(),
-                classes: classes,
-                teachers: teachers,
-                units: units,
-                strategies: strategies,
-                schools: schools,
-                width: hourColumnWidth,
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -1261,26 +1372,28 @@ class _SchedulePageState extends State<SchedulePage> {
       decoration: const BoxDecoration(
         border: Border(left: BorderSide(color: AppColors.divider)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final schedule in schedules)
-            _buildSmallScheduleCard(
-              schedule,
-              hour: hour,
-              classes: classes,
-              teachers: teachers,
-              units: units,
-              strategies: strategies,
-            ),
-          for (final event in events)
-            _buildSmallEventCard(
-              event,
-              date: date,
-              hour: hour,
-              schools: schools,
-            ),
-        ],
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final schedule in schedules)
+              _buildSmallScheduleCard(
+                schedule,
+                hour: hour,
+                classes: classes,
+                teachers: teachers,
+                units: units,
+                strategies: strategies,
+              ),
+            for (final event in events)
+              _buildSmallEventCard(
+                event,
+                date: date,
+                hour: hour,
+                schools: schools,
+              ),
+          ],
+        ),
       ),
     );
   }

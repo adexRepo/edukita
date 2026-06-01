@@ -267,6 +267,9 @@ class TeachingActivityCacheService {
        );
 
   final AppMemoryCache<TeachingActivityState> _items;
+  int _revision = 0;
+
+  int get revision => _revision;
 
   TeachingActivityState? get(String key) => _items.get(key);
 
@@ -274,5 +277,8 @@ class TeachingActivityCacheService {
     _items.put(key, state.copyWith(isLoading: false, isSaving: false));
   }
 
-  void clear() => _items.clear();
+  void clear() {
+    _revision++;
+    _items.clear();
+  }
 }

@@ -1,4 +1,5 @@
 import 'package:edukita/core/router/root_navigator.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 
@@ -12,8 +13,9 @@ Future<void> showErrorDetailDialog(
       : context;
   if (dialogContext == null || !dialogContext.mounted) return;
 
-  await showDialog<void>(
+  await showGuardedDialog<void>(
     context: dialogContext,
+    guardKey: 'error_detail_${title}_${error.hashCode}',
     builder: (dialogContext) => AlertDialog(
       title: Text(title),
       content: SizedBox(

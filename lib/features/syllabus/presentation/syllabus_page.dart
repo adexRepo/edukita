@@ -1,6 +1,7 @@
 import 'dart:io' as io;
 
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/utils/generated_file_name.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/syllabus/data/subject_model.dart';
 import 'package:edukita/features/syllabus/data/syllabus_model.dart';
@@ -11,6 +12,7 @@ import 'package:edukita/features/strategy/data/strategy_model.dart';
 import 'package:edukita/features/strategy/domain/strategy_cubit.dart';
 import 'package:edukita/features/strategy/presentation/strategy_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
@@ -80,8 +82,9 @@ class _SyllabusPageState extends State<SyllabusPage> {
 
   Future<void> _showCurriculumForm({Curriculum? existingCurriculum}) async {
     final cubit = context.read<SubjectCubit>();
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'curriculum_form_${existingCurriculum?.id ?? 'new'}',
       builder: (_) => CurriculumFormDialog(
         curriculum: existingCurriculum,
         onSave: (curriculum) async {
@@ -101,8 +104,9 @@ class _SyllabusPageState extends State<SyllabusPage> {
     Syllabus? existingSyllabus,
   }) async {
     final cubit = context.read<SubjectCubit>();
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'syllabus_form_${existingSyllabus?.id ?? 'new'}',
       builder: (_) => SyllabusFormDialog(
         syllabus: existingSyllabus,
         curriculums: curriculums,
@@ -120,8 +124,9 @@ class _SyllabusPageState extends State<SyllabusPage> {
 
   Future<void> _showSubjectForm({Subject? existingSubject}) async {
     final cubit = context.read<SubjectCubit>();
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'subject_form_${existingSubject?.id ?? 'new'}',
       builder: (_) => SubjectFormDialog(
         subject: existingSubject,
         onSave: (subject) async {
@@ -140,8 +145,9 @@ class _SyllabusPageState extends State<SyllabusPage> {
     Unit? existingUnit,
   }) async {
     final cubit = context.read<SubjectCubit>();
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'unit_form_${existingUnit?.id ?? 'new'}',
       builder: (_) => UnitFormDialog(
         unit: existingUnit,
         subjects: subjects,
@@ -161,8 +167,9 @@ class _SyllabusPageState extends State<SyllabusPage> {
     Competency? existingCompetency,
   }) async {
     final cubit = context.read<SubjectCubit>();
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'competency_form_${existingCompetency?.id ?? 'new'}',
       builder: (_) => CompetencyFormDialog(
         competency: existingCompetency,
         units: units,
@@ -179,8 +186,9 @@ class _SyllabusPageState extends State<SyllabusPage> {
 
   Future<void> _showStrategyForm({Strategy? existingStrategy}) async {
     final cubit = context.read<StrategyCubit>();
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'strategy_form_${existingStrategy?.id ?? 'new'}',
       builder: (_) => StrategyFormDialog(
         strategy: existingStrategy,
         onSave: (strategy) async {
@@ -204,8 +212,9 @@ class _SyllabusPageState extends State<SyllabusPage> {
     if (!mounted) return;
 
     final hasImpact = impact?.hasImpact ?? false;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_parameter_${title}_$subject',
       builder: (context) {
         return AlertDialog(
           title: AppDialogTitle('Delete $title'),
@@ -255,7 +264,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
 
     final fileName = strategy.sampleFileName ?? p.basename(sourcePath);
     final location = await getSaveLocation(
-      suggestedName: fileName,
+      suggestedName: generatedFileName(fileName),
       acceptedTypeGroups: const [
         XTypeGroup(
           label: 'Strategy sample file',

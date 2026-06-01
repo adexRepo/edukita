@@ -1,6 +1,7 @@
 import 'dart:io' as io;
 
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/utils/generated_file_name.dart';
 import 'package:edukita/features/report_definitions/data/report_definition_model.dart';
 import 'package:edukita/features/report_definitions/domain/report_definition_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
@@ -35,37 +36,79 @@ class _ReportsPageState extends State<ReportsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ReportDefinitionCubit, ReportDefinitionState>(
-      builder: (context, state) {
-        final selected = state.selectedDefinition;
-        return Padding(
-          padding: AppPageHeaderStyle.pagePadding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AppPageHeader(
+    return Padding(
+      padding: AppPageHeaderStyle.pagePadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          BlocBuilder<ReportDefinitionCubit, ReportDefinitionState>(
+            buildWhen: (previous, current) {
+              return previous.selectedDefinition?.id !=
+                      current.selectedDefinition?.id ||
+                  previous.resultRows.length != current.resultRows.length ||
+                  previous.isLoading != current.isLoading ||
+                  previous.isRunning != current.isRunning;
+            },
+            builder: (context, state) {
+              final selected = state.selectedDefinition;
+              return AppPageHeader(
                 title: 'Reports',
                 subtitle: selected == null
                     ? 'Choose a report definition to preview and export data.'
                     : '${selected.name} | ${state.resultRows.length} rows loaded',
                 trailing: _buildHeaderActions(context, state),
-              ),
-              AppLoadingStrip(isLoading: state.isLoading || state.isRunning),
-              const SizedBox(height: AppPageHeaderStyle.bottomGap),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(width: 280, child: _buildReportList(context, state)),
-                    const SizedBox(width: 14),
-                    Expanded(child: _buildReportPreview(context, state)),
-                  ],
-                ),
-              ),
-            ],
+              );
+            },
           ),
-        );
-      },
+          BlocSelector<ReportDefinitionCubit, ReportDefinitionState, bool>(
+            selector: (state) => state.isLoading,
+            builder: (context, isLoading) {
+              return AppLoadingStrip(isLoading: isLoading);
+            },
+          ),
+          const SizedBox(height: AppPageHeaderStyle.bottomGap),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: 280,
+                  child:
+                      BlocBuilder<
+                        ReportDefinitionCubit,
+                        ReportDefinitionState
+                      >(
+                        buildWhen: (previous, current) {
+                          return previous.definitions != current.definitions ||
+                              previous.selectedDefinition?.id !=
+                                  current.selectedDefinition?.id ||
+                              previous.isLoading != current.isLoading;
+                        },
+                        builder: _buildReportList,
+                      ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child:
+                      BlocBuilder<
+                        ReportDefinitionCubit,
+                        ReportDefinitionState
+                      >(
+                        buildWhen: (previous, current) {
+                          return previous.selectedDefinition?.id !=
+                                  current.selectedDefinition?.id ||
+                              previous.resultRows != current.resultRows ||
+                              previous.isRunning != current.isRunning ||
+                              previous.runError != current.runError;
+                        },
+                        builder: _buildReportPreview,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -98,9 +141,9 @@ class _ReportsPageState extends State<ReportsPage> {
         OutlinedButton.icon(
           onPressed: state.resultRows.isEmpty
               ? null
-              : () => _exportCsv(context, state),
+              : () => _exportExcel(context, state),
           icon: const Icon(Icons.download_outlined, size: 17),
-          label: const Text('Export CSV'),
+          label: const Text('Export Excel'),
         ),
       ],
     );
@@ -288,24 +331,37 @@ class _ReportsPageState extends State<ReportsPage> {
             ],
             const SizedBox(height: 12),
             Expanded(
-              child: state.resultRows.isEmpty
-                  ? _EmptyReportPanel(
-                      title: 'No Data Loaded',
-                      message:
-                          'Click Run to execute this report and show the preview.',
-                      compact: true,
-                    )
-                  : AppTable<Map<String, Object?>>(
-                      data: rows,
-                      columns: columns,
-                      emptyMessage: 'No rows match the current search',
-                      pageable: Pageable(
-                        page: 0,
-                        size: rows.length,
-                        totalPages: rows.isEmpty ? 0 : 1,
-                        totalItems: rows.length,
-                      ),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: state.resultRows.isEmpty
+                        ? _EmptyReportPanel(
+                            title: 'No Data Loaded',
+                            message:
+                                'Click Run to execute this report and show the preview.',
+                            compact: true,
+                          )
+                        : AppTable<Map<String, Object?>>(
+                            data: rows,
+                            columns: columns,
+                            emptyMessage: 'No rows match the current search',
+                            pageable: Pageable(
+                              page: 0,
+                              size: rows.length,
+                              totalPages: rows.isEmpty ? 0 : 1,
+                              totalItems: rows.length,
+                            ),
+                          ),
+                  ),
+                  if (state.isRunning)
+                    const Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: LinearProgressIndicator(minHeight: 2),
                     ),
+                ],
+              ),
             ),
           ],
         ),
@@ -326,7 +382,7 @@ class _ReportsPageState extends State<ReportsPage> {
     }
   }
 
-  Future<void> _exportCsv(
+  Future<void> _exportExcel(
     BuildContext context,
     ReportDefinitionState state,
   ) async {
@@ -337,24 +393,18 @@ class _ReportsPageState extends State<ReportsPage> {
     final rows = _filteredRows(state.resultRows);
     final suggestedName = _safeFileName(selected.fileNamePattern);
     final location = await getSaveLocation(
-      suggestedName: '$suggestedName.csv',
+      suggestedName: generatedFileName('$suggestedName.xls'),
       acceptedTypeGroups: const [
-        XTypeGroup(label: 'CSV file', extensions: ['csv']),
+        XTypeGroup(label: 'Excel file', extensions: ['xls']),
       ],
     );
     if (location == null) return;
 
     try {
-      final buffer = StringBuffer();
-      buffer.writeln(columns.map((column) => _csvCell(column.label)).join(','));
-      for (final row in rows) {
-        buffer.writeln(
-          columns
-              .map((column) => _csvCell(_formatValue(row[column.field])))
-              .join(','),
-        );
-      }
-      await io.File(location.path).writeAsString(buffer.toString(), flush: true);
+      await io.File(location.path).writeAsString(
+        _excelHtml(selected, columns, rows),
+        flush: true,
+      );
       AppToast.showSuccess('Report exported.');
     } catch (e) {
       if (!context.mounted) return;
@@ -446,9 +496,109 @@ class _ReportsPageState extends State<ReportsPage> {
     return text.trim().isEmpty ? '-' : text;
   }
 
-  String _csvCell(String value) {
-    final escaped = value.replaceAll('"', '""');
-    return '"$escaped"';
+  String _excelHtml(
+    ReportDefinition definition,
+    List<ReportColumnDefinition> columns,
+    List<Map<String, Object?>> rows,
+  ) {
+    final exportedAt = _formatDateTime(DateTime.now());
+    final description = definition.description?.trim();
+    final buffer = StringBuffer()
+      ..writeln('<html>')
+      ..writeln('<head>')
+      ..writeln('<meta charset="utf-8">')
+      ..writeln('<style>')
+      ..writeln('body{font-family:Calibri,Arial,sans-serif;color:#1F2937;}')
+      ..writeln('table{border-collapse:collapse;width:100%;}')
+      ..writeln(
+        '.title{font-size:20px;font-weight:700;color:#1F2937;text-align:left;}',
+      )
+      ..writeln('.meta-label{font-weight:700;color:#6B7280;width:140px;}')
+      ..writeln('.meta-value{color:#1F2937;}')
+      ..writeln(
+        'th{background:#48CFCB;color:#FFFFFF;font-weight:700;border:1px solid #2BA7A3;padding:8px;text-align:left;}',
+      )
+      ..writeln(
+        'td{border:1px solid #E5E7EB;padding:7px;vertical-align:top;mso-number-format:"\\@";}',
+      )
+      ..writeln('tr.alt td{background:#F8FAFB;}')
+      ..writeln('.right{text-align:right;}')
+      ..writeln('.center{text-align:center;}')
+      ..writeln('</style>')
+      ..writeln('</head>')
+      ..writeln('<body>')
+      ..writeln('<table>')
+      ..writeln(
+        '<tr><td class="title" colspan="${columns.length.clamp(1, 99)}">${_html(definition.name)}</td></tr>',
+      )
+      ..writeln(
+        '<tr><td class="meta-label">Report Code</td><td class="meta-value" colspan="${(columns.length - 1).clamp(1, 98)}">${_html(definition.code)}</td></tr>',
+      );
+
+    if (description != null && description.isNotEmpty) {
+      buffer.writeln(
+        '<tr><td class="meta-label">Description</td><td class="meta-value" colspan="${(columns.length - 1).clamp(1, 98)}">${_html(description)}</td></tr>',
+      );
+    }
+
+    buffer
+      ..writeln(
+        '<tr><td class="meta-label">Exported At</td><td class="meta-value" colspan="${(columns.length - 1).clamp(1, 98)}">${_html(exportedAt)}</td></tr>',
+      )
+      ..writeln(
+        '<tr><td class="meta-label">Total Rows</td><td class="meta-value" colspan="${(columns.length - 1).clamp(1, 98)}">${rows.length}</td></tr>',
+      )
+      ..writeln('<tr></tr>')
+      ..writeln('<tr>');
+
+    for (final column in columns) {
+      buffer.writeln(
+        '<th style="width:${column.width}px">${_html(column.label)}</th>',
+      );
+    }
+    buffer.writeln('</tr>');
+
+    for (var index = 0; index < rows.length; index++) {
+      final row = rows[index];
+      buffer.writeln('<tr${index.isOdd ? ' class="alt"' : ''}>');
+      for (final column in columns) {
+        final alignClass = switch (column.align) {
+          'right' => ' class="right"',
+          'center' => ' class="center"',
+          _ => '',
+        };
+        buffer.writeln(
+          '<td$alignClass>${_html(_formatValue(row[column.field]))}</td>',
+        );
+      }
+      buffer.writeln('</tr>');
+    }
+
+    buffer
+      ..writeln('</table>')
+      ..writeln('</body>')
+      ..writeln('</html>');
+
+    return buffer.toString();
+  }
+
+  String _html(String value) {
+    return value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;')
+        .replaceAll('\n', '<br>');
+  }
+
+  String _formatDateTime(DateTime value) {
+    final year = value.year.toString().padLeft(4, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$year-$month-$day $hour:$minute';
   }
 
   String _safeFileName(String pattern) {

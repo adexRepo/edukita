@@ -14,14 +14,20 @@ class AppLoadingStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 160),
-      child: isLoading
-          ? Padding(
-              padding: EdgeInsets.only(top: topPadding, bottom: bottomPadding),
-              child: const LinearProgressIndicator(minHeight: 2),
-            )
-          : const SizedBox.shrink(),
+    return SizedBox(
+      height: topPadding + 2 + bottomPadding,
+      child: Padding(
+        padding: EdgeInsets.only(top: topPadding, bottom: bottomPadding),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 140),
+          child: isLoading
+              ? const LinearProgressIndicator(
+                  key: ValueKey('loading'),
+                  minHeight: 2,
+                )
+              : const SizedBox(key: ValueKey('idle'), height: 2),
+        ),
+      ),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:edukita/features/schools/domain/class_cubit.dart';
 import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_toast.dart';
@@ -26,8 +27,9 @@ class _ClassesPageState extends State<ClassesPage> {
     BuildContext context, {
     SchoolClass? existingClass,
   }) async {
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'class_form_${existingClass?.id ?? 'new'}',
       builder: (context) => ClassFormDialog(
         schoolClass: existingClass,
         onSave: (schoolClass) async {
@@ -44,8 +46,9 @@ class _ClassesPageState extends State<ClassesPage> {
 
   Future<void> _confirmDelete(BuildContext context, String id) async {
     final cubit = context.read<ClassCubit>();
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_class_$id',
       builder: (context) {
         return AlertDialog(
           title: const AppDialogTitle('Delete Class'),

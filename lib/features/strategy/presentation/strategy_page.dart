@@ -1,10 +1,12 @@
 import 'dart:io' as io;
 
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/utils/generated_file_name.dart';
 import 'package:edukita/features/strategy/data/strategy_model.dart';
 import 'package:edukita/features/strategy/domain/strategy_cubit.dart';
 import 'package:edukita/features/strategy/presentation/strategy_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_table.dart';
@@ -42,8 +44,9 @@ class _StrategyPageState extends State<StrategyPage> {
     BuildContext context, {
     Strategy? existingStrategy,
   }) async {
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'strategy_form_${existingStrategy?.id ?? 'new'}',
       builder: (context) => StrategyFormDialog(
         strategy: existingStrategy,
         onSave: (strategy) async {
@@ -60,8 +63,9 @@ class _StrategyPageState extends State<StrategyPage> {
 
   Future<void> _confirmDelete(BuildContext context, String id) async {
     final cubit = context.read<StrategyCubit>();
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_strategy_$id',
       builder: (context) {
         return AlertDialog(
           title: const AppDialogTitle('Delete Strategy'),
@@ -111,7 +115,7 @@ class _StrategyPageState extends State<StrategyPage> {
 
     final fileName = strategy.sampleFileName ?? p.basename(sourcePath);
     final location = await getSaveLocation(
-      suggestedName: fileName,
+      suggestedName: generatedFileName(fileName),
       acceptedTypeGroups: const [
         XTypeGroup(
           label: 'Strategy sample file',

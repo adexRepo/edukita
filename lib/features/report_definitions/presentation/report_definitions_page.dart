@@ -8,6 +8,7 @@ import 'package:edukita/features/report_definitions/presentation/report_definiti
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_error_dialog.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
@@ -275,20 +276,21 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
                       : AppColors.textSecondary,
                 ),
               ),
-              IconButton(
-                tooltip: 'Delete report setting',
-                onPressed: () => _confirmDelete(context, definition),
-                constraints: const BoxConstraints.tightFor(
-                  width: 28,
-                  height: 28,
+              if (!definition.isDefaultSeed)
+                IconButton(
+                  tooltip: 'Delete report setting',
+                  onPressed: () => _confirmDelete(context, definition),
+                  constraints: const BoxConstraints.tightFor(
+                    width: 28,
+                    height: 28,
+                  ),
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 16,
+                    color: AppColors.error,
+                  ),
                 ),
-                padding: EdgeInsets.zero,
-                icon: const Icon(
-                  Icons.delete_outline,
-                  size: 16,
-                  color: AppColors.error,
-                ),
-              ),
             ],
           ),
         ),
@@ -335,8 +337,9 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
   }) async {
     _searchDebounce?.cancel();
     final cubit = context.read<ReportDefinitionCubit>();
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'report_definition_form_${definition?.id ?? 'new'}',
       builder: (_) => BlocProvider.value(
         value: cubit,
         child: ReportDefinitionFormDialog(
@@ -351,17 +354,20 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
     BuildContext context,
     ReportDefinition definition,
   ) async {
+    final cubit = context.read<ReportDefinitionCubit>();
     try {
-      await context.read<ReportDefinitionCubit>().setActive(
+      await cubit.setActive(
         definition,
         !definition.isActive,
       );
+      if (!context.mounted) return;
       AppToast.showSuccess(
         definition.isActive
             ? 'Report setting deactivated.'
             : 'Report setting activated.',
       );
     } catch (e) {
+      if (!context.mounted) return;
       showErrorToastWithDetails(
         context,
         title: 'Failed to update report',
@@ -374,8 +380,10 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
     BuildContext context,
     ReportDefinition definition,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final cubit = context.read<ReportDefinitionCubit>();
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_report_definition_${definition.id}',
       builder: (context) => AlertDialog(
         title: const AppDialogTitle('Delete Report Setting'),
         content: Text(
@@ -396,12 +404,14 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
     if (confirmed != true) return;
 
     try {
-      await context.read<ReportDefinitionCubit>().deleteDefinition(definition);
+      await cubit.deleteDefinition(definition);
+      if (!context.mounted) return;
       AppToast.showSubmissionSuccess(
         action: SubmissionAction.delete,
         subject: 'report setting',
       );
     } catch (e) {
+      if (!context.mounted) return;
       showErrorToastWithDetails(
         context,
         title: 'Failed to delete report',

@@ -27,6 +27,13 @@ class ReportDefinition {
   final String createdAt;
   final String updatedAt;
 
+  bool get isDefaultSeed {
+    final match = RegExp(r'^RPT(\d{4})$').firstMatch(code.toUpperCase());
+    if (match == null) return false;
+    final number = int.tryParse(match.group(1) ?? '');
+    return number != null && number >= 1 && number <= 8;
+  }
+
   factory ReportDefinition.fromMap(Map<String, Object?> map) {
     return ReportDefinition(
       id: map['id']?.toString() ?? '',

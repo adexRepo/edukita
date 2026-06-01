@@ -10,7 +10,7 @@ Widget buildTitleBar(
   BuildContext context, {
   String? pageTitle,
 }) {
-  final isLoginPage = selectedIndex == -1;
+  final isLoginPage = selectedIndex == -1 && pageTitle == null;
   final hasSelectedPage =
       selectedIndex >= 0 && selectedIndex < navigationPageItems.length;
 

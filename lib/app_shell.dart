@@ -27,13 +27,17 @@ class _AppShellState extends State<AppShell> {
   static const List<_SidebarItem> _menuItems = [
     _SidebarItem(
       label: 'Dashboard',
-      icon: Icons.dashboard_outlined,
+      icon: Icons.space_dashboard_outlined,
       route: '/dashboard',
     ),
-    _SidebarItem(label: 'Students', icon: Icons.school, route: '/students'),
+    _SidebarItem(
+      label: 'Students',
+      icon: Icons.groups_outlined,
+      route: '/students',
+    ),
     _SidebarItem(
       label: 'Teachers',
-      icon: Icons.person_outline,
+      icon: Icons.co_present_outlined,
       route: '/teachers',
     ),
     _SidebarItem(
@@ -41,20 +45,24 @@ class _AppShellState extends State<AppShell> {
       icon: Icons.tune_outlined,
       route: '/parameters',
     ),
-    _SidebarItem(label: 'Schedule', icon: Icons.schedule, route: '/schedules'),
+    _SidebarItem(
+      label: 'Schedule',
+      icon: Icons.calendar_month_outlined,
+      route: '/schedules',
+    ),
     _SidebarItem(
       label: 'Teaching Activity',
-      icon: Icons.assignment_turned_in_outlined,
+      icon: Icons.fact_check_outlined,
       route: '/teaching-activities',
     ),
     _SidebarItem(
       label: 'Assistance Programs',
-      icon: Icons.handshake_outlined,
+      icon: Icons.volunteer_activism_outlined,
       route: '/assistance-programs',
     ),
     _SidebarItem(
       label: 'Reports',
-      icon: Icons.bar_chart_outlined,
+      icon: Icons.analytics_outlined,
       route: '/reports',
     ),
   ];
@@ -67,13 +75,14 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     _loadMenuOrder();
+    _loadAuthSession();
   }
 
   int _getSelectedIndex(String location) {
     for (int i = 0; i < _orderedMenuItems.length; i++) {
       if (location.startsWith(_orderedMenuItems[i].route)) return i;
     }
-    return 0;
+    return -1;
   }
 
   Future<void> _logout(BuildContext context) async {
@@ -148,6 +157,12 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
+  Future<void> _loadAuthSession() async {
+    final session = await AuthSessionCache.instance.read();
+    if (!mounted) return;
+    if (session == null) setState(() {});
+  }
+
   Future<io.File> _menuOrderFile() async {
     final dir = io.Directory(await AppStoragePaths.databaseDirectory());
     return io.File(p.join(dir.path, 'sidebar_menu_order.json'));
@@ -189,7 +204,9 @@ class _AppShellState extends State<AppShell> {
     final selectedIndex = _getSelectedIndex(location);
     final pageTitle = location.startsWith('/settings')
         ? 'Settings'
-        : _orderedMenuItems[selectedIndex].label;
+        : selectedIndex >= 0
+            ? _orderedMenuItems[selectedIndex].label
+            : '';
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -338,7 +355,7 @@ class _PrimaryRailState extends State<_PrimaryRail> {
           Padding(
             padding: const EdgeInsets.fromLTRB(6, 8, 6, 4),
             child: Tooltip(
-              message: 'Settings',
+              message: 'Preferences',
               waitDuration: const Duration(seconds: 1),
               child: MouseRegion(
                 onEnter: (_) => setState(() => _settingsHovered = true),

@@ -1,6 +1,7 @@
 import 'package:edukita/features/teaching_activity/data/teaching_activity_data.dart';
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_detail_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_error_dialog.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
@@ -59,10 +60,15 @@ class _TeachingActivityDetailPageState
 
           final isCancelled =
               detail.activity.status == TeachingActivityStatus.cancelled;
+          final readOnly =
+              isCancelled ||
+              detail.activity.status == TeachingActivityStatus.completed;
           Future<void> showSessionNotesDialog() async {
             final cubit = context.read<TeachingActivityDetailCubit>();
-            await showDialog<void>(
+            await showGuardedDialog<void>(
               context: context,
+              guardKey:
+                  'session_notes_${detail.activity.activityId ?? detail.activity.scheduleId}',
               builder: (dialogContext) => AlertDialog(
                 title: const Text('Session Notes'),
                 content: SizedBox(
@@ -72,6 +78,7 @@ class _TeachingActivityDetailPageState
                       detail: detail,
                       framed: false,
                       cubit: cubit,
+                      disabled: readOnly,
                     ),
                   ),
                 ),
@@ -126,6 +133,7 @@ class _TeachingActivityDetailPageState
                             await context
                                 .read<TeachingActivityDetailCubit>()
                                 .completeActivity();
+                            if (!context.mounted) return;
                             AppToast.showSuccess('Teaching report completed.');
                           } catch (_) {}
                         },
@@ -159,6 +167,7 @@ class _TeachingActivityDetailPageState
                 final compactHeight = constraints.maxHeight < 660;
                 final overview = _SessionOverview(
                   detail: detail,
+                  readOnly: readOnly,
                   onEditSessionNotes: showSessionNotesDialog,
                 );
                 final workspace = _TeachingSessionWorkspace(
@@ -200,10 +209,12 @@ class _TeachingActivityDetailPageState
 class _SessionOverview extends StatelessWidget {
   const _SessionOverview({
     required this.detail,
+    required this.readOnly,
     required this.onEditSessionNotes,
   });
 
   final TeachingActivityDetailData detail;
+  final bool readOnly;
   final VoidCallback onEditSessionNotes;
 
   @override
@@ -229,9 +240,7 @@ class _SessionOverview extends StatelessWidget {
                 ),
               ),
               OutlinedButton.icon(
-                onPressed: activity.status == TeachingActivityStatus.cancelled
-                    ? null
-                    : onEditSessionNotes,
+                onPressed: readOnly ? null : onEditSessionNotes,
                 icon: const Icon(Icons.edit_note_outlined, size: 18),
                 label: const Text('Session Note'),
               ),
@@ -306,9 +315,7 @@ class _SessionOverview extends StatelessWidget {
                 icon: Icons.donut_large_outlined,
                 trailing: IconButton(
                   tooltip: 'Edit session note',
-                  onPressed: activity.status == TeachingActivityStatus.cancelled
-                      ? null
-                      : onEditSessionNotes,
+                  onPressed: readOnly ? null : onEditSessionNotes,
                   icon: const Icon(Icons.edit_note_outlined, size: 16),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints.tightFor(
@@ -377,6 +384,7 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
 
   bool get _disabled =>
       widget.detail.activity.status == TeachingActivityStatus.cancelled ||
+      widget.detail.activity.status == TeachingActivityStatus.completed ||
       widget.detail.activity.activityId == null;
 
   ClassStudentOption? get _selectedStudent {
@@ -1035,8 +1043,11 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
   }
 
   Future<void> _showNoteHistory(ClassStudentOption student) async {
-    await showDialog<void>(
+    final activityKey =
+        widget.detail.activity.activityId ?? widget.detail.activity.scheduleId;
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'student_note_history_${activityKey}_${student.id}',
       builder: (_) => _StudentNoteHistoryDialog(
         student: student,
         notes: widget.detail.studentNotes
@@ -1411,8 +1422,9 @@ class _StudentNoteHistoryDialog extends StatelessWidget {
                           final navigator = Navigator.of(context);
                           final rootContext = navigator.context;
                           navigator.pop();
-                          showDialog<void>(
+                          showGuardedDialog<void>(
                             context: rootContext,
+                            guardKey: 'edit_student_note_${note.id}',
                             builder: (_) => _StudentNoteDialog(
                               student: student,
                               note: note,
@@ -1673,6 +1685,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
     final activityId = widget.detail.activity.activityId;
     final disabled =
         widget.detail.activity.status == TeachingActivityStatus.cancelled ||
+        widget.detail.activity.status == TeachingActivityStatus.completed ||
         activityId == null;
 
     final header = _Panel(
@@ -2038,7 +2051,8 @@ class _AssessmentTabState extends State<_AssessmentTab> {
   @override
   Widget build(BuildContext context) {
     final disabled =
-        widget.detail.activity.status == TeachingActivityStatus.cancelled;
+        widget.detail.activity.status == TeachingActivityStatus.cancelled ||
+        widget.detail.activity.status == TeachingActivityStatus.completed;
     final filteredStudents = _filteredStudents;
     final typeLabel = _label(_assessmentType);
     final scoreLabel = _usesNumericScore ? 'Default score' : 'Default rating';
@@ -2361,13 +2375,17 @@ class _AssessmentTabState extends State<_AssessmentTab> {
 
   Future<void> _openStudentNoteDialog(ClassStudentOption student) async {
     final cubit = context.read<TeachingActivityDetailCubit>();
-    await showDialog<void>(
+    final activityKey =
+        widget.detail.activity.activityId ?? widget.detail.activity.scheduleId;
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'student_note_${activityKey}_${student.id}',
       builder: (_) => _StudentNoteDialog(
         student: student,
         cubit: cubit,
         disabled:
-            widget.detail.activity.status == TeachingActivityStatus.cancelled,
+            widget.detail.activity.status == TeachingActivityStatus.cancelled ||
+            widget.detail.activity.status == TeachingActivityStatus.completed,
       ),
     );
   }
@@ -2482,45 +2500,12 @@ class _AssessmentStudentRow extends StatelessWidget {
   }
 }
 
-class _OverallSessionTab extends StatelessWidget {
-  const _OverallSessionTab({required this.detail});
-
-  final TeachingActivityDetailData detail;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SessionNotesForm(detail: detail);
-  }
-}
-
-class _NotesTab extends StatelessWidget {
-  const _NotesTab({required this.detail});
-
-  final TeachingActivityDetailData detail;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxHeight < 360) {
-          return ListView(
-            children: [
-              SizedBox(height: 620, child: _StudentNotesPanel(detail: detail)),
-            ],
-          );
-        }
-
-        return _StudentNotesPanel(detail: detail);
-      },
-    );
-  }
-}
-
 class _SessionNotesForm extends StatefulWidget {
   const _SessionNotesForm({
     required this.detail,
     this.framed = true,
     this.cubit,
+    required bool disabled,
   });
 
   final TeachingActivityDetailData detail;
@@ -2566,7 +2551,8 @@ class _SessionNotesFormState extends State<_SessionNotesForm> {
   @override
   Widget build(BuildContext context) {
     final disabled =
-        widget.detail.activity.status == TeachingActivityStatus.cancelled;
+        widget.detail.activity.status == TeachingActivityStatus.cancelled ||
+        widget.detail.activity.status == TeachingActivityStatus.completed;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -2759,7 +2745,8 @@ class _StudentNotesPanelState extends State<_StudentNotesPanel> {
   @override
   Widget build(BuildContext context) {
     final disabled =
-        widget.detail.activity.status == TeachingActivityStatus.cancelled;
+        widget.detail.activity.status == TeachingActivityStatus.cancelled ||
+        widget.detail.activity.status == TeachingActivityStatus.completed;
 
     return Column(
       children: [
@@ -2838,14 +2825,16 @@ class _StudentNotesPanelState extends State<_StudentNotesPanel> {
           studentNo: '-',
           fullName: note.studentName ?? '-',
         );
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'edit_student_note_${note.id}',
       builder: (_) => _StudentNoteDialog(
         student: student,
         note: note,
         cubit: context.read<TeachingActivityDetailCubit>(),
         disabled:
-            widget.detail.activity.status == TeachingActivityStatus.cancelled,
+            widget.detail.activity.status == TeachingActivityStatus.cancelled ||
+            widget.detail.activity.status == TeachingActivityStatus.completed,
       ),
     );
   }
@@ -3539,8 +3528,9 @@ final List<TextInputFormatter> _numericScoreInputFormatters = [
 ];
 
 Future<bool> _confirmDelete(BuildContext context, String message) async {
-  final result = await showDialog<bool>(
+  final result = await showGuardedDialog<bool>(
     context: context,
+    guardKey: 'teaching_confirm_delete_${message.hashCode}',
     builder: (context) {
       return AlertDialog(
         title: const Text('Confirm Delete'),
@@ -3566,8 +3556,9 @@ Future<bool> _confirmDelete(BuildContext context, String message) async {
 }
 
 Future<bool> _confirmResetReport(BuildContext context) async {
-  final result = await showDialog<bool>(
+  final result = await showGuardedDialog<bool>(
     context: context,
+    guardKey: 'teaching_reset_report',
     builder: (context) {
       return AlertDialog(
         title: const Text('Reset Teaching Report?'),
@@ -3595,8 +3586,9 @@ Future<bool> _confirmResetReport(BuildContext context) async {
 }
 
 Future<bool> _confirmAssessmentTypeChange(BuildContext context) async {
-  final result = await showDialog<bool>(
+  final result = await showGuardedDialog<bool>(
     context: context,
+    guardKey: 'teaching_assessment_type_change',
     builder: (context) {
       return AlertDialog(
         title: const Text('Change Assessment Type?'),

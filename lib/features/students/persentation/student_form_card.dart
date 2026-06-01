@@ -10,6 +10,7 @@ import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/students/data/student_advanced_form_data.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/editable_dropdown_field.dart';
@@ -531,8 +532,9 @@ class _StudentFormCardState extends State<StudentFormCard> {
   }
 
   Future<void> _showGuardianDraftDialog({int? index}) async {
-    final result = await showDialog<_GuardianDraft>(
+    final result = await showGuardedDialog<_GuardianDraft>(
       context: context,
+      guardKey: 'student_guardian_draft_${index ?? 'new'}',
       builder: (dialogContext) => _GuardianDraftDialog(
         initialDraft: index == null ? null : _guardianDrafts[index],
         defaultPrimary: _visibleGuardianEntries().isEmpty,
@@ -561,8 +563,9 @@ class _StudentFormCardState extends State<StudentFormCard> {
   }
 
   Future<void> _showActivityDraftDialog({int? index}) async {
-    final result = await showDialog<_ActivityDraft>(
+    final result = await showGuardedDialog<_ActivityDraft>(
       context: context,
+      guardKey: 'student_activity_draft_${index ?? 'new'}',
       builder: (dialogContext) => _ActivityDraftDialog(
         initialDraft: index == null ? null : _activityDrafts[index],
       ),
@@ -1059,48 +1062,6 @@ class _StudentFormCardState extends State<StudentFormCard> {
           _showAdvancedDetail ? 'Hide Advanced Detail' : 'Advanced Detail',
         ),
       ),
-    );
-  }
-
-  Widget _healthSection() {
-    return _FormSection(
-      title: 'Health',
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: _bloodTypeController,
-                decoration: const InputDecoration(labelText: 'Blood Type'),
-                textCapitalization: TextCapitalization.characters,
-                inputFormatters: [LengthLimitingTextInputFormatter(5)],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextFormField(
-                controller: _allergiesController,
-                decoration: const InputDecoration(labelText: 'Allergies'),
-                inputFormatters: [LengthLimitingTextInputFormatter(160)],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        TextFormField(
-          controller: _medicalNotesController,
-          decoration: const InputDecoration(labelText: 'Medical Notes'),
-          maxLines: 3,
-          inputFormatters: [LengthLimitingTextInputFormatter(240)],
-        ),
-        const SizedBox(height: 14),
-        TextFormField(
-          controller: _disabilitiesController,
-          decoration: const InputDecoration(labelText: 'Disabilities'),
-          maxLines: 2,
-          inputFormatters: [LengthLimitingTextInputFormatter(160)],
-        ),
-      ],
     );
   }
 

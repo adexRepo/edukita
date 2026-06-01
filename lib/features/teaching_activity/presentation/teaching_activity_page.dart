@@ -1,8 +1,10 @@
+import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/schools/data/school_level_option.dart';
 import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:edukita/features/teaching_activity/data/teaching_activity_data.dart';
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_error_dialog.dart';
 import 'package:edukita/widgets/app_loading.dart';
@@ -22,17 +24,21 @@ class TeachingActivityPage extends StatefulWidget {
 
 class _TeachingActivityPageState extends State<TeachingActivityPage> {
   late DateTime _focusedMonth;
+  late int _cacheRevision;
+  bool _refreshScheduled = false;
 
   @override
   void initState() {
     super.initState();
     final now = DateTime.now();
     _focusedMonth = DateTime(now.year, now.month);
+    _cacheRevision = getIt<TeachingActivityCacheService>().revision;
     context.read<TeachingActivityCubit>().loadActivities();
   }
 
   @override
   Widget build(BuildContext context) {
+    _refreshIfCacheChanged(context);
     return BlocListener<TeachingActivityCubit, TeachingActivityState>(
       listenWhen: (previous, current) =>
           previous.openActivityId != current.openActivityId ||
@@ -137,6 +143,24 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
 
   DateTime _parseDate(String? value) {
     return DateTime.tryParse(value ?? '') ?? DateTime.now();
+  }
+
+  void _refreshIfCacheChanged(BuildContext context) {
+    final currentRevision = getIt<TeachingActivityCacheService>().revision;
+    if (currentRevision == _cacheRevision || _refreshScheduled) return;
+
+    _refreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      _cacheRevision = currentRevision;
+      try {
+        await context.read<TeachingActivityCubit>().loadActivities(
+              forceRefresh: true,
+            );
+      } finally {
+        _refreshScheduled = false;
+      }
+    });
   }
 }
 
@@ -671,8 +695,9 @@ class _ActionButtons extends StatelessWidget {
     BuildContext context,
     TeachingActivityListItem item,
   ) async {
-    final result = await showDialog<_CancelSessionResult>(
+    final result = await showGuardedDialog<_CancelSessionResult>(
       context: context,
+      guardKey: 'cancel_teaching_session_${item.scheduleId}_${item.activityId ?? ''}',
       builder: (_) => const _CancelSessionDialog(),
     );
     if (result == null || !context.mounted) return;

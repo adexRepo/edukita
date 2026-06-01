@@ -133,28 +133,6 @@ class _ReportDefinitionFormDialogState
       children: [
         Row(
           children: [
-            SizedBox(
-              width: 180,
-              child: TextFormField(
-                controller: _codeController,
-                style: _compactInputStyle,
-                textCapitalization: TextCapitalization.characters,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9_]')),
-                ],
-                validator: (value) {
-                  if (value?.trim().isEmpty ?? true) {
-                    return 'Report code is required';
-                  }
-                  return null;
-                },
-                decoration: _compactDecoration(
-                  label: 'Report Code *',
-                  hint: 'STUDENT_EXAM_SCORE',
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
             Expanded(
               child: TextFormField(
                 controller: _nameController,
@@ -206,15 +184,41 @@ class _ReportDefinitionFormDialogState
           ],
         ),
         const SizedBox(height: 8),
-        TextFormField(
-          controller: _descriptionController,
-          style: _compactInputStyle,
-          minLines: 1,
-          maxLines: 2,
-          decoration: _compactDecoration(
-            label: 'Description',
-            hint: 'Short purpose of this report',
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 160,
+              child: InputDecorator(
+                decoration: _compactDecoration(
+                  label: 'Report Code',
+                  hint: 'Auto generated',
+                ),
+                child: Text(
+                  widget.definition?.code ?? 'Auto',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextFormField(
+                controller: _descriptionController,
+                style: _compactInputStyle,
+                minLines: 1,
+                maxLines: 2,
+                decoration: _compactDecoration(
+                  label: 'Description',
+                  hint: 'Short purpose of this report',
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

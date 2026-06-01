@@ -6,6 +6,7 @@ import 'package:edukita/features/assistance/programs/domain/assistance_program_c
 import 'package:edukita/features/assistance/programs/presentation/assistance_program_form_dialog.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
@@ -378,8 +379,9 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
         ? const <AssistanceProgramBenefit>[]
         : cubit.state.benefitsByProgramId[program.id] ??
               const <AssistanceProgramBenefit>[];
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'assistance_program_form_${program?.id ?? 'new'}',
       builder: (_) => BlocProvider.value(
         value: cubit,
         child: AssistanceProgramFormDialog(

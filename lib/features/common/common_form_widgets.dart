@@ -226,6 +226,7 @@ class CommonFormWidgets {
     required String label,
     int? value,
     required Function(int?) onSaved,
+    ValueChanged<int?>? onChanged,
     String? Function(String?)? validator,
     bool isRequired = false,
   }) {
@@ -234,6 +235,11 @@ class CommonFormWidgets {
       onSaved: (value) {
         onSaved(value != null && value.isNotEmpty ? int.parse(value) : null);
       },
+      onChanged: onChanged == null
+          ? null
+          : (value) => onChanged(
+                value.isNotEmpty ? int.tryParse(value) : null,
+              ),
       validator:
           validator ??
           (value) {
@@ -261,6 +267,7 @@ class CommonFormWidgets {
     required String label,
     double? value,
     required Function(double?) onSaved,
+    ValueChanged<double?>? onChanged,
     String? Function(String?)? validator,
     bool isRequired = false,
   }) {
@@ -269,6 +276,11 @@ class CommonFormWidgets {
       onSaved: (value) {
         onSaved(value != null && value.isNotEmpty ? double.parse(value) : null);
       },
+      onChanged: onChanged == null
+          ? null
+          : (value) => onChanged(
+                value.isNotEmpty ? double.tryParse(value) : null,
+              ),
       validator:
           validator ??
           (value) {

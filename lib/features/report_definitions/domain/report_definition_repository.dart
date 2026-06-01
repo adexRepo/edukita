@@ -33,7 +33,7 @@ class ReportDefinitionRepository {
       'report_definitions',
       where: where.isEmpty ? null : where.join(' AND '),
       whereArgs: args.isEmpty ? null : args,
-      orderBy: 'is_active DESC, name COLLATE NOCASE',
+      orderBy: 'code COLLATE NOCASE ASC',
     );
     return rows.map(ReportDefinition.fromMap).toList();
   }
@@ -41,11 +41,9 @@ class ReportDefinitionRepository {
   Future<void> saveDefinition(ReportDefinition definition) async {
     final db = await _dbProvider.database;
     await db.transaction((txn) async {
-      _validateDefinition(definition);
-      await _validateUniqueCode(txn, definition.code, definition.id);
       final existing = await txn.query(
         'report_definitions',
-        columns: const ['id', 'created_at'],
+        columns: const ['id', 'code', 'created_at'],
         where: 'id = ?',
         whereArgs: [definition.id],
         limit: 1,
@@ -55,9 +53,21 @@ class ReportDefinitionRepository {
       final createdAt = existing.isEmpty
           ? now
           : existing.first['created_at']?.toString() ?? definition.createdAt;
+      final effectiveCode = definition.code.trim().isNotEmpty
+          ? definition.code.trim().toUpperCase()
+          : existing.isEmpty
+          ? await _nextReportCode(txn)
+          : existing.first['code']?.toString() ?? await _nextReportCode(txn);
+      final normalized = definition.copyWith(
+        code: effectiveCode,
+        createdAt: createdAt,
+        updatedAt: now,
+      );
+      _validateDefinition(normalized);
+      await _validateUniqueCode(txn, effectiveCode, definition.id);
       final values = definition
           .copyWith(
-            code: definition.code.trim().toUpperCase(),
+            code: effectiveCode,
             createdAt: createdAt,
             updatedAt: now,
           )
@@ -188,9 +198,6 @@ class ReportDefinitionRepository {
   }
 
   void _validateDefinition(ReportDefinition definition) {
-    if (definition.code.trim().isEmpty) {
-      throw StateError('Report code is required.');
-    }
     if (definition.name.trim().isEmpty) {
       throw StateError('Report name is required.');
     }
@@ -215,6 +222,22 @@ class ReportDefinitionRepository {
     if (rows.isNotEmpty) {
       throw StateError('Report code already exists.');
     }
+  }
+
+  Future<String> _nextReportCode(DatabaseExecutor db) async {
+    final rows = await db.query(
+      'report_definitions',
+      columns: const ['code'],
+    );
+    var maxNo = 0;
+    for (final row in rows) {
+      final code = row['code']?.toString() ?? '';
+      final match = RegExp(r'^RPT(\d{4,})$').firstMatch(code.toUpperCase());
+      if (match == null) continue;
+      final number = int.tryParse(match.group(1) ?? '') ?? 0;
+      if (number > maxNo) maxNo = number;
+    }
+    return 'RPT${(maxNo + 1).toString().padLeft(4, '0')}';
   }
 
   String _validateSelectQuery(String querySql) {

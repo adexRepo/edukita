@@ -1,4 +1,5 @@
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:flutter/material.dart';
 
 enum FilterOperator { isEqual, isNot, contains, hasAnyValue }
@@ -69,8 +70,9 @@ class _MultiFilterButtonState extends State<MultiFilterButton> {
   List<MultiFilterItem> activeFilters = [];
 
   Future<void> _openFilter() async {
-    final result = await showDialog<List<MultiFilterItem>>(
+    final result = await showGuardedDialog<List<MultiFilterItem>>(
       context: context,
+      guardKey: 'multi_filter_${widget.title}',
       builder: (_) => MultiFilterDialog(
         title: widget.title,
         fields: widget.fields,

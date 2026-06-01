@@ -1,6 +1,7 @@
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
@@ -161,8 +162,9 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   }
 
   Future<bool?> _confirmTypeChange(SchoolType newType) {
-    return showDialog<bool>(
+    return showGuardedDialog<bool>(
       context: context,
+      guardKey: 'school_form_change_type_${_type.name}_${newType.name}',
       builder: (dialogContext) => AlertDialog(
         title: const AppDialogTitle('Change School Type'),
         content: Text(
@@ -256,8 +258,9 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   Future<void> _removeAllClassDrafts() async {
     if (!_hasUserClassDrafts) return;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'school_form_clear_classes',
       builder: (dialogContext) => AlertDialog(
         title: const AppDialogTitle('Clear Classes'),
         content: const Text(
@@ -281,8 +284,9 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   }
 
   Future<void> _showClassDraftDialog({int? index}) async {
-    final result = await showDialog<_ClassDraft>(
+    final result = await showGuardedDialog<_ClassDraft>(
       context: context,
+      guardKey: 'school_form_class_draft_${index ?? 'new'}',
       builder: (dialogContext) => _ClassDraftDialog(
         type: _type,
         autoName: _autoClassName,

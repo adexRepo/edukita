@@ -4,9 +4,11 @@ import 'dart:io' as io;
 import 'dart:typed_data';
 
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/utils/generated_file_name.dart';
 import 'package:edukita/features/assistance/plans/data/assistance_plan_models.dart';
 import 'package:edukita/features/assistance/plans/domain/assistance_plan_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
@@ -216,8 +218,9 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
     AssistanceRule? rule,
   }) async {
     final cubit = context.read<AssistancePlanCubit>();
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'assistance_rule_form_${rule?.id ?? 'new'}',
       builder: (_) =>
           _AssistanceRuleDialog(rule: rule, onSave: cubit.saveAssistanceRule),
     );
@@ -640,8 +643,9 @@ class _PeriodsTab extends StatelessWidget {
     AssistancePeriod? period,
   }) async {
     final cubit = context.read<AssistancePlanCubit>();
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'assistance_period_form_${period?.id ?? 'new'}',
       builder: (_) => _AssistancePeriodDialog(
         period: period,
         onSave:
@@ -686,8 +690,9 @@ class _PeriodsTab extends StatelessWidget {
     BuildContext context,
     AssistancePeriod period,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_assistance_period_${period.id}',
       builder: (dialogContext) => AlertDialog(
         title: const AppDialogTitle('Delete Period'),
         content: Text(
@@ -873,8 +878,9 @@ class _AssistanceRulesTab extends StatelessWidget {
     AssistanceRule? rule,
   }) async {
     final cubit = context.read<AssistancePlanCubit>();
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'assistance_rule_form_${rule?.id ?? 'new'}',
       builder: (_) =>
           _AssistanceRuleDialog(rule: rule, onSave: cubit.saveAssistanceRule),
     );
@@ -993,8 +999,9 @@ class _FixedPriorityTab extends StatelessWidget {
     StudentAssistanceRule? rule,
   }) async {
     final cubit = context.read<AssistancePlanCubit>();
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'student_assistance_rule_form_${rule?.id ?? 'new'}',
       builder: (_) => _FixedPriorityRuleDialog(
         students: state.students,
         rule: rule,
@@ -1007,8 +1014,9 @@ class _FixedPriorityTab extends StatelessWidget {
     BuildContext context,
     StudentAssistanceRule rule,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_student_assistance_rule_${rule.id}',
       builder: (dialogContext) => AlertDialog(
         title: const AppDialogTitle('Delete Student Rule'),
         content: Text('Delete rule for ${rule.studentName ?? 'this student'}?'),
@@ -1183,8 +1191,9 @@ class _GenerateTab extends StatelessWidget {
                   .map((item) => item.priorityOrder)
                   .reduce((a, b) => a > b ? a : b) +
               1;
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'assistance_period_rule_form_${rule?.id ?? 'new'}',
       builder: (_) => _AssistancePeriodRuleDialog(
         periodId: period.id,
         rule: rule,
@@ -1199,8 +1208,9 @@ class _GenerateTab extends StatelessWidget {
     BuildContext context,
     AssistancePeriodRule rule,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_assistance_period_rule_${rule.id}',
       builder: (dialogContext) => AlertDialog(
         title: const AppDialogTitle('Delete Allocation Rule'),
         content: Text(
@@ -1236,8 +1246,9 @@ class _GenerateTab extends StatelessWidget {
   ) async {
     final period = state.selectedPeriod;
     if (period == null) return;
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'manual_assistance_candidates_${rule.id}',
       builder: (_) => _ManualCandidateDialog(
         periodId: period.id,
         rule: rule,
@@ -1257,8 +1268,9 @@ class _GenerateTab extends StatelessWidget {
     var proceed = true;
     if (state.summary.assessmentCount > 0) {
       proceed =
-          await showDialog<bool>(
+          await showGuardedDialog<bool>(
             context: context,
+            guardKey: 'regenerate_assistance_plan_${period.id}',
             builder: (dialogContext) => AlertDialog(
               title: const AppDialogTitle('Regenerate Assistance Plan?'),
               content: const Text(
@@ -1417,7 +1429,6 @@ class _RuleAllocationPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final remaining = targetQuota - allocatedQuota;
-    final valid = remaining >= 0;
     return Container(
       constraints: const BoxConstraints(maxHeight: 260),
       padding: const EdgeInsets.all(12),
@@ -1609,7 +1620,9 @@ class _AssessmentTab extends StatelessWidget {
     final safePeriod = _safeFileName(periodLabel.toLowerCase());
     final isPdf = format == _RecipientExportFormat.pdf;
     final location = await getSaveLocation(
-      suggestedName: 'assistance-plan-$safePeriod.${isPdf ? 'pdf' : 'xls'}',
+      suggestedName: generatedFileName(
+        'assistance-plan-$safePeriod.${isPdf ? 'pdf' : 'xls'}',
+      ),
       acceptedTypeGroups: [
         XTypeGroup(
           label: isPdf ? 'PDF' : 'Excel',
@@ -1877,8 +1890,9 @@ class _RecipientsTab extends StatelessWidget {
     final periodLabel = state.selectedPeriod?.label ?? 'All Periods';
     final safePeriod = _safeFileName(periodLabel.toLowerCase());
     final isPdf = format == _RecipientExportFormat.pdf;
-    final suggestedName =
-        'assistance-recipients-$safePeriod.${isPdf ? 'pdf' : 'xls'}';
+    final suggestedName = generatedFileName(
+      'assistance-recipients-$safePeriod.${isPdf ? 'pdf' : 'xls'}',
+    );
     final typeGroup = XTypeGroup(
       label: isPdf ? 'PDF' : 'Excel',
       extensions: [isPdf ? 'pdf' : 'xls'],
@@ -2422,8 +2436,9 @@ class _AssessmentGroup extends StatelessWidget {
                         tooltip: 'Manual override',
                         onPressed: locked
                             ? null
-                            : () => showDialog<void>(
+                            : () => showGuardedDialog<void>(
                                 context: context,
+                                guardKey: 'assessment_override_${item.id}',
                                 builder: (_) => _AssessmentOverrideDialog(
                                   assessment: item,
                                   onSave: context
@@ -2898,8 +2913,8 @@ class _AssistancePeriodDialogState extends State<_AssistancePeriodDialog> {
       text: '${widget.period?.calculationWindowMonths ?? 3}',
     );
     _minAttendanceController = TextEditingController(
-      text:
-          '${(widget.period?.minimumAttendancePercentage ?? 75).toStringAsFixed(0)}',
+      text: (widget.period?.minimumAttendancePercentage ?? 75)
+          .toStringAsFixed(0),
     );
     _allowOverride = widget.period?.allowManualOverrideBelowAttendance ?? true;
   }
@@ -3194,9 +3209,8 @@ class _AssistancePeriodRuleDialogState
                 if (_ruleType == AssistanceRuleType.customRule) ...[
                   const SizedBox(height: 12),
                   AppDropdownButtonFormField<String>(
-                    initialValue: _selectedAssistanceRuleId == null
-                        ? newCustomRuleValue
-                        : _selectedAssistanceRuleId,
+                    initialValue:
+                        _selectedAssistanceRuleId ?? newCustomRuleValue,
                     isExpanded: false,
                     decoration: const InputDecoration(labelText: 'Rule Master'),
                     items: [

@@ -32,6 +32,7 @@ class AuthSessionCache {
   Future<void> save({
     required String userId,
     required String username,
+    required String role,
     String? fullName,
     String? nickName,
   }) async {
@@ -40,6 +41,7 @@ class AuthSessionCache {
     final session = AuthSession(
       userId: userId,
       username: username,
+      role: role,
       fullName: fullName,
       nickName: nickName,
       expiresAt: DateTime.now().add(sessionTtl),
@@ -64,6 +66,7 @@ class AuthSession {
   const AuthSession({
     required this.userId,
     required this.username,
+    required this.role,
     required this.expiresAt,
     this.fullName,
     this.nickName,
@@ -71,14 +74,18 @@ class AuthSession {
 
   final String userId;
   final String username;
+  final String role;
   final String? fullName;
   final String? nickName;
   final DateTime expiresAt;
+
+  bool get isAdmin => role.toLowerCase() == 'admin' || username == 'admin';
 
   factory AuthSession.fromJson(Map<String, dynamic> json) {
     return AuthSession(
       userId: json['user_id']?.toString() ?? '',
       username: json['username']?.toString() ?? '',
+      role: json['role']?.toString() ?? 'user',
       fullName: json['full_name']?.toString(),
       nickName: json['nick_name']?.toString(),
       expiresAt:
@@ -91,6 +98,7 @@ class AuthSession {
     return {
       'user_id': userId,
       'username': username,
+      'role': role,
       'full_name': fullName,
       'nick_name': nickName,
       'expires_at': expiresAt.toIso8601String(),

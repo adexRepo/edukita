@@ -12,6 +12,12 @@ class AppSettingsData {
     required this.exportFilePrefix,
     required this.minimumAttendancePercentage,
     required this.defaultDashboardRange,
+    required this.language,
+    required this.themeMode,
+    required this.uiDensity,
+    required this.dateFormat,
+    required this.timeFormat,
+    required this.numberFormat,
   });
 
   final String foundationName;
@@ -20,6 +26,12 @@ class AppSettingsData {
   final String exportFilePrefix;
   final double minimumAttendancePercentage;
   final String defaultDashboardRange;
+  final String language;
+  final String themeMode;
+  final String uiDensity;
+  final String dateFormat;
+  final String timeFormat;
+  final String numberFormat;
 
   AppSettingsData copyWith({
     String? foundationName,
@@ -28,6 +40,12 @@ class AppSettingsData {
     String? exportFilePrefix,
     double? minimumAttendancePercentage,
     String? defaultDashboardRange,
+    String? language,
+    String? themeMode,
+    String? uiDensity,
+    String? dateFormat,
+    String? timeFormat,
+    String? numberFormat,
   }) {
     return AppSettingsData(
       foundationName: foundationName ?? this.foundationName,
@@ -37,6 +55,12 @@ class AppSettingsData {
       minimumAttendancePercentage:
           minimumAttendancePercentage ?? this.minimumAttendancePercentage,
       defaultDashboardRange: defaultDashboardRange ?? this.defaultDashboardRange,
+      language: language ?? this.language,
+      themeMode: themeMode ?? this.themeMode,
+      uiDensity: uiDensity ?? this.uiDensity,
+      dateFormat: dateFormat ?? this.dateFormat,
+      timeFormat: timeFormat ?? this.timeFormat,
+      numberFormat: numberFormat ?? this.numberFormat,
     );
   }
 
@@ -47,6 +71,12 @@ class AppSettingsData {
     exportFilePrefix: 'edukita',
     minimumAttendancePercentage: 75,
     defaultDashboardRange: 'monthly',
+    language: 'en',
+    themeMode: 'light',
+    uiDensity: 'normal',
+    dateFormat: 'yyyy-MM-dd',
+    timeFormat: '24h',
+    numberFormat: 'id_ID',
   );
 }
 
@@ -78,6 +108,12 @@ class SettingsRepository {
           defaults.minimumAttendancePercentage,
       defaultDashboardRange:
           values['default_dashboard_range'] ?? defaults.defaultDashboardRange,
+      language: values['language'] ?? defaults.language,
+      themeMode: values['theme_mode'] ?? defaults.themeMode,
+      uiDensity: values['ui_density'] ?? defaults.uiDensity,
+      dateFormat: values['date_format'] ?? defaults.dateFormat,
+      timeFormat: values['time_format'] ?? defaults.timeFormat,
+      numberFormat: values['number_format'] ?? defaults.numberFormat,
     );
   }
 
@@ -93,6 +129,12 @@ class SettingsRepository {
       'minimum_attendance_percentage':
           settings.minimumAttendancePercentage.toStringAsFixed(2),
       'default_dashboard_range': settings.defaultDashboardRange,
+      'language': settings.language,
+      'theme_mode': settings.themeMode,
+      'ui_density': settings.uiDensity,
+      'date_format': settings.dateFormat,
+      'time_format': settings.timeFormat,
+      'number_format': settings.numberFormat,
     };
 
     await db.transaction((txn) async {

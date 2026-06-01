@@ -2,6 +2,7 @@ import 'package:edukita/features/assistance/programs/presentation/assistance_pro
 import 'package:edukita/features/report_definitions/presentation/report_definitions_page.dart';
 import 'package:edukita/features/schools/presentation/schools_page.dart';
 import 'package:edukita/features/assistance/plans/presentation/assistance_rules_page.dart';
+import 'package:edukita/features/parameters/presentation/system_config_page.dart';
 import 'package:edukita/features/syllabus/presentation/syllabus_page.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_page_header.dart';
@@ -126,6 +127,10 @@ class _ParameterPageState extends State<ParameterPage> {
 
     if (_selectedTitle == 'Reports') {
       return const ReportDefinitionsPage(embedded: true);
+    }
+
+    if (_selectedTitle == 'Config') {
+      return const SystemConfigPage();
     }
 
     return DecoratedBox(

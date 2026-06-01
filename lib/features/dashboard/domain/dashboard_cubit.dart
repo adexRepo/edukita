@@ -1076,8 +1076,8 @@ class DashboardCubit extends Cubit<DashboardStat> {
             studentName: row['full_name']?.toString() ?? '-',
             studentNo: row['student_no']?.toString() ?? '-',
             reason: 'Academic score below 70',
-            value:
-                '${((row['avg_score'] as num?)?.toDouble() ?? 0).toStringAsFixed(0)}',
+            value: ((row['avg_score'] as num?)?.toDouble() ?? 0)
+                .toStringAsFixed(0),
           ),
         );
       }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:edukita/features/assistance/programs/data/assistance_program_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
@@ -390,8 +391,9 @@ class _AssistanceProgramFormDialogState
     AssistanceProgramBenefit? benefit,
     int? index,
   }) async {
-    final result = await showDialog<AssistanceProgramBenefit>(
+    final result = await showGuardedDialog<AssistanceProgramBenefit>(
       context: context,
+      guardKey: 'assistance_benefit_${benefit?.id ?? 'new'}',
       builder: (context) => BenefitPackageDialog(
         benefit: benefit,
         programId: widget.program?.id ?? '',
@@ -703,8 +705,9 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
     AssistanceProgramBenefitItem? item,
     int? index,
   }) async {
-    final result = await showDialog<AssistanceProgramBenefitItem>(
+    final result = await showGuardedDialog<AssistanceProgramBenefitItem>(
       context: context,
+      guardKey: 'assistance_benefit_item_${item?.id ?? 'new'}',
       builder: (context) =>
           BenefitItemDialog(item: item, benefitId: widget.benefit?.id ?? ''),
     );

@@ -5,7 +5,6 @@ import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/painting.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:window_manager/window_manager.dart';
 

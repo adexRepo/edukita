@@ -6,7 +6,9 @@ import 'package:edukita/features/schools/domain/school_cubit.dart';
 import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
 import 'package:edukita/features/schools/presentation/school_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_dialog_skeleton.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
@@ -52,60 +54,92 @@ class _SchoolsPageState extends State<SchoolsPage> {
   }
 
   Future<void> _showSchoolFormDialog({School? school}) async {
-    final schoolCubit = context.read<SchoolCubit>();
-    final classCubit = context.read<ClassCubit>();
-    final isEditing = school != null;
-    final classes = isEditing
-        ? await classCubit.getClassesBySchool(school.id)
-        : <SchoolClass>[];
+    await AppActionGuard.run(
+      'school_form_load_${school?.id ?? 'new'}',
+      () async {
+        final schoolCubit = context.read<SchoolCubit>();
+        final classCubit = context.read<ClassCubit>();
+        final isEditing = school != null;
+        final classes = isEditing
+            ? await classCubit.getClassesBySchool(school.id)
+            : <SchoolClass>[];
 
-    if (!mounted) return;
+        if (!mounted) return;
 
-    await showDialog<void>(
-      context: context,
-      builder: (context) => SchoolFormDialog(
-        school: school,
-        initialClasses: classes,
-        onSave: (school, classes) async {
-          if (isEditing) {
-            await schoolCubit.updateSchoolWithClasses(school, classes);
-          } else {
-            await schoolCubit.addSchoolWithClasses(school, classes);
-          }
-          await _refreshClassCounts();
-        },
-      ),
+        await showGuardedDialog<void>(
+          context: context,
+          guardKey: 'school_form_${school?.id ?? 'new'}',
+          builder: (context) => SchoolFormDialog(
+            school: school,
+            initialClasses: classes,
+            onSave: (school, classes) async {
+              if (isEditing) {
+                await schoolCubit.updateSchoolWithClasses(school, classes);
+              } else {
+                await schoolCubit.addSchoolWithClasses(school, classes);
+              }
+              await _refreshClassCounts();
+            },
+          ),
+        );
+      },
     );
   }
 
   Future<void> _showClassDialog(School school) async {
     final classCubit = context.read<ClassCubit>();
-    final classes = await classCubit.getClassesBySchool(school.id);
+    final classesFuture = classCubit.getClassesBySchool(school.id);
 
-    if (!mounted) return;
-
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
-      builder: (dialogContext) => _SchoolClassesDialog(
-        school: school,
-        classes: classes,
-        onAdd: () async {
-          await _showClassFormDialog(school: school);
-          if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-          await _showClassDialog(school);
-        },
-        onEdit: (schoolClass) async {
-          await _showClassFormDialog(school: school, schoolClass: schoolClass);
-          if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-          await _showClassDialog(school);
-        },
-        onDelete: (schoolClass) async {
-          final deleted = await _confirmDeleteClass(schoolClass);
-          if (!deleted) return;
-          if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-          await _showClassDialog(school);
-        },
-      ),
+      guardKey: 'school_classes_${school.id}',
+      builder: (dialogContext) {
+        return FutureBuilder<List<SchoolClass>>(
+          future: classesFuture,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return AlertDialog(
+                title: AppDialogTitle('Classes - ${school.name ?? '-'}'),
+                content: const SizedBox(
+                  width: 720,
+                  height: 180,
+                  child: AppDialogSkeleton(rows: 6),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Close'),
+                  ),
+                ],
+              );
+            }
+
+            return _SchoolClassesDialog(
+              school: school,
+              classes: snapshot.data ?? const [],
+              onAdd: () async {
+                await _showClassFormDialog(school: school);
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                await _showClassDialog(school);
+              },
+              onEdit: (schoolClass) async {
+                await _showClassFormDialog(
+                  school: school,
+                  schoolClass: schoolClass,
+                );
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                await _showClassDialog(school);
+              },
+              onDelete: (schoolClass) async {
+                final deleted = await _confirmDeleteClass(schoolClass);
+                if (!deleted) return;
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                await _showClassDialog(school);
+              },
+            );
+          },
+        );
+      },
     );
   }
 
@@ -115,8 +149,9 @@ class _SchoolsPageState extends State<SchoolsPage> {
   }) async {
     final classCubit = context.read<ClassCubit>();
 
-    await showDialog<void>(
+    await showGuardedDialog<void>(
       context: context,
+      guardKey: 'class_form_${schoolClass?.id ?? 'new_${school.id}'}',
       builder: (context) => ClassFormDialog(
         schoolClass: schoolClass,
         schoolType: school.type,
@@ -134,8 +169,9 @@ class _SchoolsPageState extends State<SchoolsPage> {
   }
 
   Future<bool> _confirmDeleteClass(SchoolClass schoolClass) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_class_${schoolClass.id}',
       builder: (dialogContext) => AlertDialog(
         title: const AppDialogTitle('Delete Class'),
         content: Text('Delete ${schoolClass.name}?'),
@@ -171,8 +207,9 @@ class _SchoolsPageState extends State<SchoolsPage> {
   }
 
   Future<void> _confirmDeleteSchool(School school) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'delete_school_${school.id}',
       builder: (dialogContext) => AlertDialog(
         title: const AppDialogTitle('Delete School'),
         content: Text('Delete ${school.name ?? 'this school'}?'),

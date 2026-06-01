@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -177,8 +178,9 @@ class _LevelFilterButton extends StatelessWidget {
   Future<void> _openLevelDialog(BuildContext context) async {
     final cubit = context.read<DashboardCubit>();
     final selected = state.levels.toSet();
-    final result = await showDialog<List<int>>(
+    final result = await showGuardedDialog<List<int>>(
       context: context,
+      guardKey: 'dashboard_level_picker',
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
