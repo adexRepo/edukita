@@ -35,6 +35,7 @@ class AuthSessionCache {
     required String role,
     String? fullName,
     String? nickName,
+    String? teacherId,
   }) async {
     final file = await _sessionFile();
     await file.parent.create(recursive: true);
@@ -44,6 +45,7 @@ class AuthSessionCache {
       role: role,
       fullName: fullName,
       nickName: nickName,
+      teacherId: teacherId,
       expiresAt: DateTime.now().add(sessionTtl),
     );
     await file.writeAsString(jsonEncode(session.toJson()), flush: true);
@@ -70,6 +72,7 @@ class AuthSession {
     required this.expiresAt,
     this.fullName,
     this.nickName,
+    this.teacherId,
   });
 
   final String userId;
@@ -77,9 +80,12 @@ class AuthSession {
   final String role;
   final String? fullName;
   final String? nickName;
+  final String? teacherId;
   final DateTime expiresAt;
 
-  bool get isAdmin => role.toLowerCase() == 'admin' || username == 'admin';
+  bool get isAdmin => role.toUpperCase() == 'ADMIN' || username == 'admin';
+  bool get isStaff => role.toUpperCase() == 'STAFF';
+  bool get isTeacher => role.toUpperCase() == 'TEACHER';
 
   factory AuthSession.fromJson(Map<String, dynamic> json) {
     return AuthSession(
@@ -88,6 +94,7 @@ class AuthSession {
       role: json['role']?.toString() ?? 'user',
       fullName: json['full_name']?.toString(),
       nickName: json['nick_name']?.toString(),
+      teacherId: json['teacher_id']?.toString(),
       expiresAt:
           DateTime.tryParse(json['expires_at']?.toString() ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
@@ -101,6 +108,7 @@ class AuthSession {
       'role': role,
       'full_name': fullName,
       'nick_name': nickName,
+      'teacher_id': teacherId,
       'expires_at': expiresAt.toIso8601String(),
     };
   }

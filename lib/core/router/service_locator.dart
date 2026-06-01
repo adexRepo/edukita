@@ -25,6 +25,8 @@ import 'package:edukita/features/teachers/domain/teacher_repository.dart';
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_cubit.dart';
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_detail_cubit.dart';
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_repository.dart';
+import 'package:edukita/features/users/domain/user_management_cubit.dart';
+import 'package:edukita/features/users/domain/user_management_repository.dart';
 import 'package:get_it/get_it.dart';
 import '../database/database_provider.dart';
 import '../../features/students/domain/student_repository.dart';
@@ -62,6 +64,9 @@ Future<void> setupLocator() async {
   getIt.registerLazySingleton<SettingsRepository>(() => SettingsRepository(db));
   getIt.registerLazySingleton<TeachingActivityRepository>(
     () => TeachingActivityRepository(db),
+  );
+  getIt.registerLazySingleton<UserManagementRepository>(
+    () => UserManagementRepository(db),
   );
   getIt.registerLazySingleton<DashboardCacheService>(
     () => DashboardCacheService(),
@@ -189,5 +194,9 @@ Future<void> setupLocator() async {
       getIt<TeachingActivityRepository>(),
       getIt<TeachingActivityCacheService>(),
     ),
+  );
+
+  getIt.registerFactory<UserManagementCubit>(
+    () => UserManagementCubit(getIt<UserManagementRepository>()),
   );
 }

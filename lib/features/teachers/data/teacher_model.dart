@@ -9,6 +9,7 @@ class Teacher {
     this.gender,
     this.email,
     this.mobileNo,
+    this.appUserId,
   }) : id = id ?? const Uuid().v4();
 
   final String id;
@@ -18,6 +19,7 @@ class Teacher {
   final String? gender;
   final String? email;
   final String? mobileNo;
+  final String? appUserId;
 
   Teacher copyWith({
     String? id,
@@ -27,6 +29,7 @@ class Teacher {
     String? gender,
     String? email,
     String? mobileNo,
+    String? appUserId,
   }) {
     return Teacher(
       id: id ?? this.id,
@@ -36,6 +39,7 @@ class Teacher {
       gender: gender ?? this.gender,
       email: email ?? this.email,
       mobileNo: mobileNo ?? this.mobileNo,
+      appUserId: appUserId ?? this.appUserId,
     );
   }
 
@@ -48,6 +52,7 @@ class Teacher {
       gender: map['gender'] as String?,
       email: map['email'] as String?,
       mobileNo: map['mobile_no'] as String?,
+      appUserId: map['app_user_id'] as String?,
     );
   }
 
@@ -65,7 +70,7 @@ class Teacher {
 
   @override
   String toString() =>
-      'Teacher(id: $id, nickName: $nickName, fullName: $fullName, lastEducationType: $lastEducationType, gender: $gender, email: $email, mobileNo: $mobileNo)';
+      'Teacher(id: $id, nickName: $nickName, fullName: $fullName, lastEducationType: $lastEducationType, gender: $gender, email: $email, mobileNo: $mobileNo, appUserId: $appUserId)';
 
   @override
   bool operator ==(Object other) =>
@@ -78,7 +83,8 @@ class Teacher {
           lastEducationType == other.lastEducationType &&
           gender == other.gender &&
           email == other.email &&
-          mobileNo == other.mobileNo;
+          mobileNo == other.mobileNo &&
+          appUserId == other.appUserId;
 
   @override
   int get hashCode =>
@@ -88,7 +94,8 @@ class Teacher {
       lastEducationType.hashCode ^
       gender.hashCode ^
       email.hashCode ^
-      mobileNo.hashCode;
+      mobileNo.hashCode ^
+      appUserId.hashCode;
 }
 
 class TeacherDetailData {

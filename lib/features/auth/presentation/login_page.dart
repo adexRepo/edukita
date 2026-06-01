@@ -59,6 +59,7 @@ class _LoginPageState extends State<LoginPage> {
           role: user['role']?.toString() ?? 'user',
           fullName: user['full_name']?.toString(),
           nickName: user['nick_name']?.toString(),
+          teacherId: user['teacher_id']?.toString(),
         );
         widget.onAuthenticated();
         return;
@@ -90,6 +91,7 @@ class _LoginPageState extends State<LoginPage> {
           role: user['role']?.toString() ?? 'user',
           fullName: user['full_name']?.toString(),
           nickName: user['nick_name']?.toString(),
+          teacherId: user['teacher_id']?.toString(),
         );
         widget.onAuthenticated();
       } else {

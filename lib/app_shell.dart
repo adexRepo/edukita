@@ -3,8 +3,11 @@ import 'dart:convert';
 import 'dart:io' as io;
 
 import 'package:edukita/core/storage/app_storage_paths.dart';
+import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/common/title_bar.dart';
+import 'package:edukita/features/users/domain/user_authorization.dart';
+import 'package:edukita/features/users/domain/user_management_repository.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:flutter/material.dart';
@@ -29,45 +32,63 @@ class _AppShellState extends State<AppShell> {
       label: 'Dashboard',
       icon: Icons.space_dashboard_outlined,
       route: '/dashboard',
+      permissionCode: 'dashboard',
     ),
     _SidebarItem(
       label: 'Students',
       icon: Icons.groups_outlined,
       route: '/students',
+      permissionCode: 'students',
     ),
     _SidebarItem(
       label: 'Teachers',
       icon: Icons.co_present_outlined,
       route: '/teachers',
+      permissionCode: 'teachers',
     ),
     _SidebarItem(
       label: 'Parameter',
       icon: Icons.tune_outlined,
       route: '/parameters',
+      permissionCode: 'parameters',
     ),
     _SidebarItem(
       label: 'Schedule',
       icon: Icons.calendar_month_outlined,
       route: '/schedules',
+      permissionCode: 'schedules',
     ),
     _SidebarItem(
       label: 'Teaching Activity',
       icon: Icons.fact_check_outlined,
       route: '/teaching-activities',
+      permissionCode: 'teaching_activities',
     ),
     _SidebarItem(
       label: 'Assistance Programs',
       icon: Icons.volunteer_activism_outlined,
       route: '/assistance-programs',
+      permissionCode: 'assistance_programs',
     ),
     _SidebarItem(
       label: 'Reports',
       icon: Icons.analytics_outlined,
       route: '/reports',
+      permissionCode: 'reports',
+    ),
+    _SidebarItem(
+      label: 'User Management',
+      icon: Icons.manage_accounts_outlined,
+      route: '/users',
+      permissionCode: 'users',
     ),
   ];
 
   late List<_SidebarItem> _orderedMenuItems = List.of(_menuItems);
+  Set<String> _allowedMenuCodes = AppMenuAccessRegistry.defaultCodesForRole(
+    AppUserRole.teacher,
+  );
+  bool _authLoaded = false;
   Timer? _navigationUnlockTimer;
   bool _navigationLocked = false;
 
@@ -79,8 +100,9 @@ class _AppShellState extends State<AppShell> {
   }
 
   int _getSelectedIndex(String location) {
-    for (int i = 0; i < _orderedMenuItems.length; i++) {
-      if (location.startsWith(_orderedMenuItems[i].route)) return i;
+    final visibleItems = _visibleMenuItems;
+    for (int i = 0; i < visibleItems.length; i++) {
+      if (location.startsWith(visibleItems[i].route)) return i;
     }
     return -1;
   }
@@ -160,7 +182,31 @@ class _AppShellState extends State<AppShell> {
   Future<void> _loadAuthSession() async {
     final session = await AuthSessionCache.instance.read();
     if (!mounted) return;
-    if (session == null) setState(() {});
+    if (session == null) {
+      setState(() => _authLoaded = true);
+      return;
+    }
+    try {
+      final allowed = await getIt<UserManagementRepository>()
+          .getAllowedMenuCodesForUser(session.userId);
+      if (!mounted) return;
+      setState(() {
+        _allowedMenuCodes = allowed.isEmpty
+            ? AppMenuAccessRegistry.defaultCodesForRole(
+                AppUserRole.fromValue(session.role),
+              )
+            : allowed;
+        _authLoaded = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _allowedMenuCodes = AppMenuAccessRegistry.defaultCodesForRole(
+          AppUserRole.fromValue(session.role),
+        );
+        _authLoaded = true;
+      });
+    }
   }
 
   Future<io.File> _menuOrderFile() async {
@@ -169,12 +215,41 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _reorderMenu(int oldIndex, int newIndex) {
+    final visibleItems = _visibleMenuItems;
+    if (oldIndex < 0 || oldIndex >= visibleItems.length) return;
     setState(() {
       if (newIndex > oldIndex) newIndex -= 1;
-      final item = _orderedMenuItems.removeAt(oldIndex);
-      _orderedMenuItems.insert(newIndex, item);
+      final item = visibleItems[oldIndex];
+      _orderedMenuItems.removeWhere((menuItem) => menuItem.route == item.route);
+      final targetRoute = newIndex >= visibleItems.length
+          ? null
+          : visibleItems[newIndex].route;
+      final insertIndex = targetRoute == null
+          ? _orderedMenuItems.length
+          : _orderedMenuItems.indexWhere(
+              (menuItem) => menuItem.route == targetRoute,
+            );
+      _orderedMenuItems.insert(
+        insertIndex < 0 ? _orderedMenuItems.length : insertIndex,
+        item,
+      );
     });
     _saveMenuOrder();
+  }
+
+  List<_SidebarItem> get _visibleMenuItems {
+    return _orderedMenuItems
+        .where((item) => _allowedMenuCodes.contains(item.permissionCode))
+        .toList();
+  }
+
+  bool _canAccessLocation(String location) {
+    if (location.startsWith('/settings') || location.startsWith('/login')) {
+      return true;
+    }
+    final menu = AppMenuAccessRegistry.byRoute(location);
+    if (menu == null) return true;
+    return _allowedMenuCodes.contains(menu.code);
   }
 
   void _navigateTo(String route) {
@@ -201,11 +276,18 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final location = GoRouter.of(context).state.uri.path;
+    final visibleMenuItems = _visibleMenuItems;
     final selectedIndex = _getSelectedIndex(location);
+    if (_authLoaded && !_canAccessLocation(location)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.go('/dashboard');
+      });
+    }
     final pageTitle = location.startsWith('/settings')
         ? 'Settings'
         : selectedIndex >= 0
-            ? _orderedMenuItems[selectedIndex].label
+            ? visibleMenuItems[selectedIndex].label
             : '';
 
     return Scaffold(
@@ -218,7 +300,7 @@ class _AppShellState extends State<AppShell> {
               children: [
                 _PrimaryRail(
                   width: _railWidth,
-                  items: _orderedMenuItems,
+                  items: visibleMenuItems,
                   selectedIndex: selectedIndex,
                   location: location,
                   navigationLocked: _navigationLocked,
@@ -472,9 +554,11 @@ class _SidebarItem {
     required this.label,
     required this.icon,
     required this.route,
+    required this.permissionCode,
   });
 
   final String label;
   final IconData icon;
   final String route;
+  final String permissionCode;
 }

@@ -255,8 +255,39 @@ class _TeachersPageState extends State<TeachersPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Actions',
+          title: 'App User',
           flex: 2,
+          minWidth: 120,
+          cell: (teacher) {
+            final hasUser = teacher.appUserId != null;
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: hasUser
+                      ? AppColors.primary.withValues(alpha: 0.12)
+                      : AppColors.surface,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  hasUser ? 'Linked' : 'No user',
+                  style: TextStyle(
+                    color: hasUser
+                        ? AppColors.primaryDark
+                        : AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        AppTableColumn(
+          title: 'Actions',
+          flex: 3,
+          minWidth: 140,
           cell: (teacher) => Align(
             alignment: Alignment.centerLeft,
             child: Row(
@@ -272,6 +303,20 @@ class _TeachersPageState extends State<TeachersPage> {
                   ),
                   padding: EdgeInsets.zero,
                   icon: const Icon(Icons.edit, size: 16),
+                ),
+                IconButton(
+                  tooltip: teacher.appUserId == null
+                      ? 'Create app user'
+                      : 'Teacher already has app user',
+                  onPressed: teacher.appUserId == null
+                      ? () => context.push('/users', extra: teacher)
+                      : null,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 28,
+                    height: 28,
+                  ),
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
                 ),
                 IconButton(
                   tooltip: 'Delete teacher',

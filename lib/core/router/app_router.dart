@@ -30,6 +30,8 @@ import 'package:edukita/features/teaching_activity/domain/teaching_activity_cubi
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_detail_cubit.dart';
 import 'package:edukita/features/teaching_activity/presentation/teaching_activity_detail_page.dart';
 import 'package:edukita/features/teaching_activity/presentation/teaching_activity_page.dart';
+import 'package:edukita/features/users/domain/user_management_cubit.dart';
+import 'package:edukita/features/users/presentation/users_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -236,6 +238,21 @@ final GoRouter appRouter = GoRouter(
               ),
             ),
           ],
+        ),
+        GoRoute(
+          path: '/users',
+          pageBuilder: (context, state) {
+            final initialTeacher = state.extra is Teacher
+                ? state.extra as Teacher
+                : null;
+            return _noTransitionPage(
+              state: state,
+              child: withCubit(
+                create: () => getIt<UserManagementCubit>()..load(),
+                child: UsersPage(initialTeacher: initialTeacher),
+              ),
+            );
+          },
         ),
         GoRoute(
           path: '/reports',

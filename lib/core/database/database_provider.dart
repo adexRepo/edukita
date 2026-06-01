@@ -122,7 +122,7 @@ class DatabaseProvider {
     await DatabaseSeed.ensureAdmin(db);
     final result = await db.query(
       'users',
-      where: 'username = ? AND password = ?',
+      where: 'username = ? AND password = ? AND COALESCE(is_active, 1) = 1',
       whereArgs: [username.trim(), password.trim()],
       limit: 1,
     );

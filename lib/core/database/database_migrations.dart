@@ -122,14 +122,147 @@ class DatabaseMigrations {
       db,
       table: 'users',
       column: 'role',
-      definition: "TEXT NOT NULL DEFAULT 'user'",
+      definition: "TEXT NOT NULL DEFAULT 'STAFF'",
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'users',
+      column: 'teacher_id',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'users',
+      column: 'is_active',
+      definition: 'INTEGER NOT NULL DEFAULT 1',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'users',
+      column: 'created_by',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'users',
+      column: 'created_at',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'users',
+      column: 'updated_at',
+      definition: 'TEXT',
+    );
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS role_menu_permissions(
+        id TEXT PRIMARY KEY NOT NULL,
+        role TEXT NOT NULL,
+        menu_code TEXT NOT NULL,
+        can_view INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(role, menu_code)
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS user_menu_permission_overrides(
+        id TEXT PRIMARY KEY NOT NULL,
+        user_id TEXT NOT NULL,
+        menu_code TEXT NOT NULL,
+        can_view INTEGER NOT NULL DEFAULT 1,
+        created_by TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, menu_code),
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_users_teacher_id ON users(teacher_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_role_menu_permissions_role ON role_menu_permissions(role)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_user_menu_overrides_user ON user_menu_permission_overrides(user_id)',
     );
     await db.update(
       'users',
-      {'role': 'admin'},
+      {'role': 'ADMIN', 'is_active': 1},
       where: 'username = ?',
       whereArgs: ['admin'],
     );
+    await db.update(
+      'users',
+      {'role': 'STAFF'},
+      where: 'LOWER(role) = ?',
+      whereArgs: ['user'],
+    );
+    await db.update(
+      'users',
+      {'role': 'STAFF'},
+      where: 'LOWER(role) = ?',
+      whereArgs: ['staff'],
+    );
+    await db.update(
+      'users',
+      {'role': 'TEACHER'},
+      where: 'LOWER(role) = ?',
+      whereArgs: ['teacher'],
+    );
+
+    await _seedRoleMenuPermissions(db);
+  }
+
+  static Future<void> _seedRoleMenuPermissions(Database db) async {
+    const defaults = <String, List<String>>{
+      'ADMIN': [
+        'dashboard',
+        'students',
+        'teachers',
+        'parameters',
+        'schedules',
+        'teaching_activities',
+        'assistance_programs',
+        'reports',
+        'users',
+      ],
+      'STAFF': [
+        'dashboard',
+        'students',
+        'teachers',
+        'schedules',
+        'teaching_activities',
+        'assistance_programs',
+        'reports',
+        'users',
+      ],
+      'TEACHER': [
+        'dashboard',
+        'schedules',
+        'teaching_activities',
+      ],
+    };
+    final now = DateTime.now().toIso8601String();
+    for (final entry in defaults.entries) {
+      for (final menuCode in entry.value) {
+        await db.rawInsert(
+          '''
+          INSERT OR IGNORE INTO role_menu_permissions
+          (id, role, menu_code, can_view, created_at, updated_at)
+          VALUES (?, ?, ?, 1, ?, ?)
+          ''',
+          ['${entry.key}:$menuCode', entry.key, menuCode, now, now],
+        );
+      }
+    }
   }
 
   static Future<void> _fixUsers(Database db) async {

@@ -24,7 +24,8 @@ class DatabaseSeed {
         'password': 'admin',
         'nick_name': 'Admin',
         'full_name': 'Administrator',
-        'role': 'admin',
+        'role': 'ADMIN',
+        'is_active': 1,
       });
     } else {
       await db.update(
@@ -33,7 +34,8 @@ class DatabaseSeed {
           'password': 'admin',
           'nick_name': 'Admin',
           'full_name': 'Administrator',
-          'role': 'admin',
+          'role': 'ADMIN',
+          'is_active': 1,
         },
         where: 'username = ?',
         whereArgs: ['admin'],
@@ -51,7 +53,8 @@ class DatabaseSeed {
         'password': 'user',
         'nick_name': 'User',
         'full_name': 'Standard User',
-        'role': 'user',
+        'role': 'STAFF',
+        'is_active': 1,
       });
     } else {
       await db.update(
@@ -60,10 +63,11 @@ class DatabaseSeed {
           'password': 'user',
           'nick_name': 'User',
           'full_name': 'Standard User',
-          'role': 'user',
+          'role': 'STAFF',
+          'is_active': 1,
         },
         where: 'username = ? AND role != ?',
-        whereArgs: ['user', 'admin'],
+        whereArgs: ['user', 'ADMIN'],
       );
     }
   }

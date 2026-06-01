@@ -9,13 +9,28 @@ class TeacherRepository {
 
   Future<List<Teacher>> getAllTeachers() async {
     final db = await _dbProvider.database;
-    final maps = await db.query('teachers');
+    final maps = await db.rawQuery('''
+      SELECT teacher.*, app_user.id AS app_user_id
+      FROM teachers teacher
+      LEFT JOIN users app_user
+        ON app_user.teacher_id = teacher.id
+       AND COALESCE(app_user.is_active, 1) = 1
+      ORDER BY teacher.full_name ASC
+    ''');
     return maps.map((map) => Teacher.fromMap(map)).toList();
   }
 
   Future<Teacher?> getTeacherById(String id) async {
     final db = await _dbProvider.database;
-    final maps = await db.query('teachers', where: 'id = ?', whereArgs: [id]);
+    final maps = await db.rawQuery('''
+      SELECT teacher.*, app_user.id AS app_user_id
+      FROM teachers teacher
+      LEFT JOIN users app_user
+        ON app_user.teacher_id = teacher.id
+       AND COALESCE(app_user.is_active, 1) = 1
+      WHERE teacher.id = ?
+      LIMIT 1
+    ''', [id]);
     if (maps.isEmpty) {
       return null;
     }
