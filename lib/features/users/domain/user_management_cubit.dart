@@ -10,9 +10,11 @@ class UserManagementState {
     this.users = const [],
     this.availableTeachers = const [],
     this.extraAccessByUser = const {},
+    this.rolePermissions = const {},
     this.currentRole = AppUserRole.teacher,
     this.currentUserId = '',
     this.currentAllowedMenuCodes = const {},
+    this.currentPermissions = const {},
     this.loading = false,
     this.error,
   });
@@ -20,22 +22,39 @@ class UserManagementState {
   final List<User> users;
   final List<Teacher> availableTeachers;
   final Map<String, List<String>> extraAccessByUser;
+  final Map<AppUserRole, Map<String, AppMenuPermission>> rolePermissions;
   final AppUserRole currentRole;
   final String currentUserId;
   final Set<String> currentAllowedMenuCodes;
+  final Map<String, AppMenuPermission> currentPermissions;
   final bool loading;
   final String? error;
 
   List<AppUserRole> get creatableRoles => currentRole.creatableRoles();
-  bool get canCreateUsers => creatableRoles.isNotEmpty;
+  bool get canViewUsers =>
+      currentRole.isAdmin ||
+      (currentPermissions[AppMenuAccessRegistry.users.code]?.canView ?? false);
+  bool get canCreateUsers =>
+      creatableRoles.isNotEmpty &&
+      (currentRole.isAdmin ||
+          (currentPermissions[AppMenuAccessRegistry.users.code]?.canCreate ??
+              false));
+  bool get canUpdateUsers =>
+      currentRole.isAdmin ||
+      (currentPermissions[AppMenuAccessRegistry.users.code]?.canUpdate ?? false);
+  bool get canDeleteUsers =>
+      currentRole.isAdmin ||
+      (currentPermissions[AppMenuAccessRegistry.users.code]?.canDelete ?? false);
 
   UserManagementState copyWith({
     List<User>? users,
     List<Teacher>? availableTeachers,
     Map<String, List<String>>? extraAccessByUser,
+    Map<AppUserRole, Map<String, AppMenuPermission>>? rolePermissions,
     AppUserRole? currentRole,
     String? currentUserId,
     Set<String>? currentAllowedMenuCodes,
+    Map<String, AppMenuPermission>? currentPermissions,
     bool? loading,
     String? error,
   }) {
@@ -43,10 +62,12 @@ class UserManagementState {
       users: users ?? this.users,
       availableTeachers: availableTeachers ?? this.availableTeachers,
       extraAccessByUser: extraAccessByUser ?? this.extraAccessByUser,
+      rolePermissions: rolePermissions ?? this.rolePermissions,
       currentRole: currentRole ?? this.currentRole,
       currentUserId: currentUserId ?? this.currentUserId,
       currentAllowedMenuCodes:
           currentAllowedMenuCodes ?? this.currentAllowedMenuCodes,
+      currentPermissions: currentPermissions ?? this.currentPermissions,
       loading: loading ?? this.loading,
       error: error,
     );
@@ -65,24 +86,44 @@ class UserManagementCubit extends Cubit<UserManagementState> {
       final session = await AuthSessionCache.instance.read();
       final currentRole = AppUserRole.fromValue(session?.role);
       final currentUserId = session?.userId ?? '';
-      final users = await _repository.getUsers();
-      final availableTeachers = await _repository.getTeachersWithoutUsers();
-      final extraAccess = <String, List<String>>{};
-      for (final user in users) {
-        extraAccess[user.id] = await _repository.getUserExtraMenuCodes(user.id);
-      }
-      final currentAllowed = currentUserId.isEmpty
-          ? AppMenuAccessRegistry.defaultCodesForRole(currentRole)
-          : await _repository.getAllowedMenuCodesForUser(currentUserId);
+      final scope = currentUserId.isEmpty || currentRole.isAdmin
+          ? AppAuthorizationScope(
+              role: currentRole.isAdmin ? AppUserRole.admin : currentRole,
+              permissions:
+                  AppMenuAccessRegistry.defaultPermissionsForRole(currentRole),
+            )
+          : await _repository.getAuthorizationScopeForUser(currentUserId);
+      final canViewUsers = scope.canView(AppMenuAccessRegistry.users.code);
+      final users = canViewUsers
+          ? await _repository.getUsers(includeAdmin: currentRole.isAdmin)
+          : const <User>[];
+      final canManageTeacherLinks =
+          scope.canCreate(AppMenuAccessRegistry.users.code) ||
+          scope.canUpdate(AppMenuAccessRegistry.users.code);
+      final availableTeachers = canViewUsers && canManageTeacherLinks
+          ? await _repository.getTeachersWithoutUsers()
+          : const <Teacher>[];
+      final extraAccess = canViewUsers
+          ? await _repository.getAllUserExtraMenuCodes()
+          : const <String, List<String>>{};
+      final rolePermissions = currentRole.isAdmin
+          ? await _repository.getManageableRolePermissions()
+          : const <AppUserRole, Map<String, AppMenuPermission>>{};
+      final currentAllowed = scope.permissions.entries
+          .where((entry) => entry.value.canView)
+          .map((entry) => entry.key)
+          .toSet();
 
       emit(
         state.copyWith(
           users: users,
           availableTeachers: availableTeachers,
           extraAccessByUser: extraAccess,
+          rolePermissions: rolePermissions,
           currentRole: currentRole,
           currentUserId: currentUserId,
           currentAllowedMenuCodes: currentAllowed,
+          currentPermissions: scope.permissions,
           loading: false,
           error: null,
         ),
@@ -112,6 +153,20 @@ class UserManagementCubit extends Cubit<UserManagementState> {
 
   Future<void> setUserActive(String userId, bool active) async {
     await _repository.setUserActive(userId, active);
+    await load();
+  }
+
+  Future<void> saveRolePermissions(
+    AppUserRole role,
+    Map<String, AppMenuPermission> permissions,
+  ) async {
+    if (!state.currentRole.isAdmin) {
+      throw StateError('Only admin can manage role permissions.');
+    }
+    await _repository.saveRolePermissions(
+      role: role,
+      permissions: permissions,
+    );
     await load();
   }
 }

@@ -5,6 +5,8 @@ import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/features/report_definitions/data/report_definition_model.dart';
 import 'package:edukita/features/report_definitions/domain/report_definition_cubit.dart';
 import 'package:edukita/features/report_definitions/presentation/report_definition_form_dialog.dart';
+import 'package:edukita/features/users/domain/user_authorization.dart';
+import 'package:edukita/features/users/presentation/authorization_helpers.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_error_dialog.dart';
@@ -28,6 +30,16 @@ class ReportDefinitionsPage extends StatefulWidget {
 class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
   late final TextEditingController _searchController;
   Timer? _searchDebounce;
+  AppAuthorizationScope _authScope = AppAuthorizationScope(
+    role: AppUserRole.admin,
+    permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+      AppUserRole.admin,
+    ),
+  );
+  bool _authorizationLoaded = false;
+
+  bool get _canUpdateParameters =>
+      _authScope.canUpdate(AppMenuAccessRegistry.parameters.code);
 
   @override
   void initState() {
@@ -37,6 +49,16 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
     if (cubit.state.definitions.isEmpty && !cubit.state.isLoading) {
       cubit.loadDefinitions();
     }
+    _loadAuthorization();
+  }
+
+  Future<void> _loadAuthorization() async {
+    final scope = await loadCurrentAuthorizationScope();
+    if (!mounted) return;
+    setState(() {
+      _authScope = scope;
+      _authorizationLoaded = true;
+    });
   }
 
   @override
@@ -95,7 +117,10 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
           subtitle:
               'Maintain dynamic report definitions, file names, SQL queries, and column display settings.',
           trailing: ElevatedButton.icon(
-            onPressed: () => _openForm(context),
+            onPressed:
+                _authorizationLoaded && _canUpdateParameters
+                    ? () => _openForm(context)
+                    : null,
             icon: const Icon(Icons.add, size: 17),
             label: const Text('Add Report'),
           ),
@@ -250,7 +275,9 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
             children: [
               IconButton(
                 tooltip: 'Edit report',
-                onPressed: () => _openForm(context, definition: definition),
+                onPressed: _authorizationLoaded && _canUpdateParameters
+                    ? () => _openForm(context, definition: definition)
+                    : null,
                 constraints: const BoxConstraints.tightFor(
                   width: 28,
                   height: 28,
@@ -260,7 +287,9 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
               ),
               IconButton(
                 tooltip: definition.isActive ? 'Deactivate' : 'Activate',
-                onPressed: () => _toggleActive(context, definition),
+                onPressed: _authorizationLoaded && _canUpdateParameters
+                    ? () => _toggleActive(context, definition)
+                    : null,
                 constraints: const BoxConstraints.tightFor(
                   width: 28,
                   height: 28,
@@ -279,7 +308,9 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
               if (!definition.isDefaultSeed)
                 IconButton(
                   tooltip: 'Delete report setting',
-                  onPressed: () => _confirmDelete(context, definition),
+                  onPressed: _authorizationLoaded && _canUpdateParameters
+                      ? () => _confirmDelete(context, definition)
+                      : null,
                   constraints: const BoxConstraints.tightFor(
                     width: 28,
                     height: 28,
@@ -335,6 +366,10 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
     BuildContext context, {
     ReportDefinition? definition,
   }) async {
+    if (!_canUpdateParameters) {
+      AppToast.showFailed('You do not have permission to update report settings.');
+      return;
+    }
     _searchDebounce?.cancel();
     final cubit = context.read<ReportDefinitionCubit>();
     await showGuardedDialog<void>(
@@ -354,6 +389,10 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
     BuildContext context,
     ReportDefinition definition,
   ) async {
+    if (!_canUpdateParameters) {
+      AppToast.showFailed('You do not have permission to update report settings.');
+      return;
+    }
     final cubit = context.read<ReportDefinitionCubit>();
     try {
       await cubit.setActive(
@@ -380,6 +419,10 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
     BuildContext context,
     ReportDefinition definition,
   ) async {
+    if (!_canUpdateParameters) {
+      AppToast.showFailed('You do not have permission to delete report settings.');
+      return;
+    }
     final cubit = context.read<ReportDefinitionCubit>();
     final confirmed = await showGuardedDialog<bool>(
       context: context,

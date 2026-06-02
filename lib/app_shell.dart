@@ -186,25 +186,29 @@ class _AppShellState extends State<AppShell> {
       setState(() => _authLoaded = true);
       return;
     }
+
+    final sessionRole = AppUserRole.fromValue(session.role);
+    setState(() {
+      _allowedMenuCodes = AppMenuAccessRegistry.defaultCodesForRole(
+        sessionRole,
+      );
+      _authLoaded = true;
+    });
+    if (sessionRole.isAdmin) return;
+
     try {
       final allowed = await getIt<UserManagementRepository>()
           .getAllowedMenuCodesForUser(session.userId);
       if (!mounted) return;
       setState(() {
         _allowedMenuCodes = allowed.isEmpty
-            ? AppMenuAccessRegistry.defaultCodesForRole(
-                AppUserRole.fromValue(session.role),
-              )
+            ? AppMenuAccessRegistry.defaultCodesForRole(sessionRole)
             : allowed;
-        _authLoaded = true;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _allowedMenuCodes = AppMenuAccessRegistry.defaultCodesForRole(
-          AppUserRole.fromValue(session.role),
-        );
-        _authLoaded = true;
+        _allowedMenuCodes = AppMenuAccessRegistry.defaultCodesForRole(sessionRole);
       });
     }
   }

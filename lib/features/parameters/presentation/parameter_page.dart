@@ -4,6 +4,8 @@ import 'package:edukita/features/schools/presentation/schools_page.dart';
 import 'package:edukita/features/assistance/plans/presentation/assistance_rules_page.dart';
 import 'package:edukita/features/parameters/presentation/system_config_page.dart';
 import 'package:edukita/features/syllabus/presentation/syllabus_page.dart';
+import 'package:edukita/features/users/domain/user_authorization.dart';
+import 'package:edukita/features/users/presentation/authorization_helpers.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:flutter/material.dart';
@@ -55,9 +57,46 @@ class _ParameterPageState extends State<ParameterPage> {
   ];
 
   String _selectedTitle = 'Schools';
+  AppAuthorizationScope _authScope = AppAuthorizationScope(
+    role: AppUserRole.admin,
+    permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+      AppUserRole.admin,
+    ),
+  );
+  bool _authorizationLoaded = false;
+
+  bool get _canViewParameters =>
+      _authScope.canView(AppMenuAccessRegistry.parameters.code);
+  bool get _canUpdateParameters =>
+      _authScope.canUpdate(AppMenuAccessRegistry.parameters.code);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAuthorization();
+  }
+
+  Future<void> _loadAuthorization() async {
+    final scope = await loadCurrentAuthorizationScope();
+    if (!mounted) return;
+    setState(() {
+      _authScope = scope;
+      _authorizationLoaded = true;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (!_authorizationLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (!_canViewParameters) {
+      return const AccessDeniedPanel(
+        message: 'You do not have permission to view parameters.',
+      );
+    }
+
     return Padding(
       padding: AppPageHeaderStyle.pagePadding,
       child: Column(
@@ -130,7 +169,7 @@ class _ParameterPageState extends State<ParameterPage> {
     }
 
     if (_selectedTitle == 'Config') {
-      return const SystemConfigPage();
+      return SystemConfigPage(canUpdate: _canUpdateParameters);
     }
 
     return DecoratedBox(

@@ -47,6 +47,7 @@ class DashboardStat {
     this.assistancePeriods = const <DashboardAssistancePeriod>[],
     this.attentionStudents = const <DashboardAttentionStudent>[],
     this.recentNotes = const <DashboardRecentNote>[],
+    this.topLearners = const <DashboardTopLearner>[],
   });
 
   final bool isLoading;
@@ -79,6 +80,7 @@ class DashboardStat {
   final List<DashboardAssistancePeriod> assistancePeriods;
   final List<DashboardAttentionStudent> attentionStudents;
   final List<DashboardRecentNote> recentNotes;
+  final List<DashboardTopLearner> topLearners;
 
   DashboardStat copyWith({
     bool? isLoading,
@@ -116,6 +118,7 @@ class DashboardStat {
     List<DashboardAssistancePeriod>? assistancePeriods,
     List<DashboardAttentionStudent>? attentionStudents,
     List<DashboardRecentNote>? recentNotes,
+    List<DashboardTopLearner>? topLearners,
   }) {
     return DashboardStat(
       isLoading: isLoading ?? this.isLoading,
@@ -154,6 +157,7 @@ class DashboardStat {
       assistancePeriods: assistancePeriods ?? this.assistancePeriods,
       attentionStudents: attentionStudents ?? this.attentionStudents,
       recentNotes: recentNotes ?? this.recentNotes,
+      topLearners: topLearners ?? this.topLearners,
     );
   }
 }
@@ -281,6 +285,24 @@ class DashboardRecentNote {
   final String date;
 }
 
+class DashboardTopLearner {
+  const DashboardTopLearner({
+    required this.studentId,
+    required this.studentName,
+    required this.studentNo,
+    required this.academicScore,
+    required this.noteScore,
+    required this.points,
+  });
+
+  final String studentId;
+  final String studentName;
+  final String studentNo;
+  final double? academicScore;
+  final double? noteScore;
+  final int points;
+}
+
 class DashboardCacheService {
   DashboardCacheService({
     Duration ttl = const Duration(seconds: 75),
@@ -398,6 +420,11 @@ class DashboardCubit extends Cubit<DashboardStat> {
         end: range.end,
         levels: levels,
       );
+      final topLearners = await _topLearners(
+        start: range.start,
+        end: range.end,
+        levels: levels,
+      );
       final openAssistanceCount = _firstInt(
         await db.rawQuery(
           '''
@@ -441,6 +468,7 @@ class DashboardCubit extends Cubit<DashboardStat> {
           assistancePeriods: assistancePeriods,
           attentionStudents: attentionStudents,
           recentNotes: recentNotes,
+          topLearners: topLearners,
           clearError: true,
       );
       cacheService.put(cacheKey, nextState);
@@ -602,21 +630,65 @@ class DashboardCubit extends Cubit<DashboardStat> {
     required List<int> levels,
   }) async {
     final db = await databaseProvider.database;
+    await _ensureDashboardSubjectColumns();
     final args = <Object?>[start, end];
-    final levelWhere = _studentLevelWhere(levels, args);
+    final teachingLevelWhere = _studentLevelWhere(levels, args);
+    args.addAll([start, end]);
+    final schoolLevelWhere = _studentLevelWhere(levels, args);
+    args.addAll([start, end]);
+    final legacySchoolLevelWhere = _studentLevelWhere(levels, args);
     final rows = await db.rawQuery(
       '''
-      SELECT AVG(COALESCE(score.normalized_score, score.score)) AS avg_score
-      FROM teaching_assessments score
-      INNER JOIN teaching_activities activity
-        ON activity.id = score.teaching_activity_id
-      INNER JOIN students s ON s.id = score.student_id
-      LEFT JOIN classes c ON c.id = s.class_id
-      WHERE activity.activity_date >= ?
-        AND activity.activity_date <= ?
-        AND activity.status <> 'cancelled'
-        AND COALESCE(score.normalized_score, score.score) IS NOT NULL
-        $levelWhere
+      SELECT AVG(score_value) AS avg_score
+      FROM (
+        SELECT COALESCE(score.normalized_score, score.score, score.raw_score)
+          AS score_value
+        FROM teaching_assessments score
+        INNER JOIN teaching_activities activity
+          ON activity.id = score.teaching_activity_id
+        INNER JOIN students s ON s.id = score.student_id
+        LEFT JOIN classes c ON c.id = s.class_id
+        WHERE activity.activity_date >= ?
+          AND activity.activity_date <= ?
+          AND activity.status <> 'cancelled'
+          AND COALESCE(score.normalized_score, score.score, score.raw_score)
+            IS NOT NULL
+          $teachingLevelWhere
+
+        UNION ALL
+
+        SELECT
+          CASE
+            WHEN item.max_score IS NOT NULL AND item.max_score > 0
+              THEN (item.score / item.max_score) * 100
+            ELSE item.score
+          END AS score_value
+        FROM student_exam_score_items item
+        INNER JOIN student_exam_score_groups grp ON grp.id = item.group_id
+        INNER JOIN students s ON s.id = grp.student_id
+        LEFT JOIN classes c ON c.id = s.class_id
+        WHERE grp.exam_date >= ?
+          AND grp.exam_date <= ?
+          AND item.score IS NOT NULL
+          $schoolLevelWhere
+
+        UNION ALL
+
+        SELECT
+          CASE
+            WHEN legacy.max_score IS NOT NULL AND legacy.max_score > 0
+              THEN (legacy.score / legacy.max_score) * 100
+            ELSE legacy.score
+          END AS score_value
+        FROM student_exam_scores legacy
+        INNER JOIN students s ON s.id = legacy.student_id
+        LEFT JOIN classes c ON c.id = s.class_id
+        WHERE legacy.exam_date >= ?
+          AND legacy.exam_date <= ?
+          AND legacy.score IS NOT NULL
+          $legacySchoolLevelWhere
+      ) combined_scores
+      WHERE score_value IS NOT NULL
       ''',
       args,
     );
@@ -1118,6 +1190,146 @@ class DashboardCubit extends Cubit<DashboardStat> {
     }
 
     return items;
+  }
+
+  Future<List<DashboardTopLearner>> _topLearners({
+    required String start,
+    required String end,
+    required List<int> levels,
+  }) async {
+    final db = await databaseProvider.database;
+    await _ensureDashboardSubjectColumns();
+    final args = <Object?>[
+      start,
+      end,
+      start,
+      end,
+      start,
+      end,
+      start,
+      end,
+    ];
+    final levelWhere = _studentLevelWhere(levels, args);
+    final rows = await db.rawQuery(
+      '''
+      WITH academic AS (
+        SELECT student_id, AVG(score_value) AS academic_score
+        FROM (
+          SELECT
+            score.student_id,
+            COALESCE(score.normalized_score, score.score, score.raw_score)
+              AS score_value
+          FROM teaching_assessments score
+          INNER JOIN teaching_activities activity
+            ON activity.id = score.teaching_activity_id
+          WHERE activity.activity_date >= ?
+            AND activity.activity_date <= ?
+            AND activity.status <> 'cancelled'
+            AND COALESCE(score.normalized_score, score.score, score.raw_score)
+              IS NOT NULL
+
+          UNION ALL
+
+          SELECT
+            grp.student_id,
+            CASE
+              WHEN item.max_score IS NOT NULL AND item.max_score > 0
+                THEN (item.score / item.max_score) * 100
+              ELSE item.score
+            END AS score_value
+          FROM student_exam_score_items item
+          INNER JOIN student_exam_score_groups grp ON grp.id = item.group_id
+          WHERE grp.exam_date >= ?
+            AND grp.exam_date <= ?
+            AND item.score IS NOT NULL
+
+          UNION ALL
+
+          SELECT
+            legacy.student_id,
+            CASE
+              WHEN legacy.max_score IS NOT NULL AND legacy.max_score > 0
+                THEN (legacy.score / legacy.max_score) * 100
+              ELSE legacy.score
+            END AS score_value
+          FROM student_exam_scores legacy
+          WHERE legacy.exam_date >= ?
+            AND legacy.exam_date <= ?
+            AND legacy.score IS NOT NULL
+        ) academic_scores
+        WHERE score_value IS NOT NULL
+        GROUP BY student_id
+      ),
+      notes AS (
+        SELECT note.student_id,
+          AVG(
+            CASE
+              WHEN note.normalized_score IS NOT NULL THEN note.normalized_score
+              WHEN note.raw_score IS NOT NULL AND note.raw_score <= 5
+                THEN note.raw_score * 20
+              ELSE note.raw_score
+            END
+          ) AS note_score
+        FROM student_session_notes note
+        INNER JOIN teaching_activities activity
+          ON activity.id = note.teaching_activity_id
+        WHERE activity.activity_date >= ?
+          AND activity.activity_date <= ?
+          AND activity.status <> 'cancelled'
+          AND (
+            note.normalized_score IS NOT NULL
+            OR note.raw_score IS NOT NULL
+          )
+        GROUP BY note.student_id
+      )
+      SELECT
+        s.id,
+        s.full_name,
+        s.student_no,
+        academic.academic_score,
+        notes.note_score,
+        CASE
+          WHEN academic.academic_score IS NOT NULL
+            AND notes.note_score IS NOT NULL
+            THEN academic.academic_score * 0.65 + notes.note_score * 0.35
+          WHEN academic.academic_score IS NOT NULL
+            THEN academic.academic_score
+          WHEN notes.note_score IS NOT NULL
+            THEN notes.note_score
+          ELSE 0
+        END AS points
+      FROM students s
+      LEFT JOIN classes c ON c.id = s.class_id
+      LEFT JOIN academic ON academic.student_id = s.id
+      LEFT JOIN notes ON notes.student_id = s.id
+      WHERE s.status = 'active'
+        AND (
+          academic.academic_score IS NOT NULL
+          OR notes.note_score IS NOT NULL
+        )
+        $levelWhere
+      ORDER BY
+        points DESC,
+        COALESCE(academic.academic_score, 0) DESC,
+        COALESCE(notes.note_score, 0) DESC,
+        s.full_name COLLATE NOCASE ASC
+      LIMIT 5
+      ''',
+      args,
+    );
+
+    return rows.map((row) {
+      final academicScore = (row['academic_score'] as num?)?.toDouble();
+      final noteScore = (row['note_score'] as num?)?.toDouble();
+      return DashboardTopLearner(
+        studentId: row['id']?.toString() ?? '',
+        studentName: row['full_name']?.toString() ?? '-',
+        studentNo: row['student_no']?.toString() ?? '-',
+        academicScore: academicScore,
+        noteScore: noteScore,
+        points: ((row['points'] as num?)?.toDouble() ?? 0).round(),
+      );
+    }).toList();
   }
 
   Future<List<DashboardRecentNote>> _recentNotes({

@@ -1,59 +1,132 @@
 import 'package:edukita/core/router/service_locator.dart';
+import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/students/persentation/detail/detail_data_table.dart';
 import 'package:edukita/features/students/persentation/detail/detail_empty_section_text.dart';
 import 'package:edukita/features/students/persentation/detail/detail_section_card.dart';
 import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/teachers/domain/teacher_repository.dart';
+import 'package:edukita/features/users/domain/user_authorization.dart';
+import 'package:edukita/features/users/domain/user_management_repository.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/detail_breadcrumbs.dart';
 import 'package:edukita/widgets/detail_tab_bar.dart';
 import 'package:edukita/widgets/detail_tab_scroll.dart';
 import 'package:flutter/material.dart';
 
-class TeacherDetailPage extends StatelessWidget {
+class TeacherDetailPage extends StatefulWidget {
   const TeacherDetailPage({super.key, required this.teacher});
 
   final Teacher teacher;
 
   @override
+  State<TeacherDetailPage> createState() => _TeacherDetailPageState();
+}
+
+class _TeacherDetailPageState extends State<TeacherDetailPage> {
+  AppAuthorizationScope _authScope = AppAuthorizationScope(
+    role: AppUserRole.admin,
+    permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+      AppUserRole.admin,
+    ),
+  );
+  bool _authorizationLoaded = false;
+  Future<TeacherDetailData>? _detailFuture;
+
+  bool get _canViewTeachers =>
+      _authScope.canView(AppMenuAccessRegistry.teachers.code);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAuthorizationAndDetail();
+  }
+
+  Future<void> _loadAuthorizationAndDetail() async {
+    final session = await AuthSessionCache.instance.read();
+    AppAuthorizationScope scope;
+    if (session == null || session.isAdmin) {
+      scope = AppAuthorizationScope(
+        role: AppUserRole.admin,
+        permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+          AppUserRole.admin,
+        ),
+      );
+    } else {
+      scope = await getIt<UserManagementRepository>()
+          .getAuthorizationScopeForUser(session.userId);
+    }
+    if (!mounted) return;
+    setState(() {
+      _authScope = scope;
+      _authorizationLoaded = true;
+      if (scope.canView(AppMenuAccessRegistry.teachers.code)) {
+        _detailFuture =
+            getIt<TeacherRepository>().loadTeacherDetail(widget.teacher);
+      }
+    });
+  }
+
+  PreferredSizeWidget _appBar(String label) {
+    return AppBar(
+      leadingWidth: 40,
+      leading: const DetailAppBarBackButton(fallbackRoute: '/teachers'),
+      title: DetailBreadcrumbs(
+        items: [
+          const DetailBreadcrumbItem(
+            label: 'Teachers',
+            route: '/teachers',
+          ),
+          DetailBreadcrumbItem(label: label),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (!_authorizationLoaded) {
+      return Scaffold(
+        appBar: _appBar(widget.teacher.fullName),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (!_canViewTeachers) {
+      return Scaffold(
+        appBar: _appBar(widget.teacher.fullName),
+        body: const Center(
+          child: Text(
+            'You do not have permission to view teachers.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final detailFuture = _detailFuture;
+    if (detailFuture == null) {
+      return Scaffold(
+        appBar: _appBar(widget.teacher.fullName),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return FutureBuilder<TeacherDetailData>(
-      future: getIt<TeacherRepository>().loadTeacherDetail(teacher),
+      future: detailFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
-            appBar: AppBar(
-              leadingWidth: 40,
-              leading: const DetailAppBarBackButton(fallbackRoute: '/teachers'),
-              title: DetailBreadcrumbs(
-                items: [
-                  const DetailBreadcrumbItem(
-                    label: 'Teachers',
-                    route: '/teachers',
-                  ),
-                  DetailBreadcrumbItem(label: teacher.fullName),
-                ],
-              ),
-            ),
+            appBar: _appBar(widget.teacher.fullName),
             body: const Center(child: CircularProgressIndicator()),
           );
         }
 
         if (snapshot.hasError || snapshot.data == null) {
           return Scaffold(
-            appBar: AppBar(
-              leadingWidth: 40,
-              leading: const DetailAppBarBackButton(fallbackRoute: '/teachers'),
-              title: DetailBreadcrumbs(
-                items: [
-                  const DetailBreadcrumbItem(
-                    label: 'Teachers',
-                    route: '/teachers',
-                  ),
-                  DetailBreadcrumbItem(label: teacher.fullName),
-                ],
-              ),
-            ),
+            appBar: _appBar(widget.teacher.fullName),
             body: Center(
               child: Text(snapshot.error?.toString() ?? 'Teacher not found'),
             ),
@@ -62,19 +135,7 @@ class TeacherDetailPage extends StatelessWidget {
 
         final data = snapshot.data!;
         return Scaffold(
-          appBar: AppBar(
-            leadingWidth: 40,
-            leading: const DetailAppBarBackButton(fallbackRoute: '/teachers'),
-            title: DetailBreadcrumbs(
-              items: [
-                const DetailBreadcrumbItem(
-                  label: 'Teachers',
-                  route: '/teachers',
-                ),
-                DetailBreadcrumbItem(label: data.teacher.fullName),
-              ],
-            ),
-          ),
+          appBar: _appBar(data.teacher.fullName),
           body: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: DefaultTabController(

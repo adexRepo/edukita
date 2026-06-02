@@ -1,5 +1,4 @@
 import 'package:edukita/core/database/database_provider.dart';
-import 'package:edukita/core/database/database_migrations.dart';
 import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/users/data/user_model.dart';
 import 'package:edukita/features/users/domain/user_authorization.dart';
@@ -10,12 +9,14 @@ class UserManagementRepository {
 
   final DatabaseProvider _dbProvider;
 
-  Future<List<User>> getUsers() async {
+  Future<List<User>> getUsers({bool includeAdmin = false}) async {
     final db = await _db();
+    final whereClause = includeAdmin ? '' : "WHERE UPPER(u.role) != 'ADMIN'";
     final rows = await db.rawQuery('''
       SELECT u.*, teacher.full_name AS teacher_name
       FROM users u
       LEFT JOIN teachers teacher ON teacher.id = u.teacher_id
+      $whereClause
       ORDER BY
         CASE UPPER(u.role)
           WHEN 'ADMIN' THEN 0
@@ -60,6 +61,24 @@ class UserManagementRepository {
     return rows.map((row) => row['menu_code'].toString()).toList();
   }
 
+  Future<Map<String, List<String>>> getAllUserExtraMenuCodes() async {
+    final db = await _db();
+    final rows = await db.query(
+      'user_menu_permission_overrides',
+      columns: const ['user_id', 'menu_code'],
+      where: 'can_view = 1',
+      orderBy: 'user_id ASC, menu_code ASC',
+    );
+    final result = <String, List<String>>{};
+    for (final row in rows) {
+      final userId = row['user_id']?.toString();
+      final menuCode = row['menu_code']?.toString();
+      if (userId == null || userId.isEmpty || menuCode == null) continue;
+      result.putIfAbsent(userId, () => <String>[]).add(menuCode);
+    }
+    return result;
+  }
+
   Future<Set<String>> getAllowedMenuCodesForUser(String userId) async {
     final db = await _db();
     final userRows = await db.query(
@@ -76,9 +95,94 @@ class UserManagementRepository {
     return {...roleCodes, ...extraCodes};
   }
 
+  Future<AppAuthorizationScope> getAuthorizationScopeForUser(
+    String userId,
+  ) async {
+    final db = await _db();
+    final userRows = await db.query(
+      'users',
+      where: 'id = ? AND COALESCE(is_active, 1) = 1',
+      whereArgs: [userId],
+      limit: 1,
+    );
+    if (userRows.isEmpty) {
+      return AppAuthorizationScope(
+        role: AppUserRole.teacher,
+        permissions: const {},
+      );
+    }
+
+    final user = userRows.first;
+    final role = AppUserRole.fromValue(user['role']?.toString());
+    final permissions = await _rolePermissions(db, role);
+    final overrideRows = await db.query(
+      'user_menu_permission_overrides',
+      where: 'user_id = ? AND can_view = 1',
+      whereArgs: [userId],
+    );
+    for (final row in overrideRows) {
+      final permission = _permissionFromRow(row);
+      permissions[permission.menuCode] = _mergePermission(
+        permissions[permission.menuCode],
+        permission,
+      );
+    }
+
+    return AppAuthorizationScope(
+      role: role,
+      teacherId: user['teacher_id']?.toString(),
+      permissions: permissions,
+    );
+  }
+
   Future<Set<String>> getDefaultMenuCodesForRole(AppUserRole role) async {
     final db = await _db();
     return _roleMenuCodes(db, role);
+  }
+
+  Future<Map<AppUserRole, Map<String, AppMenuPermission>>>
+      getManageableRolePermissions() async {
+    final db = await _db();
+    final result = <AppUserRole, Map<String, AppMenuPermission>>{};
+    for (final role in const [AppUserRole.staff, AppUserRole.teacher]) {
+      result[role] = await _rolePermissions(db, role);
+    }
+    return result;
+  }
+
+  Future<void> saveRolePermissions({
+    required AppUserRole role,
+    required Map<String, AppMenuPermission> permissions,
+  }) async {
+    if (role.isAdmin) {
+      throw StateError('Admin permission cannot be restricted.');
+    }
+    final db = await _db();
+    await db.transaction((txn) async {
+      await txn.delete(
+        'role_menu_permissions',
+        where: 'role = ?',
+        whereArgs: [role.value],
+      );
+      final now = DateTime.now().toIso8601String();
+      for (final menu in AppMenuAccessRegistry.all) {
+        final permission =
+            permissions[menu.code] ?? AppMenuPermission.none(menu.code);
+        await txn.insert('role_menu_permissions', {
+          'id': '${role.value}:${menu.code}',
+          'role': role.value,
+          'menu_code': menu.code,
+          'can_view': permission.canView ? 1 : 0,
+          'can_create': permission.canCreate ? 1 : 0,
+          'can_update': permission.canUpdate ? 1 : 0,
+          'can_delete': permission.canDelete ? 1 : 0,
+          'can_export': permission.canExport ? 1 : 0,
+          'can_approve': permission.canApprove ? 1 : 0,
+          'created_at': now,
+          'updated_at': now,
+        });
+      }
+    });
   }
 
   Future<User> createUser({
@@ -129,22 +233,72 @@ class UserManagementRepository {
 
   Future<Database> _db() async {
     final db = await _dbProvider.database;
-    await DatabaseMigrations.ensureCriticalSchema(db);
     return db;
   }
 
   Future<Set<String>> _roleMenuCodes(Database db, AppUserRole role) async {
     final rows = await db.query(
       'role_menu_permissions',
-      columns: const ['menu_code'],
-      where: 'role = ? AND can_view = 1',
+      columns: const ['menu_code', 'can_view'],
+      where: 'role = ?',
       whereArgs: [role.value],
     );
     if (rows.isEmpty) {
       return AppMenuAccessRegistry.defaultCodesForRole(role);
     }
-    return rows.map((row) => row['menu_code'].toString()).toSet();
+    return rows
+        .where((row) => _flag(row['can_view']))
+        .map((row) => row['menu_code'].toString())
+        .toSet();
   }
+
+  Future<Map<String, AppMenuPermission>> _rolePermissions(
+    Database db,
+    AppUserRole role,
+  ) async {
+    final rows = await db.query(
+      'role_menu_permissions',
+      where: 'role = ?',
+      whereArgs: [role.value],
+    );
+    if (rows.isEmpty) {
+      return AppMenuAccessRegistry.defaultPermissionsForRole(role);
+    }
+    return {
+      for (final row in rows)
+        _permissionFromRow(row).menuCode: _permissionFromRow(row),
+    };
+  }
+
+  AppMenuPermission _permissionFromRow(Map<String, Object?> row) {
+    final menuCode = row['menu_code']?.toString() ?? '';
+    return AppMenuPermission(
+      menuCode: menuCode,
+      canView: _flag(row['can_view']),
+      canCreate: _flag(row['can_create']),
+      canUpdate: _flag(row['can_update']),
+      canDelete: _flag(row['can_delete']),
+      canExport: _flag(row['can_export']),
+      canApprove: _flag(row['can_approve']),
+    );
+  }
+
+  AppMenuPermission _mergePermission(
+    AppMenuPermission? base,
+    AppMenuPermission extra,
+  ) {
+    final current = base ?? AppMenuPermission.none(extra.menuCode);
+    return current.copyWith(
+      canView: current.canView || extra.canView,
+      canCreate: current.canCreate || extra.canCreate,
+      canUpdate: current.canUpdate || extra.canUpdate,
+      canDelete: current.canDelete || extra.canDelete,
+      canExport: current.canExport || extra.canExport,
+      canApprove: current.canApprove || extra.canApprove,
+    );
+  }
+
+  bool _flag(Object? value) => (value as num?)?.toInt() == 1;
 
   Future<void> _validateUser(
     DatabaseExecutor txn,

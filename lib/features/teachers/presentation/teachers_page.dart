@@ -1,7 +1,11 @@
+import 'package:edukita/core/router/service_locator.dart';
+import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:edukita/features/teachers/presentation/teacher_form_dialog.dart';
+import 'package:edukita/features/users/domain/user_authorization.dart';
+import 'package:edukita/features/users/domain/user_management_repository.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
@@ -22,14 +26,63 @@ class TeachersPage extends StatefulWidget {
 
 class _TeachersPageState extends State<TeachersPage> {
   String _searchQuery = '';
+  AppAuthorizationScope _authScope = AppAuthorizationScope(
+    role: AppUserRole.admin,
+    permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+      AppUserRole.admin,
+    ),
+  );
+  bool _authorizationLoaded = false;
+
+  bool get _canViewTeachers =>
+      _authScope.canView(AppMenuAccessRegistry.teachers.code);
+  bool get _canCreateTeachers =>
+      _authScope.canCreate(AppMenuAccessRegistry.teachers.code);
+  bool get _canUpdateTeachers =>
+      _authScope.canUpdate(AppMenuAccessRegistry.teachers.code);
+  bool get _canDeleteTeachers =>
+      _authScope.canDelete(AppMenuAccessRegistry.teachers.code);
+  bool get _canCreateUsers =>
+      _authScope.canCreate(AppMenuAccessRegistry.users.code);
 
   @override
   void initState() {
     super.initState();
-    context.read<TeacherCubit>().loadTeachers();
+    _loadAuthorizationAndTeachers();
+  }
+
+  Future<void> _loadAuthorizationAndTeachers() async {
+    final session = await AuthSessionCache.instance.read();
+    AppAuthorizationScope scope;
+    if (session == null || session.isAdmin) {
+      scope = AppAuthorizationScope(
+        role: AppUserRole.admin,
+        permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+          AppUserRole.admin,
+        ),
+      );
+    } else {
+      scope = await getIt<UserManagementRepository>()
+          .getAuthorizationScopeForUser(session.userId);
+    }
+    if (!mounted) return;
+    setState(() {
+      _authScope = scope;
+      _authorizationLoaded = true;
+    });
+    if (!scope.canView(AppMenuAccessRegistry.teachers.code)) return;
+    await context.read<TeacherCubit>().loadTeachers();
   }
 
   Future<void> _showTeacherFormDialog({Teacher? existingTeacher}) async {
+    if (existingTeacher == null && !_canCreateTeachers) {
+      AppToast.showFailed('You do not have permission to create teachers.');
+      return;
+    }
+    if (existingTeacher != null && !_canUpdateTeachers) {
+      AppToast.showFailed('You do not have permission to update teachers.');
+      return;
+    }
     final cubit = context.read<TeacherCubit>();
 
     await showGuardedDialog<void>(
@@ -49,6 +102,10 @@ class _TeachersPageState extends State<TeachersPage> {
   }
 
   Future<void> _confirmDelete(Teacher teacher) async {
+    if (!_canDeleteTeachers) {
+      AppToast.showFailed('You do not have permission to delete teachers.');
+      return;
+    }
     final cubit = context.read<TeacherCubit>();
     final confirmed = await showGuardedDialog<bool>(
       context: context,
@@ -89,6 +146,26 @@ class _TeachersPageState extends State<TeachersPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_authorizationLoaded) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (!_canViewTeachers) {
+      return const Scaffold(
+        body: Center(
+          child: Text(
+            'You do not have permission to view teachers.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: BlocBuilder<TeacherCubit, TeacherState>(
         builder: (context, state) {
@@ -165,11 +242,13 @@ class _TeachersPageState extends State<TeachersPage> {
             hintText: 'Search teacher name',
           ),
         );
-        final addButton = FilledButton.icon(
-          onPressed: () => _showTeacherFormDialog(),
-          icon: const Icon(Icons.add),
-          label: const Text('Add Teacher'),
-        );
+        final addButton = _canCreateTeachers
+            ? FilledButton.icon(
+                onPressed: () => _showTeacherFormDialog(),
+                icon: const Icon(Icons.add),
+                label: const Text('Add Teacher'),
+              )
+            : const SizedBox.shrink();
 
         if (compact) {
           return Column(
@@ -295,8 +374,9 @@ class _TeachersPageState extends State<TeachersPage> {
               children: [
                 IconButton(
                   tooltip: 'Edit teacher',
-                  onPressed: () =>
-                      _showTeacherFormDialog(existingTeacher: teacher),
+                  onPressed: _canUpdateTeachers
+                      ? () => _showTeacherFormDialog(existingTeacher: teacher)
+                      : null,
                   constraints: const BoxConstraints.tightFor(
                     width: 28,
                     height: 28,
@@ -308,7 +388,7 @@ class _TeachersPageState extends State<TeachersPage> {
                   tooltip: teacher.appUserId == null
                       ? 'Create app user'
                       : 'Teacher already has app user',
-                  onPressed: teacher.appUserId == null
+                  onPressed: teacher.appUserId == null && _canCreateUsers
                       ? () => context.push('/users', extra: teacher)
                       : null,
                   constraints: const BoxConstraints.tightFor(
@@ -320,7 +400,9 @@ class _TeachersPageState extends State<TeachersPage> {
                 ),
                 IconButton(
                   tooltip: 'Delete teacher',
-                  onPressed: () => _confirmDelete(teacher),
+                  onPressed: _canDeleteTeachers
+                      ? () => _confirmDelete(teacher)
+                      : null,
                   constraints: const BoxConstraints.tightFor(
                     width: 28,
                     height: 28,

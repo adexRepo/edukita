@@ -41,9 +41,16 @@ const List<String> _internalExamTypes = [
 const Set<String> _requiredEvidenceTypes = {'UTS', 'UAS', 'Ujian Sekolah'};
 
 class StudentExamScoresTab extends StatefulWidget {
-  const StudentExamScoresTab({super.key, required this.student});
+  const StudentExamScoresTab({
+    super.key,
+    required this.student,
+    required this.canUpdateStudent,
+    required this.canDeleteStudent,
+  });
 
   final StudentDetailData student;
+  final bool canUpdateStudent;
+  final bool canDeleteStudent;
 
   @override
   State<StudentExamScoresTab> createState() => _StudentExamScoresTabState();
@@ -73,6 +80,10 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
   }
 
   Future<void> _showAddScoreDialog(StudentExamScoreOptions options) async {
+    if (!widget.canUpdateStudent) {
+      AppToast.showFailed('You do not have permission to update students.');
+      return;
+    }
     final cubit = context.read<StudentDetailCubit>();
     await showGuardedDialog<void>(
       context: context,
@@ -96,6 +107,10 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
     StudentExamScoreOptions options,
     StudentExamScoreGroup group,
   ) async {
+    if (!widget.canUpdateStudent) {
+      AppToast.showFailed('You do not have permission to update students.');
+      return;
+    }
     final cubit = context.read<StudentDetailCubit>();
     await showGuardedDialog<void>(
       context: context,
@@ -117,6 +132,10 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
   }
 
   Future<void> _deleteScoreGroup(StudentExamScoreGroup group) async {
+    if (!widget.canDeleteStudent) {
+      AppToast.showFailed('You do not have permission to delete student data.');
+      return;
+    }
     final cubit = context.read<StudentDetailCubit>();
     final confirmed = await showGuardedDialog<bool>(
       context: context,
@@ -189,15 +208,16 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    FilledButton.icon(
-                      onPressed:
-                          snapshot.connectionState == ConnectionState.waiting ||
-                              data == null
-                          ? null
-                          : () => _showAddScoreDialog(data.options),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add Score Exam'),
-                    ),
+                    if (widget.canUpdateStudent)
+                      FilledButton.icon(
+                        onPressed:
+                            snapshot.connectionState == ConnectionState.waiting ||
+                                data == null
+                            ? null
+                            : () => _showAddScoreDialog(data.options),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Score Exam'),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -210,6 +230,8 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
                 else
                   _ExamScoreGroupTable(
                     groups: groups,
+                    canEdit: widget.canUpdateStudent,
+                    canDelete: widget.canDeleteStudent,
                     onEdit: options == null
                         ? (_) async {}
                         : (group) => _showEditScoreDialog(options, group),
@@ -227,11 +249,15 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
 class _ExamScoreGroupTable extends StatelessWidget {
   const _ExamScoreGroupTable({
     required this.groups,
+    required this.canEdit,
+    required this.canDelete,
     required this.onEdit,
     required this.onDelete,
   });
 
   final List<StudentExamScoreGroup> groups;
+  final bool canEdit;
+  final bool canDelete;
   final Future<void> Function(StudentExamScoreGroup group) onEdit;
   final Future<void> Function(StudentExamScoreGroup group) onDelete;
 
@@ -293,6 +319,8 @@ class _ExamScoreGroupTable extends StatelessWidget {
                           _TableCell(_dash(group.note)),
                           _ExamScoreActionCell(
                             group: group,
+                            canEdit: canEdit,
+                            canDelete: canDelete,
                             onEdit: onEdit,
                             onDelete: onDelete,
                           ),
@@ -440,11 +468,15 @@ class _ScoreAverageCell extends StatelessWidget {
 class _ExamScoreActionCell extends StatelessWidget {
   const _ExamScoreActionCell({
     required this.group,
+    required this.canEdit,
+    required this.canDelete,
     required this.onEdit,
     required this.onDelete,
   });
 
   final StudentExamScoreGroup group;
+  final bool canEdit;
+  final bool canDelete;
   final Future<void> Function(StudentExamScoreGroup group) onEdit;
   final Future<void> Function(StudentExamScoreGroup group) onDelete;
 
@@ -484,15 +516,16 @@ class _ExamScoreActionCell extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Tooltip(
-            message: 'Edit score record',
-            child: IconButton(
-              onPressed: () => onEdit(group),
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              color: AppColors.primaryDark,
-              visualDensity: VisualDensity.compact,
+          if (canEdit)
+            Tooltip(
+              message: 'Edit score record',
+              child: IconButton(
+                onPressed: () => onEdit(group),
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                color: AppColors.primaryDark,
+                visualDensity: VisualDensity.compact,
+              ),
             ),
-          ),
           Tooltip(
             message: 'Download evidence',
             child: IconButton(
@@ -503,19 +536,20 @@ class _ExamScoreActionCell extends StatelessWidget {
               visualDensity: VisualDensity.compact,
             ),
           ),
-          Tooltip(
-            message: 'Remove score record',
-            child: IconButton(
-              onPressed: () => onDelete(group),
-              icon: const Icon(
-                Icons.delete_outline,
-                size: 18,
+          if (canDelete)
+            Tooltip(
+              message: 'Remove score record',
+              child: IconButton(
+                onPressed: () => onDelete(group),
+                icon: const Icon(
+                  Icons.delete_outline,
+                  size: 18,
+                  color: AppColors.error,
+                ),
                 color: AppColors.error,
+                visualDensity: VisualDensity.compact,
               ),
-              color: AppColors.error,
-              visualDensity: VisualDensity.compact,
             ),
-          ),
         ],
       ),
     );

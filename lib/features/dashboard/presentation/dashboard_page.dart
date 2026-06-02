@@ -7,16 +7,24 @@ import 'package:edukita/widgets/app_page_header.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
-const double _dashboardMetricCardHeight = 300;
+const double _dashboardMetricCardHeight = 374;
+const double _dashboardPanelContentHeight = 300;
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
 
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<DashboardCubit, DashboardStat>(
       builder: (context, state) {
+        final cubit = context.read<DashboardCubit>();
         return Scaffold(
           body: Padding(
             padding: AppPageHeaderStyle.pagePadding,
@@ -29,41 +37,34 @@ class DashboardPage extends StatelessWidget {
                       'Foundation education overview and operation snapshot.',
                   trailing: IconButton(
                     tooltip: 'Refresh dashboard',
-                    onPressed: () =>
-                        context.read<DashboardCubit>().refreshCounters(),
+                    onPressed: state.isLoading ? null : cubit.refreshCounters,
                     icon: const Icon(Icons.refresh),
                   ),
                 ),
                 const SizedBox(height: 10),
-                _DashboardFilters(state: state),
+                _DashboardFilters(
+                  state: state,
+                  onLevelsChanged: cubit.setLevels,
+                ),
                 const SizedBox(height: AppPageHeaderStyle.bottomGap),
-                if (state.error != null) ...[
-                  _ErrorBanner(message: state.error!),
-                  const SizedBox(height: 12),
-                ],
                 Expanded(
                   child: Stack(
                     children: [
                       RefreshIndicator(
-                        onRefresh: () =>
-                            context.read<DashboardCubit>().refreshCounters(),
+                        onRefresh: cubit.refreshCounters,
                         child: ListView(
                           padding: EdgeInsets.zero,
                           children: [
-                            _MetricGrid(state: state),
+                            if (state.error != null) ...[
+                              _DashboardErrorBanner(error: state.error!),
+                              const SizedBox(height: 12),
+                            ],
+                            _KpiStrip(state: state),
                             const SizedBox(height: 12),
-                            _ResponsivePair(
-                              leftFlex: 2,
-                              left: _ProgressPanel(state: state),
-                              right: _SessionProgressPanel(state: state),
+                            _DashboardOverviewGrid(
+                              state: state,
+                              onRangeChanged: cubit.setRange,
                             ),
-                            const SizedBox(height: 12),
-                            _ResponsivePair(
-                              left: _UpcomingSchedulePanel(state: state),
-                              right: _AttentionPanel(state: state),
-                            ),
-                            const SizedBox(height: 12),
-                            _RecentNotesPanel(state: state),
                           ],
                         ),
                       ),
@@ -93,9 +94,10 @@ class DashboardPage extends StatelessWidget {
 }
 
 class _DashboardFilters extends StatelessWidget {
-  const _DashboardFilters({required this.state});
+  const _DashboardFilters({required this.state, required this.onLevelsChanged});
 
   final DashboardStat state;
+  final ValueChanged<List<int>> onLevelsChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -105,34 +107,12 @@ class _DashboardFilters extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         _FilterBox(
-          icon: Icons.date_range_outlined,
-          label: 'Range',
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<DashboardRange>(
-              value: state.range,
-              isDense: true,
-              borderRadius: AppDropdownStyle.menuBorderRadius,
-              items: DashboardRange.values
-                  .map(
-                    (range) => DropdownMenuItem(
-                      value: range,
-                      child: Text(range.label),
-                    ),
-                  )
-                  .toList(),
-              onChanged: state.isLoading
-                  ? null
-                  : (value) {
-                      if (value == null) return;
-                      context.read<DashboardCubit>().setRange(value);
-                    },
-            ),
-          ),
-        ),
-        _FilterBox(
           icon: Icons.stairs_outlined,
           label: 'Level',
-          child: _LevelFilterButton(state: state),
+          child: _LevelFilterButton(
+            state: state,
+            onLevelsChanged: onLevelsChanged,
+          ),
         ),
       ],
     );
@@ -140,15 +120,19 @@ class _DashboardFilters extends StatelessWidget {
 }
 
 class _LevelFilterButton extends StatelessWidget {
-  const _LevelFilterButton({required this.state});
+  const _LevelFilterButton({
+    required this.state,
+    required this.onLevelsChanged,
+  });
 
   final DashboardStat state;
+  final ValueChanged<List<int>> onLevelsChanged;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(8),
-      onTap: state.isLoading ? null : () => _openLevelDialog(context),
+      onTap: () => _openLevelDialog(context),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -176,7 +160,6 @@ class _LevelFilterButton extends StatelessWidget {
   }
 
   Future<void> _openLevelDialog(BuildContext context) async {
-    final cubit = context.read<DashboardCubit>();
     final selected = state.levels.toSet();
     final result = await showGuardedDialog<List<int>>(
       context: context,
@@ -343,7 +326,7 @@ class _LevelFilterButton extends StatelessWidget {
     );
 
     if (result == null) return;
-    await cubit.setLevels(result);
+    onLevelsChanged(result);
   }
 }
 
@@ -423,40 +406,397 @@ class _FilterBox extends StatelessWidget {
   }
 }
 
-class _MetricGrid extends StatelessWidget {
-  const _MetricGrid({required this.state});
+class _DashboardErrorBanner extends StatelessWidget {
+  const _DashboardErrorBanner({required this.error});
+
+  final String error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline, color: AppColors.error, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              error,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.errorDark,
+                fontSize: 12,
+                height: 1.35,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _KpiStrip extends StatelessWidget {
+  const _KpiStrip({required this.state});
 
   final DashboardStat state;
+
+  @override
+  Widget build(BuildContext context) {
+    final sessionTotal = state.sessionStatus.fold<int>(
+      0,
+      (sum, item) => sum + item.count,
+    );
+    final attendance = state.attendanceRate;
+    final academic = state.averageAcademicScore;
+    final knownGenderCount = state.maleStudentCount + state.femaleStudentCount;
+    final items = [
+      _KpiItem(
+        icon: Icons.groups_outlined,
+        title: 'Active Students',
+        value: _formatInt(state.studentCount),
+        note: '${_formatInt(knownGenderCount)} with gender data',
+        color: AppColors.primary,
+      ),
+      _KpiItem(
+        icon: Icons.fact_check_outlined,
+        title: 'Avg Attendance',
+        value: attendance == null ? '-' : '${attendance.toStringAsFixed(0)}%',
+        note: '${_formatInt(state.attendanceTotal)} attendance records',
+        color: AppColors.success,
+      ),
+      _KpiItem(
+        icon: Icons.school_outlined,
+        title: 'Avg Academic',
+        value: academic == null ? '-' : '${academic.toStringAsFixed(0)}%',
+        note: '${_formatInt(state.academicAverages.length)} active subjects',
+        color: AppColors.accentBlue,
+      ),
+      _KpiItem(
+        icon: Icons.event_available_outlined,
+        title: 'Teaching Sessions',
+        value: _formatInt(sessionTotal),
+        note: state.range.label,
+        color: AppColors.warning,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 12.0;
+        if (constraints.maxWidth < 760) {
+          return Column(
+            children: [
+              for (var index = 0; index < items.length; index++) ...[
+                _KpiCard(item: items[index]),
+                if (index != items.length - 1) const SizedBox(height: spacing),
+              ],
+            ],
+          );
+        }
+
+        if (constraints.maxWidth < 1080) {
+          return Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(child: _KpiCard(item: items[0])),
+                  const SizedBox(width: spacing),
+                  Expanded(child: _KpiCard(item: items[1])),
+                ],
+              ),
+              const SizedBox(height: spacing),
+              Row(
+                children: [
+                  Expanded(child: _KpiCard(item: items[2])),
+                  const SizedBox(width: spacing),
+                  Expanded(child: _KpiCard(item: items[3])),
+                ],
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            for (var index = 0; index < items.length; index++) ...[
+              Expanded(child: _KpiCard(item: items[index])),
+              if (index != items.length - 1) const SizedBox(width: spacing),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _KpiCard extends StatelessWidget {
+  const _KpiCard({required this.item});
+
+  final _KpiItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 96,
+      padding: const EdgeInsets.all(14),
+      decoration: _panelDecoration(),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: item.color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(item.icon, color: item.color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.title,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  item.value,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  item.note,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: item.color,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _KpiItem {
+  const _KpiItem({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.note,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+  final String note;
+  final Color color;
+}
+
+class _DashboardOverviewGrid extends StatelessWidget {
+  const _DashboardOverviewGrid({
+    required this.state,
+    required this.onRangeChanged,
+  });
+
+  final DashboardStat state;
+  final ValueChanged<DashboardRange> onRangeChanged;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        const spacing = 10.0;
+        const spacing = 12.0;
 
         if (width < 760) {
           return Column(
             children: [
+              _AcademicAverageScoreCard(
+                state: state,
+                onRangeChanged: onRangeChanged,
+              ),
+              const SizedBox(height: spacing),
               _StudentGenderCard(state: state),
               const SizedBox(height: spacing),
-              _AttendanceDonutCard(state: state),
+              _ProgressPanel(
+                state: state,
+                onRangeChanged: onRangeChanged,
+              ),
               const SizedBox(height: spacing),
-              _AcademicAverageScoreCard(state: state),
+              _AttendanceDonutCard(
+                state: state,
+                onRangeChanged: onRangeChanged,
+              ),
+              const SizedBox(height: spacing),
+              _UpcomingSchedulePanel(state: state),
+              const SizedBox(height: spacing),
+              _SessionProgressPanel(
+                state: state,
+                onRangeChanged: onRangeChanged,
+              ),
+              const SizedBox(height: spacing),
+              _TopLearnersPanel(state: state),
+              const SizedBox(height: spacing),
+              _AttentionPanel(state: state),
+              const SizedBox(height: spacing),
+              _RecentNotesPanel(state: state),
             ],
           );
         }
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        if (width < 1080) {
+          return Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _AcademicAverageScoreCard(
+                      state: state,
+                      onRangeChanged: onRangeChanged,
+                    ),
+                  ),
+                  const SizedBox(width: spacing),
+                  Expanded(child: _StudentGenderCard(state: state)),
+                ],
+              ),
+              const SizedBox(height: spacing),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _ProgressPanel(
+                      state: state,
+                      onRangeChanged: onRangeChanged,
+                    ),
+                  ),
+                  const SizedBox(width: spacing),
+                  Expanded(
+                    child: _AttendanceDonutCard(
+                      state: state,
+                      onRangeChanged: onRangeChanged,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: spacing),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _UpcomingSchedulePanel(state: state)),
+                  const SizedBox(width: spacing),
+                  Expanded(
+                    child: _SessionProgressPanel(
+                      state: state,
+                      onRangeChanged: onRangeChanged,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: spacing),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _TopLearnersPanel(state: state)),
+                  const SizedBox(width: spacing),
+                  Expanded(child: _AttentionPanel(state: state)),
+                ],
+              ),
+              const SizedBox(height: spacing),
+              _RecentNotesPanel(state: state),
+            ],
+          );
+        }
+
+        return Column(
           children: [
-            Expanded(child: _StudentGenderCard(state: state)),
-            const SizedBox(width: spacing),
-            Expanded(child: _AttendanceDonutCard(state: state)),
-            const SizedBox(width: spacing),
-            Expanded(
-              flex: width >= 1120 ? 2 : 1,
-              child: _AcademicAverageScoreCard(state: state),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: _AcademicAverageScoreCard(
+                    state: state,
+                    onRangeChanged: onRangeChanged,
+                  ),
+                ),
+                const SizedBox(width: spacing),
+                Expanded(child: _StudentGenderCard(state: state)),
+              ],
+            ),
+            const SizedBox(height: spacing),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: _ProgressPanel(
+                    state: state,
+                    onRangeChanged: onRangeChanged,
+                  ),
+                ),
+                const SizedBox(width: spacing),
+                Expanded(
+                  child: _AttendanceDonutCard(
+                    state: state,
+                    onRangeChanged: onRangeChanged,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: spacing),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _UpcomingSchedulePanel(state: state)),
+                const SizedBox(width: spacing),
+                Expanded(
+                  child: _SessionProgressPanel(
+                    state: state,
+                    onRangeChanged: onRangeChanged,
+                  ),
+                ),
+                const SizedBox(width: spacing),
+                Expanded(child: _TopLearnersPanel(state: state)),
+              ],
+            ),
+            const SizedBox(height: spacing),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _AttentionPanel(state: state)),
+                const SizedBox(width: spacing),
+                Expanded(child: _RecentNotesPanel(state: state)),
+              ],
             ),
           ],
         );
@@ -489,108 +829,111 @@ class _StudentGenderCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
-                child: Text(
-                  'Students',
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
+              Expanded(
+                child: _MetricCardTitle(
+                  title: 'Students',
+                  description: 'Active student composition by gender.',
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Center(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final chartSize = math.min(
-                  168.0,
-                  math.max(138.0, constraints.maxWidth - 32),
-                );
-                return SizedBox(
-                  width: chartSize,
-                  height: chartSize,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      PieChart(
-                        PieChartData(
-                          startDegreeOffset: -90,
-                          centerSpaceRadius: chartSize * 0.21,
-                          sectionsSpace: 5,
-                          sections: knownTotal <= 0
-                              ? [
-                                  PieChartSectionData(
-                                    value: 1,
-                                    color: AppColors.surfaceMuted,
-                                    title: '',
-                                    radius: chartSize * 0.19,
-                                    showTitle: false,
-                                  ),
-                                ]
-                              : [
-                                  PieChartSectionData(
-                                    value: boys.toDouble(),
-                                    color: const Color(0xFFBDEEFF),
-                                    title: '',
-                                    radius: chartSize * 0.19,
-                                    showTitle: false,
-                                  ),
-                                  PieChartSectionData(
-                                    value: girls.toDouble(),
-                                    color: const Color(0xFFFFDF68),
-                                    title: '',
-                                    radius: chartSize * 0.19,
-                                    showTitle: false,
-                                  ),
-                                ],
+          Expanded(
+            child: Center(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final chartSize = math
+                      .min(
+                        math.min(
+                          constraints.maxWidth - 8,
+                          constraints.maxHeight,
                         ),
-                      ),
-                      Container(
-                        width: chartSize * 0.28,
-                        height: chartSize * 0.28,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.black.withValues(alpha: 0.035),
-                              blurRadius: 14,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
+                        228.0,
+                      )
+                      .clamp(176.0, 228.0)
+                      .toDouble();
+                  return SizedBox(
+                    width: chartSize,
+                    height: chartSize,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        PieChart(
+                          PieChartData(
+                            startDegreeOffset: -90,
+                            centerSpaceRadius: chartSize * 0.22,
+                            sectionsSpace: 5,
+                            sections: knownTotal <= 0
+                                ? [
+                                    PieChartSectionData(
+                                      value: 1,
+                                      color: AppColors.surfaceMuted,
+                                      title: '',
+                                      radius: chartSize * 0.20,
+                                      showTitle: false,
+                                    ),
+                                  ]
+                                : [
+                                    PieChartSectionData(
+                                      value: boys.toDouble(),
+                                      color: const Color(0xFFBDEEFF),
+                                      title: '',
+                                      radius: chartSize * 0.20,
+                                      showTitle: false,
+                                    ),
+                                    PieChartSectionData(
+                                      value: girls.toDouble(),
+                                      color: const Color(0xFFFFDF68),
+                                      title: '',
+                                      radius: chartSize * 0.20,
+                                      showTitle: false,
+                                    ),
+                                  ],
+                          ),
                         ),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Transform.translate(
-                              offset: Offset(-chartSize * 0.055, 0),
-                              child: Icon(
-                                Icons.person,
-                                color: const Color(0xFFBDEEFF),
-                                size: chartSize * 0.16,
+                        Container(
+                          width: chartSize * 0.30,
+                          height: chartSize * 0.30,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.black.withValues(alpha: 0.035),
+                                blurRadius: 14,
+                                offset: const Offset(0, 6),
                               ),
-                            ),
-                            Transform.translate(
-                              offset: Offset(chartSize * 0.055, 0),
-                              child: Icon(
-                                Icons.person,
-                                color: const Color(0xFFFFDF68),
-                                size: chartSize * 0.16,
+                            ],
+                          ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Transform.translate(
+                                offset: Offset(-chartSize * 0.058, 0),
+                                child: Icon(
+                                  Icons.person,
+                                  color: const Color(0xFFBDEEFF),
+                                  size: chartSize * 0.17,
+                                ),
                               ),
-                            ),
-                          ],
+                              Transform.translate(
+                                offset: Offset(chartSize * 0.058, 0),
+                                child: Icon(
+                                  Icons.person,
+                                  color: const Color(0xFFFFDF68),
+                                  size: chartSize * 0.17,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Row(
@@ -621,6 +964,43 @@ class _StudentGenderCard extends StatelessWidget {
   }
 }
 
+class _MetricCardTitle extends StatelessWidget {
+  const _MetricCardTitle({required this.title, required this.description});
+
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          title,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          description,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _StudentGenderLegend extends StatelessWidget {
   const _StudentGenderLegend({
     required this.color,
@@ -636,33 +1016,34 @@ class _StudentGenderLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          width: 10,
-          height: 10,
+          width: 12,
+          height: 12,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(
-            label,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        const SizedBox(width: 4),
+        const SizedBox(height: 7),
         Text(
-          '$value ($percent%)',
+          value,
+          textAlign: TextAlign.center,
           style: const TextStyle(
             color: AppColors.textPrimary,
-            fontSize: 11,
+            fontSize: 18,
             fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          '$label ($percent%)',
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],
@@ -671,9 +1052,13 @@ class _StudentGenderLegend extends StatelessWidget {
 }
 
 class _AttendanceDonutCard extends StatelessWidget {
-  const _AttendanceDonutCard({required this.state});
+  const _AttendanceDonutCard({
+    required this.state,
+    required this.onRangeChanged,
+  });
 
   final DashboardStat state;
+  final ValueChanged<DashboardRange> onRangeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -699,147 +1084,139 @@ class _AttendanceDonutCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
-                child: Text(
-                  'Attendance',
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
+              Expanded(
+                child: _MetricCardTitle(
+                  title: 'Attendance',
+                  description: '${state.range.label} attendance records.',
                 ),
               ),
+              const SizedBox(width: 10),
+              _MetricRangeFilter(value: state.range, onChanged: onRangeChanged),
             ],
           ),
           const SizedBox(height: 12),
-          Center(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final chartSize = math.min(
-                  150.0,
-                  math.max(122.0, constraints.maxWidth - 48),
-                );
-                return SizedBox(
-                  width: chartSize,
-                  height: chartSize,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      PieChart(
-                        PieChartData(
-                          startDegreeOffset: -90,
-                          centerSpaceRadius: chartSize * 0.31,
-                          sectionsSpace: 4,
-                          sections: total <= 0
-                              ? [
-                                  PieChartSectionData(
-                                    value: 1,
-                                    color: AppColors.surfaceMuted,
-                                    title: '',
-                                    radius: chartSize * 0.16,
-                                    showTitle: false,
-                                  ),
-                                ]
-                              : [
-                                  PieChartSectionData(
-                                    value: present.toDouble(),
-                                    color: AppColors.success,
-                                    title: '',
-                                    radius: chartSize * 0.16,
-                                    showTitle: false,
-                                  ),
-                                  PieChartSectionData(
-                                    value: absent.toDouble(),
-                                    color: AppColors.error,
-                                    title: '',
-                                    radius: chartSize * 0.16,
-                                    showTitle: false,
-                                  ),
-                                  PieChartSectionData(
-                                    value: sick.toDouble(),
-                                    color: AppColors.accentBlue,
-                                    title: '',
-                                    radius: chartSize * 0.16,
-                                    showTitle: false,
-                                  ),
-                                  PieChartSectionData(
-                                    value: permission.toDouble(),
-                                    color: AppColors.accentPurple,
-                                    title: '',
-                                    radius: chartSize * 0.16,
-                                    showTitle: false,
-                                  ),
-                                ],
+          Expanded(
+            child: Center(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final available = math.min(
+                    constraints.maxWidth - 8,
+                    constraints.maxHeight,
+                  );
+                  final chartSize = math.min(228.0, math.max(172.0, available));
+                  return SizedBox(
+                    width: chartSize,
+                    height: chartSize,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        PieChart(
+                          PieChartData(
+                            startDegreeOffset: -90,
+                            centerSpaceRadius: chartSize * 0.30,
+                            sectionsSpace: 4,
+                            sections: total <= 0
+                                ? [
+                                    PieChartSectionData(
+                                      value: 1,
+                                      color: AppColors.surfaceMuted,
+                                      title: '',
+                                      radius: chartSize * 0.18,
+                                      showTitle: false,
+                                    ),
+                                  ]
+                                : [
+                                    PieChartSectionData(
+                                      value: present.toDouble(),
+                                      color: AppColors.success,
+                                      title: '',
+                                      radius: chartSize * 0.18,
+                                      showTitle: false,
+                                    ),
+                                    PieChartSectionData(
+                                      value: absent.toDouble(),
+                                      color: AppColors.error,
+                                      title: '',
+                                      radius: chartSize * 0.18,
+                                      showTitle: false,
+                                    ),
+                                    PieChartSectionData(
+                                      value: sick.toDouble(),
+                                      color: AppColors.accentBlue,
+                                      title: '',
+                                      radius: chartSize * 0.18,
+                                      showTitle: false,
+                                    ),
+                                    PieChartSectionData(
+                                      value: permission.toDouble(),
+                                      color: AppColors.accentPurple,
+                                      title: '',
+                                      radius: chartSize * 0.18,
+                                      showTitle: false,
+                                    ),
+                                  ],
+                          ),
                         ),
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _formatInt(total),
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: AppTypography.sectionTitle,
-                              fontWeight: FontWeight.w800,
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _formatInt(total),
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'Records',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Records',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ),
-          const SizedBox(height: 14),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 76,
+            child: GridView.count(
+              crossAxisCount: 4,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 4,
+              crossAxisSpacing: 6,
+              childAspectRatio: 0.86,
               children: [
-                SizedBox(
-                  width: 112,
-                  child: _AttendanceLegend(
-                    color: AppColors.success,
-                    label: 'Present',
-                    percent: presentPercent,
-                  ),
+                _AttendanceLegend(
+                  color: AppColors.success,
+                  label: 'Present',
+                  percent: presentPercent,
                 ),
-                SizedBox(
-                  width: 112,
-                  child: _AttendanceLegend(
-                    color: AppColors.error,
-                    label: 'Absent',
-                    percent: absentPercent,
-                  ),
+                _AttendanceLegend(
+                  color: AppColors.error,
+                  label: 'Absent',
+                  percent: absentPercent,
                 ),
-                SizedBox(
-                  width: 112,
-                  child: _AttendanceLegend(
-                    color: AppColors.accentBlue,
-                    label: 'Sick',
-                    percent: sickPercent,
-                  ),
+                _AttendanceLegend(
+                  color: AppColors.accentBlue,
+                  label: 'Sick',
+                  percent: sickPercent,
                 ),
-                SizedBox(
-                  width: 112,
-                  child: _AttendanceLegend(
-                    color: AppColors.accentPurple,
-                    label: 'Permission',
-                    percent: permissionPercent,
-                  ),
+                _AttendanceLegend(
+                  color: AppColors.accentPurple,
+                  label: 'Permission',
+                  percent: permissionPercent,
                 ),
               ],
             ),
@@ -863,33 +1240,36 @@ class _AttendanceLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          width: 10,
-          height: 10,
+          width: 11,
+          height: 11,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(
-            label,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        const SizedBox(width: 4),
+        const SizedBox(height: 6),
         Text(
           '$percent%',
+          textAlign: TextAlign.center,
           style: const TextStyle(
             color: AppColors.textPrimary,
-            fontSize: 11,
+            fontSize: 15,
             fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],
@@ -897,22 +1277,79 @@ class _AttendanceLegend extends StatelessWidget {
   }
 }
 
-class _AcademicAverageScoreCard extends StatelessWidget {
-  const _AcademicAverageScoreCard({required this.state});
+class _AcademicAverageScoreCard extends StatefulWidget {
+  const _AcademicAverageScoreCard({
+    required this.state,
+    required this.onRangeChanged,
+  });
 
   final DashboardStat state;
+  final ValueChanged<DashboardRange> onRangeChanged;
+
+  @override
+  State<_AcademicAverageScoreCard> createState() =>
+      _AcademicAverageScoreCardState();
+}
+
+class _AcademicAverageScoreCardState extends State<_AcademicAverageScoreCard> {
+  final ScrollController _scrollController = ScrollController();
+  bool _canScrollBackward = false;
+  bool _canScrollForward = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_updateScrollButtons);
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_updateScrollButtons)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _scheduleScrollButtonUpdate() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updateScrollButtons();
+    });
+  }
+
+  void _updateScrollButtons() {
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final canScrollBackward = _scrollController.offset > 2;
+    final canScrollForward = _scrollController.offset < maxScroll - 2;
+    if (canScrollBackward == _canScrollBackward &&
+        canScrollForward == _canScrollForward) {
+      return;
+    }
+    setState(() {
+      _canScrollBackward = canScrollBackward;
+      _canScrollForward = canScrollForward;
+    });
+  }
+
+  void _scrollSubjects({required bool forward}) {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    final delta = math.max(160.0, position.viewportDimension * 0.75);
+    final target = (position.pixels + (forward ? delta : -delta))
+        .clamp(0.0, position.maxScrollExtent)
+        .toDouble();
+    _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final averages = state.academicAverages.isNotEmpty
-        ? state.academicAverages
-        : [
-            if (state.averageAcademicScore != null)
-              DashboardAcademicAverage(
-                label: 'Average',
-                score: state.averageAcademicScore!,
-              ),
-          ];
+    final averages = widget.state.academicAverages;
+    final canScrollSubjects = averages.length > 3;
+    if (canScrollSubjects) _scheduleScrollButtonUpdate();
 
     return Container(
       width: double.infinity,
@@ -924,60 +1361,176 @@ class _AcademicAverageScoreCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
-                child: Text(
-                  'Academic Average Score',
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
+              Expanded(
+                child: _MetricCardTitle(
+                  title: 'Academic Average Score',
+                  description:
+                      '${widget.state.range.label} subject score average.',
                 ),
+              ),
+              const SizedBox(width: 10),
+              _MetricRangeFilter(
+                value: widget.state.range,
+                onChanged: widget.onRangeChanged,
               ),
             ],
           ),
           const SizedBox(height: 10),
           if (averages.isEmpty)
-            const SizedBox(
-              height: 206,
-              child: _EmptyPanelMessage('No subjects yet.'),
-            )
+            const Expanded(child: _EmptyPanelMessage('No subjects yet.'))
           else
-            SizedBox(
-              height: 206,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final visibleCount = math.min(3, averages.length);
-                  final gap = visibleCount <= 1 ? 0.0 : 12.0;
-                  final availableWidth =
-                      constraints.maxWidth - (gap * (visibleCount - 1));
-                  final itemSize = math.min(
-                    constraints.maxHeight,
-                    math.max(118.0, availableWidth / visibleCount),
-                  );
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        for (var index = 0; index < averages.length; index++)
-                          Padding(
-                            padding: EdgeInsets.only(
-                              right: index == averages.length - 1 ? 0 : gap,
-                            ),
-                            child: _AcademicScoreRing(
-                              item: averages[index],
-                              color: _academicColor(index),
-                              size: itemSize,
-                            ),
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final visibleCount = math.min(3, averages.length);
+                        final gap = visibleCount <= 1 ? 0.0 : 12.0;
+                        final chartHeight = math.max(
+                          120.0,
+                          constraints.maxHeight,
+                        );
+                        final availableWidth =
+                            constraints.maxWidth - (gap * (visibleCount - 1));
+                        final availableItemSize = math.min(
+                          chartHeight,
+                          availableWidth / visibleCount,
+                        );
+                        final itemSize = math.min(
+                          286.0,
+                          math.max(184.0, availableItemSize),
+                        );
+                        return SingleChildScrollView(
+                          controller: _scrollController,
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              for (
+                                var index = 0;
+                                index < averages.length;
+                                index++
+                              )
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                    right: index == averages.length - 1
+                                        ? 0
+                                        : gap,
+                                  ),
+                                  child: _AcademicScoreRing(
+                                    item: averages[index],
+                                    color: _academicColor(index),
+                                    size: itemSize,
+                                  ),
+                                ),
+                            ],
                           ),
-                      ],
+                        );
+                      },
                     ),
-                  );
-                },
+                  ),
+                  if (canScrollSubjects) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.center,
+                      child: _AcademicScrollControls(
+                        canScrollBackward: _canScrollBackward,
+                        canScrollForward: _canScrollForward,
+                        onPrevious: () => _scrollSubjects(forward: false),
+                        onNext: () => _scrollSubjects(forward: true),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _AcademicScrollControls extends StatelessWidget {
+  const _AcademicScrollControls({
+    required this.canScrollBackward,
+    required this.canScrollForward,
+    required this.onPrevious,
+    required this.onNext,
+  });
+
+  final bool canScrollBackward;
+  final bool canScrollForward;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 220,
+      height: 38,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.26)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _AcademicScrollButton(
+              icon: Icons.chevron_left,
+              enabled: canScrollBackward,
+              tooltip: 'Previous subjects',
+              onPressed: onPrevious,
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 10),
+              child: Text(
+                'Swap subjects',
+                style: TextStyle(
+                  color: AppColors.primaryDark,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            _AcademicScrollButton(
+              icon: Icons.chevron_right,
+              enabled: canScrollForward,
+              tooltip: 'Next subjects',
+              onPressed: onNext,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AcademicScrollButton extends StatelessWidget {
+  const _AcademicScrollButton({
+    required this.icon,
+    required this.enabled,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final bool enabled;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        onPressed: enabled ? onPressed : null,
+        icon: Icon(icon, size: 22),
+        constraints: const BoxConstraints.tightFor(width: 44, height: 38),
+        padding: EdgeInsets.zero,
+        color: AppColors.primaryDark,
+        disabledColor: AppColors.primaryDark.withValues(alpha: 0.28),
       ),
     );
   }
@@ -1002,62 +1555,72 @@ class _AcademicScoreRing extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
           SizedBox(
             width: size * 0.94,
             height: size * 0.94,
-            child: Stack(
-              alignment: Alignment.center,
+            child: PieChart(
+              PieChartData(
+                startDegreeOffset: -90,
+                centerSpaceRadius: size * 0.29,
+                sectionsSpace: 0,
+                sections: [
+                  PieChartSectionData(
+                    value: score <= 0 ? 0.01 : score,
+                    color: color,
+                    radius: size * 0.14,
+                    title: '',
+                    showTitle: false,
+                  ),
+                  PieChartSectionData(
+                    value: remainder,
+                    color: AppColors.surfaceMuted,
+                    radius: size * 0.14,
+                    title: '',
+                    showTitle: false,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(
+            width: size * 0.58,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                PieChart(
-                  PieChartData(
-                    startDegreeOffset: -90,
-                    centerSpaceRadius: size * 0.31,
-                    sectionsSpace: 0,
-                    sections: [
-                      PieChartSectionData(
-                        value: score <= 0 ? 0.01 : score,
-                        color: color,
-                        radius: size * 0.12,
-                        title: '',
-                        showTitle: false,
-                      ),
-                      PieChartSectionData(
-                        value: remainder,
-                        color: AppColors.surfaceMuted,
-                        radius: size * 0.12,
-                        title: '',
-                        showTitle: false,
-                      ),
-                    ],
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
                   ),
                 ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '${score.toStringAsFixed(1)}%',
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    Text(
-                      item.label,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 5),
+                Text(
+                  '${score.toStringAsFixed(1)}%',
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  item.label,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 10,
+                    height: 1.12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -1068,52 +1631,72 @@ class _AcademicScoreRing extends StatelessWidget {
   }
 }
 
-class _ResponsivePair extends StatelessWidget {
-  const _ResponsivePair({
-    required this.left,
-    required this.right,
-    this.leftFlex = 1,
-  });
+class _ProgressPanel extends StatelessWidget {
+  const _ProgressPanel({required this.state, required this.onRangeChanged});
 
-  final Widget left;
-  final Widget right;
-  final int leftFlex;
+  final DashboardStat state;
+  final ValueChanged<DashboardRange> onRangeChanged;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 900) {
-          return Column(children: [left, const SizedBox(height: 12), right]);
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(flex: leftFlex, child: left),
-            const SizedBox(width: 12),
-            Expanded(child: right),
-          ],
-        );
-      },
+    final attendance = state.attendanceRate?.toStringAsFixed(0) ?? '-';
+    final academic = state.averageAcademicScore?.toStringAsFixed(0) ?? '-';
+    final social = state.averageSocialScore?.toStringAsFixed(0) ?? '-';
+    return _DashboardPanel(
+      title: 'Student Progress Trend',
+      subtitle:
+          'Attendance $attendance% | Academic $academic% | Notes $social%',
+      icon: Icons.show_chart_outlined,
+      trailing: _MetricRangeFilter(
+        value: state.range,
+        onChanged: onRangeChanged,
+      ),
+      child: SizedBox(
+        height: 300,
+        child: _StudentProgressChart(points: state.progress),
+      ),
     );
   }
 }
 
-class _ProgressPanel extends StatelessWidget {
-  const _ProgressPanel({required this.state});
+class _MetricRangeFilter extends StatelessWidget {
+  const _MetricRangeFilter({required this.value, required this.onChanged});
 
-  final DashboardStat state;
+  final DashboardRange value;
+  final ValueChanged<DashboardRange> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return _DashboardPanel(
-      title: 'Student Progress Trend',
-      subtitle: 'Attendance, academic score, and social notes',
-      icon: Icons.show_chart_outlined,
-      child: SizedBox(
-        height: 300,
-        child: _StudentProgressChart(points: state.progress),
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<DashboardRange>(
+          value: value,
+          isDense: true,
+          borderRadius: AppDropdownStyle.menuBorderRadius,
+          icon: const Icon(Icons.keyboard_arrow_down, size: 17),
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+          items: DashboardRange.values
+              .map(
+                (range) =>
+                    DropdownMenuItem(value: range, child: Text(range.label)),
+              )
+              .toList(),
+          onChanged: (range) {
+            if (range == null) return;
+            onChanged(range);
+          },
+        ),
       ),
     );
   }
@@ -1293,7 +1876,7 @@ class _ChartLegend extends StatelessWidget {
       children: const [
         _LegendItem(color: AppColors.primary, label: 'Attendance'),
         _LegendItem(color: AppColors.accentBlue, label: 'Academic'),
-        _LegendItem(color: AppColors.accentPurple, label: 'Social'),
+        _LegendItem(color: AppColors.accentPurple, label: 'Teacher Notes'),
       ],
     );
   }
@@ -1330,13 +1913,18 @@ class _LegendItem extends StatelessWidget {
 }
 
 class _SessionProgressPanel extends StatelessWidget {
-  const _SessionProgressPanel({required this.state});
+  const _SessionProgressPanel({
+    required this.state,
+    required this.onRangeChanged,
+  });
 
   final DashboardStat state;
+  final ValueChanged<DashboardRange> onRangeChanged;
 
   @override
   Widget build(BuildContext context) {
-    final total = state.sessionStatus.fold<int>(
+    final items = state.sessionStatus;
+    final total = items.fold<int>(
       0,
       (sum, item) => sum + item.count,
     );
@@ -1345,11 +1933,15 @@ class _SessionProgressPanel extends StatelessWidget {
       title: 'Session Progress',
       subtitle: state.range.label,
       icon: Icons.pending_actions_outlined,
+      trailing: _MetricRangeFilter(
+        value: state.range,
+        onChanged: onRangeChanged,
+      ),
       child: SizedBox(
-        height: 300,
+        height: _dashboardPanelContentHeight,
         child: total == 0
             ? const _EmptyPanelMessage('No teaching session in this range.')
-            : _SessionStatusChart(items: state.sessionStatus, total: total),
+            : _SessionStatusChart(items: items, total: total),
       ),
     );
   }
@@ -1507,26 +2099,37 @@ class _UpcomingSchedulePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final schedules = state.upcomingSchedules.take(5).toList();
+
     return _DashboardPanel(
       title: 'Upcoming Schedule This Week',
       subtitle: 'Teaching schedule for the next 7 days',
       icon: Icons.calendar_month_outlined,
-      child: state.upcomingSchedules.isEmpty
-          ? const _EmptyPanelMessage('No upcoming teaching schedule this week.')
-          : Column(
-              children: [
-                for (final item in state.upcomingSchedules)
-                  _ScheduleItem(item: item),
-              ],
-            ),
+      child: SizedBox(
+        height: _dashboardPanelContentHeight,
+        child: schedules.isEmpty
+            ? const _EmptyPanelMessage(
+                'No upcoming teaching schedule this week.',
+              )
+            : Column(
+                children: [
+                  for (var index = 0; index < schedules.length; index++)
+                    _ScheduleItem(
+                      item: schedules[index],
+                      isLast: index == schedules.length - 1,
+                    ),
+                ],
+              ),
+      ),
     );
   }
 }
 
 class _ScheduleItem extends StatelessWidget {
-  const _ScheduleItem({required this.item});
+  const _ScheduleItem({required this.item, required this.isLast});
 
   final DashboardUpcomingSchedule item;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
@@ -1534,6 +2137,8 @@ class _ScheduleItem extends StatelessWidget {
       leading: Icons.schedule_outlined,
       title: item.title,
       subtitle: '${_shortDate(item.date)} | ${item.time}',
+      margin: EdgeInsets.only(bottom: isLast ? 0 : 9),
+      onTap: () => context.go('/schedules'),
       trailing: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -1598,6 +2203,208 @@ class _AttentionPanel extends StatelessWidget {
   }
 }
 
+class _TopLearnersPanel extends StatelessWidget {
+  const _TopLearnersPanel({required this.state});
+
+  final DashboardStat state;
+
+  @override
+  Widget build(BuildContext context) {
+    final learners = state.topLearners.take(5).toList();
+
+    return _DashboardPanel(
+      title: 'Top Learners',
+      subtitle: 'Academic score and teacher notes ranking',
+      icon: Icons.workspace_premium_outlined,
+      trailing: const Tooltip(
+        message:
+            'Points = 65% academic average + 35% teacher note score.\nNote score is scaled from 0-5 stars to 0-100.',
+        child: Icon(
+          Icons.info_outline,
+          color: AppColors.textSecondary,
+          size: 18,
+        ),
+      ),
+      child: SizedBox(
+        height: _dashboardPanelContentHeight,
+        child: learners.isEmpty
+            ? const _EmptyPanelMessage(
+                'No academic or teacher note score is available yet.',
+              )
+            : Column(
+                children: [
+                  for (var index = 0; index < learners.length; index++)
+                    _TopLearnerItem(
+                      rank: index + 1,
+                      learner: learners[index],
+                      isLast: index == learners.length - 1,
+                    ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _TopLearnerItem extends StatelessWidget {
+  const _TopLearnerItem({
+    required this.rank,
+    required this.learner,
+    required this.isLast,
+  });
+
+  final int rank;
+  final DashboardTopLearner learner;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final rankColor = switch (rank) {
+      1 => AppColors.warning,
+      2 => AppColors.grey600,
+      3 => AppColors.contentColorOrange,
+      _ => AppColors.primary,
+    };
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => context.go('/students/${learner.studentId}'),
+        child: Container(
+          margin: EdgeInsets.only(bottom: isLast ? 0 : 7),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: rank == 1
+                ? AppColors.primary.withValues(alpha: 0.08)
+                : AppColors.surfaceSoft,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: rank == 1
+                  ? AppColors.primary.withValues(alpha: 0.26)
+                  : AppColors.border,
+            ),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 28,
+                child: Text(
+                  '#$rank',
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _LearnerAvatar(name: learner.studentName, color: rankColor),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                  learner.studentName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                  learner.studentNo,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: rankColor.withValues(alpha: 0.16),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.star_rounded, color: rankColor, size: 14),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    '${learner.points} pts',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LearnerAvatar extends StatelessWidget {
+  const _LearnerAvatar({required this.name, required this.color});
+
+  final String name;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = name
+        .split(' ')
+        .where((part) => part.trim().isNotEmpty)
+        .take(2)
+        .toList();
+    final initials = parts.map((part) => part[0]).join();
+
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.white, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.14),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          initials.toUpperCase(),
+          style: TextStyle(
+            color: color,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _RecentNotesPanel extends StatelessWidget {
   const _RecentNotesPanel({required this.state});
 
@@ -1639,12 +2446,14 @@ class _DashboardPanel extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.child,
+    this.trailing,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
   final Widget child;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -1693,6 +2502,7 @@ class _DashboardPanel extends StatelessWidget {
                   ],
                 ),
               ),
+              if (trailing != null) ...[const SizedBox(width: 10), trailing!],
             ],
           ),
           const SizedBox(height: 14),
@@ -1709,17 +2519,21 @@ class _ListTileShell extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.trailing,
+    this.margin = const EdgeInsets.only(bottom: 9),
+    this.onTap,
   });
 
   final IconData leading;
   final String title;
   final String subtitle;
   final Widget trailing;
+  final EdgeInsetsGeometry margin;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 9),
+    final tile = Container(
+      margin: margin,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: AppColors.surfaceSoft,
@@ -1774,6 +2588,17 @@ class _ListTileShell extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTap == null) return tile;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: tile,
+      ),
+    );
   }
 }
 
@@ -1798,35 +2623,6 @@ class _EmptyPanelMessage extends StatelessWidget {
           color: AppColors.textSecondary,
           fontSize: 12,
           height: 1.35,
-        ),
-      ),
-    );
-  }
-}
-
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
-      ),
-      child: Text(
-        message,
-        maxLines: 3,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: AppColors.errorDark,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
         ),
       ),
     );

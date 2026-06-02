@@ -1,3 +1,5 @@
+import 'package:edukita/core/router/service_locator.dart';
+import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/common/feature_state.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
@@ -9,6 +11,9 @@ import 'package:edukita/features/students/persentation/detail/student_exam_score
 import 'package:edukita/features/students/persentation/detail/student_more_tab.dart';
 import 'package:edukita/features/students/persentation/detail/student_overview_tab.dart';
 import 'package:edukita/features/students/persentation/detail/student_personal_tab.dart';
+import 'package:edukita/features/users/domain/user_authorization.dart';
+import 'package:edukita/features/users/domain/user_management_repository.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/detail_breadcrumbs.dart';
 import 'package:edukita/widgets/detail_tab_bar.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +28,50 @@ class StudentDetailPage extends StatefulWidget {
 }
 
 class _StudentDetailPageState extends State<StudentDetailPage> {
+  AppAuthorizationScope _authScope = AppAuthorizationScope(
+    role: AppUserRole.admin,
+    permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+      AppUserRole.admin,
+    ),
+  );
+  bool _authorizationLoaded = false;
+
+  bool get _canViewStudents =>
+      _authScope.canView(AppMenuAccessRegistry.students.code);
+  bool get _canUpdateStudents =>
+      _authScope.canUpdate(AppMenuAccessRegistry.students.code);
+  bool get _canDeleteStudents =>
+      _authScope.canDelete(AppMenuAccessRegistry.students.code);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAuthorizationAndDetail();
+  }
+
+  Future<void> _loadAuthorizationAndDetail() async {
+    final session = await AuthSessionCache.instance.read();
+    AppAuthorizationScope scope;
+    if (session == null || session.isAdmin) {
+      scope = AppAuthorizationScope(
+        role: AppUserRole.admin,
+        permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+          AppUserRole.admin,
+        ),
+      );
+    } else {
+      scope = await getIt<UserManagementRepository>()
+          .getAuthorizationScopeForUser(session.userId);
+    }
+    if (!mounted) return;
+    setState(() {
+      _authScope = scope;
+      _authorizationLoaded = true;
+    });
+    if (!scope.canView(AppMenuAccessRegistry.students.code)) return;
+    await context.read<StudentDetailCubit>().init(widget.studentId);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -47,6 +96,22 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
       ),
       body: BlocBuilder<StudentDetailCubit, FeatureState<StudentDetailData>>(
         builder: (context, state) {
+          if (!_authorizationLoaded) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!_canViewStudents) {
+            return const Center(
+              child: Text(
+                'You do not have permission to view students.',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            );
+          }
+
           if (state.loading && state.data == null) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -89,7 +154,11 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
                   StudentPersonalTab(student: student),
                   StudentFamilyTab(student: student),
                   StudentAcademicTab(student: student),
-                  StudentExamScoresTab(student: student),
+                  StudentExamScoresTab(
+                    student: student,
+                    canUpdateStudent: _canUpdateStudents,
+                    canDeleteStudent: _canDeleteStudents,
+                  ),
                   StudentBehaviorTab(student: student),
                   StudentActivitiesTab(student: student),
                   StudentMoreTab(student: student),

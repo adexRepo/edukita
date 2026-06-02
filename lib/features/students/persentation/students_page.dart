@@ -1,4 +1,6 @@
 import 'package:edukita/core/utils/text_case.dart';
+import 'package:edukita/core/router/service_locator.dart';
+import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/common/feature_state.dart';
 import 'package:edukita/features/students/data/student_page_data.dart';
 import 'package:edukita/features/students/data/student_table.dart';
@@ -6,6 +8,8 @@ import 'package:edukita/features/students/domain/student_feature_cubit.dart';
 import 'package:edukita/features/students/domain/sudent_filter.dart';
 import 'package:edukita/features/students/persentation/student_form_dialog.dart';
 import 'package:edukita/features/students/persentation/student_profile_cell.dart';
+import 'package:edukita/features/users/domain/user_authorization.dart';
+import 'package:edukita/features/users/domain/user_management_repository.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
@@ -30,12 +34,62 @@ class _StudentsPageState extends State<StudentsPage> {
   String? sortColumn;
   StudentFilter _filter = const StudentFilter();
   bool isAscending = true;
+  AppAuthorizationScope _authScope = AppAuthorizationScope(
+    role: AppUserRole.admin,
+    permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+      AppUserRole.admin,
+    ),
+  );
+  bool _authorizationLoaded = false;
+
+  bool get _canViewStudents =>
+      _authScope.canView(AppMenuAccessRegistry.students.code);
+  bool get _canCreateStudents =>
+      _authScope.canCreate(AppMenuAccessRegistry.students.code);
+  bool get _canUpdateStudents =>
+      _authScope.canUpdate(AppMenuAccessRegistry.students.code);
+  bool get _canDeleteStudents =>
+      _authScope.canDelete(AppMenuAccessRegistry.students.code);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAuthorizationAndStudents();
+  }
+
+  Future<void> _loadAuthorizationAndStudents() async {
+    final session = await AuthSessionCache.instance.read();
+    AppAuthorizationScope scope;
+    if (session == null || session.isAdmin) {
+      scope = AppAuthorizationScope(
+        role: AppUserRole.admin,
+        permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+          AppUserRole.admin,
+        ),
+      );
+    } else {
+      scope = await getIt<UserManagementRepository>()
+          .getAuthorizationScopeForUser(session.userId);
+    }
+    if (!mounted) return;
+    setState(() {
+      _authScope = scope;
+      _authorizationLoaded = true;
+    });
+    if (!scope.canView(AppMenuAccessRegistry.students.code)) return;
+    await context.read<StudentPageCubit>().init();
+  }
 
   void _inquiry() {
+    if (!_canViewStudents) return;
     context.read<StudentPageCubit>().applyFilter(_filter);
   }
 
   Future<void> _showAddStudentDialog() async {
+    if (!_canCreateStudents) {
+      AppToast.showFailed('You do not have permission to create students.');
+      return;
+    }
     await AppActionGuard.run('student_form_load_new', () async {
       final cubit = context.read<StudentPageCubit>();
       final schools = await cubit.loadAvailableSchools();
@@ -71,6 +125,10 @@ class _StudentsPageState extends State<StudentsPage> {
   }
 
   Future<void> _showEditStudentDialog(StudentTable row) async {
+    if (!_canUpdateStudents) {
+      AppToast.showFailed('You do not have permission to update students.');
+      return;
+    }
     await AppActionGuard.run('student_form_load_${row.id}', () async {
       final cubit = context.read<StudentPageCubit>();
       final schools = await cubit.loadAvailableSchools();
@@ -106,6 +164,10 @@ class _StudentsPageState extends State<StudentsPage> {
   }
 
   Future<void> _confirmDeleteStudent(StudentTable student) async {
+    if (!_canDeleteStudents) {
+      AppToast.showFailed('You do not have permission to delete students.');
+      return;
+    }
     final confirmed = await showGuardedDialog<bool>(
       context: context,
       guardKey: 'delete_student_${student.id}',
@@ -144,6 +206,26 @@ class _StudentsPageState extends State<StudentsPage> {
   // ================= BUILD =================
   @override
   Widget build(BuildContext context) {
+    if (!_authorizationLoaded) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (!_canViewStudents) {
+      return const Scaffold(
+        body: Center(
+          child: Text(
+            'You do not have permission to view students.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: BlocBuilder<StudentPageCubit, FeatureState<StudentPageData>>(
         builder: (context, state) {
@@ -229,11 +311,12 @@ class _StudentsPageState extends State<StudentsPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        ElevatedButton.icon(
-          onPressed: _showAddStudentDialog,
-          icon: const Icon(Icons.add),
-          label: const Text('Add Student'),
-        ),
+        if (_canCreateStudents)
+          ElevatedButton.icon(
+            onPressed: _showAddStudentDialog,
+            icon: const Icon(Icons.add),
+            label: const Text('Add Student'),
+          ),
 
         const SizedBox(width: 8),
         Row(
@@ -317,7 +400,9 @@ class _StudentsPageState extends State<StudentsPage> {
               children: [
                 IconButton(
                   tooltip: 'Edit student',
-                  onPressed: () => _showEditStudentDialog(s),
+                  onPressed: _canUpdateStudents
+                      ? () => _showEditStudentDialog(s)
+                      : null,
                   constraints: const BoxConstraints.tightFor(
                     width: 28,
                     height: 28,
@@ -327,7 +412,9 @@ class _StudentsPageState extends State<StudentsPage> {
                 ),
                 IconButton(
                   tooltip: 'Delete student',
-                  onPressed: () => _confirmDeleteStudent(s),
+                  onPressed: _canDeleteStudents
+                      ? () => _confirmDeleteStudent(s)
+                      : null,
                   constraints: const BoxConstraints.tightFor(
                     width: 28,
                     height: 28,

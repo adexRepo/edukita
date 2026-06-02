@@ -3,6 +3,7 @@ import 'package:edukita/core/router/root_navigator.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/assistance/periods/presentation/assistance_periods_page.dart';
 import 'package:edukita/features/assistance/programs/domain/assistance_program_cubit.dart';
+import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/auth/presentation/login_page.dart';
 import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
 import 'package:edukita/features/dashboard/presentation/dashboard_page.dart';
@@ -31,6 +32,8 @@ import 'package:edukita/features/teaching_activity/domain/teaching_activity_deta
 import 'package:edukita/features/teaching_activity/presentation/teaching_activity_detail_page.dart';
 import 'package:edukita/features/teaching_activity/presentation/teaching_activity_page.dart';
 import 'package:edukita/features/users/domain/user_management_cubit.dart';
+import 'package:edukita/features/users/domain/user_authorization.dart';
+import 'package:edukita/features/users/domain/user_management_repository.dart';
 import 'package:edukita/features/users/presentation/users_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -71,7 +74,7 @@ final GoRouter appRouter = GoRouter(
           pageBuilder: (context, state) => _noTransitionPage(
             state: state,
             child: withCubit(
-              create: () => getIt<StudentPageCubit>()..init(),
+              create: () => getIt<StudentPageCubit>(),
               child: const StudentsPage(),
             ),
           ),
@@ -83,7 +86,7 @@ final GoRouter appRouter = GoRouter(
                 return _noTransitionPage(
                   state: state,
                   child: withCubit(
-                    create: () => getIt<StudentDetailCubit>()..init(id),
+                    create: () => getIt<StudentDetailCubit>(),
                     child: StudentDetailPage(studentId: id),
                   ),
                 );
@@ -97,7 +100,7 @@ final GoRouter appRouter = GoRouter(
           pageBuilder: (context, state) => _noTransitionPage(
             state: state,
             child: withCubit(
-              create: () => getIt<TeacherCubit>()..loadTeachers(),
+              create: () => getIt<TeacherCubit>(),
               child: const TeachersPage(),
             ),
           ),
@@ -126,25 +129,23 @@ final GoRouter appRouter = GoRouter(
             child: MultiBlocProvider(
               providers: [
                 BlocProvider<SchoolCubit>(
-                  create: (_) => getIt<SchoolCubit>()..loadSchools(),
+                  create: (_) => getIt<SchoolCubit>(),
                 ),
                 BlocProvider<ClassCubit>(create: (_) => getIt<ClassCubit>()),
                 BlocProvider<SubjectCubit>(
-                  create: (_) => getIt<SubjectCubit>()..loadCurriculum(),
+                  create: (_) => getIt<SubjectCubit>(),
                 ),
                 BlocProvider<StrategyCubit>(
-                  create: (_) => getIt<StrategyCubit>()..loadStrategies(),
+                  create: (_) => getIt<StrategyCubit>(),
                 ),
                 BlocProvider<AssistancePlanCubit>(
                   create: (_) => getIt<AssistancePlanCubit>(),
                 ),
                 BlocProvider<AssistanceProgramCubit>(
-                  create: (_) =>
-                      getIt<AssistanceProgramCubit>()..loadPrograms(),
+                  create: (_) => getIt<AssistanceProgramCubit>(),
                 ),
                 BlocProvider<ReportDefinitionCubit>(
-                  create: (_) =>
-                      getIt<ReportDefinitionCubit>()..loadDefinitions(),
+                  create: (_) => getIt<ReportDefinitionCubit>(),
                 ),
               ],
               child: const ParameterPage(),
@@ -167,10 +168,10 @@ final GoRouter appRouter = GoRouter(
                   create: (_) => getIt<StrategyCubit>()..loadStrategies(),
                 ),
                 BlocProvider<ClassCubit>(
-                  create: (_) => getIt<ClassCubit>()..loadClasses(),
+                  create: (_) => getIt<ClassCubit>(),
                 ),
                 BlocProvider<TeacherCubit>(
-                  create: (_) => getIt<TeacherCubit>()..loadTeachers(),
+                  create: (_) => getIt<TeacherCubit>(),
                 ),
                 BlocProvider<SchoolCubit>(
                   create: (_) => getIt<SchoolCubit>()..loadSchools(),
@@ -226,11 +227,10 @@ final GoRouter appRouter = GoRouter(
                 child: MultiBlocProvider(
                   providers: [
                     BlocProvider<AssistancePlanCubit>(
-                      create: (_) => getIt<AssistancePlanCubit>()..loadModule(),
+                      create: (_) => getIt<AssistancePlanCubit>(),
                     ),
                     BlocProvider<AssistanceProgramCubit>(
-                      create: (_) =>
-                          getIt<AssistanceProgramCubit>()..loadPrograms(),
+                      create: (_) => getIt<AssistanceProgramCubit>(),
                     ),
                   ],
                   child: const AssistancePeriodsPage(),
@@ -259,7 +259,7 @@ final GoRouter appRouter = GoRouter(
           pageBuilder: (context, state) => _noTransitionPage(
             state: state,
             child: withCubit(
-              create: () => getIt<ReportDefinitionCubit>()..loadDefinitions(),
+              create: () => getIt<ReportDefinitionCubit>(),
               child: const ReportsPage(),
             ),
           ),
@@ -298,13 +298,8 @@ class _TeacherDetailRoute extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initialTeacher = teacher;
-    if (initialTeacher != null) {
-      return TeacherDetailPage(teacher: initialTeacher);
-    }
-
-    return FutureBuilder<Teacher?>(
-      future: getIt<TeacherRepository>().getTeacherById(id),
+    return FutureBuilder<_TeacherDetailRouteData>(
+      future: _load(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -312,7 +307,16 @@ class _TeacherDetailRoute extends StatelessWidget {
           );
         }
 
-        final loadedTeacher = snapshot.data;
+        final data = snapshot.data;
+        if (data == null || !data.canView) {
+          return const Scaffold(
+            body: Center(
+              child: Text('You do not have permission to view teachers.'),
+            ),
+          );
+        }
+
+        final loadedTeacher = data.teacher;
         if (loadedTeacher == null) {
           return const Scaffold(body: Center(child: Text('Teacher not found')));
         }
@@ -321,4 +325,31 @@ class _TeacherDetailRoute extends StatelessWidget {
       },
     );
   }
+
+  Future<_TeacherDetailRouteData> _load() async {
+    final session = await AuthSessionCache.instance.read();
+    final canView = session == null || session.isAdmin
+        ? true
+        : (await getIt<UserManagementRepository>()
+                .getAuthorizationScopeForUser(session.userId))
+            .canView(AppMenuAccessRegistry.teachers.code);
+    if (!canView) return const _TeacherDetailRouteData(canView: false);
+
+    final initialTeacher = teacher;
+    if (initialTeacher != null) {
+      return _TeacherDetailRouteData(canView: true, teacher: initialTeacher);
+    }
+
+    return _TeacherDetailRouteData(
+      canView: true,
+      teacher: await getIt<TeacherRepository>().getTeacherById(id),
+    );
+  }
+}
+
+class _TeacherDetailRouteData {
+  const _TeacherDetailRouteData({required this.canView, this.teacher});
+
+  final bool canView;
+  final Teacher? teacher;
 }

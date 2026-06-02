@@ -47,6 +47,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _loading = true;
   bool _checkingAuthorization = true;
   bool _isAdmin = false;
+  bool _isStaff = false;
   bool _saving = false;
   bool _backingUp = false;
 
@@ -89,6 +90,7 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!mounted) return;
     setState(() {
       _isAdmin = session?.isAdmin == true;
+      _isStaff = session?.isStaff == true;
       _checkingAuthorization = false;
     });
   }
@@ -253,8 +255,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _generalPanel(),
-                        const SizedBox(height: 14),
+                        if (_isAdmin || _isStaff) ...[
+                          _generalPanel(),
+                          const SizedBox(height: 14),
+                        ],
                         _personalizationPanel(),
                         const SizedBox(height: 14),
                         if (_isAdmin) ...[

@@ -9,6 +9,8 @@ import 'package:edukita/features/assistance/programs/domain/assistance_program_c
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/features/assistance/plans/data/assistance_plan_models.dart';
 import 'package:edukita/features/assistance/plans/domain/assistance_plan_cubit.dart';
+import 'package:edukita/features/users/domain/user_authorization.dart';
+import 'package:edukita/features/users/presentation/authorization_helpers.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_loading.dart';
@@ -35,6 +37,51 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
   String _programFilter = '';
   AssistancePeriodStatus? _statusFilter;
   int _yearFilter = DateTime.now().year;
+  AppAuthorizationScope _authScope = AppAuthorizationScope(
+    role: AppUserRole.admin,
+    permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+      AppUserRole.admin,
+    ),
+  );
+  bool _authorizationLoaded = false;
+
+  bool get _canView =>
+      _authScope.canView(AppMenuAccessRegistry.assistancePrograms.code);
+  bool get _canCreate =>
+      _authScope.canCreate(AppMenuAccessRegistry.assistancePrograms.code);
+  bool get _canUpdate =>
+      _authScope.canUpdate(AppMenuAccessRegistry.assistancePrograms.code);
+  bool get _canDelete =>
+      _authScope.canDelete(AppMenuAccessRegistry.assistancePrograms.code);
+  bool get _canExport => _authScope.can(
+        AppMenuAccessRegistry.assistancePrograms.code,
+        AppPermissionAction.export,
+      );
+  bool get _canApprove => _authScope.can(
+        AppMenuAccessRegistry.assistancePrograms.code,
+        AppPermissionAction.approve,
+      );
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAuthorization();
+  }
+
+  Future<void> _loadAuthorization() async {
+    final scope = await loadCurrentAuthorizationScope();
+    if (!mounted) return;
+    setState(() {
+      _authScope = scope;
+      _authorizationLoaded = true;
+    });
+    if (_canView) {
+      await Future.wait([
+        context.read<AssistanceProgramCubit>().loadPrograms(),
+        context.read<AssistancePlanCubit>().loadModule(),
+      ]);
+    }
+  }
 
   @override
   void dispose() {
@@ -44,6 +91,16 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_authorizationLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (!_canView) {
+      return const AccessDeniedPanel(
+        message: 'You do not have permission to view assistance programs.',
+      );
+    }
+
     final programState = context.watch<AssistanceProgramCubit>().state;
     final planState = context.watch<AssistancePlanCubit>().state;
     final programs = programState.programs;
@@ -58,6 +115,10 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
         state: planState,
         programs: programs,
         onBack: () => setState(() => _selectedPeriod = null),
+        canUpdate: _canUpdate,
+        canDelete: _canDelete,
+        canExport: _canExport,
+        canApprove: _canApprove,
       );
     }
 
@@ -71,7 +132,7 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
             subtitle:
                 'Manage assistance periods, target candidates, approval, and recipients.',
             trailing: ElevatedButton.icon(
-              onPressed: programs.isEmpty
+              onPressed: programs.isEmpty || !_canCreate
                   ? null
                   : () => _showCreatePeriodDialog(context, programs),
               icon: const Icon(Icons.add),
@@ -342,7 +403,9 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
                     : 'Delete period',
                 onPressed: period.status == AssistancePeriodStatus.approved
                     ? null
-                    : () => _confirmDeletePeriod(context, period),
+                    : _canDelete
+                        ? () => _confirmDeletePeriod(context, period)
+                        : null,
                 icon: const Icon(
                   Icons.delete_outline,
                   size: 18,
@@ -361,6 +424,10 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
     BuildContext context,
     AssistancePeriod period,
   ) async {
+    if (!_canDelete) {
+      AppToast.showFailed('You do not have permission to delete periods.');
+      return;
+    }
     final confirmed = await showGuardedDialog<bool>(
       context: context,
       guardKey: 'delete_assistance_period_${period.id}',
@@ -446,6 +513,10 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
     BuildContext context,
     List<AssistanceProgram> programs,
   ) async {
+    if (!_canCreate) {
+      AppToast.showFailed('You do not have permission to create periods.');
+      return;
+    }
     await showGuardedDialog<void>(
       context: context,
       guardKey: 'create_assistance_period',
@@ -466,12 +537,20 @@ class _AssistancePeriodDetail extends StatefulWidget {
     required this.state,
     required this.programs,
     required this.onBack,
+    required this.canUpdate,
+    required this.canDelete,
+    required this.canExport,
+    required this.canApprove,
   });
 
   final AssistancePeriod period;
   final AssistancePlanState state;
   final List<AssistanceProgram> programs;
   final VoidCallback onBack;
+  final bool canUpdate;
+  final bool canDelete;
+  final bool canExport;
+  final bool canApprove;
 
   @override
   State<_AssistancePeriodDetail> createState() => _AssistancePeriodDetailState();
@@ -586,14 +665,33 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _SetupTab(period: widget.period, state: widget.state),
-                _TargetsTab(period: widget.period, state: widget.state),
-                _ReviewTab(period: widget.period, state: widget.state),
-                _ApprovalTab(period: widget.period, state: widget.state),
+                _SetupTab(
+                  period: widget.period,
+                  state: widget.state,
+                ),
+                _TargetsTab(
+                  period: widget.period,
+                  state: widget.state,
+                  canUpdate: widget.canUpdate,
+                  canDelete: widget.canDelete,
+                ),
+                _ReviewTab(
+                  period: widget.period,
+                  state: widget.state,
+                  canUpdate: widget.canUpdate,
+                  canExport: widget.canExport,
+                ),
+                _ApprovalTab(
+                  period: widget.period,
+                  state: widget.state,
+                  canApprove: widget.canApprove,
+                ),
                 _RecipientsTab(
                   period: widget.period,
                   state: widget.state,
                   program: program,
+                  canUpdate: widget.canUpdate,
+                  canExport: widget.canExport,
                 ),
               ],
             ),
@@ -644,7 +742,10 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
 }
 
 class _SetupTab extends StatelessWidget {
-  const _SetupTab({required this.period, required this.state});
+  const _SetupTab({
+    required this.period,
+    required this.state,
+  });
 
   final AssistancePeriod period;
   final AssistancePlanState state;
@@ -835,10 +936,17 @@ class _SetupInfoTile extends StatelessWidget {
 }
 
 class _TargetsTab extends StatelessWidget {
-  const _TargetsTab({required this.period, required this.state});
+  const _TargetsTab({
+    required this.period,
+    required this.state,
+    required this.canUpdate,
+    required this.canDelete,
+  });
 
   final AssistancePeriod period;
   final AssistancePlanState state;
+  final bool canUpdate;
+  final bool canDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -854,7 +962,8 @@ class _TargetsTab extends StatelessWidget {
               child: _sectionTitle('Target Candidates\nSelected: $selected / ${period.targetQuota}'),
             ),
             ElevatedButton.icon(
-              onPressed: () async {
+              onPressed: canUpdate
+                  ? () async {
                 final cubit = context.read<AssistancePlanCubit>();
                 try {
                   await cubit.generateSelectedPeriod();
@@ -868,13 +977,15 @@ class _TargetsTab extends StatelessWidget {
                     error: e,
                   );
                 }
-              },
+              }
+                  : null,
               icon: const Icon(Icons.auto_awesome),
               label: const Text('Auto Target'),
             ),
             const SizedBox(width: 8),
             FilledButton.icon(
-              onPressed: () async {
+              onPressed: canUpdate
+                  ? () async {
                 final cubit = context.read<AssistancePlanCubit>();
                 try {
                   await cubit.markPlanTargeted();
@@ -884,7 +995,8 @@ class _TargetsTab extends StatelessWidget {
                   if (!context.mounted) return;
                   AppToast.showFailed(e.toString());
                 }
-              },
+              }
+                  : null,
               icon: const Icon(Icons.save),
               label: const Text('Save Target Plan'),
             ),
@@ -895,7 +1007,12 @@ class _TargetsTab extends StatelessWidget {
           child: ListView(
             children: [
               for (final rule in state.periodRules) ...[
-                _RuleTargetSection(rule: rule, state: state),
+                _RuleTargetSection(
+                  rule: rule,
+                  state: state,
+                  canUpdate: canUpdate,
+                  canDelete: canDelete,
+                ),
                 const SizedBox(height: 12),
               ],
             ],
@@ -907,10 +1024,17 @@ class _TargetsTab extends StatelessWidget {
 }
 
 class _RuleTargetSection extends StatelessWidget {
-  const _RuleTargetSection({required this.rule, required this.state});
+  const _RuleTargetSection({
+    required this.rule,
+    required this.state,
+    required this.canUpdate,
+    required this.canDelete,
+  });
 
   final AssistancePeriodRule rule;
   final AssistancePlanState state;
+  final bool canUpdate;
+  final bool canDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -941,7 +1065,8 @@ class _RuleTargetSection extends StatelessWidget {
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: () async {
+                  onPressed: canUpdate
+                      ? () async {
                     final cubit = context.read<AssistancePlanCubit>();
                     if (rule.selectionMode == AssistanceSelectionMode.auto) {
                       try {
@@ -966,7 +1091,8 @@ class _RuleTargetSection extends StatelessWidget {
                         child: _SelectStudentsDialog(rule: rule, state: state),
                       ),
                     );
-                  },
+                  }
+                      : null,
                   icon: Icon(rule.selectionMode == AssistanceSelectionMode.auto
                       ? Icons.auto_awesome
                       : Icons.person_add_alt),
@@ -1002,7 +1128,9 @@ class _RuleTargetSection extends StatelessWidget {
                             onPressed: item.decisionStatus ==
                                     AssistanceDecisionStatus.cancelled
                                 ? null
-                                : () => _removeTargetCandidate(context, item),
+                                : canDelete
+                                    ? () => _removeTargetCandidate(context, item)
+                                    : null,
                             icon: const Icon(
                               Icons.delete_outline,
                               size: 18,
@@ -1064,10 +1192,17 @@ class _RuleTargetSection extends StatelessWidget {
 }
 
 class _ReviewTab extends StatelessWidget {
-  const _ReviewTab({required this.period, required this.state});
+  const _ReviewTab({
+    required this.period,
+    required this.state,
+    required this.canUpdate,
+    required this.canExport,
+  });
 
   final AssistancePeriod period;
   final AssistancePlanState state;
+  final bool canUpdate;
+  final bool canExport;
 
   @override
   Widget build(BuildContext context) {
@@ -1111,34 +1246,40 @@ class _ReviewTab extends StatelessWidget {
             spacing: 8,
             children: [
               OutlinedButton.icon(
-                onPressed: () => _exportPlan(
+                onPressed: canExport
+                    ? () => _exportPlan(
                   context: context,
                   period: period,
                   state: state,
                   format: _AssistanceExportFormat.excel,
-                ),
+                )
+                    : null,
                 icon: const Icon(Icons.table_view),
                 label: const Text('Export Excel'),
               ),
               OutlinedButton.icon(
-                onPressed: () => _exportPlan(
+                onPressed: canExport
+                    ? () => _exportPlan(
                   context: context,
                   period: period,
                   state: state,
                   format: _AssistanceExportFormat.pdf,
-                ),
+                )
+                    : null,
                 icon: const Icon(Icons.picture_as_pdf),
                 label: const Text('Export PDF'),
               ),
               FilledButton.icon(
-                onPressed: () async {
+                onPressed: canUpdate
+                    ? () async {
                   try {
                     await context.read<AssistancePlanCubit>().markPlanSubmitted();
                     AppToast.showSuccess('Assistance plan marked as submitted.');
                   } catch (e) {
                     AppToast.showFailed(e.toString());
                   }
-                },
+                }
+                    : null,
                 icon: const Icon(Icons.send),
                 label: const Text('Mark as Submitted'),
               ),
@@ -1151,10 +1292,15 @@ class _ReviewTab extends StatelessWidget {
 }
 
 class _ApprovalTab extends StatefulWidget {
-  const _ApprovalTab({required this.period, required this.state});
+  const _ApprovalTab({
+    required this.period,
+    required this.state,
+    required this.canApprove,
+  });
 
   final AssistancePeriod period;
   final AssistancePlanState state;
+  final bool canApprove;
 
   @override
   State<_ApprovalTab> createState() => _ApprovalTabState();
@@ -1343,7 +1489,7 @@ class _ApprovalTabState extends State<_ApprovalTab> {
             const SizedBox(height: 10),
             InkWell(
               borderRadius: BorderRadius.circular(8),
-              onTap: _saving ? null : _pickFile,
+              onTap: _saving || !widget.canApprove ? null : _pickFile,
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -1392,7 +1538,7 @@ class _ApprovalTabState extends State<_ApprovalTab> {
                       ),
                     ),
                     OutlinedButton.icon(
-                      onPressed: _saving ? null : _pickFile,
+                      onPressed: _saving || !widget.canApprove ? null : _pickFile,
                       icon: const Icon(Icons.attach_file, size: 17),
                       label: const Text('Browse'),
                     ),
@@ -1426,7 +1572,9 @@ class _ApprovalTabState extends State<_ApprovalTab> {
             Align(
               alignment: Alignment.centerRight,
               child: FilledButton.icon(
-                onPressed: _saving || _selectedFile == null ? null : _upload,
+                onPressed: _saving || _selectedFile == null || !widget.canApprove
+                    ? null
+                    : _upload,
                 icon: const Icon(Icons.verified),
                 label: Text(
                   _saving ? 'Uploading...' : 'Upload & Approve Period',
@@ -1440,6 +1588,10 @@ class _ApprovalTabState extends State<_ApprovalTab> {
   }
 
   Future<void> _pickFile() async {
+    if (!widget.canApprove) {
+      AppToast.showFailed('You do not have permission to approve periods.');
+      return;
+    }
     final file = await openFile(
       acceptedTypeGroups: const [
         XTypeGroup(
@@ -1453,6 +1605,10 @@ class _ApprovalTabState extends State<_ApprovalTab> {
   }
 
   Future<void> _upload() async {
+    if (!widget.canApprove) {
+      AppToast.showFailed('You do not have permission to approve periods.');
+      return;
+    }
     final file = _selectedFile;
     if (file == null) return;
     final uploadedBy = _uploadedByController.text.trim();
@@ -1487,11 +1643,15 @@ class _RecipientsTab extends StatefulWidget {
     required this.period,
     required this.state,
     required this.program,
+    required this.canUpdate,
+    required this.canExport,
   });
 
   final AssistancePeriod period;
   final AssistancePlanState state;
   final AssistanceProgram program;
+  final bool canUpdate;
+  final bool canExport;
 
   @override
   State<_RecipientsTab> createState() => _RecipientsTabState();
@@ -1590,7 +1750,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                   label: const Text('Clear'),
                 ),
                 OutlinedButton.icon(
-                  onPressed: recipients.isEmpty
+                  onPressed: recipients.isEmpty || !widget.canExport
                       ? null
                       : () => _exportRecipients(
                             period: widget.period,
@@ -1602,7 +1762,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                   label: const Text('Excel'),
                 ),
                 FilledButton.icon(
-                  onPressed: recipients.isEmpty
+                  onPressed: recipients.isEmpty || !widget.canExport
                       ? null
                       : () => _exportRecipients(
                             period: widget.period,
@@ -1651,7 +1811,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                       : 'Mark Distributed';
                   final done = item.status == nextStatus;
                   return TextButton(
-                    onPressed: done
+                    onPressed: done || !widget.canUpdate
                         ? null
                         : () async {
                             try {

@@ -10,6 +10,8 @@ class AppTableColumn<T> {
   final int flex;
   final double minWidth;
   final int? Function(T data)? sortValue; // optional sorting
+  final AlignmentGeometry alignment;
+  final TextAlign headerTextAlign;
 
   AppTableColumn({
     required this.title,
@@ -17,6 +19,8 @@ class AppTableColumn<T> {
     this.flex = 1,
     this.minWidth = 96,
     this.sortValue,
+    this.alignment = Alignment.centerLeft,
+    this.headerTextAlign = TextAlign.left,
   });
 }
 
@@ -330,39 +334,50 @@ class _AppTableState<T> extends State<AppTable<T>> {
                     waitDuration: const Duration(milliseconds: 450),
                     child: Padding(
                       padding: EdgeInsets.only(
-                        right: index == widget.columns.length - 1 ? 0 : 16,
+                        right:
+                            col.headerTextAlign == TextAlign.center ||
+                                index == widget.columns.length - 1
+                            ? 0
+                            : 16,
                       ),
-                      child: Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              col.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: AppTypography.tableHeader,
-                                height: 1.15,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textSecondary,
-                                letterSpacing: 0,
+                      child: Align(
+                        alignment: col.headerTextAlign == TextAlign.center
+                            ? Alignment.center
+                            : Alignment.centerLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                col.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: col.headerTextAlign,
+                                style: const TextStyle(
+                                  fontSize: AppTypography.tableHeader,
+                                  height: 1.15,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary,
+                                  letterSpacing: 0,
+                                ),
                               ),
                             ),
-                          ),
-                          if (isSortable) ...[
-                            const SizedBox(width: 4),
-                            Icon(
-                              isActiveSort
-                                  ? (ascending
-                                        ? Icons.arrow_upward
-                                        : Icons.arrow_downward)
-                                  : Icons.unfold_more,
-                              size: isActiveSort ? 13 : 15,
-                              color: isActiveSort
-                                  ? AppColors.primaryDark
-                                  : AppColors.textHint,
-                            ),
+                            if (isSortable) ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                isActiveSort
+                                    ? (ascending
+                                          ? Icons.arrow_upward
+                                          : Icons.arrow_downward)
+                                    : Icons.unfold_more,
+                                size: isActiveSort ? 13 : 15,
+                                color: isActiveSort
+                                    ? AppColors.primaryDark
+                                    : AppColors.textHint,
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -523,11 +538,20 @@ class _AppTableRowState<T> extends State<_AppTableRow<T>> {
                 width: widget.columnWidths[i],
                 child: Padding(
                   padding: EdgeInsets.only(
-                    right: i == widget.columns.length - 1 ? 0 : 12,
+                    right:
+                        col.alignment == Alignment.center ||
+                            i == widget.columns.length - 1
+                        ? 0
+                        : 12,
                   ),
                   child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: col.cell(widget.item),
+                    alignment: col.alignment,
+                    child: SizedBox(
+                      width: col.alignment == Alignment.center
+                          ? double.infinity
+                          : null,
+                      child: col.cell(widget.item),
+                    ),
                   ),
                 ),
               );

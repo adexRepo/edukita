@@ -7,7 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class SystemConfigPage extends StatefulWidget {
-  const SystemConfigPage({super.key});
+  const SystemConfigPage({super.key, this.canUpdate = true});
+
+  final bool canUpdate;
 
   @override
   State<SystemConfigPage> createState() => _SystemConfigPageState();
@@ -113,6 +115,10 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
 
   Future<void> _save() async {
     if (_saving) return;
+    if (!widget.canUpdate) {
+      AppToast.showFailed('You do not have permission to update parameters.');
+      return;
+    }
     final examNames = _config.examTypes
         .map((type) => type.name.trim().toLowerCase())
         .where((name) => name.isNotEmpty)
@@ -208,7 +214,9 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
               subtitle:
                   'Maintain operational defaults used by attendance, assistance, reports, and numbering.',
               trailing: FilledButton.icon(
-                onPressed: _loading || _saving ? null : _save,
+                onPressed: _loading || _saving || !widget.canUpdate
+                    ? null
+                    : _save,
                 icon: _saving
                     ? const SizedBox(
                         width: 16,

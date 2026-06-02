@@ -1,8 +1,12 @@
 import 'package:edukita/core/router/service_locator.dart';
+import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/schools/data/school_level_option.dart';
 import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
 import 'package:edukita/features/teaching_activity/data/teaching_activity_data.dart';
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_cubit.dart';
+import 'package:edukita/features/users/domain/user_authorization.dart';
+import 'package:edukita/features/users/domain/user_management_repository.dart';
+import 'package:edukita/features/users/presentation/authorization_helpers.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
@@ -25,7 +29,14 @@ class TeachingActivityPage extends StatefulWidget {
 class _TeachingActivityPageState extends State<TeachingActivityPage> {
   late DateTime _focusedMonth;
   late int _cacheRevision;
+  AppAuthorizationScope _authScope = AppAuthorizationScope(
+    role: AppUserRole.admin,
+    permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+      AppUserRole.admin,
+    ),
+  );
   bool _refreshScheduled = false;
+  bool _authorizationLoaded = false;
 
   @override
   void initState() {
@@ -33,11 +44,73 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
     final now = DateTime.now();
     _focusedMonth = DateTime(now.year, now.month);
     _cacheRevision = getIt<TeachingActivityCacheService>().revision;
-    context.read<TeachingActivityCubit>().loadActivities();
+    _loadAuthorizationAndActivities();
   }
+
+  Future<void> _loadAuthorizationAndActivities() async {
+    final session = await AuthSessionCache.instance.read();
+    AppAuthorizationScope scope;
+    if (session == null || session.isAdmin) {
+      scope = AppAuthorizationScope(
+        role: AppUserRole.admin,
+        permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+          AppUserRole.admin,
+        ),
+      );
+    } else {
+      scope = await getIt<UserManagementRepository>()
+          .getAuthorizationScopeForUser(session.userId);
+    }
+    if (!mounted) return;
+    setState(() {
+      _authScope = scope;
+      _authorizationLoaded = true;
+    });
+    if (!_canView) return;
+    await context.read<TeacherCubit>().loadTeachers();
+    await _loadScopedActivities(forceRefresh: true);
+  }
+
+  bool get _canView =>
+      _authScope.canView(AppMenuAccessRegistry.teachingActivities.code);
+
+  Future<void> _loadScopedActivities({
+    String? date,
+    int? classLevel,
+    String? status,
+    bool clearClassLevel = false,
+    bool clearStatus = false,
+    bool forceRefresh = false,
+  }) {
+    final teacherId = _authScope.isTeacher ? _authScope.teacherId : null;
+    return context.read<TeachingActivityCubit>().loadActivities(
+          date: date,
+          teacherId: teacherId,
+          clearTeacherId: !_authScope.isTeacher,
+          classLevel: classLevel,
+          status: status,
+          clearClassLevel: clearClassLevel,
+          clearStatus: clearStatus,
+          forceRefresh: forceRefresh,
+        );
+  }
+
+  bool get _canManageReports =>
+      _authScope.canUpdate(AppMenuAccessRegistry.teachingActivities.code) ||
+      _authScope.canCreate(AppMenuAccessRegistry.teachingActivities.code);
 
   @override
   Widget build(BuildContext context) {
+    if (!_authorizationLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (!_canView) {
+      return const AccessDeniedPanel(
+        message: 'You do not have permission to view teaching activities.',
+      );
+    }
+
     _refreshIfCacheChanged(context);
     return BlocListener<TeachingActivityCubit, TeachingActivityState>(
       listenWhen: (previous, current) =>
@@ -87,9 +160,7 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
                             _focusedMonth.month - 1,
                           );
                           setState(() => _focusedMonth = newMonth);
-                          context.read<TeachingActivityCubit>().loadActivities(
-                                date: _dateKey(newMonth),
-                              );
+                          _loadScopedActivities(date: _dateKey(newMonth));
                         },
                         onNextMonth: () {
                           final newMonth = DateTime(
@@ -97,20 +168,19 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
                             _focusedMonth.month + 1,
                           );
                           setState(() => _focusedMonth = newMonth);
-                          context.read<TeachingActivityCubit>().loadActivities(
-                                date: _dateKey(newMonth),
-                              );
+                          _loadScopedActivities(date: _dateKey(newMonth));
                         },
                         onDateSelected: (date) {
                           setState(() {
                             _focusedMonth = DateTime(date.year, date.month);
                           });
-                          context.read<TeachingActivityCubit>().loadActivities(
-                                date: _dateKey(date),
-                              );
+                          _loadScopedActivities(date: _dateKey(date));
                         },
                       );
-                      final rightPanel = const _TeachingActivityTablePanel();
+                      final rightPanel = _TeachingActivityTablePanel(
+                        authScope: _authScope,
+                        canManageReports: _canManageReports,
+                      );
 
                       if (compact) {
                         return ListView(
@@ -155,6 +225,8 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
       _cacheRevision = currentRevision;
       try {
         await context.read<TeachingActivityCubit>().loadActivities(
+              teacherId: _authScope.isTeacher ? _authScope.teacherId : null,
+              clearTeacherId: !_authScope.isTeacher,
               forceRefresh: true,
             );
       } finally {
@@ -165,7 +237,9 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
 }
 
 class _TeachingActivityFilters extends StatelessWidget {
-  const _TeachingActivityFilters();
+  const _TeachingActivityFilters({required this.authScope});
+
+  final AppAuthorizationScope authScope;
 
   @override
   Widget build(BuildContext context) {
@@ -180,37 +254,39 @@ class _TeachingActivityFilters extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Expanded(
-                child: BlocBuilder<TeacherCubit, TeacherState>(
-                  builder: (context, teacherState) {
-                    return AppDropdownButtonFormField<String>(
-                      key: ValueKey('teacher-${state.teacherId ?? ''}'),
-                      initialValue: state.teacherId ?? '',
-                      isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'Teacher'),
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: '',
-                          child: Text('All teachers'),
-                        ),
-                        ...teacherState.teachers.map(
-                          (teacher) => DropdownMenuItem(
-                            value: teacher.id,
-                            child: Text(teacher.fullName),
+              if (!authScope.isTeacher) ...[
+                Expanded(
+                  child: BlocBuilder<TeacherCubit, TeacherState>(
+                    builder: (context, teacherState) {
+                      return AppDropdownButtonFormField<String>(
+                        key: ValueKey('teacher-${state.teacherId ?? ''}'),
+                        initialValue: state.teacherId ?? '',
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Teacher'),
+                        items: [
+                          const DropdownMenuItem<String>(
+                            value: '',
+                            child: Text('All teachers'),
                           ),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        context.read<TeachingActivityCubit>().loadActivities(
-                              teacherId: value,
-                              clearTeacherId: value == null || value.isEmpty,
-                            );
-                      },
-                    );
-                  },
+                          ...teacherState.teachers.map(
+                            (teacher) => DropdownMenuItem(
+                              value: teacher.id,
+                              child: Text(teacher.fullName),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          context.read<TeachingActivityCubit>().loadActivities(
+                                teacherId: value,
+                                clearTeacherId: value == null || value.isEmpty,
+                              );
+                        },
+                      );
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
+                const SizedBox(width: 10),
+              ],
               Expanded(
                 child: AppDropdownButtonFormField<String>(
                   key: ValueKey('level-${state.classLevel ?? ''}'),
@@ -231,6 +307,9 @@ class _TeachingActivityFilters extends StatelessWidget {
                   ],
                   onChanged: (value) {
                     context.read<TeachingActivityCubit>().loadActivities(
+                          teacherId:
+                              authScope.isTeacher ? authScope.teacherId : null,
+                          clearTeacherId: !authScope.isTeacher,
                           classLevel: int.tryParse(value ?? ''),
                           clearClassId: true,
                           clearClassLevel: value == null || value.isEmpty,
@@ -260,6 +339,9 @@ class _TeachingActivityFilters extends StatelessWidget {
                   ],
                   onChanged: (value) {
                     context.read<TeachingActivityCubit>().loadActivities(
+                          teacherId:
+                              authScope.isTeacher ? authScope.teacherId : null,
+                          clearTeacherId: !authScope.isTeacher,
                           status: value,
                           clearStatus: value == null || value.isEmpty,
                         );
@@ -276,13 +358,19 @@ class _TeachingActivityFilters extends StatelessWidget {
 }
 
 class _TeachingActivityTablePanel extends StatelessWidget {
-  const _TeachingActivityTablePanel();
+  const _TeachingActivityTablePanel({
+    required this.authScope,
+    required this.canManageReports,
+  });
+
+  final AppAuthorizationScope authScope;
+  final bool canManageReports;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const _TeachingActivityFilters(),
+        _TeachingActivityFilters(authScope: authScope),
         const SizedBox(height: 12),
         Expanded(
           child: BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
@@ -293,6 +381,14 @@ class _TeachingActivityTablePanel extends StatelessWidget {
                 onRowTap: (item) async {
                   if (item.activityId != null) {
                     context.go('/teaching-activities/${item.activityId}');
+                    return;
+                  }
+
+                  if (!canManageReports ||
+                      !authScope.ownsTeacherData(item.teacherId)) {
+                    AppToast.showFailed(
+                      'You do not have permission to start this class.',
+                    );
                     return;
                   }
 
@@ -345,7 +441,11 @@ class _TeachingActivityTablePanel extends StatelessWidget {
                     title: 'Action',
                     flex: 2,
                     minWidth: 230,
-                    cell: (item) => _ActionButtons(item: item),
+                    cell: (item) => _ActionButtons(
+                      item: item,
+                      authScope: authScope,
+                      canManageReports: canManageReports,
+                    ),
                   ),
                 ],
               );
@@ -638,25 +738,32 @@ class _DateSummaryRow extends StatelessWidget {
 }
 
 class _ActionButtons extends StatelessWidget {
-  const _ActionButtons({required this.item});
+  const _ActionButtons({
+    required this.item,
+    required this.authScope,
+    required this.canManageReports,
+  });
 
   final TeachingActivityListItem item;
+  final AppAuthorizationScope authScope;
+  final bool canManageReports;
 
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<TeachingActivityCubit>();
     final buttons = <Widget>[];
+    final canAct = canManageReports && authScope.ownsTeacherData(item.teacherId);
 
     if (item.status == TeachingActivityStatus.scheduled) {
       buttons.add(
         FilledButton(
-          onPressed: () => cubit.startClass(item.scheduleId),
+          onPressed: canAct ? () => cubit.startClass(item.scheduleId) : null,
           child: const Text('Start Class'),
         ),
       );
       buttons.add(
         TextButton(
-          onPressed: () => _showCancelDialog(context, item),
+          onPressed: canAct ? () => _showCancelDialog(context, item) : null,
           child: const Text('Cancel'),
         ),
       );
@@ -671,7 +778,7 @@ class _ActionButtons extends StatelessWidget {
       );
       buttons.add(
         TextButton(
-          onPressed: item.activityId == null
+          onPressed: item.activityId == null || !canAct
               ? null
               : () => cubit.completeActivity(item.activityId!),
           child: const Text('Complete'),

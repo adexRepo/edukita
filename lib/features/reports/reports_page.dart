@@ -4,6 +4,8 @@ import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/core/utils/generated_file_name.dart';
 import 'package:edukita/features/report_definitions/data/report_definition_model.dart';
 import 'package:edukita/features/report_definitions/domain/report_definition_cubit.dart';
+import 'package:edukita/features/users/domain/user_authorization.dart';
+import 'package:edukita/features/users/presentation/authorization_helpers.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_error_dialog.dart';
 import 'package:edukita/widgets/app_loading.dart';
@@ -24,18 +26,51 @@ class ReportsPage extends StatefulWidget {
 class _ReportsPageState extends State<ReportsPage> {
   String _reportSearchQuery = '';
   String _rowSearchQuery = '';
+  AppAuthorizationScope _authScope = AppAuthorizationScope(
+    role: AppUserRole.admin,
+    permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+      AppUserRole.admin,
+    ),
+  );
+  bool _authorizationLoaded = false;
+
+  bool get _canViewReports =>
+      _authScope.canView(AppMenuAccessRegistry.reports.code);
+  bool get _canExportReports =>
+      _authScope.can(AppMenuAccessRegistry.reports.code, AppPermissionAction.export);
 
   @override
   void initState() {
     super.initState();
+    _loadAuthorizationAndReports();
+  }
+
+  Future<void> _loadAuthorizationAndReports() async {
+    final scope = await loadCurrentAuthorizationScope();
+    if (!mounted) return;
+    setState(() {
+      _authScope = scope;
+      _authorizationLoaded = true;
+    });
+    if (!scope.canView(AppMenuAccessRegistry.reports.code)) return;
     final cubit = context.read<ReportDefinitionCubit>();
     if (cubit.state.definitions.isEmpty && !cubit.state.isLoading) {
-      cubit.loadDefinitions();
+      await cubit.loadDefinitions();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_authorizationLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (!_canViewReports) {
+      return const AccessDeniedPanel(
+        message: 'You do not have permission to view reports.',
+      );
+    }
+
     return Padding(
       padding: AppPageHeaderStyle.pagePadding,
       child: Column(
@@ -139,7 +174,7 @@ class _ReportsPageState extends State<ReportsPage> {
           label: const Text('Run'),
         ),
         OutlinedButton.icon(
-          onPressed: state.resultRows.isEmpty
+          onPressed: state.resultRows.isEmpty || !_canExportReports
               ? null
               : () => _exportExcel(context, state),
           icon: const Icon(Icons.download_outlined, size: 17),
@@ -386,6 +421,10 @@ class _ReportsPageState extends State<ReportsPage> {
     BuildContext context,
     ReportDefinitionState state,
   ) async {
+    if (!_canExportReports) {
+      AppToast.showFailed('You do not have permission to export reports.');
+      return;
+    }
     final selected = state.selectedDefinition;
     if (selected == null || state.resultRows.isEmpty) return;
 

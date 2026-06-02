@@ -4,6 +4,7 @@ import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/users/data/user_model.dart';
 import 'package:edukita/features/users/domain/user_authorization.dart';
 import 'package:edukita/features/users/domain/user_management_cubit.dart';
+import 'package:edukita/features/users/presentation/authorization_helpers.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
@@ -27,6 +28,7 @@ class UsersPage extends StatefulWidget {
 class _UsersPageState extends State<UsersPage> {
   String _query = '';
   bool _openedInitialTeacher = false;
+  int _tabIndex = 0;
 
   @override
   void didChangeDependencies() {
@@ -46,6 +48,15 @@ class _UsersPageState extends State<UsersPage> {
       await cubit.load();
       if (!mounted) return;
       state = cubit.state;
+    }
+    final creating = user == null;
+    if (creating && !state.canCreateUsers) {
+      AppToast.showFailed('You do not have permission to create users.');
+      return;
+    }
+    if (!creating && !state.canUpdateUsers) {
+      AppToast.showFailed('You do not have permission to update users.');
+      return;
     }
     final session = await AuthSessionCache.instance.read();
     if (!mounted) return;
@@ -79,6 +90,11 @@ class _UsersPageState extends State<UsersPage> {
 
   Future<void> _toggleActive(User user) async {
     if (user.username == 'admin') return;
+    final state = context.read<UserManagementCubit>().state;
+    if (!state.canDeleteUsers) {
+      AppToast.showFailed('You do not have permission to activate or deactivate users.');
+      return;
+    }
     final targetActive = !user.isActive;
     final confirmed = await showGuardedDialog<bool>(
       context: context,
@@ -112,15 +128,22 @@ class _UsersPageState extends State<UsersPage> {
       body: BlocBuilder<UserManagementCubit, UserManagementState>(
         builder: (context, state) {
           final users = _filteredUsers(state.users);
+          final isAdmin = state.currentRole.isAdmin;
+          if (!state.loading && !state.canViewUsers) {
+            return const AccessDeniedPanel(
+              message: 'You do not have permission to view user management.',
+            );
+          }
           return Column(
             children: [
               Padding(
                 padding: AppPageHeaderStyle.pagePadding,
                 child: AppPageHeader(
                   title: 'User Management',
-                  subtitle:
-                      'Manage app users, role hierarchy, teacher links, and extra menu access.',
-                  trailing: state.canCreateUsers
+                  subtitle: isAdmin
+                      ? 'Manage users, role permissions, teacher links, and special access.'
+                      : 'Manage app users, teacher links, and extra menu access.',
+                  trailing: (!isAdmin || _tabIndex == 0) && state.canCreateUsers
                       ? FilledButton.icon(
                           onPressed: () => _showUserDialog(),
                           icon: const Icon(Icons.add),
@@ -130,27 +153,59 @@ class _UsersPageState extends State<UsersPage> {
                 ),
               ),
               AppLoadingStrip(isLoading: state.loading),
+              if (isAdmin)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: SegmentedButton<int>(
+                      selected: {_tabIndex},
+                      onSelectionChanged: (selected) {
+                        setState(() => _tabIndex = selected.first);
+                      },
+                      segments: const [
+                        ButtonSegment(
+                          value: 0,
+                          icon: Icon(Icons.people_alt_outlined),
+                          label: Text('Users'),
+                        ),
+                        ButtonSegment(
+                          value: 1,
+                          icon: Icon(Icons.admin_panel_settings_outlined),
+                          label: Text('Roles & Permissions'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
-                  child: Column(
-                    children: [
-                      TextField(
-                        onChanged: (value) => setState(() => _query = value),
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          hintText: 'Search username, full name, or teacher',
-                        ),
+                  child: state.error != null
+                      ? Center(child: Text(state.error!))
+                      : isAdmin && _tabIndex == 1
+                          ? _RolePermissionsPanel(
+                              rolePermissions: state.rolePermissions,
+                              onSave: (role, permissions) => context
+                                  .read<UserManagementCubit>()
+                                  .saveRolePermissions(role, permissions),
+                            )
+                          : Column(
+                              children: [
+                                TextField(
+                                  onChanged: (value) =>
+                                      setState(() => _query = value),
+                                  decoration: const InputDecoration(
+                                    prefixIcon: Icon(Icons.search),
+                                    hintText:
+                                        'Search username, full name, or teacher',
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Expanded(child: _buildTable(users, state)),
+                              ],
+                            ),
                       ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: state.error != null
-                            ? Center(child: Text(state.error!))
-                            : _buildTable(users, state),
-                      ),
-                    ],
-                  ),
-                ),
               ),
             ],
           );
@@ -238,13 +293,15 @@ class _UsersPageState extends State<UsersPage> {
           cell: (user) {
             final canEdit = state.currentRole.canManage(user.role) ||
                 state.currentRole.isAdmin;
+            final canUpdate = canEdit && state.canUpdateUsers;
+            final canDelete = canEdit && state.canDeleteUsers;
             final protectedAdmin = user.username == 'admin';
             return Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
                   tooltip: 'Edit user',
-                  onPressed: canEdit ? () => _showUserDialog(user: user) : null,
+                  onPressed: canUpdate ? () => _showUserDialog(user: user) : null,
                   constraints:
                       const BoxConstraints.tightFor(width: 28, height: 28),
                   padding: EdgeInsets.zero,
@@ -252,7 +309,7 @@ class _UsersPageState extends State<UsersPage> {
                 ),
                 IconButton(
                   tooltip: user.isActive ? 'Deactivate' : 'Activate',
-                  onPressed: canEdit && !protectedAdmin
+                  onPressed: canDelete && !protectedAdmin
                       ? () => _toggleActive(user)
                       : null,
                   constraints:
@@ -294,6 +351,228 @@ class _UsersPageState extends State<UsersPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _RolePermissionsPanel extends StatefulWidget {
+  const _RolePermissionsPanel({
+    required this.rolePermissions,
+    required this.onSave,
+  });
+
+  final Map<AppUserRole, Map<String, AppMenuPermission>> rolePermissions;
+  final Future<void> Function(
+    AppUserRole role,
+    Map<String, AppMenuPermission> permissions,
+  ) onSave;
+
+  @override
+  State<_RolePermissionsPanel> createState() => _RolePermissionsPanelState();
+}
+
+class _RolePermissionsPanelState extends State<_RolePermissionsPanel> {
+  AppUserRole _selectedRole = AppUserRole.staff;
+  late Map<String, AppMenuPermission> _draft;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _draft = _permissionsFor(_selectedRole);
+  }
+
+  @override
+  void didUpdateWidget(covariant _RolePermissionsPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.rolePermissions != widget.rolePermissions) {
+      _draft = _permissionsFor(_selectedRole);
+    }
+  }
+
+  Map<String, AppMenuPermission> _permissionsFor(AppUserRole role) {
+    final source = widget.rolePermissions[role] ??
+        AppMenuAccessRegistry.defaultPermissionsForRole(role);
+    return {
+      for (final menu in AppMenuAccessRegistry.all)
+        menu.code: source[menu.code] ?? AppMenuPermission.none(menu.code),
+    };
+  }
+
+  void _changeRole(AppUserRole role) {
+    setState(() {
+      _selectedRole = role;
+      _draft = _permissionsFor(role);
+    });
+  }
+
+  void _toggle(
+    AppMenuAccess menu,
+    AppPermissionAction action,
+    bool value,
+  ) {
+    final current = _draft[menu.code] ?? AppMenuPermission.none(menu.code);
+    var next = switch (action) {
+      AppPermissionAction.view => current.copyWith(
+          canView: value,
+          canCreate: value ? current.canCreate : false,
+          canUpdate: value ? current.canUpdate : false,
+          canDelete: value ? current.canDelete : false,
+          canExport: value ? current.canExport : false,
+          canApprove: value ? current.canApprove : false,
+        ),
+      AppPermissionAction.create => current.copyWith(canCreate: value),
+      AppPermissionAction.update => current.copyWith(canUpdate: value),
+      AppPermissionAction.delete => current.copyWith(canDelete: value),
+      AppPermissionAction.export => current.copyWith(canExport: value),
+      AppPermissionAction.approve => current.copyWith(canApprove: value),
+    };
+    if (action != AppPermissionAction.view && value) {
+      next = next.copyWith(canView: true);
+    }
+    setState(() => _draft[menu.code] = next);
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await widget.onSave(_selectedRole, _draft);
+      AppToast.showSuccess('${_selectedRole.label} permissions updated.');
+    } catch (e) {
+      AppToast.showFailed(e.toString().replaceFirst('Bad state: ', ''));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Widget _permissionCheck(AppMenuAccess menu, AppPermissionAction action) {
+    final permission = _draft[menu.code] ?? AppMenuPermission.none(menu.code);
+    return SizedBox(
+      width: double.infinity,
+      child: Center(
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Checkbox(
+            value: permission.allows(action),
+            onChanged: (value) => _toggle(menu, action, value ?? false),
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Roles & Permissions',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Admin always has full access. Configure menu actions for Staff and Teacher roles.',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 220,
+                child: SegmentedButton<AppUserRole>(
+                  selected: {_selectedRole},
+                  onSelectionChanged: (selected) => _changeRole(selected.first),
+                  segments: const [
+                    ButtonSegment(
+                      value: AppUserRole.staff,
+                      label: SizedBox(
+                        width: 74,
+                        child: Text('Staff', textAlign: TextAlign.center),
+                      ),
+                    ),
+                    ButtonSegment(
+                      value: AppUserRole.teacher,
+                      label: SizedBox(
+                        width: 74,
+                        child: Text('Teacher', textAlign: TextAlign.center),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                onPressed: _saving ? null : _save,
+                icon: const Icon(Icons.save_outlined),
+                label: Text(_saving ? 'Saving...' : 'Save'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: AppTable<AppMenuAccess>(
+            data: AppMenuAccessRegistry.all,
+            pageable: Pageable(
+              page: 0,
+              size: AppMenuAccessRegistry.all.length,
+              totalPages: 1,
+              totalItems: AppMenuAccessRegistry.all.length,
+            ),
+            emptyMessage: 'No menu available',
+            columns: [
+              AppTableColumn(
+                title: 'Menu',
+                flex: 3,
+                minWidth: 220,
+                cell: (menu) => Text(
+                  menu.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              for (final action in AppPermissionAction.values)
+                AppTableColumn(
+                  title: action.label,
+                  flex: 1,
+                  minWidth: 92,
+                  alignment: Alignment.center,
+                  headerTextAlign: TextAlign.center,
+                  cell: (menu) => _permissionCheck(menu, action),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

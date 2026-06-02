@@ -161,6 +161,11 @@ class DatabaseMigrations {
         role TEXT NOT NULL,
         menu_code TEXT NOT NULL,
         can_view INTEGER NOT NULL DEFAULT 1,
+        can_create INTEGER NOT NULL DEFAULT 0,
+        can_update INTEGER NOT NULL DEFAULT 0,
+        can_delete INTEGER NOT NULL DEFAULT 0,
+        can_export INTEGER NOT NULL DEFAULT 0,
+        can_approve INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(role, menu_code)
@@ -172,6 +177,11 @@ class DatabaseMigrations {
         user_id TEXT NOT NULL,
         menu_code TEXT NOT NULL,
         can_view INTEGER NOT NULL DEFAULT 1,
+        can_create INTEGER NOT NULL DEFAULT 0,
+        can_update INTEGER NOT NULL DEFAULT 0,
+        can_delete INTEGER NOT NULL DEFAULT 0,
+        can_export INTEGER NOT NULL DEFAULT 0,
+        can_approve INTEGER NOT NULL DEFAULT 0,
         created_by TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -193,6 +203,42 @@ class DatabaseMigrations {
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_user_menu_overrides_user ON user_menu_permission_overrides(user_id)',
     );
+
+    for (final table in [
+      'role_menu_permissions',
+      'user_menu_permission_overrides',
+    ]) {
+      await _addColumnIfMissing(
+        db,
+        table: table,
+        column: 'can_create',
+        definition: 'INTEGER NOT NULL DEFAULT 0',
+      );
+      await _addColumnIfMissing(
+        db,
+        table: table,
+        column: 'can_update',
+        definition: 'INTEGER NOT NULL DEFAULT 0',
+      );
+      await _addColumnIfMissing(
+        db,
+        table: table,
+        column: 'can_delete',
+        definition: 'INTEGER NOT NULL DEFAULT 0',
+      );
+      await _addColumnIfMissing(
+        db,
+        table: table,
+        column: 'can_export',
+        definition: 'INTEGER NOT NULL DEFAULT 0',
+      );
+      await _addColumnIfMissing(
+        db,
+        table: table,
+        column: 'can_approve',
+        definition: 'INTEGER NOT NULL DEFAULT 0',
+      );
+    }
     await db.update(
       'users',
       {'role': 'ADMIN', 'is_active': 1},
@@ -222,44 +268,71 @@ class DatabaseMigrations {
   }
 
   static Future<void> _seedRoleMenuPermissions(Database db) async {
-    const defaults = <String, List<String>>{
+    const defaults = <String, List<_RoleMenuSeed>>{
       'ADMIN': [
-        'dashboard',
-        'students',
-        'teachers',
-        'parameters',
-        'schedules',
-        'teaching_activities',
-        'assistance_programs',
-        'reports',
-        'users',
+        _RoleMenuSeed('dashboard', true, true, true, true, true, true),
+        _RoleMenuSeed('students', true, true, true, true, true, true),
+        _RoleMenuSeed('teachers', true, true, true, true, true, true),
+        _RoleMenuSeed('parameters', true, true, true, true, true, true),
+        _RoleMenuSeed('schedules', true, true, true, true, true, true),
+        _RoleMenuSeed('teaching_activities', true, true, true, true, true, true),
+        _RoleMenuSeed('assistance_programs', true, true, true, true, true, true),
+        _RoleMenuSeed('reports', true, true, true, true, true, true),
+        _RoleMenuSeed('users', true, true, true, true, true, true),
       ],
       'STAFF': [
-        'dashboard',
-        'students',
-        'teachers',
-        'schedules',
-        'teaching_activities',
-        'assistance_programs',
-        'reports',
-        'users',
+        _RoleMenuSeed('dashboard', true, false, false, false, false, false),
+        _RoleMenuSeed('students', true, true, true, false, true, false),
+        _RoleMenuSeed('teachers', true, true, true, false, false, false),
+        _RoleMenuSeed('schedules', true, true, true, false, false, false),
+        _RoleMenuSeed('teaching_activities', true, true, true, false, false, false),
+        _RoleMenuSeed('assistance_programs', true, true, true, false, true, false),
+        _RoleMenuSeed('reports', true, false, false, false, true, false),
+        _RoleMenuSeed('users', true, true, true, false, false, false),
       ],
       'TEACHER': [
-        'dashboard',
-        'schedules',
-        'teaching_activities',
+        _RoleMenuSeed('dashboard', true, false, false, false, false, false),
+        _RoleMenuSeed('schedules', true, false, false, false, false, false),
+        _RoleMenuSeed('teaching_activities', true, true, true, false, false, false),
       ],
     };
     final now = DateTime.now().toIso8601String();
     for (final entry in defaults.entries) {
-      for (final menuCode in entry.value) {
+      for (final seed in entry.value) {
         await db.rawInsert(
           '''
           INSERT OR IGNORE INTO role_menu_permissions
-          (id, role, menu_code, can_view, created_at, updated_at)
-          VALUES (?, ?, ?, 1, ?, ?)
+          (id, role, menu_code, can_view, can_create, can_update, can_delete,
+           can_export, can_approve, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ''',
-          ['${entry.key}:$menuCode', entry.key, menuCode, now, now],
+          [
+            '${entry.key}:${seed.menuCode}',
+            entry.key,
+            seed.menuCode,
+            seed.canView ? 1 : 0,
+            seed.canCreate ? 1 : 0,
+            seed.canUpdate ? 1 : 0,
+            seed.canDelete ? 1 : 0,
+            seed.canExport ? 1 : 0,
+            seed.canApprove ? 1 : 0,
+            now,
+            now,
+          ],
+        );
+        await db.update(
+          'role_menu_permissions',
+          {
+            'can_view': seed.canView ? 1 : 0,
+            'can_create': seed.canCreate ? 1 : 0,
+            'can_update': seed.canUpdate ? 1 : 0,
+            'can_delete': seed.canDelete ? 1 : 0,
+            'can_export': seed.canExport ? 1 : 0,
+            'can_approve': seed.canApprove ? 1 : 0,
+            'updated_at': now,
+          },
+          where: 'role = ? AND menu_code = ?',
+          whereArgs: [entry.key, seed.menuCode],
         );
       }
     }
@@ -1307,4 +1380,24 @@ class DatabaseMigrations {
     return null;
   }
 
+}
+
+class _RoleMenuSeed {
+  const _RoleMenuSeed(
+    this.menuCode,
+    this.canView,
+    this.canCreate,
+    this.canUpdate,
+    this.canDelete,
+    this.canExport,
+    this.canApprove,
+  );
+
+  final String menuCode;
+  final bool canView;
+  final bool canCreate;
+  final bool canUpdate;
+  final bool canDelete;
+  final bool canExport;
+  final bool canApprove;
 }

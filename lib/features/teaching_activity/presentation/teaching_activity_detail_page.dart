@@ -1,5 +1,10 @@
+import 'package:edukita/core/router/service_locator.dart';
+import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/teaching_activity/data/teaching_activity_data.dart';
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_detail_cubit.dart';
+import 'package:edukita/features/users/domain/user_authorization.dart';
+import 'package:edukita/features/users/domain/user_management_repository.dart';
+import 'package:edukita/features/users/presentation/authorization_helpers.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_error_dialog.dart';
@@ -23,12 +28,53 @@ class _TeachingActivityDetailPageState
     extends State<TeachingActivityDetailPage> {
   final GlobalKey<_TeachingSessionWorkspaceState> _workspaceKey =
       GlobalKey<_TeachingSessionWorkspaceState>();
+  AppAuthorizationScope _authScope = AppAuthorizationScope(
+    role: AppUserRole.admin,
+    permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+      AppUserRole.admin,
+    ),
+  );
+  bool _authLoading = true;
 
   @override
   void initState() {
     super.initState();
-    context.read<TeachingActivityDetailCubit>().loadDetail(widget.activityId);
+    _loadAuthorization();
   }
+
+  Future<void> _loadAuthorization() async {
+    final session = await AuthSessionCache.instance.read();
+    AppAuthorizationScope scope;
+    if (session == null || session.isAdmin) {
+      scope = AppAuthorizationScope(
+        role: AppUserRole.admin,
+        permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+          AppUserRole.admin,
+        ),
+      );
+    } else {
+      scope = await getIt<UserManagementRepository>()
+          .getAuthorizationScopeForUser(session.userId);
+    }
+    if (!mounted) return;
+    if (scope.canView(AppMenuAccessRegistry.teachingActivities.code)) {
+      await context
+          .read<TeachingActivityDetailCubit>()
+          .loadDetail(widget.activityId);
+    }
+    if (!mounted) return;
+    setState(() {
+      _authScope = scope;
+      _authLoading = false;
+    });
+  }
+
+  bool get _canView =>
+      _authScope.canView(AppMenuAccessRegistry.teachingActivities.code);
+
+  bool get _canManageReports =>
+      _authScope.canUpdate(AppMenuAccessRegistry.teachingActivities.code) ||
+      _authScope.canCreate(AppMenuAccessRegistry.teachingActivities.code);
 
   @override
   Widget build(BuildContext context) {
@@ -49,8 +95,14 @@ class _TeachingActivityDetailPageState
       },
       child: BlocBuilder<TeachingActivityDetailCubit, TeachingActivityDetailState>(
         builder: (context, state) {
-          if (state.isLoading && state.detail == null) {
+          if (_authLoading || (state.isLoading && state.detail == null)) {
             return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!_canView) {
+            return const AccessDeniedPanel(
+              message: 'You do not have permission to view teaching reports.',
+            );
           }
 
           final detail = state.detail;
@@ -58,11 +110,34 @@ class _TeachingActivityDetailPageState
             return const Center(child: Text('Teaching activity not found.'));
           }
 
+          if (!_authScope.ownsTeacherData(detail.activity.teacherId)) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.lock_outline,
+                    size: 38,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('You do not have access to this teaching report.'),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: () => context.go('/teaching-activities'),
+                    child: const Text('Back to Teaching Activity'),
+                  ),
+                ],
+              ),
+            );
+          }
+
           final isCancelled =
               detail.activity.status == TeachingActivityStatus.cancelled;
           final readOnly =
               isCancelled ||
-              detail.activity.status == TeachingActivityStatus.completed;
+              detail.activity.status == TeachingActivityStatus.completed ||
+              !_canManageReports;
           Future<void> showSessionNotesDialog() async {
             final cubit = context.read<TeachingActivityDetailCubit>();
             await showGuardedDialog<void>(
@@ -118,7 +193,8 @@ class _TeachingActivityDetailPageState
                   ],
                 ),
               ),
-              if (!isCancelled &&
+              if (_canManageReports &&
+                  !isCancelled &&
                   detail.activity.status != TeachingActivityStatus.completed)
                 FilledButton.icon(
                   onPressed: state.isSaving
@@ -142,7 +218,7 @@ class _TeachingActivityDetailPageState
                 ),
               const SizedBox(width: 8),
               OutlinedButton.icon(
-                onPressed: state.isSaving || isCancelled
+                onPressed: state.isSaving || isCancelled || !_canManageReports
                     ? null
                     : () async {
                         final confirmed = await _confirmResetReport(context);

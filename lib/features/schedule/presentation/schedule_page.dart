@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:edukita/core/router/service_locator.dart';
+import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/features/schedule/data/schedule_model.dart';
 import 'package:edukita/features/schedule/domain/schedule_cubit.dart';
@@ -14,6 +16,8 @@ import 'package:edukita/features/syllabus/data/subject_model.dart';
 import 'package:edukita/features/syllabus/domain/subject_cubit.dart';
 import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/teachers/domain/teacher_cubit.dart';
+import 'package:edukita/features/users/domain/user_authorization.dart';
+import 'package:edukita/features/users/domain/user_management_repository.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
@@ -65,6 +69,13 @@ class _SchedulePageState extends State<SchedulePage> {
   late DateTime _selectedDate;
   DateTime? _rangeStartDate;
   DateTime? _rangeEndDate;
+  AppAuthorizationScope _authScope = AppAuthorizationScope(
+    role: AppUserRole.admin,
+    permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+      AppUserRole.admin,
+    ),
+  );
+  bool _authorizationLoaded = false;
   bool _syncingTimelineHorizontalScroll = false;
 
   @override
@@ -88,13 +99,59 @@ class _SchedulePageState extends State<SchedulePage> {
         _timelineHeaderHorizontalController,
       );
     });
-    context.read<ScheduleCubit>().loadSchedules();
+    _loadAuthorizationAndSchedules();
     context.read<SubjectCubit>().loadCurriculum();
     context.read<StrategyCubit>().loadStrategies();
     context.read<ClassCubit>().loadClasses();
     context.read<TeacherCubit>().loadTeachers();
     context.read<SchoolCubit>().loadSchools();
   }
+
+  Future<void> _loadAuthorizationAndSchedules() async {
+    final session = await AuthSessionCache.instance.read();
+    AppAuthorizationScope scope;
+    if (session == null || session.isAdmin) {
+      scope = AppAuthorizationScope(
+        role: AppUserRole.admin,
+        permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+          AppUserRole.admin,
+        ),
+      );
+    } else {
+      scope = await getIt<UserManagementRepository>()
+          .getAuthorizationScopeForUser(session.userId);
+    }
+    if (!mounted) return;
+    setState(() {
+      _authScope = scope;
+      _authorizationLoaded = true;
+    });
+    if (!scope.canView(AppMenuAccessRegistry.schedules.code)) return;
+    await _reloadSchedules(forceRefresh: true);
+  }
+
+  Future<void> _reloadSchedules({bool forceRefresh = false}) {
+    final cubit = context.read<ScheduleCubit>();
+    if (_authScope.isTeacher && _authScope.teacherId != null) {
+      return cubit.loadSchedulesByTeacher(
+        _authScope.teacherId!,
+        forceRefresh: forceRefresh,
+      );
+    }
+    return cubit.loadSchedules(forceRefresh: forceRefresh);
+  }
+
+  bool get _canCreateSchedule =>
+      _authScope.canCreate(AppMenuAccessRegistry.schedules.code);
+  bool get _canUpdateSchedule =>
+      _authScope.canUpdate(AppMenuAccessRegistry.schedules.code);
+  bool get _canDeleteSchedule =>
+      _authScope.canDelete(AppMenuAccessRegistry.schedules.code);
+  bool get _canViewSchedule =>
+      _authScope.canView(AppMenuAccessRegistry.schedules.code);
+  bool get _canCreateEvent => _canCreateSchedule && !_authScope.isTeacher;
+  bool get _canUpdateEvent => _canUpdateSchedule && !_authScope.isTeacher;
+  bool get _canDeleteEvent => _canDeleteSchedule && !_authScope.isTeacher;
 
   @override
   void dispose() {
@@ -122,6 +179,22 @@ class _SchedulePageState extends State<SchedulePage> {
     _syncingTimelineHorizontalScroll = false;
   }
 
+  List<Teacher> _teachersAllowedForScheduleForm(
+    List<Teacher> teachers,
+    Schedule? existingSchedule,
+  ) {
+    if (!_authScope.isTeacher) return teachers;
+    final teacherId = _authScope.teacherId ?? existingSchedule?.teacherId;
+    if (teacherId == null) return const <Teacher>[];
+    final allowed = teachers
+        .where((teacher) => teacher.id == teacherId)
+        .toList();
+    if (allowed.isNotEmpty) return allowed;
+    return [
+      Teacher(id: teacherId, fullName: 'Linked teacher profile'),
+    ];
+  }
+
   Future<void> _showScheduleForm({
     Schedule? existingSchedule,
     required List<SchoolClass> classes,
@@ -129,7 +202,27 @@ class _SchedulePageState extends State<SchedulePage> {
     required List<Unit> units,
     required List<Strategy> strategies,
   }) async {
+    if (existingSchedule == null && !_canCreateSchedule) {
+      AppToast.showFailed('You do not have permission to create schedules.');
+      return;
+    }
+    if (existingSchedule == null &&
+        _authScope.isTeacher &&
+        _authScope.teacherId == null) {
+      AppToast.showFailed('Your user is not linked to a teacher profile.');
+      return;
+    }
+    if (existingSchedule != null &&
+        (!_canUpdateSchedule ||
+            !_authScope.ownsTeacherData(existingSchedule.teacherId))) {
+      AppToast.showFailed('You do not have permission to update this schedule.');
+      return;
+    }
     final cubit = context.read<ScheduleCubit>();
+    final allowedTeachers = _teachersAllowedForScheduleForm(
+      teachers,
+      existingSchedule,
+    );
     await showGuardedDialog<void>(
       context: context,
       guardKey: 'schedule_form_${existingSchedule?.id ?? 'new'}',
@@ -137,14 +230,17 @@ class _SchedulePageState extends State<SchedulePage> {
         schedule: existingSchedule,
         initialDate: _dateKey(_selectedDate),
         classes: classes,
-        teachers: teachers,
+        teachers: allowedTeachers,
         units: units,
         strategies: strategies,
         onSave: (schedule) async {
+          final securedSchedule = _authScope.isTeacher
+              ? schedule.copyWith(teacherId: _authScope.teacherId)
+              : schedule;
           if (existingSchedule == null) {
-            await cubit.addSchedule(schedule);
+            await cubit.addSchedule(securedSchedule);
           } else {
-            await cubit.updateSchedule(schedule);
+            await cubit.updateSchedule(securedSchedule);
           }
         },
       ),
@@ -156,6 +252,14 @@ class _SchedulePageState extends State<SchedulePage> {
     required List<School> schools,
     required bool isSchoolEvent,
   }) async {
+    if (existingEvent == null && !_canCreateEvent) {
+      AppToast.showFailed('You do not have permission to create events.');
+      return;
+    }
+    if (existingEvent != null && !_canUpdateEvent) {
+      AppToast.showFailed('You do not have permission to update events.');
+      return;
+    }
     final cubit = context.read<ScheduleCubit>();
     final showType = existingEvent == null
         ? isSchoolEvent
@@ -183,6 +287,10 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 
   Future<void> _confirmDeleteSchedule(Schedule schedule) async {
+    if (!_canDeleteSchedule || !_authScope.ownsTeacherData(schedule.teacherId)) {
+      AppToast.showFailed('You do not have permission to delete this schedule.');
+      return;
+    }
     final cubit = context.read<ScheduleCubit>();
     final confirmed = await showGuardedDialog<bool>(
       context: context,
@@ -222,6 +330,10 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 
   Future<void> _confirmDeleteEvent(ScheduleEvent event) async {
+    if (!_canDeleteEvent) {
+      AppToast.showFailed('You do not have permission to delete events.');
+      return;
+    }
     final cubit = context.read<ScheduleCubit>();
     final confirmed = await showGuardedDialog<bool>(
       context: context,
@@ -267,6 +379,26 @@ class _SchedulePageState extends State<SchedulePage> {
     final classState = context.watch<ClassCubit>().state;
     final teacherState = context.watch<TeacherCubit>().state;
     final schoolState = context.watch<SchoolCubit>().state;
+
+    if (!_authorizationLoaded) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (!_canViewSchedule) {
+      return const Scaffold(
+        body: Center(
+          child: Text(
+            'You do not have permission to view schedules.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       body: BlocBuilder<ScheduleCubit, ScheduleState>(
@@ -315,9 +447,7 @@ class _SchedulePageState extends State<SchedulePage> {
           '${state.schedules.length} teaching schedules, ${state.events.length} events',
       trailing: IconButton(
         tooltip: 'Refresh schedules',
-        onPressed: () => context.read<ScheduleCubit>().loadSchedules(
-          forceRefresh: true,
-        ),
+        onPressed: () => _reloadSchedules(forceRefresh: true),
         icon: const Icon(Icons.refresh),
       ),
     );
@@ -373,13 +503,15 @@ class _SchedulePageState extends State<SchedulePage> {
             );
           },
         );
-        final addButton = _buildAddButton(
-          classes: classes,
-          teachers: teachers,
-          units: units,
-          strategies: strategies,
-          schools: schools,
-        );
+        final addButton = _canCreateSchedule
+            ? _buildAddButton(
+                classes: classes,
+                teachers: teachers,
+                units: units,
+                strategies: strategies,
+                schools: schools,
+              )
+            : const SizedBox.shrink();
 
         if (compact) {
           return Column(
@@ -442,26 +574,28 @@ class _SchedulePageState extends State<SchedulePage> {
             ],
           ),
         ),
-        const PopupMenuItem(
-          value: _ScheduleAddType.schoolEvent,
-          child: Row(
-            children: [
-              Icon(Icons.event_outlined, size: 18),
-              SizedBox(width: 10),
-              Text('School event'),
-            ],
+        if (_canCreateEvent)
+          const PopupMenuItem(
+            value: _ScheduleAddType.schoolEvent,
+            child: Row(
+              children: [
+                Icon(Icons.event_outlined, size: 18),
+                SizedBox(width: 10),
+                Text('School event'),
+              ],
+            ),
           ),
-        ),
-        const PopupMenuItem(
-          value: _ScheduleAddType.otherEvent,
-          child: Row(
-            children: [
-              Icon(Icons.add_alarm_outlined, size: 18),
-              SizedBox(width: 10),
-              Text('Other event'),
-            ],
+        if (_canCreateEvent)
+          const PopupMenuItem(
+            value: _ScheduleAddType.otherEvent,
+            child: Row(
+              children: [
+                Icon(Icons.add_alarm_outlined, size: 18),
+                SizedBox(width: 10),
+                Text('Other event'),
+              ],
+            ),
           ),
-        ),
       ],
       child: Container(
         height: 40,
@@ -1049,11 +1183,13 @@ class _SchedulePageState extends State<SchedulePage> {
           IconButton(
             tooltip: 'Edit event',
             visualDensity: VisualDensity.compact,
-            onPressed: () => _showEventForm(
-              existingEvent: event,
-              schools: schools,
-              isSchoolEvent: _schoolEventTypes.contains(event.type),
-            ),
+            onPressed: _canUpdateEvent
+                ? () => _showEventForm(
+                    existingEvent: event,
+                    schools: schools,
+                    isSchoolEvent: _schoolEventTypes.contains(event.type),
+                  )
+                : null,
             icon: const Icon(Icons.edit, size: 17),
           ),
         ],
@@ -1212,7 +1348,13 @@ class _SchedulePageState extends State<SchedulePage> {
       width: width,
       alignment: Alignment.centerLeft,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      color: AppColors.white,
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        border: Border(
+          right: BorderSide(color: AppColors.border),
+          bottom: BorderSide(color: AppColors.border),
+        ),
+      ),
       child: const Text(
         'Date',
         style: TextStyle(
@@ -1236,7 +1378,10 @@ class _SchedulePageState extends State<SchedulePage> {
               width: hourColumnWidth,
               alignment: Alignment.center,
               decoration: const BoxDecoration(
-                border: Border(left: BorderSide(color: AppColors.divider)),
+                border: Border(
+                  right: BorderSide(color: AppColors.border),
+                  bottom: BorderSide(color: AppColors.border),
+                ),
               ),
               child: Text(
                 _hourLabel(hour),
@@ -1269,7 +1414,10 @@ class _SchedulePageState extends State<SchedulePage> {
           color: active
               ? AppColors.primary.withValues(alpha: 0.08)
               : AppColors.white,
-          border: const Border(bottom: BorderSide(color: AppColors.divider)),
+          border: const Border(
+            right: BorderSide(color: AppColors.border),
+            bottom: BorderSide(color: AppColors.border),
+          ),
           boxShadow: const [
             BoxShadow(
               color: Color(0x0D000000),
@@ -1370,7 +1518,10 @@ class _SchedulePageState extends State<SchedulePage> {
       width: width,
       padding: const EdgeInsets.all(4),
       decoration: const BoxDecoration(
-        border: Border(left: BorderSide(color: AppColors.divider)),
+        border: Border(
+          right: BorderSide(color: AppColors.border),
+          bottom: BorderSide(color: AppColors.border),
+        ),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -1421,13 +1572,16 @@ class _SchedulePageState extends State<SchedulePage> {
       waitDuration: const Duration(milliseconds: 350),
       message: _scheduleTooltip(schedule, title, classes),
       child: InkWell(
-        onTap: () => _showScheduleForm(
-          existingSchedule: schedule,
-          classes: classes,
-          teachers: teachers,
-          units: units,
-          strategies: strategies,
-        ),
+        onTap:
+            _canUpdateSchedule && _authScope.ownsTeacherData(schedule.teacherId)
+            ? () => _showScheduleForm(
+                existingSchedule: schedule,
+                classes: classes,
+                teachers: teachers,
+                units: units,
+                strategies: strategies,
+              )
+            : null,
         child: Container(
           height: 42,
           margin: EdgeInsets.only(top: startsHere ? 2 : 0),
@@ -1479,6 +1633,12 @@ class _SchedulePageState extends State<SchedulePage> {
               ),
               _compactCardMenu(
                 color: AppColors.accentBlue,
+                canEdit:
+                    _canUpdateSchedule &&
+                    _authScope.ownsTeacherData(schedule.teacherId),
+                canDelete:
+                    _canDeleteSchedule &&
+                    _authScope.ownsTeacherData(schedule.teacherId),
                 onEdit: () => _showScheduleForm(
                   existingSchedule: schedule,
                   classes: classes,
@@ -1510,11 +1670,13 @@ class _SchedulePageState extends State<SchedulePage> {
       waitDuration: const Duration(milliseconds: 350),
       message: _eventTooltip(event),
       child: InkWell(
-        onTap: () => _showEventForm(
-          existingEvent: event,
-          schools: schools,
-          isSchoolEvent: _schoolEventTypes.contains(event.type),
-        ),
+        onTap: !_canUpdateEvent
+            ? null
+            : () => _showEventForm(
+                existingEvent: event,
+                schools: schools,
+                isSchoolEvent: _schoolEventTypes.contains(event.type),
+              ),
         child: Container(
           height: 28,
           margin: EdgeInsets.only(top: startsHere ? 2 : 0),
@@ -1550,6 +1712,8 @@ class _SchedulePageState extends State<SchedulePage> {
               ),
               _compactCardMenu(
                 color: AppColors.warning,
+                canEdit: _canUpdateEvent,
+                canDelete: _canDeleteEvent,
                 onEdit: () => _showEventForm(
                   existingEvent: event,
                   schools: schools,
@@ -1568,7 +1732,10 @@ class _SchedulePageState extends State<SchedulePage> {
     required Color color,
     required VoidCallback onEdit,
     required VoidCallback onDelete,
+    bool canEdit = true,
+    bool canDelete = true,
   }) {
+    if (!canEdit && !canDelete) return const SizedBox.shrink();
     return SizedBox(
       width: 20,
       height: 24,
@@ -1583,9 +1750,10 @@ class _SchedulePageState extends State<SchedulePage> {
           if (value == 'edit') onEdit();
           if (value == 'delete') onDelete();
         },
-        itemBuilder: (context) => const [
-          PopupMenuItem(value: 'edit', child: Text('Edit')),
-          PopupMenuItem(value: 'delete', child: Text('Delete')),
+        itemBuilder: (context) => [
+          if (canEdit) const PopupMenuItem(value: 'edit', child: Text('Edit')),
+          if (canDelete)
+            const PopupMenuItem(value: 'delete', child: Text('Delete')),
         ],
       ),
     );

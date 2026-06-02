@@ -5,6 +5,8 @@ import 'package:edukita/features/assistance/programs/data/assistance_program_mod
 import 'package:edukita/features/assistance/programs/domain/assistance_program_cubit.dart';
 import 'package:edukita/features/assistance/programs/presentation/assistance_program_form_dialog.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
+import 'package:edukita/features/users/domain/user_authorization.dart';
+import 'package:edukita/features/users/presentation/authorization_helpers.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_loading.dart';
@@ -26,14 +28,40 @@ class AssistanceProgramsPage extends StatefulWidget {
 class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
   late final TextEditingController _searchController;
   Timer? _searchDebounce;
+  AppAuthorizationScope _authScope = AppAuthorizationScope(
+    role: AppUserRole.admin,
+    permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+      AppUserRole.admin,
+    ),
+  );
+  bool _authorizationLoaded = false;
+
+  bool get _canView =>
+      _authScope.canView(AppMenuAccessRegistry.assistancePrograms.code);
+  bool get _canCreate =>
+      _authScope.canCreate(AppMenuAccessRegistry.assistancePrograms.code);
+  bool get _canUpdate =>
+      _authScope.canUpdate(AppMenuAccessRegistry.assistancePrograms.code);
 
   @override
   void initState() {
     super.initState();
     final state = context.read<AssistanceProgramCubit>().state;
     _searchController = TextEditingController(text: state.query);
+    _loadAuthorizationAndPrograms();
+  }
+
+  Future<void> _loadAuthorizationAndPrograms() async {
+    final scope = await loadCurrentAuthorizationScope();
+    if (!mounted) return;
+    setState(() {
+      _authScope = scope;
+      _authorizationLoaded = true;
+    });
+    if (!scope.canView(AppMenuAccessRegistry.assistancePrograms.code)) return;
+    final state = context.read<AssistanceProgramCubit>().state;
     if (state.programs.isEmpty && !state.isLoading) {
-      context.read<AssistanceProgramCubit>().loadPrograms();
+      await context.read<AssistanceProgramCubit>().loadPrograms();
     }
   }
 
@@ -46,6 +74,16 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_authorizationLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (!_canView) {
+      return const AccessDeniedPanel(
+        message: 'You do not have permission to view assistance programs.',
+      );
+    }
+
     final content = BlocBuilder<AssistanceProgramCubit, AssistanceProgramState>(
       builder: (context, state) {
         if (state.error != null && state.programs.isEmpty) {
@@ -95,11 +133,13 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
           title: 'Assistance Programs',
           subtitle:
               'Maintain reusable assistance programs, benefit types, and default support values.',
-          trailing: ElevatedButton.icon(
-            onPressed: () => _openForm(context),
-            icon: const Icon(Icons.add, size: 17),
-            label: const Text('Add Program'),
-          ),
+          trailing: _canCreate
+              ? ElevatedButton.icon(
+                  onPressed: () => _openForm(context),
+                  icon: const Icon(Icons.add, size: 17),
+                  label: const Text('Add Program'),
+                )
+              : null,
         ),
         const SizedBox(height: 12),
         Wrap(
@@ -223,7 +263,9 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
         totalPages: programs.isEmpty ? 0 : 1,
         totalItems: programs.length,
       ),
-      onRowTap: (program) => _openForm(context, program: program),
+      onRowTap: _canUpdate
+          ? (program) => _openForm(context, program: program)
+          : null,
       columns: [
         AppTableColumn(
           title: 'Code',
@@ -307,7 +349,9 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
             children: [
               IconButton(
                 tooltip: 'Edit program',
-                onPressed: () => _openForm(context, program: program),
+                onPressed: _canUpdate
+                    ? () => _openForm(context, program: program)
+                    : null,
                 constraints:
                     const BoxConstraints.tightFor(width: 28, height: 28),
                 padding: EdgeInsets.zero,
@@ -315,7 +359,9 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
               ),
               IconButton(
                 tooltip: program.isActive ? 'Deactivate' : 'Activate',
-                onPressed: () => _toggleActive(context, program),
+                onPressed: _canUpdate
+                    ? () => _toggleActive(context, program)
+                    : null,
                 constraints:
                     const BoxConstraints.tightFor(width: 28, height: 28),
                 padding: EdgeInsets.zero,
@@ -373,6 +419,18 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
     BuildContext context, {
     AssistanceProgram? program,
   }) async {
+    if (program == null && !_canCreate) {
+      AppToast.showFailed(
+        'You do not have permission to create assistance programs.',
+      );
+      return;
+    }
+    if (program != null && !_canUpdate) {
+      AppToast.showFailed(
+        'You do not have permission to update assistance programs.',
+      );
+      return;
+    }
     _searchDebounce?.cancel();
     final cubit = context.read<AssistanceProgramCubit>();
     final benefits = program == null
@@ -398,6 +456,12 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
     BuildContext context,
     AssistanceProgram program,
   ) async {
+    if (!_canUpdate) {
+      AppToast.showFailed(
+        'You do not have permission to update assistance programs.',
+      );
+      return;
+    }
     try {
       await context
           .read<AssistanceProgramCubit>()
