@@ -477,7 +477,7 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
 
   Future<void> rejectSelectedPeriod({
     required String rejectedBy,
-    String? reason,
+    required String reason,
   }) async {
     final id = state.selectedPeriodId;
     if (id == null) throw Exception('Select an assistance period first.');
@@ -504,6 +504,17 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
       fileName: fileName,
       uploadedBy: uploadedBy,
       remarks: remarks,
+    );
+    _cacheService.clear();
+    await loadModule(selectedPeriodId: id, forceRefresh: true);
+  }
+
+  Future<void> deleteDistributionDocument(String documentId) async {
+    final id = state.selectedPeriodId;
+    if (id == null) throw Exception('Select an assistance period first.');
+    await _repository.deleteDistributionDocument(
+      assistancePeriodId: id,
+      documentId: documentId,
     );
     _cacheService.clear();
     await loadModule(selectedPeriodId: id, forceRefresh: true);
@@ -586,6 +597,34 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
     );
     _cacheService.clear();
     await selectPeriod(state.selectedPeriodId, force: true);
+  }
+
+  Future<void> markAllRecipientsDistributed({String? updatedBy}) async {
+    final id = state.selectedPeriodId;
+    if (id == null) throw Exception('Select an assistance period first.');
+    await _repository.markAllRecipientsDistributed(
+      assistancePeriodId: id,
+      updatedBy: updatedBy,
+    );
+    _cacheService.clear();
+    await selectPeriod(id, force: true);
+  }
+
+  Future<void> updateAllRecipientStatuses({
+    required AssistanceRecipientStatus status,
+    String? reason,
+    String? updatedBy,
+  }) async {
+    final id = state.selectedPeriodId;
+    if (id == null) throw Exception('Select an assistance period first.');
+    await _repository.updateAllRecipientStatuses(
+      assistancePeriodId: id,
+      status: status,
+      reason: reason,
+      updatedBy: updatedBy,
+    );
+    _cacheService.clear();
+    await selectPeriod(id, force: true);
   }
 }
 

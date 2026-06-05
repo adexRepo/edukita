@@ -5,6 +5,7 @@ import 'dart:io' as io;
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
 import 'package:edukita/features/assistance/plans/data/assistance_plan_models.dart';
+import 'package:edukita/features/assistance/programs/data/assistance_program_model.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
@@ -1429,9 +1430,13 @@ class AssistancePlanRepository {
     );
 
     await db.transaction((txn) async {
+      final approvalDocumentColumns = await _executorTableColumns(
+        txn,
+        'assistance_approval_documents',
+      );
       await txn.insert(
         'assistance_approval_documents',
-        document.toMap(),
+        _approvalDocumentMapForColumns(document, approvalDocumentColumns),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
@@ -1508,12 +1513,16 @@ class AssistancePlanRepository {
   Future<void> rejectAssistancePeriod({
     required String assistancePeriodId,
     required String rejectedBy,
-    String? reason,
+    required String reason,
   }) async {
     final period = await getPeriodById(assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
     if (_locksTargetPlan(period.status)) {
       throw Exception('This assistance period cannot be rejected.');
+    }
+    final normalizedReason = reason.trim();
+    if (normalizedReason.isEmpty) {
+      throw Exception('Rejection reason is required.');
     }
 
     final db = await _dbProvider.database;
@@ -1522,28 +1531,27 @@ class AssistancePlanRepository {
       'assistance_periods',
       {
         'status': AssistancePeriodStatus.rejected.value,
-        'approved_by': rejectedBy,
-        'approved_at': now,
+        'rejected_by': rejectedBy,
+        'rejected_at': now,
+        'rejection_reason': normalizedReason,
         'updated_at': now,
       },
       where: 'id = ?',
       whereArgs: [assistancePeriodId],
     );
-    if ((reason ?? '').trim().isNotEmpty) {
-      await db.update(
-        'student_assistance_assessments',
-        {
-          'decision_status': AssistanceDecisionStatus.rejected.value,
-          'special_case_note': reason!.trim(),
-          'updated_at': now,
-        },
-        where: 'assistance_period_id = ? AND decision_status = ?',
-        whereArgs: [
-          assistancePeriodId,
-          AssistanceDecisionStatus.approved.value,
-        ],
-      );
-    }
+    await db.update(
+      'student_assistance_assessments',
+      {
+        'decision_status': AssistanceDecisionStatus.rejected.value,
+        'special_case_note': normalizedReason,
+        'updated_at': now,
+      },
+      where: 'assistance_period_id = ? AND decision_status = ?',
+      whereArgs: [
+        assistancePeriodId,
+        AssistanceDecisionStatus.approved.value,
+      ],
+    );
   }
 
   Future<void> uploadDistributionDocument({
@@ -1556,17 +1564,23 @@ class AssistancePlanRepository {
     final period = await getPeriodById(assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
     if (period.status != AssistancePeriodStatus.approved) {
-      throw Exception('Distribution proof can only be uploaded for approved periods.');
+      throw Exception('Distribution evidence can only be uploaded for approved periods.');
     }
 
     final ext = p.extension(fileName).replaceFirst('.', '').toLowerCase();
     if (!const ['pdf', 'jpg', 'jpeg', 'png'].contains(ext)) {
-      throw Exception('Distribution proof must be PDF, JPG, or PNG.');
+      throw Exception('Distribution evidence must be PDF, JPG, or PNG.');
     }
 
     final recipients = await getRecipients(periodId: assistancePeriodId);
     if (recipients.isEmpty) {
       throw Exception('No recipients found for this approved period.');
+    }
+    final existingDocuments = await getDistributionDocuments(
+      periodId: assistancePeriodId,
+    );
+    if (existingDocuments.length >= 5) {
+      throw Exception('A maximum of 5 distribution evidence documents is allowed.');
     }
 
     final storedPath = await _copyDistributionDocument(
@@ -1589,11 +1603,45 @@ class AssistancePlanRepository {
       updatedAt: now,
     );
 
+    final distributionDocumentColumns = await _tableColumns(
+      db,
+      'assistance_distribution_documents',
+    );
     await db.insert(
       'assistance_distribution_documents',
-      document.toMap(),
+      _distributionDocumentMapForColumns(
+        document,
+        distributionDocumentColumns,
+      ),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
+
+  Future<void> deleteDistributionDocument({
+    required String assistancePeriodId,
+    required String documentId,
+  }) async {
+    final period = await getPeriodById(assistancePeriodId);
+    if (period == null) throw Exception('Assistance period not found.');
+    if (period.status != AssistancePeriodStatus.approved) {
+      throw Exception('Distribution evidence cannot be deleted after finalization.');
+    }
+    final db = await _dbProvider.database;
+    final rows = await db.query(
+      'assistance_distribution_documents',
+      where: 'id = ? AND assistance_period_id = ?',
+      whereArgs: [documentId, assistancePeriodId],
+      limit: 1,
+    );
+    if (rows.isEmpty) throw Exception('Distribution evidence not found.');
+    final document = AssistanceDistributionDocument.fromMap(rows.first);
+    await db.delete(
+      'assistance_distribution_documents',
+      where: 'id = ? AND assistance_period_id = ?',
+      whereArgs: [documentId, assistancePeriodId],
+    );
+    final file = io.File(document.filePath);
+    if (await file.exists()) await file.delete();
   }
 
   Future<void> finalizeAssistanceDistribution({
@@ -1640,7 +1688,7 @@ class AssistancePlanRepository {
 
     final documents = await getDistributionDocuments(periodId: assistancePeriodId);
     if (documents.isEmpty) {
-      throw Exception('Upload signed distribution proof before finalizing.');
+      throw Exception('Upload signed distribution evidence before finalizing.');
     }
 
     final db = await _dbProvider.database;
@@ -2531,6 +2579,84 @@ class AssistancePlanRepository {
     );
   }
 
+  Future<void> markAllRecipientsDistributed({
+    required String assistancePeriodId,
+    String? updatedBy,
+  }) async {
+    final period = await getPeriodById(assistancePeriodId);
+    if (period == null) throw Exception('Assistance period not found.');
+    if (period.status != AssistancePeriodStatus.approved) {
+      throw Exception('Recipient distribution can only be changed while period is approved.');
+    }
+    final db = await _dbProvider.database;
+    final rows = await db.query(
+      'assistance_recipients',
+      where: 'assistance_period_id = ?',
+      whereArgs: [assistancePeriodId],
+    );
+    final now = DateTime.now().toIso8601String();
+    await db.transaction((txn) async {
+      for (final row in rows) {
+        final recipient = AssistanceRecipient.fromMap(row);
+        final benefitType = AssistanceBenefitType.fromValue(
+          recipient.benefitType ?? '',
+        );
+        final status = benefitType == AssistanceBenefitType.cash
+            ? AssistanceRecipientStatus.paid
+            : AssistanceRecipientStatus.distributed;
+        await txn.update(
+          'assistance_recipients',
+          {
+            'status': status.value,
+            'distribution_reason': null,
+            'distributed_at': now,
+            'distributed_by': updatedBy?.trim().isEmpty == true
+                ? null
+                : updatedBy?.trim(),
+            'updated_at': now,
+          },
+          where: 'id = ?',
+          whereArgs: [recipient.id],
+        );
+      }
+    });
+  }
+
+  Future<void> updateAllRecipientStatuses({
+    required String assistancePeriodId,
+    required AssistanceRecipientStatus status,
+    String? reason,
+    String? updatedBy,
+  }) async {
+    final period = await getPeriodById(assistancePeriodId);
+    if (period == null) throw Exception('Assistance period not found.');
+    if (period.status != AssistancePeriodStatus.approved) {
+      throw Exception('Recipient distribution can only be changed while period is approved.');
+    }
+    final trimmedReason = reason?.trim();
+    if (status == AssistanceRecipientStatus.cancelled &&
+        (trimmedReason == null || trimmedReason.isEmpty)) {
+      throw Exception('Cancellation reason is required.');
+    }
+    final now = DateTime.now().toIso8601String();
+    final reset = status == AssistanceRecipientStatus.approved;
+    final db = await _dbProvider.database;
+    await db.update(
+      'assistance_recipients',
+      {
+        'status': status.value,
+        'distribution_reason': reset ? null : trimmedReason,
+        'distributed_at': reset ? null : now,
+        'distributed_by': reset || updatedBy?.trim().isEmpty == true
+            ? null
+            : updatedBy?.trim(),
+        'updated_at': now,
+      },
+      where: 'assistance_period_id = ?',
+      whereArgs: [assistancePeriodId],
+    );
+  }
+
   Future<List<_RuleCandidate>> _candidatesForRule({
     required AssistancePeriodRule rule,
     required AssistancePeriod period,
@@ -3198,6 +3324,28 @@ class AssistancePlanRepository {
     }
     if (columns.contains('scholarship_type')) {
       map['scholarship_type'] = recipient.ruleType.normalized.value;
+    }
+    return _filterMapForColumns(map, columns);
+  }
+
+  Map<String, Object?> _approvalDocumentMapForColumns(
+    AssistanceApprovalDocument document,
+    Set<String> columns,
+  ) {
+    final map = document.toMap();
+    if (columns.contains('scholarship_period_id')) {
+      map['scholarship_period_id'] = document.assistancePeriodId;
+    }
+    return _filterMapForColumns(map, columns);
+  }
+
+  Map<String, Object?> _distributionDocumentMapForColumns(
+    AssistanceDistributionDocument document,
+    Set<String> columns,
+  ) {
+    final map = document.toMap();
+    if (columns.contains('scholarship_period_id')) {
+      map['scholarship_period_id'] = document.assistancePeriodId;
     }
     return _filterMapForColumns(map, columns);
   }

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/utils/generated_file_name.dart';
+import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/assistance/presentation/assistance_localized_display.dart';
 import 'package:edukita/features/assistance/programs/data/assistance_program_model.dart';
 import 'package:edukita/features/assistance/programs/domain/assistance_program_cubit.dart';
@@ -962,67 +963,81 @@ class _SetupInfoTile extends StatelessWidget {
     required this.value,
     required this.icon,
     this.wide = false,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final IconData icon;
   final bool wide;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: wide ? 430 : 210,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: Border.all(color: AppColors.border),
+      child: Material(
+        color: AppColors.surface,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: AppColors.border),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, size: 16, color: AppColors.primaryDark),
                 ),
-                child: Icon(icon, size: 16, color: AppColors.primaryDark),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      value,
-                      maxLines: wide ? 2 : 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
+                      const SizedBox(height: 3),
+                      Text(
+                        value,
+                        maxLines: wide ? 2 : 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                if (onTap != null) ...[
+                  const SizedBox(width: 6),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1061,45 +1076,43 @@ class _TargetsTab extends StatelessWidget {
                 '${context.l10n.selected}: $selected / ${period.targetQuota}',
               ),
             ),
-            ElevatedButton.icon(
-              onPressed: canUpdate
-                  ? () async {
-                      final cubit = context.read<AssistancePlanCubit>();
-                      try {
-                        await cubit.generateSelectedPeriod();
-                        if (!context.mounted) return;
-                        AppToast.showSuccess(context.l10n.autoTargetsGenerated);
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        showErrorToastWithDetails(
-                          context,
-                          title: context.l10n.autoTargetFailed,
-                          error: e,
-                        );
-                      }
-                    }
-                  : null,
-              icon: const Icon(Icons.auto_awesome),
-              label: Text(context.l10n.autoTarget),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.icon(
-              onPressed: canUpdate
-                  ? () async {
-                      final cubit = context.read<AssistancePlanCubit>();
-                      try {
-                        await cubit.markPlanTargeted();
-                        if (!context.mounted) return;
-                        AppToast.showSuccess(context.l10n.targetPlanSaved);
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        AppToast.showFailed(e.toString());
-                      }
-                    }
-                  : null,
-              icon: const Icon(Icons.save),
-              label: Text(context.l10n.saveTargetPlan),
-            ),
+            if (canUpdate)
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final cubit = context.read<AssistancePlanCubit>();
+                  try {
+                    await cubit.generateSelectedPeriod();
+                    if (!context.mounted) return;
+                    AppToast.showSuccess(context.l10n.autoTargetsGenerated);
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    showErrorToastWithDetails(
+                      context,
+                      title: context.l10n.autoTargetFailed,
+                      error: e,
+                    );
+                  }
+                },
+                icon: const Icon(Icons.auto_awesome),
+                label: Text(context.l10n.autoTarget),
+              ),
+            if (canUpdate) const SizedBox(width: 8),
+            if (canUpdate)
+              FilledButton.icon(
+                onPressed: () async {
+                  final cubit = context.read<AssistancePlanCubit>();
+                  try {
+                    await cubit.markPlanTargeted();
+                    if (!context.mounted) return;
+                    AppToast.showSuccess(context.l10n.targetPlanSaved);
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    AppToast.showFailed(e.toString());
+                  }
+                },
+                icon: const Icon(Icons.save),
+                label: Text(context.l10n.saveTargetPlan),
+              ),
           ],
         ),
         const SizedBox(height: 12),
@@ -1170,64 +1183,62 @@ class _RuleTargetSection extends StatelessWidget {
                   runSpacing: 8,
                   alignment: WrapAlignment.end,
                   children: [
-                    OutlinedButton.icon(
-                      onPressed: canUpdate
-                          ? () async {
-                              final cubit = context.read<AssistancePlanCubit>();
-                              if (rule.selectionMode ==
-                                  AssistanceSelectionMode.auto) {
-                                try {
-                                  await cubit.generateSelectedPeriod();
-                                  if (!context.mounted) return;
-                                  AppToast.showSuccess(
-                                    context.l10n.autoTargetsGenerated,
-                                  );
-                                } catch (e) {
-                                  if (!context.mounted) return;
-                                  showErrorToastWithDetails(
-                                    context,
-                                    title: context.l10n.autoTargetFailed,
-                                    error: e,
-                                  );
-                                }
-                                return;
-                              }
-                              await showGuardedDialog<void>(
-                                context: context,
-                                guardKey:
-                                    'select_assistance_students_${rule.id}',
-                                builder: (_) => BlocProvider.value(
-                                  value: cubit,
-                                  child: _SelectStudentsDialog(
-                                    rule: rule,
-                                    state: state,
-                                  ),
-                                ),
+                    if (canUpdate)
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final cubit = context.read<AssistancePlanCubit>();
+                          if (rule.selectionMode ==
+                              AssistanceSelectionMode.auto) {
+                            try {
+                              await cubit.generateSelectedPeriod();
+                              if (!context.mounted) return;
+                              AppToast.showSuccess(
+                                context.l10n.autoTargetsGenerated,
+                              );
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              showErrorToastWithDetails(
+                                context,
+                                title: context.l10n.autoTargetFailed,
+                                error: e,
                               );
                             }
-                          : null,
-                      icon: Icon(
-                        rule.selectionMode == AssistanceSelectionMode.auto
-                            ? Icons.auto_awesome
-                            : Icons.person_add_alt,
+                            return;
+                          }
+                          await showGuardedDialog<void>(
+                            context: context,
+                            guardKey: 'select_assistance_students_${rule.id}',
+                            builder: (_) => BlocProvider.value(
+                              value: cubit,
+                              child: _SelectStudentsDialog(
+                                rule: rule,
+                                state: state,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: Icon(
+                          rule.selectionMode == AssistanceSelectionMode.auto
+                              ? Icons.auto_awesome
+                              : Icons.person_add_alt,
+                        ),
+                        label: Text(
+                          rule.selectionMode == AssistanceSelectionMode.auto
+                              ? context.l10n.autoTarget
+                              : context.l10n.selectStudents,
+                        ),
                       ),
-                      label: Text(
-                        rule.selectionMode == AssistanceSelectionMode.auto
-                            ? context.l10n.autoTarget
-                            : context.l10n.selectStudents,
+                    if (canDelete && rows.isNotEmpty)
+                      OutlinedButton.icon(
+                        onPressed: () =>
+                            _removeAllTargetCandidates(context, rows),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                          side: const BorderSide(color: AppColors.error),
+                        ),
+                        icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+                        label: Text(context.l10n.removeAll),
                       ),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: rows.isEmpty || !canDelete
-                          ? null
-                          : () => _removeAllTargetCandidates(context, rows),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.error,
-                        side: const BorderSide(color: AppColors.error),
-                      ),
-                      icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-                      label: Text(context.l10n.removeAll),
-                    ),
                   ],
                 );
                 if (constraints.maxWidth < 620) {
@@ -1297,25 +1308,24 @@ class _RuleTargetSection extends StatelessWidget {
                             item.specialCaseNote ?? item.priorityReason ?? '-',
                           ),
                         ),
-                        AppTableColumn(
-                          title: context.l10n.action,
-                          cell: (item) => IconButton(
-                            tooltip: context.l10n.removeTarget,
-                            onPressed:
-                                item.decisionStatus ==
-                                    AssistanceDecisionStatus.cancelled
-                                ? null
-                                : canDelete
-                                ? () => _removeTargetCandidate(context, item)
-                                : null,
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              size: 18,
-                              color: AppColors.error,
+                        if (canDelete)
+                          AppTableColumn(
+                            title: context.l10n.action,
+                            cell: (item) => IconButton(
+                              tooltip: context.l10n.removeTarget,
+                              onPressed:
+                                  item.decisionStatus ==
+                                      AssistanceDecisionStatus.cancelled
+                                  ? null
+                                  : () => _removeTargetCandidate(context, item),
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                size: 18,
+                                color: AppColors.error,
+                              ),
+                              color: AppColors.errorDark,
                             ),
-                            color: AppColors.errorDark,
                           ),
-                        ),
                       ],
                     ),
             ),
@@ -1519,24 +1529,23 @@ class _ReviewTab extends StatelessWidget {
                 icon: const Icon(Icons.picture_as_pdf),
                 label: Text(context.l10n.exportPdf),
               ),
-              FilledButton.icon(
-                onPressed: canUpdate
-                    ? () async {
-                        try {
-                          await context
-                              .read<AssistancePlanCubit>()
-                              .markPlanSubmitted();
-                          AppToast.showSuccess(
-                            'Assistance plan marked as submitted.',
-                          );
-                        } catch (e) {
-                          AppToast.showFailed(e.toString());
-                        }
-                      }
-                    : null,
-                icon: const Icon(Icons.send),
-                label: Text(context.l10n.markAsSubmitted),
-              ),
+              if (canUpdate)
+                FilledButton.icon(
+                  onPressed: () async {
+                    try {
+                      await context
+                          .read<AssistancePlanCubit>()
+                          .markPlanSubmitted();
+                      AppToast.showSuccess(
+                        'Assistance plan marked as submitted.',
+                      );
+                    } catch (e) {
+                      AppToast.showFailed(e.toString());
+                    }
+                  },
+                  icon: const Icon(Icons.send),
+                  label: Text(context.l10n.markAsSubmitted),
+                ),
             ],
           ),
         ),
@@ -1562,15 +1571,6 @@ class _ReviewApprovalTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (period.status == AssistancePeriodStatus.rejected) {
-      return _periodStatusMessage(
-        icon: Icons.block_outlined,
-        title: context.l10n.statusRejected,
-        message:
-            'Target candidates are kept for audit, but final distribution is not available.',
-      );
-    }
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final stacked = constraints.maxWidth < 980;
@@ -1580,11 +1580,13 @@ class _ReviewApprovalTab extends StatelessWidget {
           canUpdate: canUpdate && !_periodLocksTargetPlan(period.status),
           canExport: canExport,
         );
-        final approval = _ApprovalTab(
-          period: period,
-          state: state,
-          canApprove: canApprove,
-        );
+        final approval = period.status == AssistancePeriodStatus.rejected
+            ? _RejectedPeriodPanel(period: period)
+            : _ApprovalTab(
+                period: period,
+                state: state,
+                canApprove: canApprove,
+              );
         if (stacked) {
           return ListView(
             children: [
@@ -1607,6 +1609,70 @@ class _ReviewApprovalTab extends StatelessWidget {
   }
 }
 
+class _RejectedPeriodPanel extends StatelessWidget {
+  const _RejectedPeriodPanel({required this.period});
+
+  final AssistancePeriod period;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.05),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.28)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.block_outlined, color: AppColors.errorDark),
+                const SizedBox(width: 10),
+                Text(
+                  context.l10n.statusRejected,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.errorDark,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _SetupInfoTile(
+              label: context.l10n.reason,
+              value: period.rejectionReason ?? '-',
+              icon: Icons.notes_outlined,
+              wide: true,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _SetupInfoTile(
+                  label: context.l10n.rejectedBy,
+                  value: period.rejectedBy ?? '-',
+                  icon: Icons.person_outline,
+                ),
+                _SetupInfoTile(
+                  label: context.l10n.rejectedAt,
+                  value: _formatDateTimeValue(period.rejectedAt),
+                  icon: Icons.schedule_outlined,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ApprovalTab extends StatefulWidget {
   const _ApprovalTab({
     required this.period,
@@ -1623,16 +1689,12 @@ class _ApprovalTab extends StatefulWidget {
 }
 
 class _ApprovalTabState extends State<_ApprovalTab> {
-  final TextEditingController _uploadedByController = TextEditingController(
-    text: 'Admin',
-  );
   final TextEditingController _remarksController = TextEditingController();
   XFile? _selectedFile;
   bool _saving = false;
 
   @override
   void dispose() {
-    _uploadedByController.dispose();
     _remarksController.dispose();
     super.dispose();
   }
@@ -1682,8 +1744,8 @@ class _ApprovalTabState extends State<_ApprovalTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Approval Document',
+                        Text(
+                          context.l10n.approvalDocumentTitle,
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -1693,9 +1755,9 @@ class _ApprovalTabState extends State<_ApprovalTab> {
                         Text(
                           locked
                               ? approved
-                                    ? 'Signed approval document has been uploaded. Targets are now official recipients.'
-                                    : 'This assistance period is locked.'
-                              : 'Upload the signed approval document to approve this period and create recipients.',
+                                    ? context.l10n.approvalDocumentUploadedDescription
+                                    : context.l10n.assistancePeriodLocked
+                              : context.l10n.approvalDocumentUploadDescription,
                           style: const TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 12,
@@ -1752,8 +1814,8 @@ class _ApprovalTabState extends State<_ApprovalTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Uploaded Document',
+            Text(
+              context.l10n.uploadedDocument,
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
@@ -1787,6 +1849,18 @@ class _ApprovalTabState extends State<_ApprovalTab> {
                   ),
               ],
             ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                onPressed: () => _downloadStoredDocument(
+                  sourcePath: doc.filePath,
+                  fileName: doc.fileName,
+                ),
+                icon: const Icon(Icons.download_outlined, size: 18),
+                label: Text(context.l10n.downloadApprovalDocument),
+              ),
+            ),
           ],
         ),
       ),
@@ -1805,8 +1879,8 @@ class _ApprovalTabState extends State<_ApprovalTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Approval Decision',
+            Text(
+              context.l10n.approvalDecision,
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 10),
@@ -1840,7 +1914,8 @@ class _ApprovalTabState extends State<_ApprovalTab> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _selectedFile?.name ?? 'Choose approval document',
+                            _selectedFile?.name ??
+                                context.l10n.chooseApprovalDocument,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -1877,18 +1952,13 @@ class _ApprovalTabState extends State<_ApprovalTab> {
               runSpacing: 12,
               children: [
                 SizedBox(
-                  width: 320,
-                  child: TextField(
-                    controller: _uploadedByController,
-                    decoration: InputDecoration(labelText: context.l10n.uploadedBy),
-                  ),
-                ),
-                SizedBox(
-                  width: 420,
+                  width: 560,
                   child: TextField(
                     controller: _remarksController,
                     maxLines: 3,
-                    decoration: InputDecoration(labelText: context.l10n.remarks),
+                    decoration: InputDecoration(
+                      labelText: context.l10n.remarks,
+                    ),
                   ),
                 ),
               ],
@@ -1915,7 +1985,9 @@ class _ApprovalTabState extends State<_ApprovalTab> {
                         : _upload,
                     icon: const Icon(Icons.verified),
                     label: Text(
-                      _saving ? 'Uploading...' : 'Upload & Approve Period',
+                      _saving
+                          ? context.l10n.uploading
+                          : context.l10n.uploadApprovePeriod,
                     ),
                   ),
                 ],
@@ -1929,7 +2001,12 @@ class _ApprovalTabState extends State<_ApprovalTab> {
 
   Future<void> _reject() async {
     if (!widget.canApprove) {
-      AppToast.showFailed('You do not have permission to approve periods.');
+      AppToast.showFailed(context.l10n.noApprovePeriodPermission);
+      return;
+    }
+    final reason = _remarksController.text.trim();
+    if (reason.isEmpty) {
+      AppToast.showFailed(context.l10n.rejectionReasonRequired);
       return;
     }
     final confirmed = await showGuardedDialog<bool>(
@@ -1953,24 +2030,28 @@ class _ApprovalTabState extends State<_ApprovalTab> {
     );
     if (confirmed != true || !mounted) return;
     setState(() => _saving = true);
+    final l10n = context.l10n;
     try {
-      await context.read<AssistancePlanCubit>().rejectSelectedPeriod(
-        rejectedBy: _uploadedByController.text.trim().isEmpty
-            ? 'Admin'
-            : _uploadedByController.text.trim(),
-        reason: _remarksController.text,
-      );
-      AppToast.showSuccess('Assistance period rejected.');
+      final cubit = context.read<AssistancePlanCubit>();
+      final username = await _activeSessionUsername();
+      await cubit.rejectSelectedPeriod(rejectedBy: username, reason: reason);
+      AppToast.showSuccess(l10n.assistancePeriodRejectedSuccess);
       if (mounted) setState(() => _saving = false);
     } catch (e) {
-      AppToast.showFailed(e.toString());
+      if (mounted) {
+        showErrorToastWithDetails(
+          context,
+          title: l10n.rejectAssistancePeriodFailed,
+          error: e,
+        );
+      }
       if (mounted) setState(() => _saving = false);
     }
   }
 
   Future<void> _pickFile() async {
     if (!widget.canApprove) {
-      AppToast.showFailed('You do not have permission to approve periods.');
+      AppToast.showFailed(context.l10n.noApprovePeriodPermission);
       return;
     }
     final file = await openFile(
@@ -1987,25 +2068,23 @@ class _ApprovalTabState extends State<_ApprovalTab> {
 
   Future<void> _upload() async {
     if (!widget.canApprove) {
-      AppToast.showFailed('You do not have permission to approve periods.');
+      AppToast.showFailed(context.l10n.noApprovePeriodPermission);
       return;
     }
     final file = _selectedFile;
     if (file == null) return;
-    final uploadedBy = _uploadedByController.text.trim();
-    if (uploadedBy.isEmpty) {
-      AppToast.showFailed('Uploaded by is required.');
-      return;
-    }
     setState(() => _saving = true);
+    final l10n = context.l10n;
     try {
-      await context.read<AssistancePlanCubit>().uploadApprovalDocument(
+      final cubit = context.read<AssistancePlanCubit>();
+      final uploadedBy = await _activeSessionUsername();
+      await cubit.uploadApprovalDocument(
         sourcePath: file.path,
         fileName: file.name,
         uploadedBy: uploadedBy,
         remarks: _remarksController.text,
       );
-      AppToast.showSuccess('Approval document uploaded. Period approved.');
+      AppToast.showSuccess(l10n.approvalDocumentUploadedSuccess);
       if (mounted) {
         setState(() {
           _selectedFile = null;
@@ -2013,7 +2092,13 @@ class _ApprovalTabState extends State<_ApprovalTab> {
         });
       }
     } catch (e) {
-      AppToast.showFailed(e.toString());
+      if (mounted) {
+        showErrorToastWithDetails(
+          context,
+          title: l10n.uploadApprovePeriodFailed,
+          error: e,
+        );
+      }
       if (mounted) setState(() => _saving = false);
     }
   }
@@ -2042,9 +2127,6 @@ class _RecipientsTab extends StatefulWidget {
 
 class _RecipientsTabState extends State<_RecipientsTab> {
   final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _distributionByController = TextEditingController(
-    text: 'Admin',
-  );
   final TextEditingController _distributionRemarksController =
       TextEditingController();
   final TextEditingController _cancelReasonController = TextEditingController();
@@ -2053,12 +2135,12 @@ class _RecipientsTabState extends State<_RecipientsTab> {
   String _query = '';
   XFile? _distributionFile;
   bool _distributionSaving = false;
+  bool _bulkUpdating = false;
   bool _finalizing = false;
 
   @override
   void dispose() {
     _searchController.dispose();
-    _distributionByController.dispose();
     _distributionRemarksController.dispose();
     _cancelReasonController.dispose();
     super.dispose();
@@ -2079,8 +2161,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
       return _periodStatusMessage(
         icon: Icons.assignment_turned_in_outlined,
         title: context.l10n.approvalRequiredFirst,
-        message:
-            'Upload the signed approval document in Review & Approval before managing distribution.',
+        message: context.l10n.approvalRequiredDistributionMessage,
       );
     }
 
@@ -2089,8 +2170,12 @@ class _RecipientsTabState extends State<_RecipientsTab> {
         widget.state.recipients.map((item) => item.ruleType).toSet().toList()
           ..sort((a, b) => a.label.compareTo(b.label));
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    final editable = widget.period.status == AssistancePeriodStatus.approved;
+    final recipientTableHeight = (112 + (recipients.length.clamp(0, 4) * 54))
+        .clamp(180, 328)
+        .toDouble();
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 16),
       children: [
         _distributionPanel(),
         const SizedBox(height: 12),
@@ -2178,24 +2263,84 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                   icon: const Icon(Icons.table_view, size: 18),
                   label: const Text('Excel'),
                 ),
-                FilledButton.icon(
-                  onPressed: recipients.isEmpty || !widget.canExport
-                      ? null
-                      : () => _exportRecipients(
-                          period: widget.period,
-                          program: widget.program,
-                          recipients: recipients,
-                          format: _AssistanceExportFormat.pdf,
+                if (editable && widget.canUpdate)
+                  PopupMenuButton<_RecipientBulkAction>(
+                    enabled:
+                        !_distributionSaving && !_bulkUpdating && !_finalizing,
+                    tooltip: context.l10n.bulkRecipientActions,
+                    onSelected: _handleBulkAction,
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        value: _RecipientBulkAction.markAll,
+                        child: ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.done_all),
+                          title: Text(context.l10n.markAllPaidDistributed),
                         ),
-                  icon: const Icon(Icons.picture_as_pdf, size: 18),
-                  label: const Text('PDF'),
-                ),
+                      ),
+                      PopupMenuItem(
+                        value: _RecipientBulkAction.cancelAll,
+                        child: ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(
+                            Icons.cancel_outlined,
+                            color: AppColors.error,
+                          ),
+                          title: Text(context.l10n.cancelAll),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: _RecipientBulkAction.resetAll,
+                        child: ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.restart_alt),
+                          title: Text(context.l10n.resetAll),
+                        ),
+                      ),
+                    ],
+                    child: Container(
+                      height: 40,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.primaryLight),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.more_horiz,
+                            size: 18,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            context.l10n.bulkAction,
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.arrow_drop_down,
+                            size: 18,
+                            color: AppColors.primary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
         ),
         const SizedBox(height: 12),
-        Expanded(
+        SizedBox(
+          height: recipientTableHeight,
           child: AppTable<AssistanceRecipient>(
             data: recipients,
             emptyMessage: widget.state.recipients.isEmpty
@@ -2232,62 +2377,58 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                 title: context.l10n.status,
                 cell: (item) => _text(item.status.label),
               ),
-              AppTableColumn(
-                title: context.l10n.action,
-                flex: 2,
-                cell: (item) {
-                  final benefitType = AssistanceBenefitType.fromValue(
-                    item.benefitType ?? widget.program.benefitType.value,
-                  );
-                  final nextStatus = benefitType == AssistanceBenefitType.cash
-                      ? AssistanceRecipientStatus.paid
-                      : AssistanceRecipientStatus.distributed;
-                  final label = nextStatus == AssistanceRecipientStatus.paid
-                      ? context.l10n.markPaid
-                      : context.l10n.markDistributed;
-                  final done = item.status == nextStatus;
-                  final canEdit =
-                      widget.canUpdate &&
-                      widget.period.status == AssistancePeriodStatus.approved;
-                  return Wrap(
-                    spacing: 4,
-                    children: [
-                      TextButton(
-                        onPressed: done || !canEdit
-                            ? null
-                            : () => _updateRecipientStatus(item, nextStatus),
-                        child: Text(done ? item.status.label : label),
-                      ),
-                      IconButton(
-                        tooltip: context.l10n.cancelRecipient,
-                        onPressed:
-                            item.status ==
-                                    AssistanceRecipientStatus.cancelled ||
-                                !canEdit
-                            ? null
-                            : () => _cancelRecipient(item),
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          size: 18,
-                          color: AppColors.error,
+              if (widget.canUpdate &&
+                  widget.period.status == AssistancePeriodStatus.approved)
+                AppTableColumn(
+                  title: context.l10n.action,
+                  flex: 2,
+                  cell: (item) {
+                    final benefitType = AssistanceBenefitType.fromValue(
+                      item.benefitType ?? widget.program.benefitType.value,
+                    );
+                    final nextStatus = benefitType == AssistanceBenefitType.cash
+                        ? AssistanceRecipientStatus.paid
+                        : AssistanceRecipientStatus.distributed;
+                    final label = nextStatus == AssistanceRecipientStatus.paid
+                        ? context.l10n.markPaid
+                        : context.l10n.markDistributed;
+                    final done = item.status == nextStatus;
+                    return Wrap(
+                      spacing: 4,
+                      children: [
+                        TextButton(
+                          onPressed: done
+                              ? null
+                              : () => _updateRecipientStatus(item, nextStatus),
+                          child: Text(done ? item.status.label : label),
                         ),
-                      ),
-                      IconButton(
-                        tooltip: context.l10n.resetStatus,
-                        onPressed:
-                            item.status == AssistanceRecipientStatus.approved ||
-                                !canEdit
-                            ? null
-                            : () => _updateRecipientStatus(
-                                item,
-                                AssistanceRecipientStatus.approved,
-                              ),
-                        icon: const Icon(Icons.restart_alt, size: 18),
-                      ),
-                    ],
-                  );
-                },
-              ),
+                        IconButton(
+                          tooltip: context.l10n.cancelRecipient,
+                          onPressed:
+                              item.status == AssistanceRecipientStatus.cancelled
+                              ? null
+                              : () => _cancelRecipient(item),
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            size: 18,
+                            color: AppColors.error,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: context.l10n.resetStatus,
+                          onPressed:
+                              item.status == AssistanceRecipientStatus.approved
+                              ? null
+                              : () => _updateRecipientStatus(
+                                  item,
+                                  AssistanceRecipientStatus.approved,
+                                ),
+                          icon: const Icon(Icons.restart_alt, size: 18),
+                        ),
+                      ],
+                    );
+                  },
+                ),
             ],
           ),
         ),
@@ -2296,9 +2437,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
   }
 
   Widget _distributionPanel() {
-    final doc = widget.state.distributionDocuments.isEmpty
-        ? null
-        : widget.state.distributionDocuments.first;
+    final documents = widget.state.distributionDocuments;
     final editable = widget.period.status == AssistancePeriodStatus.approved;
     final pending = widget.state.recipients
         .where((item) => item.status == AssistanceRecipientStatus.approved)
@@ -2324,8 +2463,8 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Report & Finalized',
+                      Text(
+                        context.l10n.reportFinalized,
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
@@ -2334,8 +2473,8 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                       const SizedBox(height: 4),
                       Text(
                         finalStatus
-                            ? 'This assistance period has been finalized.'
-                            : 'Fill each recipient status and upload the signed distribution list before finalizing.',
+                            ? context.l10n.assistancePeriodFinalizedMessage
+                            : context.l10n.distributionFinalizeInstruction,
                         style: const TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 12,
@@ -2344,7 +2483,78 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                     ],
                   ),
                 ),
-                _distributionStatusPill(widget.period.status.label),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _distributionStatusPill(widget.period.status.label),
+                    if (editable && widget.canApprove) ...[
+                      const SizedBox(height: 8),
+                      PopupMenuButton<_FinalizeDistributionAction>(
+                        enabled: !_finalizing,
+                        tooltip: context.l10n.finalizeActions,
+                        onSelected: _handleFinalizeAction,
+                        itemBuilder: (_) => [
+                          PopupMenuItem(
+                            value: _FinalizeDistributionAction
+                                .finalizeDistribution,
+                            child: ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.done_all),
+                              title: Text(context.l10n.finalizeDistribution),
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: _FinalizeDistributionAction.cancelPeriod,
+                            child: ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(
+                                Icons.cancel_outlined,
+                                color: AppColors.error,
+                              ),
+                              title: Text(context.l10n.cancelPeriod),
+                            ),
+                          ),
+                        ],
+                        child: Container(
+                          height: 38,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.task_alt,
+                                size: 18,
+                                color: AppColors.white,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _finalizing
+                                    ? context.l10n.finalizing
+                                    : context.l10n.finalizeAction,
+                                style: const TextStyle(
+                                  color: AppColors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.arrow_drop_down,
+                                size: 18,
+                                color: AppColors.white,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -2359,76 +2569,230 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                   icon: Icons.pending_actions_outlined,
                 ),
                 _SetupInfoTile(
-                  label: context.l10n.distributionProof,
-                  value: doc?.fileName ?? 'Not uploaded',
+                  label: context.l10n.distributionEvidence,
+                  value: context.l10n.documentCountOfFive(documents.length),
                   icon: Icons.fact_check_outlined,
                   wide: true,
+                  onTap: _showDistributionDocumentsDialog,
                 ),
-                if (editable)
-                  OutlinedButton.icon(
+                if (editable && documents.length < 5)
+                  FilledButton.icon(
                     onPressed: _distributionSaving || !widget.canUpdate
                         ? null
-                        : _pickDistributionFile,
-                    icon: const Icon(Icons.attach_file, size: 18),
-                    label: Text(_distributionFile?.name ?? 'Choose File'),
-                  ),
-                if (editable)
-                  SizedBox(
-                    width: 220,
-                    child: TextField(
-                      controller: _distributionByController,
-                      decoration: InputDecoration(
-                        labelText: context.l10n.handledBy,
-                      ),
+                        : _distributionFile == null
+                        ? _pickDistributionFile
+                        : _uploadDistributionProof,
+                    icon: Icon(
+                      _distributionFile == null
+                          ? Icons.attach_file
+                          : Icons.upload_file,
+                      size: 18,
+                    ),
+                    label: Text(
+                      _distributionSaving
+                          ? context.l10n.uploading
+                          : _distributionFile == null
+                          ? context.l10n.chooseEvidence
+                          : context.l10n.uploadEvidence,
                     ),
                   ),
-                if (editable)
+                if (editable && documents.length < 5)
                   SizedBox(
-                    width: 280,
+                    width: 380,
                     child: TextField(
                       controller: _distributionRemarksController,
-                      decoration: InputDecoration(labelText: context.l10n.remarks),
-                    ),
-                  ),
-                if (editable)
-                  FilledButton.icon(
-                    onPressed:
-                        _distributionSaving ||
-                            _distributionFile == null ||
-                            !widget.canUpdate
-                        ? null
-                        : _uploadDistributionProof,
-                    icon: const Icon(Icons.upload_file, size: 18),
-                    label: Text(
-                      _distributionSaving ? 'Uploading...' : 'Upload Proof',
-                    ),
-                  ),
-                if (editable)
-                  FilledButton.icon(
-                    onPressed: _finalizing || !widget.canApprove
-                        ? null
-                        : _finalize,
-                    icon: const Icon(Icons.done_all, size: 18),
-                    label: Text(
-                      _finalizing ? 'Finalizing...' : 'Finalize Distributed',
-                    ),
-                  ),
-                if (editable)
-                  OutlinedButton.icon(
-                    onPressed: _finalizing || !widget.canApprove
-                        ? null
-                        : _cancelPeriod,
-                    icon: const Icon(Icons.cancel_outlined, size: 18),
-                    label: Text(context.l10n.cancelPeriod),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.errorDark,
-                      side: const BorderSide(color: AppColors.error),
+                      decoration: InputDecoration(
+                        labelText: context.l10n.evidenceFileRemarks,
+                        hintText: context.l10n.evidenceFileRemarksHint,
+                      ),
                     ),
                   ),
               ],
             ),
+            if (editable && documents.length >= 5) ...[
+              const SizedBox(height: 8),
+              Text(
+                context.l10n.maximumDistributionEvidence,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _showDistributionDocumentsDialog() async {
+    final cubit = context.read<AssistancePlanCubit>();
+    await showGuardedDialog<void>(
+      context: context,
+      guardKey: 'distribution_documents_${widget.period.id}',
+      builder: (dialogContext) => BlocProvider.value(
+        value: cubit,
+        child: AlertDialog(
+          title: Text(context.l10n.distributionEvidenceDocuments),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minWidth: 760,
+              maxWidth: 980,
+              maxHeight: 520,
+            ),
+            child: BlocBuilder<AssistancePlanCubit, AssistancePlanState>(
+              builder: (context, state) => SingleChildScrollView(
+                child: _distributionDocumentsTable(
+                  state.distributionDocuments,
+                  editable:
+                      widget.period.status == AssistancePeriodStatus.approved,
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(context.l10n.close),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _distributionDocumentsTable(
+    List<AssistanceDistributionDocument> documents, {
+    required bool editable,
+  }) {
+    const headerStyle = TextStyle(
+      color: AppColors.textSecondary,
+      fontSize: 11,
+      fontWeight: FontWeight.w700,
+    );
+
+    Widget cell(Widget child, {Alignment alignment = Alignment.centerLeft}) {
+      return Container(
+        constraints: const BoxConstraints(minHeight: 42),
+        alignment: alignment,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: child,
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (documents.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Text(
+                context.l10n.noDistributionEvidence,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+            )
+          else
+            Table(
+              columnWidths: const {
+                0: FlexColumnWidth(3),
+                1: FlexColumnWidth(1.5),
+                2: FlexColumnWidth(1.8),
+                3: FlexColumnWidth(2.5),
+                4: FixedColumnWidth(96),
+              },
+              border: const TableBorder(
+                horizontalInside: BorderSide(color: AppColors.divider),
+              ),
+              children: [
+                TableRow(
+                  decoration: const BoxDecoration(color: AppColors.surfaceSoft),
+                  children: [
+                    cell(Text(context.l10n.file, style: headerStyle)),
+                    cell(Text(context.l10n.uploadedBy, style: headerStyle)),
+                    cell(Text(context.l10n.uploadedAt, style: headerStyle)),
+                    cell(Text(context.l10n.remarks, style: headerStyle)),
+                    cell(
+                      Text(context.l10n.action, style: headerStyle),
+                      alignment: Alignment.center,
+                    ),
+                  ],
+                ),
+                ...documents.map(
+                  (document) => TableRow(
+                    children: [
+                      cell(
+                        Text(
+                          document.fileName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      cell(_text(document.uploadedBy ?? '-')),
+                      cell(_text(_formatDateTimeValue(document.uploadedAt))),
+                      cell(
+                        _text(
+                          document.remarks?.trim().isNotEmpty == true
+                              ? document.remarks!
+                              : '-',
+                        ),
+                      ),
+                      cell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            IconButton(
+                              tooltip: context.l10n.downloadEvidence,
+                              onPressed: () => _downloadStoredDocument(
+                                sourcePath: document.filePath,
+                                fileName: document.fileName,
+                              ),
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints.tightFor(
+                                width: 32,
+                                height: 32,
+                              ),
+                              icon: const Icon(
+                                Icons.download_outlined,
+                                size: 18,
+                              ),
+                            ),
+                            if (editable && widget.canUpdate)
+                              IconButton(
+                                tooltip: context.l10n.deleteEvidence,
+                                onPressed: _distributionSaving
+                                    ? null
+                                    : () =>
+                                          _deleteDistributionDocument(document),
+                                padding: const EdgeInsets.all(4),
+                                constraints: const BoxConstraints.tightFor(
+                                  width: 32,
+                                  height: 32,
+                                ),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 18,
+                                  color: AppColors.error,
+                                ),
+                              ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
     );
   }
@@ -2455,7 +2819,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
     final file = await openFile(
       acceptedTypeGroups: [
         XTypeGroup(
-          label: context.l10n.distributionProof,
+          label: context.l10n.distributionEvidence,
           extensions: ['pdf', 'jpg', 'jpeg', 'png'],
         ),
       ],
@@ -2467,29 +2831,243 @@ class _RecipientsTabState extends State<_RecipientsTab> {
   Future<void> _uploadDistributionProof() async {
     final file = _distributionFile;
     if (file == null) return;
-    final uploadedBy = _distributionByController.text.trim();
-    if (uploadedBy.isEmpty) {
-      AppToast.showFailed('Handled by is required.');
-      return;
-    }
     setState(() => _distributionSaving = true);
+    final l10n = context.l10n;
     try {
-      await context.read<AssistancePlanCubit>().uploadDistributionDocument(
+      final cubit = context.read<AssistancePlanCubit>();
+      final uploadedBy = await _activeSessionUsername();
+      await cubit.uploadDistributionDocument(
         sourcePath: file.path,
         fileName: file.name,
         uploadedBy: uploadedBy,
         remarks: _distributionRemarksController.text,
       );
-      AppToast.showSuccess('Distribution proof uploaded.');
+      AppToast.showSuccess(l10n.distributionEvidenceUploaded);
       if (mounted) {
         setState(() {
           _distributionFile = null;
+          _distributionRemarksController.clear();
           _distributionSaving = false;
         });
       }
     } catch (e) {
-      AppToast.showFailed(e.toString());
+      if (!mounted) return;
+      showErrorToastWithDetails(
+        context,
+        title: l10n.uploadDistributionEvidenceFailed,
+        error: e,
+      );
       if (mounted) setState(() => _distributionSaving = false);
+    }
+  }
+
+  Future<void> _deleteDistributionDocument(
+    AssistanceDistributionDocument document,
+  ) async {
+    final cubit = context.read<AssistancePlanCubit>();
+    final l10n = context.l10n;
+    final confirmed = await showGuardedDialog<bool>(
+      context: context,
+      guardKey: 'delete_distribution_document_${document.id}',
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.deleteDistributionEvidenceTitle),
+        content: Text(
+          l10n.deleteDistributionEvidenceMessage(document.fileName),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.buttonCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _distributionSaving = true);
+    try {
+      await cubit.deleteDistributionDocument(document.id);
+      AppToast.showSuccess(l10n.distributionEvidenceDeleted);
+    } catch (e) {
+      if (!mounted) return;
+      showErrorToastWithDetails(
+        context,
+        title: l10n.deleteDistributionEvidenceFailed,
+        error: e,
+      );
+    } finally {
+      if (mounted) setState(() => _distributionSaving = false);
+    }
+  }
+
+  Future<void> _markAllDistributed() async {
+    final cubit = context.read<AssistancePlanCubit>();
+    final l10n = context.l10n;
+    final confirmed = await showGuardedDialog<bool>(
+      context: context,
+      guardKey: 'mark_all_assistance_recipients_${widget.period.id}',
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.markAllRecipientsTitle),
+        content: Text(
+          l10n.markAllRecipientsMessage,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.buttonCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(l10n.markAll),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _bulkUpdating = true);
+    try {
+      final username = await _activeSessionUsername();
+      await cubit.markAllRecipientsDistributed(updatedBy: username);
+      AppToast.showSuccess(l10n.allRecipientStatusesUpdated);
+    } catch (e) {
+      if (!mounted) return;
+      showErrorToastWithDetails(
+        context,
+        title: l10n.updateAllRecipientsFailed,
+        error: e,
+      );
+    } finally {
+      if (mounted) setState(() => _bulkUpdating = false);
+    }
+  }
+
+  void _handleBulkAction(_RecipientBulkAction action) {
+    switch (action) {
+      case _RecipientBulkAction.markAll:
+        _markAllDistributed();
+      case _RecipientBulkAction.cancelAll:
+        _cancelAllRecipients();
+      case _RecipientBulkAction.resetAll:
+        _resetAllRecipients();
+    }
+  }
+
+  void _handleFinalizeAction(_FinalizeDistributionAction action) {
+    switch (action) {
+      case _FinalizeDistributionAction.finalizeDistribution:
+        _finalize();
+      case _FinalizeDistributionAction.cancelPeriod:
+        _cancelPeriod();
+    }
+  }
+
+  Future<void> _cancelAllRecipients() async {
+    final cubit = context.read<AssistancePlanCubit>();
+    final l10n = context.l10n;
+    final reasonController = TextEditingController();
+    final reason = await showGuardedDialog<String>(
+      context: context,
+      guardKey: 'cancel_all_assistance_recipients_${widget.period.id}',
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.cancelAllRecipientsTitle),
+        content: TextField(
+          controller: reasonController,
+          maxLines: 3,
+          decoration: InputDecoration(
+            labelText: '${l10n.cancellationReason} *',
+            hintText: l10n.cancelAllRecipientsHint,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(l10n.buttonCancel),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, reasonController.text.trim()),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
+            child: Text(l10n.cancelAll),
+          ),
+        ],
+      ),
+    );
+    reasonController.dispose();
+    if (reason == null || !mounted) return;
+    if (reason.trim().isEmpty) {
+      AppToast.showFailed(l10n.cancellationReasonRequired);
+      return;
+    }
+
+    setState(() => _bulkUpdating = true);
+    try {
+      final username = await _activeSessionUsername();
+      await cubit.updateAllRecipientStatuses(
+        status: AssistanceRecipientStatus.cancelled,
+        reason: reason,
+        updatedBy: username,
+      );
+      AppToast.showSuccess(l10n.allRecipientsCancelled);
+    } catch (e) {
+      if (!mounted) return;
+      showErrorToastWithDetails(
+        context,
+        title: l10n.cancelAllRecipientsFailed,
+        error: e,
+      );
+    } finally {
+      if (mounted) setState(() => _bulkUpdating = false);
+    }
+  }
+
+  Future<void> _resetAllRecipients() async {
+    final cubit = context.read<AssistancePlanCubit>();
+    final l10n = context.l10n;
+    final confirmed = await showGuardedDialog<bool>(
+      context: context,
+      guardKey: 'reset_all_assistance_recipients_${widget.period.id}',
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.resetAllRecipientStatusesTitle),
+        content: Text(
+          l10n.resetAllRecipientStatusesMessage,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.buttonCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(l10n.resetAll),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _bulkUpdating = true);
+    try {
+      final username = await _activeSessionUsername();
+      await cubit.updateAllRecipientStatuses(
+        status: AssistanceRecipientStatus.approved,
+        updatedBy: username,
+      );
+      AppToast.showSuccess(l10n.allRecipientStatusesReset);
+    } catch (e) {
+      if (!mounted) return;
+      showErrorToastWithDetails(
+        context,
+        title: l10n.resetAllRecipientsFailed,
+        error: e,
+      );
+    } finally {
+      if (mounted) setState(() => _bulkUpdating = false);
     }
   }
 
@@ -2498,14 +3076,17 @@ class _RecipientsTabState extends State<_RecipientsTab> {
     AssistanceRecipientStatus status, {
     String? reason,
   }) async {
+    final cubit = context.read<AssistancePlanCubit>();
+    final l10n = context.l10n;
     try {
-      await context.read<AssistancePlanCubit>().updateRecipientStatus(
+      final username = await _activeSessionUsername();
+      await cubit.updateRecipientStatus(
         recipientId: recipient.id,
         status: status,
         reason: reason,
-        updatedBy: _distributionByController.text,
+        updatedBy: username,
       );
-      AppToast.showSuccess('Recipient status updated.');
+      AppToast.showSuccess(l10n.recipientStatusUpdated);
     } catch (e) {
       AppToast.showFailed(e.toString());
     }
@@ -2552,19 +3133,18 @@ class _RecipientsTabState extends State<_RecipientsTab> {
 
   Future<void> _finalize() async {
     setState(() => _finalizing = true);
+    final cubit = context.read<AssistancePlanCubit>();
+    final l10n = context.l10n;
     try {
-      await context.read<AssistancePlanCubit>().finalizeSelectedDistribution(
-        finalizedBy: _distributionByController.text.trim().isEmpty
-            ? 'Admin'
-            : _distributionByController.text.trim(),
-      );
-      AppToast.showSuccess('Assistance period finalized as distributed.');
+      final username = await _activeSessionUsername();
+      await cubit.finalizeSelectedDistribution(finalizedBy: username);
+      AppToast.showSuccess(l10n.assistancePeriodFinalizedSuccess);
       if (mounted) setState(() => _finalizing = false);
     } catch (e) {
       if (!mounted) return;
       showErrorToastWithDetails(
         context,
-        title: context.l10n.finalizeDistributionFailed,
+        title: l10n.finalizeDistributionFailed,
         error: e,
       );
       if (mounted) setState(() => _finalizing = false);
@@ -2573,29 +3153,31 @@ class _RecipientsTabState extends State<_RecipientsTab> {
 
   Future<void> _cancelPeriod() async {
     _cancelReasonController.clear();
+    final cubit = context.read<AssistancePlanCubit>();
+    final l10n = context.l10n;
     final reason = await showGuardedDialog<String>(
       context: context,
       guardKey: 'cancel_assistance_period_distribution_${widget.period.id}',
       builder: (dialogContext) => AlertDialog(
-        title: Text(context.l10n.cancelAssistancePeriodTitle),
+        title: Text(l10n.cancelAssistancePeriodTitle),
         content: TextField(
           controller: _cancelReasonController,
           maxLines: 3,
           decoration: InputDecoration(
-            labelText: context.l10n.cancellationReason,
-            hintText: context.l10n.approvedPeriodCancellationHint,
+            labelText: l10n.cancellationReason,
+            hintText: l10n.approvedPeriodCancellationHint,
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: Text(context.l10n.back),
+            child: Text(l10n.back),
           ),
           FilledButton(
             onPressed: () =>
                 Navigator.pop(dialogContext, _cancelReasonController.text),
             style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
-            child: Text(context.l10n.cancelPeriod),
+            child: Text(l10n.cancelPeriod),
           ),
         ],
       ),
@@ -2603,13 +3185,12 @@ class _RecipientsTabState extends State<_RecipientsTab> {
     if (reason == null || !mounted) return;
     setState(() => _finalizing = true);
     try {
-      await context.read<AssistancePlanCubit>().cancelSelectedDistribution(
-        cancelledBy: _distributionByController.text.trim().isEmpty
-            ? 'Admin'
-            : _distributionByController.text.trim(),
+      final username = await _activeSessionUsername();
+      await cubit.cancelSelectedDistribution(
+        cancelledBy: username,
         reason: reason,
       );
-      AppToast.showSuccess('Assistance period cancelled.');
+      AppToast.showSuccess(l10n.assistancePeriodCancelledSuccess);
       if (mounted) setState(() => _finalizing = false);
     } catch (e) {
       AppToast.showFailed(e.toString());
@@ -2758,7 +3339,7 @@ class _SelectStudentsDialogState extends State<_SelectStudentsDialog> {
                     cell: (student) => _text(student.level ?? '-'),
                   ),
                   AppTableColumn(
-                    title: context.l10n.minimumAttendancePercent,
+                    title: context.l10n.attendance,
                     cell: (student) => _text(
                       '${(student.attendancePercentage ?? 0).toStringAsFixed(0)}%',
                     ),
@@ -2936,8 +3517,7 @@ class _CreateAssistancePeriodDialogState
           label: context.l10n.periodName,
           value: _periodName,
           onSaved: (value) => _periodName = value?.trim() ?? '',
-          validator: (value) =>
-              value?.trim().isEmpty == true
+          validator: (value) => value?.trim().isEmpty == true
               ? context.l10n.periodNameRequired
               : null,
         ),
@@ -3625,7 +4205,7 @@ class _CreateAssistancePeriodDialogState
       if (mounted) {
         showErrorToastWithDetails(
           context,
-        title: context.l10n.createAssistancePeriodFailed,
+          title: context.l10n.createAssistancePeriodFailed,
           error: e,
         );
       }
@@ -3702,6 +4282,37 @@ class _CreateAssistancePeriodDialogState
 
 enum _AssistanceExportFormat { pdf, excel }
 
+enum _RecipientBulkAction { markAll, cancelAll, resetAll }
+
+enum _FinalizeDistributionAction { finalizeDistribution, cancelPeriod }
+
+Future<String> _activeSessionUsername() async {
+  final session = await AuthSessionCache.instance.read();
+  final username = session?.username.trim() ?? '';
+  return username.isEmpty ? 'system' : username;
+}
+
+Future<void> _downloadStoredDocument({
+  required String sourcePath,
+  required String fileName,
+}) async {
+  final source = io.File(sourcePath);
+  if (!await source.exists()) {
+    AppToast.showFailed('Approval document file was not found.');
+    return;
+  }
+  final extension = fileName.split('.').last.toLowerCase();
+  final location = await getSaveLocation(
+    suggestedName: generatedFileName(fileName),
+    acceptedTypeGroups: [
+      XTypeGroup(label: 'Approval document', extensions: [extension]),
+    ],
+  );
+  if (location == null) return;
+  await source.copy(location.path);
+  AppToast.showSuccess('Approval document downloaded.');
+}
+
 Future<void> _exportPlan({
   required BuildContext context,
   required AssistancePeriod period,
@@ -3777,17 +4388,26 @@ List<String> _planExportLines(
   AssistancePeriod period,
   AssistancePlanState state,
 ) {
+  final selected = state.assessments
+      .where((item) => item.decisionStatus == AssistanceDecisionStatus.approved)
+      .length;
+  final eligible = state.assessments
+      .where(
+        (item) =>
+            item.eligibilityStatus != AssistanceEligibilityStatus.ineligible,
+      )
+      .length;
   return [
     'Assistance Plan',
     'Period: ${period.label}',
     'Date: ${_periodDateRange(period)}',
-    'Target Quota: ${period.targetQuota}',
+    'Target Quota: ${period.targetQuota} | Selected: $selected | Eligible: $eligible',
     'Minimum Attendance: ${period.minimumAttendancePercentage.toStringAsFixed(0)}%',
     'Calculation Range: ${_calculationRange(period)}',
     '',
-    'Student | Rule | Source | Attendance | Score | Status',
-    for (final item in state.assessments)
-      '${item.studentName ?? item.studentId} | ${item.ruleName ?? item.ruleType.label} | ${item.selectionMode.label} | ${(item.attendanceScore ?? 0).toStringAsFixed(0)}% | ${item.totalScore.toStringAsFixed(0)} | ${item.decisionStatus.label}',
+    'No | Student | Rule | Source | Attendance | Score | Eligibility | Status | Reason',
+    for (var index = 0; index < state.assessments.length; index++)
+      '${index + 1} | ${state.assessments[index].studentName ?? state.assessments[index].studentId} | ${state.assessments[index].ruleName ?? state.assessments[index].ruleType.label} | ${state.assessments[index].selectionMode.label} | ${(state.assessments[index].attendanceScore ?? 0).toStringAsFixed(0)}% | ${state.assessments[index].totalScore.toStringAsFixed(0)} | ${state.assessments[index].eligibilityStatus.label} | ${state.assessments[index].decisionStatus.label} | ${state.assessments[index].specialCaseNote ?? state.assessments[index].priorityReason ?? '-'}',
     '',
     'Prepared by: ______________________    Date: ______________________',
     'Reviewed by: ______________________    Date: ______________________',
@@ -3797,39 +4417,77 @@ List<String> _planExportLines(
 
 String _planExportHtml(AssistancePeriod period, AssistancePlanState state) {
   String escape(String value) => const HtmlEscape().convert(value);
-  final rows = state.assessments.map((item) {
+  final selected = state.assessments
+      .where((item) => item.decisionStatus == AssistanceDecisionStatus.approved)
+      .length;
+  final eligible = state.assessments
+      .where(
+        (item) =>
+            item.eligibilityStatus != AssistanceEligibilityStatus.ineligible,
+      )
+      .length;
+  final rows = state.assessments.indexed.map((entry) {
+    final index = entry.$1;
+    final item = entry.$2;
     return '''
       <tr>
+        <td class="center">${index + 1}</td>
         <td>${escape(item.studentName ?? item.studentId)}</td>
         <td>${escape(item.ruleName ?? item.ruleType.label)}</td>
-        <td>${escape(item.selectionMode.label)}</td>
-        <td>${(item.attendanceScore ?? 0).toStringAsFixed(0)}%</td>
-        <td>${item.totalScore.toStringAsFixed(0)}</td>
-        <td>${escape(item.decisionStatus.label)}</td>
+        <td class="center">${escape(item.selectionMode.label)}</td>
+        <td class="number">${(item.attendanceScore ?? 0).toStringAsFixed(0)}%</td>
+        <td class="number">${item.totalScore.toStringAsFixed(0)}</td>
+        <td class="center">${escape(item.eligibilityStatus.label)}</td>
+        <td class="center">${escape(item.decisionStatus.label)}</td>
+        <td>${escape(item.specialCaseNote ?? item.priorityReason ?? '-')}</td>
       </tr>
     ''';
   }).join();
   return '''
     <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; color: #1f2937; padding: 18px; }
+          h1 { margin: 0 0 4px; font-size: 22px; color: #1f2937; }
+          .subtitle { color: #6b7280; margin-bottom: 18px; }
+          .summary { border-collapse: separate; border-spacing: 8px 0; margin: 0 -8px 18px; }
+          .summary td { background: #e8f8f7; border: 1px solid #b9e9e7; padding: 10px 14px; }
+          .summary strong { display: block; font-size: 18px; color: #2ba7a3; }
+          .meta { margin-bottom: 16px; line-height: 1.6; }
+          .data { width: 100%; border-collapse: collapse; font-size: 11px; }
+          .data th { background: #48cfcb; color: #ffffff; padding: 9px 7px; text-align: left; }
+          .data td { border: 1px solid #dfe5e8; padding: 8px 7px; vertical-align: top; }
+          .data tr:nth-child(even) { background: #f8fafb; }
+          .center { text-align: center; }
+          .number { text-align: right; }
+          .signatures { width: 100%; margin-top: 34px; border-collapse: separate; border-spacing: 20px 0; }
+          .signatures td { width: 33%; height: 80px; vertical-align: top; border-bottom: 1px solid #9ca3af; }
+        </style>
+      </head>
       <body>
-        <h2>Assistance Plan</h2>
-        <p><b>Period:</b> ${escape(period.label)}</p>
-        <p><b>Date:</b> ${escape(_periodDateRange(period))}</p>
-        <p><b>Target Quota:</b> ${period.targetQuota}</p>
-        <p><b>Minimum Attendance:</b> ${period.minimumAttendancePercentage.toStringAsFixed(0)}%</p>
-        <p><b>Calculation Range:</b> ${escape(_calculationRange(period))}</p>
-        <table border="1" cellspacing="0" cellpadding="6">
+        <h1>Assistance Candidate Plan</h1>
+        <div class="subtitle">${escape(period.label)} &bull; ${escape(_periodDateRange(period))}</div>
+        <table class="summary">
           <tr>
-            <th>Student</th><th>Rule</th><th>Source</th>
-            <th>Attendance</th><th>Score</th><th>Status</th>
+            <td>Target quota<strong>${period.targetQuota}</strong></td>
+            <td>Selected<strong>$selected</strong></td>
+            <td>Eligible<strong>$eligible</strong></td>
+            <td>Minimum attendance<strong>${period.minimumAttendancePercentage.toStringAsFixed(0)}%</strong></td>
+          </tr>
+        </table>
+        <div class="meta"><b>Calculation range:</b> ${escape(_calculationRange(period))}</div>
+        <table class="data">
+          <tr>
+            <th>No</th><th>Student</th><th>Rule</th><th>Source</th>
+            <th>Attendance</th><th>Score</th><th>Eligibility</th>
+            <th>Status</th><th>Reason</th>
           </tr>
           $rows
         </table>
-        <br><br>
-        <table>
-          <tr><td>Prepared by: ______________________</td><td>Date: ______________________</td></tr>
-          <tr><td>Reviewed by: ______________________</td><td>Date: ______________________</td></tr>
-          <tr><td>Approved by: ______________________</td><td>Date: ______________________</td></tr>
+        <table class="signatures">
+          <tr><td>Prepared by</td><td>Reviewed by</td><td>Approved by</td></tr>
+          <tr><td>Name / Date</td><td>Name / Date</td><td>Name / Date</td></tr>
         </table>
       </body>
     </html>
@@ -3895,28 +4553,71 @@ String _recipientExportHtml(
 }
 
 Uint8List _simplePdfBytes(List<String> lines) {
-  final escapedLines = lines
-      .map(
-        (line) => line
-            .replaceAll('\\', '\\\\')
-            .replaceAll('(', r'\(')
-            .replaceAll(')', r'\)'),
-      )
-      .toList();
-  final content = StringBuffer('BT /F1 10 Tf 40 790 Td ');
-  for (var i = 0; i < escapedLines.length; i++) {
-    if (i > 0) content.write('0 -14 Td ');
-    content.write('(${escapedLines[i]}) Tj ');
-  }
-  content.write('ET');
+  String escape(String value) => value
+      .replaceAll(RegExp(r'[^\x20-\x7E]'), '-')
+      .replaceAll('\\', '\\\\')
+      .replaceAll('(', r'\(')
+      .replaceAll(')', r'\)');
 
+  List<String> wrap(String line) {
+    if (line.length <= 88) return [line];
+    final parts = <String>[];
+    var remaining = line;
+    while (remaining.length > 88) {
+      var splitAt = remaining.lastIndexOf(' ', 88);
+      if (splitAt < 40) splitAt = 88;
+      parts.add(remaining.substring(0, splitAt).trimRight());
+      remaining = remaining.substring(splitAt).trimLeft();
+    }
+    parts.add(remaining);
+    return parts;
+  }
+
+  final printableLines = <String>[for (final line in lines) ...wrap(line)];
+  const linesPerPage = 48;
+  final pages = <List<String>>[];
+  for (var index = 0; index < printableLines.length; index += linesPerPage) {
+    final end = index + linesPerPage < printableLines.length
+        ? index + linesPerPage
+        : printableLines.length;
+    pages.add(printableLines.sublist(index, end));
+  }
+  if (pages.isEmpty) pages.add(const []);
+
+  final pageObjectIds = [
+    for (var index = 0; index < pages.length; index++) 5 + (index * 2),
+  ];
   final objects = <String>[
     '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
-    '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
-    '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj',
-    '4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
-    '5 0 obj << /Length ${content.length} >> stream\n$content\nendstream endobj',
+    '2 0 obj << /Type /Pages /Kids [${pageObjectIds.map((id) => '$id 0 R').join(' ')}] /Count ${pages.length} >> endobj',
+    '3 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
+    '4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> endobj',
   ];
+  for (var pageIndex = 0; pageIndex < pages.length; pageIndex++) {
+    final pageId = pageObjectIds[pageIndex];
+    final contentId = pageId + 1;
+    final content = StringBuffer('BT /F1 9 Tf 38 792 Td ');
+    for (var lineIndex = 0; lineIndex < pages[pageIndex].length; lineIndex++) {
+      if (lineIndex > 0) content.write('0 -15 Td ');
+      if (pageIndex == 0 && lineIndex == 0) {
+        content.write('/F2 16 Tf (${escape(pages[pageIndex][lineIndex])}) Tj ');
+        content.write('/F1 9 Tf ');
+      } else {
+        content.write('(${escape(pages[pageIndex][lineIndex])}) Tj ');
+      }
+    }
+    content.write(
+      'ET BT /F1 8 Tf 500 24 Td (Page ${pageIndex + 1} of ${pages.length}) Tj ET',
+    );
+    objects.add(
+      '$pageId 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] '
+      '/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> '
+      '/Contents $contentId 0 R >> endobj',
+    );
+    objects.add(
+      '$contentId 0 obj << /Length ${content.length} >> stream\n$content\nendstream endobj',
+    );
+  }
   final buffer = StringBuffer('%PDF-1.4\n');
   final offsets = <int>[0];
   var offset = buffer.length;

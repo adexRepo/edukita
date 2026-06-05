@@ -78,6 +78,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageUpdated => 'Language updated successfully';
 
   @override
+  String get rejectedBy => 'Rejected By';
+
+  @override
+  String get rejectedAt => 'Rejected At';
+
+  @override
+  String get rejectionReasonRequired => 'Rejection reason is required.';
+
+  @override
+  String get downloadApprovalDocument => 'Download Approval Document';
+
+  @override
   String get personalization => 'Personalization';
 
   @override
@@ -3509,6 +3521,201 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get updateClass => 'Update Class';
+
+  @override
+  String get approvalDocumentTitle => 'Approval Document';
+
+  @override
+  String get approvalDocumentUploadedDescription =>
+      'Signed approval document has been uploaded. Targets are now official recipients.';
+
+  @override
+  String get assistancePeriodLocked => 'This assistance period is locked.';
+
+  @override
+  String get approvalDocumentUploadDescription =>
+      'Upload the signed approval document to approve this period and create recipients.';
+
+  @override
+  String get uploadedDocument => 'Uploaded Document';
+
+  @override
+  String get approvalDecision => 'Approval Decision';
+
+  @override
+  String get chooseApprovalDocument => 'Choose approval document';
+
+  @override
+  String get uploadApprovePeriod => 'Upload & Approve Period';
+
+  @override
+  String get noApprovePeriodPermission =>
+      'You do not have permission to approve periods.';
+
+  @override
+  String get assistancePeriodRejectedSuccess => 'Assistance period rejected.';
+
+  @override
+  String get rejectAssistancePeriodFailed =>
+      'Failed to reject assistance period';
+
+  @override
+  String get approvalDocumentUploadedSuccess =>
+      'Approval document uploaded. Period approved.';
+
+  @override
+  String get uploadApprovePeriodFailed => 'Failed to upload and approve period';
+
+  @override
+  String get approvalRequiredDistributionMessage =>
+      'Upload the signed approval document in Review & Approval before managing distribution.';
+
+  @override
+  String get bulkRecipientActions => 'Bulk recipient actions';
+
+  @override
+  String get markAllPaidDistributed => 'Mark All Paid / Distributed';
+
+  @override
+  String get cancelAll => 'Cancel All';
+
+  @override
+  String get bulkAction => 'Bulk Action';
+
+  @override
+  String get reportFinalized => 'Report & Finalized';
+
+  @override
+  String get assistancePeriodFinalizedMessage =>
+      'This assistance period has been finalized.';
+
+  @override
+  String get distributionFinalizeInstruction =>
+      'Fill each recipient status and upload the signed distribution list before finalizing.';
+
+  @override
+  String get finalizeActions => 'Finalize actions';
+
+  @override
+  String get finalizeDistribution => 'Finalize Distribution';
+
+  @override
+  String get finalizing => 'Finalizing...';
+
+  @override
+  String get finalizeAction => 'Finalize Action';
+
+  @override
+  String get distributionEvidence => 'Distribution Evidence';
+
+  @override
+  String documentCountOfFive(Object count) {
+    return '$count / 5 documents';
+  }
+
+  @override
+  String get chooseEvidence => 'Choose Evidence';
+
+  @override
+  String get uploadEvidence => 'Upload Evidence';
+
+  @override
+  String get evidenceFileRemarks => 'Evidence file remarks';
+
+  @override
+  String get evidenceFileRemarksHint =>
+      'Describe this distribution evidence file';
+
+  @override
+  String get maximumDistributionEvidence =>
+      'Maximum 5 distribution evidence documents uploaded.';
+
+  @override
+  String get distributionEvidenceDocuments => 'Distribution Evidence Documents';
+
+  @override
+  String get noDistributionEvidence =>
+      'No distribution evidence document uploaded.';
+
+  @override
+  String get deleteEvidence => 'Delete evidence';
+
+  @override
+  String get distributionEvidenceUploaded => 'Distribution evidence uploaded.';
+
+  @override
+  String get uploadDistributionEvidenceFailed =>
+      'Upload distribution evidence failed';
+
+  @override
+  String get deleteDistributionEvidenceTitle => 'Delete Distribution Evidence?';
+
+  @override
+  String deleteDistributionEvidenceMessage(Object fileName) {
+    return 'Delete \"$fileName\"? This also removes the stored file.';
+  }
+
+  @override
+  String get distributionEvidenceDeleted => 'Distribution evidence deleted.';
+
+  @override
+  String get deleteDistributionEvidenceFailed =>
+      'Delete distribution evidence failed';
+
+  @override
+  String get markAllRecipientsTitle => 'Mark All Recipients?';
+
+  @override
+  String get markAllRecipientsMessage =>
+      'Cash benefits will be marked as Paid. Goods and other benefits will be marked as Distributed.';
+
+  @override
+  String get markAll => 'Mark All';
+
+  @override
+  String get allRecipientStatusesUpdated => 'All recipient statuses updated.';
+
+  @override
+  String get updateAllRecipientsFailed => 'Update all recipients failed';
+
+  @override
+  String get cancelAllRecipientsTitle => 'Cancel All Recipients?';
+
+  @override
+  String get cancelAllRecipientsHint =>
+      'Explain why all recipient distributions are cancelled.';
+
+  @override
+  String get cancellationReasonRequired => 'Cancellation reason is required.';
+
+  @override
+  String get allRecipientsCancelled => 'All recipients cancelled.';
+
+  @override
+  String get cancelAllRecipientsFailed => 'Cancel all recipients failed';
+
+  @override
+  String get resetAllRecipientStatusesTitle => 'Reset All Recipient Statuses?';
+
+  @override
+  String get resetAllRecipientStatusesMessage =>
+      'All recipient statuses will return to Approved and cancellation reasons will be cleared.';
+
+  @override
+  String get allRecipientStatusesReset => 'All recipient statuses reset.';
+
+  @override
+  String get resetAllRecipientsFailed => 'Reset all recipients failed';
+
+  @override
+  String get recipientStatusUpdated => 'Recipient status updated.';
+
+  @override
+  String get assistancePeriodFinalizedSuccess =>
+      'Assistance period finalized as distributed.';
+
+  @override
+  String get assistancePeriodCancelledSuccess => 'Assistance period cancelled.';
 
   @override
   String errorWithDetails(Object details) {

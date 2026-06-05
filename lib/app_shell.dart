@@ -566,8 +566,15 @@ class _RailTooltip extends StatefulWidget {
 }
 
 class _RailTooltipState extends State<_RailTooltip> {
-  final LayerLink _link = LayerLink();
   OverlayEntry? _entry;
+
+  @override
+  void didUpdateWidget(covariant _RailTooltip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.message != widget.message && _entry != null) {
+      _entry?.markNeedsBuild();
+    }
+  }
 
   @override
   void dispose() {
@@ -577,46 +584,44 @@ class _RailTooltipState extends State<_RailTooltip> {
 
   void _show() {
     if (_entry != null) return;
-    final overlay = Overlay.maybeOf(context);
-    if (overlay == null) return;
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    final targetBox = context.findRenderObject() as RenderBox?;
+    if (overlay == null || targetBox == null || !targetBox.hasSize) return;
+
+    final targetOffset = targetBox.localToGlobal(Offset.zero);
+    final tooltipTop = (targetOffset.dy + (targetBox.size.height - 28) / 2)
+        .clamp(4.0, MediaQuery.sizeOf(context).height - 32.0);
 
     _entry = OverlayEntry(
       builder: (context) {
         return Positioned(
-          left: 0,
-          top: 0,
+          left: targetOffset.dx + targetBox.size.width + 8,
+          top: tooltipTop,
           child: IgnorePointer(
-            child: CompositedTransformFollower(
-              link: _link,
-              showWhenUnlinked: false,
-              targetAnchor: Alignment.centerRight,
-              followerAnchor: Alignment.centerLeft,
-              offset: const Offset(8, 0),
-              child: Material(
-                color: AppColors.transparent,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.black87.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: AppColors.white.withValues(alpha: 0.08),
-                    ),
+            child: Material(
+              color: AppColors.transparent,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.black87.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: AppColors.white.withValues(alpha: 0.08),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 6,
-                    ),
-                    child: Text(
-                      widget.message,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        height: 1.1,
-                      ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 6,
+                  ),
+                  child: Text(
+                    widget.message,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      height: 1.1,
                     ),
                   ),
                 ),
@@ -630,19 +635,18 @@ class _RailTooltipState extends State<_RailTooltip> {
   }
 
   void _hide() {
-    _entry?.remove();
+    final entry = _entry;
     _entry = null;
+    entry?.remove();
+    entry?.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return CompositedTransformTarget(
-      link: _link,
-      child: MouseRegion(
-        onEnter: (_) => _show(),
-        onExit: (_) => _hide(),
-        child: widget.child,
-      ),
+    return MouseRegion(
+      onEnter: (_) => _show(),
+      onExit: (_) => _hide(),
+      child: widget.child,
     );
   }
 }

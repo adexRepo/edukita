@@ -1093,6 +1093,9 @@ class DatabaseTables {
         submitted_at TEXT,
         approved_at TEXT,
         approved_by TEXT,
+        rejected_at TEXT,
+        rejected_by TEXT,
+        rejection_reason TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(assistance_program_id) REFERENCES assistance_programs(id) ON DELETE SET NULL

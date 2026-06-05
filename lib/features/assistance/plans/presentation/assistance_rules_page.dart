@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/utils/generated_file_name.dart';
+import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/assistance/plans/data/assistance_plan_models.dart';
 import 'package:edukita/features/assistance/plans/domain/assistance_plan_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
@@ -2107,14 +2108,12 @@ class _ApprovalDocumentTab extends StatefulWidget {
 }
 
 class _ApprovalDocumentTabState extends State<_ApprovalDocumentTab> {
-  final _uploadedByController = TextEditingController(text: 'Admin');
   final _remarksController = TextEditingController();
   XFile? _selectedFile;
   bool _saving = false;
 
   @override
   void dispose() {
-    _uploadedByController.dispose();
     _remarksController.dispose();
     super.dispose();
   }
@@ -2180,14 +2179,6 @@ class _ApprovalDocumentTabState extends State<_ApprovalDocumentTab> {
                       const SizedBox(height: 12),
                       TextField(
                         enabled: !locked && !_saving,
-                        controller: _uploadedByController,
-                        decoration: InputDecoration(
-                          labelText: context.l10n.uploadedBy,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        enabled: !locked && !_saving,
                         controller: _remarksController,
                         decoration: InputDecoration(labelText: context.l10n.remarks),
                         maxLines: 3,
@@ -2231,14 +2222,13 @@ class _ApprovalDocumentTabState extends State<_ApprovalDocumentTab> {
   Future<void> _upload() async {
     final file = _selectedFile;
     if (file == null) return;
-    final uploadedBy = _uploadedByController.text.trim();
-    if (uploadedBy.isEmpty) {
-      AppToast.showFailed('Uploaded by is required.');
-      return;
-    }
     setState(() => _saving = true);
     try {
-      await context.read<AssistancePlanCubit>().uploadApprovalDocument(
+      final cubit = context.read<AssistancePlanCubit>();
+      final session = await AuthSessionCache.instance.read();
+      final sessionUsername = session?.username.trim() ?? '';
+      final uploadedBy = sessionUsername.isEmpty ? 'system' : sessionUsername;
+      await cubit.uploadApprovalDocument(
         sourcePath: file.path,
         fileName: file.name,
         uploadedBy: uploadedBy,

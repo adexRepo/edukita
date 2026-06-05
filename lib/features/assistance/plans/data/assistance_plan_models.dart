@@ -310,6 +310,9 @@ class AssistancePeriod {
     this.submittedAt,
     this.approvedAt,
     this.approvedBy,
+    this.rejectedAt,
+    this.rejectedBy,
+    this.rejectionReason,
     String? createdAt,
     String? updatedAt,
   }) : id = id ?? const Uuid().v4(),
@@ -336,6 +339,9 @@ class AssistancePeriod {
   final String? submittedAt;
   final String? approvedAt;
   final String? approvedBy;
+  final String? rejectedAt;
+  final String? rejectedBy;
+  final String? rejectionReason;
   final String createdAt;
   final String updatedAt;
 
@@ -389,6 +395,9 @@ class AssistancePeriod {
     String? submittedAt,
     String? approvedAt,
     String? approvedBy,
+    String? rejectedAt,
+    String? rejectedBy,
+    String? rejectionReason,
     String? createdAt,
     String? updatedAt,
   }) {
@@ -417,6 +426,9 @@ class AssistancePeriod {
       submittedAt: submittedAt ?? this.submittedAt,
       approvedAt: approvedAt ?? this.approvedAt,
       approvedBy: approvedBy ?? this.approvedBy,
+      rejectedAt: rejectedAt ?? this.rejectedAt,
+      rejectedBy: rejectedBy ?? this.rejectedBy,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -448,6 +460,9 @@ class AssistancePeriod {
       submittedAt: map['submitted_at'] as String?,
       approvedAt: map['approved_at'] as String?,
       approvedBy: map['approved_by'] as String?,
+      rejectedAt: map['rejected_at'] as String?,
+      rejectedBy: map['rejected_by'] as String?,
+      rejectionReason: map['rejection_reason'] as String?,
       createdAt: map['created_at']?.toString(),
       updatedAt: map['updated_at']?.toString(),
     );
@@ -474,6 +489,9 @@ class AssistancePeriod {
       'submitted_at': submittedAt,
       'approved_at': approvedAt,
       'approved_by': approvedBy,
+      'rejected_at': rejectedAt,
+      'rejected_by': rejectedBy,
+      'rejection_reason': rejectionReason,
       'created_at': createdAt,
       'updated_at': updatedAt,
     };

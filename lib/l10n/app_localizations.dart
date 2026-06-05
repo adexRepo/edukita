@@ -236,6 +236,30 @@ abstract class AppLocalizations {
   /// **'Language updated successfully'**
   String get languageUpdated;
 
+  /// No description provided for @rejectedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected By'**
+  String get rejectedBy;
+
+  /// No description provided for @rejectedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected At'**
+  String get rejectedAt;
+
+  /// No description provided for @rejectionReasonRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejection reason is required.'**
+  String get rejectionReasonRequired;
+
+  /// No description provided for @downloadApprovalDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Approval Document'**
+  String get downloadApprovalDocument;
+
   /// No description provided for @personalization.
   ///
   /// In en, this message translates to:
@@ -6683,6 +6707,354 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Update Class'**
   String get updateClass;
+
+  /// No description provided for @approvalDocumentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Approval Document'**
+  String get approvalDocumentTitle;
+
+  /// No description provided for @approvalDocumentUploadedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed approval document has been uploaded. Targets are now official recipients.'**
+  String get approvalDocumentUploadedDescription;
+
+  /// No description provided for @assistancePeriodLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'This assistance period is locked.'**
+  String get assistancePeriodLocked;
+
+  /// No description provided for @approvalDocumentUploadDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload the signed approval document to approve this period and create recipients.'**
+  String get approvalDocumentUploadDescription;
+
+  /// No description provided for @uploadedDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploaded Document'**
+  String get uploadedDocument;
+
+  /// No description provided for @approvalDecision.
+  ///
+  /// In en, this message translates to:
+  /// **'Approval Decision'**
+  String get approvalDecision;
+
+  /// No description provided for @chooseApprovalDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose approval document'**
+  String get chooseApprovalDocument;
+
+  /// No description provided for @uploadApprovePeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload & Approve Period'**
+  String get uploadApprovePeriod;
+
+  /// No description provided for @noApprovePeriodPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not have permission to approve periods.'**
+  String get noApprovePeriodPermission;
+
+  /// No description provided for @assistancePeriodRejectedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistance period rejected.'**
+  String get assistancePeriodRejectedSuccess;
+
+  /// No description provided for @rejectAssistancePeriodFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to reject assistance period'**
+  String get rejectAssistancePeriodFailed;
+
+  /// No description provided for @approvalDocumentUploadedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Approval document uploaded. Period approved.'**
+  String get approvalDocumentUploadedSuccess;
+
+  /// No description provided for @uploadApprovePeriodFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to upload and approve period'**
+  String get uploadApprovePeriodFailed;
+
+  /// No description provided for @approvalRequiredDistributionMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload the signed approval document in Review & Approval before managing distribution.'**
+  String get approvalRequiredDistributionMessage;
+
+  /// No description provided for @bulkRecipientActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulk recipient actions'**
+  String get bulkRecipientActions;
+
+  /// No description provided for @markAllPaidDistributed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark All Paid / Distributed'**
+  String get markAllPaidDistributed;
+
+  /// No description provided for @cancelAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel All'**
+  String get cancelAll;
+
+  /// No description provided for @bulkAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulk Action'**
+  String get bulkAction;
+
+  /// No description provided for @reportFinalized.
+  ///
+  /// In en, this message translates to:
+  /// **'Report & Finalized'**
+  String get reportFinalized;
+
+  /// No description provided for @assistancePeriodFinalizedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This assistance period has been finalized.'**
+  String get assistancePeriodFinalizedMessage;
+
+  /// No description provided for @distributionFinalizeInstruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill each recipient status and upload the signed distribution list before finalizing.'**
+  String get distributionFinalizeInstruction;
+
+  /// No description provided for @finalizeActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Finalize actions'**
+  String get finalizeActions;
+
+  /// No description provided for @finalizeDistribution.
+  ///
+  /// In en, this message translates to:
+  /// **'Finalize Distribution'**
+  String get finalizeDistribution;
+
+  /// No description provided for @finalizing.
+  ///
+  /// In en, this message translates to:
+  /// **'Finalizing...'**
+  String get finalizing;
+
+  /// No description provided for @finalizeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Finalize Action'**
+  String get finalizeAction;
+
+  /// No description provided for @distributionEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Distribution Evidence'**
+  String get distributionEvidence;
+
+  /// No description provided for @documentCountOfFive.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} / 5 documents'**
+  String documentCountOfFive(Object count);
+
+  /// No description provided for @chooseEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Evidence'**
+  String get chooseEvidence;
+
+  /// No description provided for @uploadEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload Evidence'**
+  String get uploadEvidence;
+
+  /// No description provided for @evidenceFileRemarks.
+  ///
+  /// In en, this message translates to:
+  /// **'Evidence file remarks'**
+  String get evidenceFileRemarks;
+
+  /// No description provided for @evidenceFileRemarksHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe this distribution evidence file'**
+  String get evidenceFileRemarksHint;
+
+  /// No description provided for @maximumDistributionEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum 5 distribution evidence documents uploaded.'**
+  String get maximumDistributionEvidence;
+
+  /// No description provided for @distributionEvidenceDocuments.
+  ///
+  /// In en, this message translates to:
+  /// **'Distribution Evidence Documents'**
+  String get distributionEvidenceDocuments;
+
+  /// No description provided for @noDistributionEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'No distribution evidence document uploaded.'**
+  String get noDistributionEvidence;
+
+  /// No description provided for @deleteEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete evidence'**
+  String get deleteEvidence;
+
+  /// No description provided for @distributionEvidenceUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Distribution evidence uploaded.'**
+  String get distributionEvidenceUploaded;
+
+  /// No description provided for @uploadDistributionEvidenceFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload distribution evidence failed'**
+  String get uploadDistributionEvidenceFailed;
+
+  /// No description provided for @deleteDistributionEvidenceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Distribution Evidence?'**
+  String get deleteDistributionEvidenceTitle;
+
+  /// No description provided for @deleteDistributionEvidenceMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{fileName}\"? This also removes the stored file.'**
+  String deleteDistributionEvidenceMessage(Object fileName);
+
+  /// No description provided for @distributionEvidenceDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Distribution evidence deleted.'**
+  String get distributionEvidenceDeleted;
+
+  /// No description provided for @deleteDistributionEvidenceFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete distribution evidence failed'**
+  String get deleteDistributionEvidenceFailed;
+
+  /// No description provided for @markAllRecipientsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark All Recipients?'**
+  String get markAllRecipientsTitle;
+
+  /// No description provided for @markAllRecipientsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash benefits will be marked as Paid. Goods and other benefits will be marked as Distributed.'**
+  String get markAllRecipientsMessage;
+
+  /// No description provided for @markAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark All'**
+  String get markAll;
+
+  /// No description provided for @allRecipientStatusesUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'All recipient statuses updated.'**
+  String get allRecipientStatusesUpdated;
+
+  /// No description provided for @updateAllRecipientsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Update all recipients failed'**
+  String get updateAllRecipientsFailed;
+
+  /// No description provided for @cancelAllRecipientsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel All Recipients?'**
+  String get cancelAllRecipientsTitle;
+
+  /// No description provided for @cancelAllRecipientsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Explain why all recipient distributions are cancelled.'**
+  String get cancelAllRecipientsHint;
+
+  /// No description provided for @cancellationReasonRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancellation reason is required.'**
+  String get cancellationReasonRequired;
+
+  /// No description provided for @allRecipientsCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'All recipients cancelled.'**
+  String get allRecipientsCancelled;
+
+  /// No description provided for @cancelAllRecipientsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel all recipients failed'**
+  String get cancelAllRecipientsFailed;
+
+  /// No description provided for @resetAllRecipientStatusesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset All Recipient Statuses?'**
+  String get resetAllRecipientStatusesTitle;
+
+  /// No description provided for @resetAllRecipientStatusesMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'All recipient statuses will return to Approved and cancellation reasons will be cleared.'**
+  String get resetAllRecipientStatusesMessage;
+
+  /// No description provided for @allRecipientStatusesReset.
+  ///
+  /// In en, this message translates to:
+  /// **'All recipient statuses reset.'**
+  String get allRecipientStatusesReset;
+
+  /// No description provided for @resetAllRecipientsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset all recipients failed'**
+  String get resetAllRecipientsFailed;
+
+  /// No description provided for @recipientStatusUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipient status updated.'**
+  String get recipientStatusUpdated;
+
+  /// No description provided for @assistancePeriodFinalizedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistance period finalized as distributed.'**
+  String get assistancePeriodFinalizedSuccess;
+
+  /// No description provided for @assistancePeriodCancelledSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistance period cancelled.'**
+  String get assistancePeriodCancelledSuccess;
 
   /// No description provided for @errorWithDetails.
   ///

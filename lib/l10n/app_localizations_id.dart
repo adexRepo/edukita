@@ -78,6 +78,18 @@ class AppLocalizationsId extends AppLocalizations {
   String get languageUpdated => 'Bahasa berhasil diperbarui';
 
   @override
+  String get rejectedBy => 'Ditolak Oleh';
+
+  @override
+  String get rejectedAt => 'Ditolak Pada';
+
+  @override
+  String get rejectionReasonRequired => 'Alasan penolakan wajib diisi.';
+
+  @override
+  String get downloadApprovalDocument => 'Unduh Dokumen Persetujuan';
+
+  @override
   String get personalization => 'Personalisasi';
 
   @override
@@ -3512,6 +3524,206 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get updateClass => 'Perbarui Kelas';
+
+  @override
+  String get approvalDocumentTitle => 'Dokumen Persetujuan';
+
+  @override
+  String get approvalDocumentUploadedDescription =>
+      'Dokumen persetujuan yang ditandatangani telah diunggah. Target sekarang menjadi penerima resmi.';
+
+  @override
+  String get assistancePeriodLocked => 'Periode bantuan ini telah dikunci.';
+
+  @override
+  String get approvalDocumentUploadDescription =>
+      'Unggah dokumen persetujuan yang ditandatangani untuk menyetujui periode ini dan membuat daftar penerima.';
+
+  @override
+  String get uploadedDocument => 'Dokumen Terunggah';
+
+  @override
+  String get approvalDecision => 'Keputusan Persetujuan';
+
+  @override
+  String get chooseApprovalDocument => 'Pilih dokumen persetujuan';
+
+  @override
+  String get uploadApprovePeriod => 'Unggah & Setujui Periode';
+
+  @override
+  String get noApprovePeriodPermission =>
+      'Anda tidak memiliki izin untuk menyetujui periode.';
+
+  @override
+  String get assistancePeriodRejectedSuccess =>
+      'Periode bantuan berhasil ditolak.';
+
+  @override
+  String get rejectAssistancePeriodFailed => 'Gagal menolak periode bantuan';
+
+  @override
+  String get approvalDocumentUploadedSuccess =>
+      'Dokumen persetujuan berhasil diunggah. Periode disetujui.';
+
+  @override
+  String get uploadApprovePeriodFailed =>
+      'Gagal mengunggah dan menyetujui periode';
+
+  @override
+  String get approvalRequiredDistributionMessage =>
+      'Unggah dokumen persetujuan yang ditandatangani pada Review & Approval sebelum mengelola distribusi.';
+
+  @override
+  String get bulkRecipientActions => 'Aksi massal penerima';
+
+  @override
+  String get markAllPaidDistributed => 'Tandai Semua Dibayar / Didistribusikan';
+
+  @override
+  String get cancelAll => 'Batalkan Semua';
+
+  @override
+  String get bulkAction => 'Aksi Massal';
+
+  @override
+  String get reportFinalized => 'Laporan & Finalisasi';
+
+  @override
+  String get assistancePeriodFinalizedMessage =>
+      'Periode bantuan ini telah difinalisasi.';
+
+  @override
+  String get distributionFinalizeInstruction =>
+      'Isi status setiap penerima dan unggah daftar distribusi yang ditandatangani sebelum finalisasi.';
+
+  @override
+  String get finalizeActions => 'Aksi finalisasi';
+
+  @override
+  String get finalizeDistribution => 'Finalisasi Distribusi';
+
+  @override
+  String get finalizing => 'Memfinalisasi...';
+
+  @override
+  String get finalizeAction => 'Aksi Finalisasi';
+
+  @override
+  String get distributionEvidence => 'Bukti Distribusi';
+
+  @override
+  String documentCountOfFive(Object count) {
+    return '$count / 5 dokumen';
+  }
+
+  @override
+  String get chooseEvidence => 'Pilih Bukti';
+
+  @override
+  String get uploadEvidence => 'Unggah Bukti';
+
+  @override
+  String get evidenceFileRemarks => 'Catatan file bukti';
+
+  @override
+  String get evidenceFileRemarksHint => 'Jelaskan file bukti distribusi ini';
+
+  @override
+  String get maximumDistributionEvidence =>
+      'Maksimal 5 dokumen bukti distribusi telah diunggah.';
+
+  @override
+  String get distributionEvidenceDocuments => 'Dokumen Bukti Distribusi';
+
+  @override
+  String get noDistributionEvidence =>
+      'Belum ada dokumen bukti distribusi yang diunggah.';
+
+  @override
+  String get deleteEvidence => 'Hapus bukti';
+
+  @override
+  String get distributionEvidenceUploaded =>
+      'Bukti distribusi berhasil diunggah.';
+
+  @override
+  String get uploadDistributionEvidenceFailed =>
+      'Gagal mengunggah bukti distribusi';
+
+  @override
+  String get deleteDistributionEvidenceTitle => 'Hapus Bukti Distribusi?';
+
+  @override
+  String deleteDistributionEvidenceMessage(Object fileName) {
+    return 'Hapus \"$fileName\"? File yang tersimpan juga akan dihapus.';
+  }
+
+  @override
+  String get distributionEvidenceDeleted =>
+      'Bukti distribusi berhasil dihapus.';
+
+  @override
+  String get deleteDistributionEvidenceFailed =>
+      'Gagal menghapus bukti distribusi';
+
+  @override
+  String get markAllRecipientsTitle => 'Tandai Semua Penerima?';
+
+  @override
+  String get markAllRecipientsMessage =>
+      'Bantuan tunai akan ditandai Dibayar. Barang dan bantuan lainnya akan ditandai Didistribusikan.';
+
+  @override
+  String get markAll => 'Tandai Semua';
+
+  @override
+  String get allRecipientStatusesUpdated =>
+      'Semua status penerima berhasil diperbarui.';
+
+  @override
+  String get updateAllRecipientsFailed => 'Gagal memperbarui semua penerima';
+
+  @override
+  String get cancelAllRecipientsTitle => 'Batalkan Semua Penerima?';
+
+  @override
+  String get cancelAllRecipientsHint =>
+      'Jelaskan alasan seluruh distribusi penerima dibatalkan.';
+
+  @override
+  String get cancellationReasonRequired => 'Alasan pembatalan wajib diisi.';
+
+  @override
+  String get allRecipientsCancelled => 'Semua penerima berhasil dibatalkan.';
+
+  @override
+  String get cancelAllRecipientsFailed => 'Gagal membatalkan semua penerima';
+
+  @override
+  String get resetAllRecipientStatusesTitle => 'Reset Semua Status Penerima?';
+
+  @override
+  String get resetAllRecipientStatusesMessage =>
+      'Semua status penerima akan kembali menjadi Disetujui dan alasan pembatalan akan dihapus.';
+
+  @override
+  String get allRecipientStatusesReset =>
+      'Semua status penerima berhasil direset.';
+
+  @override
+  String get resetAllRecipientsFailed => 'Gagal mereset semua penerima';
+
+  @override
+  String get recipientStatusUpdated => 'Status penerima berhasil diperbarui.';
+
+  @override
+  String get assistancePeriodFinalizedSuccess =>
+      'Periode bantuan berhasil difinalisasi sebagai didistribusikan.';
+
+  @override
+  String get assistancePeriodCancelledSuccess =>
+      'Periode bantuan berhasil dibatalkan.';
 
   @override
   String errorWithDetails(Object details) {
