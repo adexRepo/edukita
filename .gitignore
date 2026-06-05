@@ -119,3 +119,30 @@ app.*.symbols
 !**/ios/**/default.perspectivev3
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 !/dev/ci/**/Gemfile.lock
+
+# Flutter / Dart build output
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# Release / distribution output
+dist/
+installer/output/
+
+# Logs
+*.log
+
+# Local database and generated user data
+*.db
+*.sqlite
+*.sqlite3
+database/
+backup/
+exports/
+logs/
+attachments/
+updates/

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' as io;
 
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/utils/generated_file_name.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
@@ -81,7 +82,7 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
 
   Future<void> _showAddScoreDialog(StudentExamScoreOptions options) async {
     if (!widget.canUpdateStudent) {
-      AppToast.showFailed('You do not have permission to update students.');
+      AppToast.showFailed(context.l10n.studentUpdateDenied);
       return;
     }
     final cubit = context.read<StudentDetailCubit>();
@@ -108,7 +109,7 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
     StudentExamScoreGroup group,
   ) async {
     if (!widget.canUpdateStudent) {
-      AppToast.showFailed('You do not have permission to update students.');
+      AppToast.showFailed(context.l10n.studentUpdateDenied);
       return;
     }
     final cubit = context.read<StudentDetailCubit>();
@@ -133,7 +134,7 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
 
   Future<void> _deleteScoreGroup(StudentExamScoreGroup group) async {
     if (!widget.canDeleteStudent) {
-      AppToast.showFailed('You do not have permission to delete student data.');
+      AppToast.showFailed(context.l10n.studentDeleteDenied);
       return;
     }
     final cubit = context.read<StudentDetailCubit>();
@@ -142,22 +143,17 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
       guardKey: 'delete_student_exam_score_${group.id}',
       builder: (dialogContext) {
         return AlertDialog(
-          title: const AppDialogTitle('Remove Exam Score?'),
-          content: Text(
-            'This will remove ${group.examType} score data from this student.',
-          ),
+          title: AppDialogTitle(context.l10n.removeExamScoreTitle),
+          content: Text(context.l10n.removeExamScoreMessage(group.examType)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.buttonCancel),
             ),
             FilledButton.icon(
               onPressed: () => Navigator.pop(dialogContext, true),
-              icon: const Icon(
-                Icons.delete_outline,
-                color: AppColors.error,
-              ),
-              label: const Text('Remove'),
+              icon: const Icon(Icons.delete_outline, color: AppColors.error),
+              label: Text(context.l10n.buttonRemove),
             ),
           ],
         );
@@ -184,7 +180,7 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
   Widget build(BuildContext context) {
     return FutureBuilder<_ExamScoreTabData>(
       future: _future,
-              builder: (context, snapshot) {
+      builder: (context, snapshot) {
         final data = snapshot.data;
         final groups = data?.groups ?? const <StudentExamScoreGroup>[];
         final options = data?.options;
@@ -192,16 +188,16 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
         return DetailTabScroll(
           children: [
             DetailSectionCard(
-              title: 'Exam Scores',
+              title: context.l10n.examScores,
               icon: Icons.fact_check_outlined,
               wrapChildren: false,
               children: [
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'School scores are grouped by report/exam and can contain many subjects. Internal scores can contain many units.',
-                        style: TextStyle(
+                        context.l10n.examScoresDescription,
+                        style: const TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 12,
                         ),
@@ -211,22 +207,21 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
                     if (widget.canUpdateStudent)
                       FilledButton.icon(
                         onPressed:
-                            snapshot.connectionState == ConnectionState.waiting ||
+                            snapshot.connectionState ==
+                                    ConnectionState.waiting ||
                                 data == null
                             ? null
                             : () => _showAddScoreDialog(data.options),
                         icon: const Icon(Icons.add),
-                        label: const Text('Add Score Exam'),
+                        label: Text(context.l10n.addScoreExam),
                       ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 if (snapshot.connectionState == ConnectionState.waiting)
-                  const DetailEmptySectionText('Loading exam scores...')
+                  DetailEmptySectionText(context.l10n.loadingExamScores)
                 else if (groups.isEmpty)
-                  const DetailEmptySectionText(
-                    'No internal or school exam score has been added.',
-                  )
+                  DetailEmptySectionText(context.l10n.noExamScores)
                 else
                   _ExamScoreGroupTable(
                     groups: groups,
@@ -293,15 +288,19 @@ class _ExamScoreGroupTable extends StatelessWidget {
                     5: FixedColumnWidth(132),
                   },
                   children: [
-                    const TableRow(
-                      decoration: BoxDecoration(color: AppColors.surface),
+                    TableRow(
+                      decoration: const BoxDecoration(color: AppColors.surface),
                       children: [
-                        _TableHeader('Exam Date'),
-                        _TableHeader('Scope\nSemester'),
-                        _TableHeader('Type\nSubject'),
-                        _ScoreHeader(),
-                        _TableHeader('Note'),
-                        _TableHeader('Action'),
+                        _TableHeader(context.l10n.date),
+                        _TableHeader(
+                          '${context.l10n.scope}\n${context.l10n.semester}',
+                        ),
+                        _TableHeader(
+                          '${context.l10n.type}\n${context.l10n.subject}',
+                        ),
+                        const _ScoreHeader(),
+                        _TableHeader(context.l10n.note),
+                        _TableHeader(context.l10n.actions),
                       ],
                     ),
                     for (final group in groups)
@@ -402,12 +401,12 @@ class _ScoreHeader extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Flexible(
+          Flexible(
             child: Text(
-              'Score\nAvg',
+              context.l10n.scoreAvg,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -416,8 +415,7 @@ class _ScoreHeader extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Tooltip(
-            message:
-                'Avg is calculated from each\nitem score divided by max score,\nthen averaged for this exam.',
+            message: context.l10n.scoreAvgTooltip,
             child: Icon(
               Icons.info_outline,
               size: 13,
@@ -518,7 +516,7 @@ class _ExamScoreActionCell extends StatelessWidget {
         children: [
           if (canEdit)
             Tooltip(
-              message: 'Edit score record',
+              message: context.l10n.edit,
               child: IconButton(
                 onPressed: () => onEdit(group),
                 icon: const Icon(Icons.edit_outlined, size: 18),
@@ -527,7 +525,7 @@ class _ExamScoreActionCell extends StatelessWidget {
               ),
             ),
           Tooltip(
-            message: 'Download evidence',
+            message: context.l10n.downloadEvidence,
             child: IconButton(
               onPressed: group.hasEvidence ? () => _download() : null,
               icon: const Icon(Icons.download_outlined, size: 18),
@@ -538,7 +536,7 @@ class _ExamScoreActionCell extends StatelessWidget {
           ),
           if (canDelete)
             Tooltip(
-              message: 'Remove score record',
+              message: context.l10n.removeScoreRecord,
               child: IconButton(
                 onPressed: () => onDelete(group),
                 icon: const Icon(
@@ -643,7 +641,9 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: AppDialogTitle(_isEdit ? 'Edit Score Exam' : 'Add Score Exam'),
+      title: AppDialogTitle(
+        _isEdit ? context.l10n.editScoreExam : context.l10n.addScoreExam,
+      ),
       content: SizedBox(
         width: 860,
         child: SingleChildScrollView(
@@ -655,16 +655,16 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: SegmentedButton<String>(
-                    segments: const [
+                    segments: [
                       ButtonSegment(
                         value: 'school',
-                        label: Text('School'),
-                        icon: Icon(Icons.school_outlined),
+                        label: Text(context.l10n.school),
+                        icon: const Icon(Icons.school_outlined),
                       ),
                       ButtonSegment(
                         value: 'internal',
-                        label: Text('Internal'),
-                        icon: Icon(Icons.menu_book_outlined),
+                        label: Text(context.l10n.internal),
+                        icon: const Icon(Icons.menu_book_outlined),
                       ),
                     ],
                     selected: {_scope},
@@ -678,7 +678,9 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
                   KeyedSubtree(
                     key: ValueKey('exam_type_$_scope'),
                     child: CommonFormWidgets.dropdownField(
-                      label: _isSchool ? 'Exam Type' : 'Internal Type',
+                      label: _isSchool
+                          ? context.l10n.examType
+                          : context.l10n.internalType,
                       items: _isSchool ? _schoolExamTypes : _internalExamTypes,
                       value: _currentExamType,
                       onChanged: (value) {
@@ -705,7 +707,7 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
                 if (_isSchool) ...[
                   _twoColumnFormRow(
                     CommonFormWidgets.dropdownField(
-                      label: 'Source',
+                      label: context.l10n.source,
                       items: const ['school_report', 'tryout', 'external'],
                       value: _schoolSource,
                       onChanged: (value) => setState(
@@ -715,7 +717,7 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
                           _schoolSource = value ?? 'school_report',
                     ),
                     CommonFormWidgets.textField(
-                      label: 'Academic Year',
+                      label: context.l10n.academicYear,
                       value: _academicYear,
                       onSaved: (value) =>
                           _academicYear = value?.trim() ?? _academicYear,
@@ -724,7 +726,7 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
                   const SizedBox(height: 14),
                   _twoColumnFormRow(
                     CommonFormWidgets.dropdownField(
-                      label: 'Semester',
+                      label: context.l10n.semester,
                       items: const ['Semester 1', 'Semester 2'],
                       value: _semester,
                       isRequired: false,
@@ -738,22 +740,26 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
                 const SizedBox(height: 14),
                 _ScoreRowsEditor(
                   key: ValueKey('rows_$_scope'),
-                  title: _isSchool ? 'Subject Scores' : 'Unit Scores',
+                  title: _isSchool
+                      ? context.l10n.subjectScores
+                      : context.l10n.unitScores,
                   isSchool: _isSchool,
                   subjectOptions: _subjectTargets,
                   unitOptions: _unitTargets,
                   rows: _activeRows,
                   allowAddRemove: true,
                   allowEmptyRows: true,
-                  addButtonLabel: _isSchool ? 'Add Subject' : 'Add Unit',
+                  addButtonLabel: _isSchool
+                      ? context.l10n.addSubject
+                      : context.l10n.addUnit,
                   emptyText: _isSchool
-                      ? 'No subject score added yet. Click Add Subject to input report scores.'
-                      : 'No unit score added yet. Click Add Unit to input internal scores.',
+                      ? context.l10n.noSubjectScore
+                      : context.l10n.noUnitScore,
                   onChanged: () => setState(() {}),
                 ),
                 const SizedBox(height: 14),
                 CommonFormWidgets.textField(
-                  label: 'Note',
+                  label: context.l10n.note,
                   value: _note,
                   maxLines: 3,
                   isRequired: false,
@@ -768,7 +774,7 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         FilledButton(
           onPressed: _saving ? null : _submit,
@@ -796,7 +802,7 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
       builder: (field) {
         return InputDecorator(
           decoration: InputDecoration(
-            labelText: 'Evidence File',
+            labelText: context.l10n.evidenceFile,
             helperText: _evidenceRequired
                 ? 'Required for $_currentExamType. Allowed: PDF, JPG, PNG.'
                 : 'Optional. Allowed: PDF, JPG, PNG.',
@@ -819,7 +825,9 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
               OutlinedButton.icon(
                 onPressed: _saving ? null : _pickEvidence,
                 icon: const Icon(Icons.upload_file, size: 16),
-                label: Text(hasFile ? 'Change' : 'Upload'),
+                label: Text(
+                  hasFile ? context.l10n.change : context.l10n.upload,
+                ),
               ),
             ],
           ),
@@ -870,8 +878,8 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
   }
 
   Future<void> _pickEvidence() async {
-    const group = XTypeGroup(
-      label: 'Exam evidence',
+    final group = XTypeGroup(
+      label: context.l10n.evidenceFile,
       extensions: ['pdf', 'jpg', 'jpeg', 'png'],
     );
     final file = await openFile(acceptedTypeGroups: [group]);
@@ -954,18 +962,18 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
             'student_exam_score_change_scope_${widget.initialGroup?.id ?? 'new'}_$nextScope',
         builder: (dialogContext) {
           return AlertDialog(
-            title: const AppDialogTitle('Change Score Type?'),
+            title: AppDialogTitle(context.l10n.changeScoreTypeTitle),
             content: const Text(
               'Changing score type will clear the current score rows and selected evidence file.',
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Cancel'),
+                child: Text(context.l10n.buttonCancel),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('Continue'),
+                child: Text(context.l10n.continueLabel),
               ),
             ],
           );
@@ -1063,9 +1071,15 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
       semester: _isSchool ? _semester : null,
       examDate: _examDate,
       evidenceRequired: _evidenceRequired,
-      evidenceFileName: keepExistingEvidence ? initialGroup?.evidenceFileName : null,
-      evidenceFilePath: keepExistingEvidence ? initialGroup?.evidenceFilePath : null,
-      evidenceFileType: keepExistingEvidence ? initialGroup?.evidenceFileType : null,
+      evidenceFileName: keepExistingEvidence
+          ? initialGroup?.evidenceFileName
+          : null,
+      evidenceFilePath: keepExistingEvidence
+          ? initialGroup?.evidenceFilePath
+          : null,
+      evidenceFileType: keepExistingEvidence
+          ? initialGroup?.evidenceFileType
+          : null,
       note: _note,
       items: items.map((item) => item.withGroupId(groupId)).toList(),
       createdAt: initialGroup?.createdAt,
@@ -1286,7 +1300,7 @@ class _ScoreLineRow extends StatelessWidget {
         Expanded(
           flex: isSchool ? 3 : 2,
           child: CommonFormWidgets.dropdownFieldTyped<_ScoreTarget>(
-            label: 'Subject',
+            label: context.l10n.subject,
             items: effectiveSubjectOptions,
             labelBuilder: (item) => item.label,
             valueBuilder: (item) => item.id,
@@ -1331,7 +1345,7 @@ class _ScoreLineRow extends StatelessWidget {
             child: KeyedSubtree(
               key: ValueKey('unit_${row.subjectId}_${filteredUnits.length}'),
               child: CommonFormWidgets.dropdownFieldTyped<_ScoreTarget>(
-                label: 'Unit',
+                label: context.l10n.unit,
                 items: filteredUnits,
                 labelBuilder: (item) => item.label,
                 valueBuilder: (item) => item.id,
@@ -1355,7 +1369,7 @@ class _ScoreLineRow extends StatelessWidget {
         Expanded(
           flex: 1,
           child: _numberTextField(
-            label: 'Score',
+            label: context.l10n.score,
             controller: row.scoreController,
             maxController: row.maxScoreController,
             required: false,
@@ -1365,7 +1379,7 @@ class _ScoreLineRow extends StatelessWidget {
         Expanded(
           flex: 1,
           child: _numberTextField(
-            label: 'Max Score',
+            label: context.l10n.maxScore,
             controller: row.maxScoreController,
             required: false,
           ),
@@ -1375,19 +1389,16 @@ class _ScoreLineRow extends StatelessWidget {
           flex: 2,
           child: TextFormField(
             controller: row.noteController,
-            decoration: const InputDecoration(labelText: 'Note'),
+            decoration: InputDecoration(labelText: context.l10n.note),
           ),
         ),
         if (canRemove) ...[
           const SizedBox(width: 4),
           IconButton(
-            tooltip: 'Remove row',
+            tooltip: context.l10n.removeRow,
             onPressed: onRemove,
             color: AppColors.error,
-            icon: const Icon(
-              Icons.delete_outline,
-              color: AppColors.error,
-            ),
+            icon: const Icon(Icons.delete_outline, color: AppColors.error),
           ),
         ],
       ],

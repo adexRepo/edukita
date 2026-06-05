@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:edukita/core/localization/localization_extension.dart';
+import 'package:edukita/features/assistance/presentation/assistance_localized_display.dart';
 import 'package:edukita/features/assistance/programs/data/assistance_program_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/theme/app_theme.dart';
@@ -79,8 +81,8 @@ class _AssistanceProgramFormDialogState
     return AlertDialog(
       title: AppDialogTitle(
         widget.program == null
-            ? 'Add Assistance Program'
-            : 'Edit Assistance Program',
+            ? context.l10n.addProgram
+            : context.l10n.editProgram,
       ),
       content: SizedBox(
         width: 720,
@@ -92,7 +94,7 @@ class _AssistanceProgramFormDialogState
               children: [
                 _twoColumnFormRow(
                   CommonFormWidgets.textField(
-                    label: 'Code',
+                    label: context.l10n.code,
                     value: code,
                     onSaved: (value) =>
                         code = value?.trim().toUpperCase() ?? '',
@@ -110,21 +112,21 @@ class _AssistanceProgramFormDialogState
                     validator: (value) {
                       final trimmed = value?.trim();
                       if (trimmed == null || trimmed.isEmpty) {
-                        return 'Code is required';
+                        return context.l10n.codeRequired;
                       }
                       if (!RegExp(r'^[A-Z0-9_]+$').hasMatch(trimmed)) {
-                        return 'Use uppercase letters, numbers, or underscore';
+                        return context.l10n.codeFormatUppercase;
                       }
                       return null;
                     },
                   ),
                   CommonFormWidgets.textField(
-                    label: 'Name',
+                    label: context.l10n.name,
                     value: name,
                     onSaved: (value) => name = value?.trim() ?? '',
                     validator: (value) {
                       if (value?.trim().isEmpty ?? true) {
-                        return 'Name is required';
+                        return context.l10n.nameRequired;
                       }
                       return null;
                     },
@@ -133,10 +135,11 @@ class _AssistanceProgramFormDialogState
                 const SizedBox(height: 14),
                 _twoColumnFormRow(
                   _enumDropdown<AssistanceProgramCategory>(
-                    label: 'Category',
+                    label: context.l10n.category,
                     value: category,
                     values: AssistanceProgramCategory.values,
-                    labelBuilder: (item) => item.label,
+                    labelBuilder: (item) =>
+                        translateAssistanceCategory(context, item),
                     valueBuilder: (item) => item.value,
                     onChanged: (value) {
                       if (value != null) setState(() => category = value);
@@ -145,10 +148,11 @@ class _AssistanceProgramFormDialogState
                         category = value ?? AssistanceProgramCategory.other,
                   ),
                   _enumDropdown<AssistanceBenefitType>(
-                    label: 'Benefit Type',
+                    label: context.l10n.benefitType,
                     value: benefitType,
                     values: AssistanceBenefitType.values,
-                    labelBuilder: (item) => item.label,
+                    labelBuilder: (item) =>
+                        translateAssistanceBenefitType(context, item),
                     valueBuilder: (item) => item.value,
                     onChanged: (value) {
                       if (value != null) setState(() => benefitType = value);
@@ -160,10 +164,11 @@ class _AssistanceProgramFormDialogState
                 const SizedBox(height: 14),
                 _twoColumnFormRow(
                   _enumDropdown<AssistanceFrequency>(
-                    label: 'Frequency',
+                    label: context.l10n.frequency,
                     value: frequency,
                     values: AssistanceFrequency.values,
-                    labelBuilder: (item) => item.label,
+                    labelBuilder: (item) =>
+                        translateAssistanceFrequency(context, item),
                     valueBuilder: (item) => item.value,
                     onChanged: (value) {
                       if (value != null) setState(() => frequency = value);
@@ -172,22 +177,22 @@ class _AssistanceProgramFormDialogState
                         frequency = value ?? AssistanceFrequency.asNeeded,
                   ),
                   CommonFormWidgets.doubleField(
-                    label: 'Default Amount (Rp)',
+                    label: context.l10n.defaultAmountRp,
                     value: defaultAmount,
                     onSaved: (value) => defaultAmount = value,
                     validator: (value) {
                       final trimmed = value?.trim();
                       if (trimmed == null || trimmed.isEmpty) return null;
                       final number = double.tryParse(trimmed);
-                      if (number == null) return 'Amount must be a number';
-                      if (number < 0) return 'Amount cannot be negative';
+                      if (number == null) return context.l10n.amountMustBeNumber;
+                      if (number < 0) return context.l10n.amountCannotBeNegative;
                       return null;
                     },
                   ),
                 ),
                 const SizedBox(height: 14),
                 CommonFormWidgets.textField(
-                  label: 'Default Item Description',
+                  label: context.l10n.defaultItemDescription,
                   value: defaultItemDescription,
                   onSaved: (value) => defaultItemDescription =
                       value?.trim().isEmpty ?? true ? null : value?.trim(),
@@ -196,7 +201,7 @@ class _AssistanceProgramFormDialogState
                 ),
                 const SizedBox(height: 14),
                 CommonFormWidgets.textField(
-                  label: 'Description',
+                  label: context.l10n.description,
                   value: description,
                   onSaved: (value) => description =
                       value?.trim().isEmpty ?? true ? null : value?.trim(),
@@ -208,9 +213,12 @@ class _AssistanceProgramFormDialogState
                 SwitchListTile.adaptive(
                   value: isActive,
                   contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Active',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  title: Text(
+                    context.l10n.statusActive,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   onChanged: _isSaving
                       ? null
@@ -226,7 +234,7 @@ class _AssistanceProgramFormDialogState
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         ElevatedButton(
           onPressed: _isSaving ? null : _submit,
@@ -236,7 +244,7 @@ class _AssistanceProgramFormDialogState
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );
@@ -256,23 +264,26 @@ class _AssistanceProgramFormDialogState
           children: [
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Benefit Packages',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                    context.l10n.benefitPackages,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
                 OutlinedButton.icon(
                   onPressed: _isSaving ? null : () => _openBenefitDialog(),
                   icon: const Icon(Icons.add, size: 17),
-                  label: const Text('Add Package'),
+                  label: Text(context.l10n.addPackage),
                 ),
               ],
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Use packages when benefit amount or goods differ by school type.',
-              style: TextStyle(
+            Text(
+              context.l10n.usePackagesBySchoolType,
+              style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
@@ -280,11 +291,11 @@ class _AssistanceProgramFormDialogState
             ),
             const SizedBox(height: 10),
             if (benefits.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
                 child: Text(
-                  'No package yet. If empty, the program default amount/item is used.',
-                  style: TextStyle(
+                  context.l10n.noPackageYet,
+                  style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,
                   ),
@@ -306,13 +317,21 @@ class _AssistanceProgramFormDialogState
                     children: [
                       SizedBox(
                         width: 86,
-                        child: _packagePill(benefit.schoolType.label),
+                        child: _packagePill(
+                          translateAssistanceSchoolType(
+                            context,
+                            benefit.schoolType,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 10),
                       SizedBox(
                         width: 76,
                         child: Text(
-                          benefit.benefitType.label,
+                          translateAssistanceBenefitType(
+                            context,
+                            benefit.benefitType,
+                          ),
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -330,11 +349,13 @@ class _AssistanceProgramFormDialogState
                       ),
                       const SizedBox(width: 10),
                       _packagePill(
-                        benefit.isActive ? 'Active' : 'Inactive',
+                        benefit.isActive
+                            ? context.l10n.statusActive
+                            : context.l10n.statusInactive,
                         muted: !benefit.isActive,
                       ),
                       IconButton(
-                        tooltip: 'Edit package',
+                        tooltip: context.l10n.editPackage,
                         onPressed: _isSaving
                             ? null
                             : () => _openBenefitDialog(
@@ -344,7 +365,7 @@ class _AssistanceProgramFormDialogState
                         icon: const Icon(Icons.edit_outlined, size: 18),
                       ),
                       IconButton(
-                        tooltip: 'Remove package',
+                        tooltip: context.l10n.removePackage,
                         onPressed: _isSaving
                             ? null
                             : () => setState(() => benefits.removeAt(index)),
@@ -525,7 +546,9 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
 
     return AlertDialog(
       title: AppDialogTitle(
-        widget.benefit == null ? 'Add Benefit Package' : 'Edit Benefit Package',
+        widget.benefit == null
+            ? context.l10n.addBenefitPackage
+            : context.l10n.editBenefitPackage,
       ),
       content: SizedBox(
         width: 660,
@@ -540,9 +563,10 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
                   CommonFormWidgets.dropdownFieldTyped<
                     AssistanceBenefitSchoolType
                   >(
-                    label: 'School Type',
+                    label: context.l10n.schoolType,
                     items: AssistanceBenefitSchoolType.values,
-                    labelBuilder: (item) => item.label,
+                    labelBuilder: (item) =>
+                        translateAssistanceSchoolType(context, item),
                     valueBuilder: (item) => item.value,
                     value: _schoolType,
                     onChanged: (value) {
@@ -552,9 +576,10 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
                         _schoolType = value ?? AssistanceBenefitSchoolType.all,
                   ),
                   CommonFormWidgets.dropdownFieldTyped<AssistanceBenefitType>(
-                    label: 'Benefit Type',
+                    label: context.l10n.benefitType,
                     items: AssistanceBenefitType.values,
-                    labelBuilder: (item) => item.label,
+                    labelBuilder: (item) =>
+                        translateAssistanceBenefitType(context, item),
                     valueBuilder: (item) => item.value,
                     value: _benefitType,
                     onChanged: (value) {
@@ -572,9 +597,9 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                     ],
-                    decoration: const InputDecoration(
-                      labelText: 'Amount (Rp)',
-                      hintText: 'Enter amount in Rupiah',
+                    decoration: InputDecoration(
+                      labelText: context.l10n.amountRp,
+                      hintText: context.l10n.enterAmountRupiah,
                     ),
                     validator: (value) {
                       if (_benefitType == AssistanceBenefitType.mixed &&
@@ -582,8 +607,10 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
                         return null;
                       }
                       final amount = double.tryParse(value?.trim() ?? '');
-                      if (amount == null) return 'Amount is required';
-                      if (amount < 0) return 'Amount cannot be negative';
+                      if (amount == null) return context.l10n.amountRequired;
+                      if (amount < 0) {
+                        return context.l10n.amountCannotBeNegative;
+                      }
                       return null;
                     },
                   ),
@@ -592,9 +619,9 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
                 TextFormField(
                   controller: _descriptionController,
                   maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    hintText: 'Optional package notes',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.description,
+                    hintText: context.l10n.optionalPackageNotes,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -602,18 +629,21 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
                   value: _isActive,
                   contentPadding: EdgeInsets.zero,
                   onChanged: (value) => setState(() => _isActive = value),
-                  title: const Text(
-                    'Active',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  title: Text(
+                    context.l10n.statusActive,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 const Divider(height: 22),
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Goods / Items',
-                        style: TextStyle(
+                        context.l10n.goodsItems,
+                        style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
                         ),
@@ -622,23 +652,23 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
                     OutlinedButton.icon(
                       onPressed: needsItems ? _openItemDialog : null,
                       icon: const Icon(Icons.add, size: 17),
-                      label: const Text('Add Item'),
+                      label: Text(context.l10n.addItem),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 if (!needsItems)
-                  const Text(
-                    'Items are used for goods or mixed benefit packages.',
-                    style: TextStyle(
+                  Text(
+                    context.l10n.itemsForGoodsMixed,
+                    style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,
                     ),
                   )
                 else if (_items.isEmpty)
-                  const Text(
-                    'No items yet.',
-                    style: TextStyle(
+                  Text(
+                    context.l10n.noItemsYet,
+                    style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,
                     ),
@@ -667,13 +697,13 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
                       trailing: Wrap(
                         children: [
                           IconButton(
-                            tooltip: 'Edit item',
+                            tooltip: context.l10n.editItem,
                             onPressed: () =>
                                 _openItemDialog(item: item, index: index),
                             icon: const Icon(Icons.edit_outlined, size: 18),
                           ),
                           IconButton(
-                            tooltip: 'Remove item',
+                            tooltip: context.l10n.removeItem,
                             onPressed: () =>
                                 setState(() => _items.removeAt(index)),
                             icon: const Icon(
@@ -694,9 +724,9 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
-        FilledButton(onPressed: _submit, child: const Text('Save Package')),
+        FilledButton(onPressed: _submit, child: Text(context.l10n.savePackage)),
       ],
     );
   }
@@ -731,7 +761,7 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
         _benefitType == AssistanceBenefitType.cash ||
         _benefitType == AssistanceBenefitType.mixed;
     if (_benefitType == AssistanceBenefitType.goods && _items.isEmpty) {
-      AppToast.showFailed('Goods package needs at least one item.');
+      AppToast.showFailed(context.l10n.goodsPackageNeedsItem);
       return;
     }
 
@@ -742,7 +772,7 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
     if (_benefitType == AssistanceBenefitType.mixed &&
         amount == null &&
         _items.isEmpty) {
-      AppToast.showFailed('Mixed package needs amount or item.');
+      AppToast.showFailed(context.l10n.mixedPackageNeedsAmountOrItem);
       return;
     }
     final id = widget.benefit?.id ?? const Uuid().v4();
@@ -815,7 +845,9 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: AppDialogTitle(widget.item == null ? 'Add Item' : 'Edit Item'),
+      title: AppDialogTitle(
+        widget.item == null ? context.l10n.addItem : context.l10n.editItem,
+      ),
       content: SizedBox(
         width: 520,
         child: Form(
@@ -825,9 +857,9 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Item Name'),
+                decoration: InputDecoration(labelText: context.l10n.itemName),
                 validator: (value) => value?.trim().isEmpty == true
-                    ? 'Item name is required'
+                    ? context.l10n.itemNameRequired
                     : null,
               ),
               const SizedBox(height: 12),
@@ -838,20 +870,20 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                   ],
-                  decoration: const InputDecoration(labelText: 'Quantity'),
+                  decoration: InputDecoration(labelText: context.l10n.quantity),
                   validator: (value) {
                     final quantity = double.tryParse(value?.trim() ?? '');
                     if (quantity == null || quantity <= 0) {
-                      return 'Quantity must be greater than zero';
+                      return context.l10n.quantityGreaterThanZero;
                     }
                     return null;
                   },
                 ),
                 TextFormField(
                   controller: _unitController,
-                  decoration: const InputDecoration(
-                    labelText: 'Unit',
-                    hintText: 'pcs, pack, set',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.unit,
+                    hintText: context.l10n.unitHint,
                   ),
                 ),
               ),
@@ -862,15 +894,15 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                 ],
-                decoration: const InputDecoration(
-                  labelText: 'Estimated Value (Rp)',
+                decoration: InputDecoration(
+                  labelText: context.l10n.estimatedValueRp,
                 ),
                 validator: (value) {
                   final trimmed = value?.trim() ?? '';
                   if (trimmed.isEmpty) return null;
                   final amount = double.tryParse(trimmed);
                   if (amount == null || amount < 0) {
-                    return 'Estimated value must be valid';
+                    return context.l10n.estimatedValueValid;
                   }
                   return null;
                 },
@@ -879,7 +911,7 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 2,
-                decoration: const InputDecoration(labelText: 'Description'),
+                decoration: InputDecoration(labelText: context.l10n.description),
               ),
             ],
           ),
@@ -888,9 +920,9 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
-        FilledButton(onPressed: _submit, child: const Text('Save Item')),
+        FilledButton(onPressed: _submit, child: Text(context.l10n.saveItem)),
       ],
     );
   }

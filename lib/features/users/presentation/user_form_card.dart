@@ -1,11 +1,11 @@
 import 'dart:async';
 
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/features/users/data/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:edukita/widgets/app_toast.dart';
-import 'package:edukita/widgets/form_validation.dart';
 
 typedef UserFormSubmit = FutureOr<void> Function(User user);
 
@@ -80,6 +80,7 @@ class _UserFormCardState extends State<UserFormCard> {
     final action = widget.isEditing
         ? SubmissionAction.update
         : SubmissionAction.create;
+    final subject = context.l10n.user;
 
     setState(() {
       _isSaving = true;
@@ -87,10 +88,10 @@ class _UserFormCardState extends State<UserFormCard> {
 
     try {
       await widget.onSubmit(user);
-      AppToast.showSubmissionSuccess(action: action, subject: 'user');
+      AppToast.showSubmissionSuccess(action: action, subject: subject);
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
-      AppToast.showSubmissionFailed(action: action, subject: 'user');
+      AppToast.showSubmissionFailed(action: action, subject: subject);
       if (mounted) {
         setState(() {
           _isSaving = false;
@@ -117,16 +118,12 @@ class _UserFormCardState extends State<UserFormCard> {
                     controller: _usernameController,
                     enabled: !isEditing,
                     decoration: InputDecoration(
-                      label: CommonFormWidgets.requiredLabel('Username'),
+                      label: CommonFormWidgets.requiredLabel(
+                        context.l10n.username,
+                      ),
                     ),
-                    validator: (value) {
-                      return AppFormValidation.requiredText(
-                        value,
-                        'Username',
-                        minLength: 3,
-                        maxLength: 32,
-                      );
-                    },
+                    validator: (value) =>
+                        _requiredMin(context.l10n.username, 3, value),
                     inputFormatters: [LengthLimitingTextInputFormatter(32)],
                   ),
                   const SizedBox(height: 14),
@@ -135,19 +132,21 @@ class _UserFormCardState extends State<UserFormCard> {
                     enabled: !isEditing,
                     obscureText: true,
                     decoration: InputDecoration(
-                      label: CommonFormWidgets.requiredLabel('Password'),
+                      label: CommonFormWidgets.requiredLabel(
+                        context.l10n.password,
+                      ),
                     ),
                     validator: (value) {
                       if (!isEditing &&
                           (value == null || value.trim().isEmpty)) {
-                        return 'Password is required';
+                        return context.l10n.passwordRequired;
                       }
                       if ((value?.isNotEmpty ?? false) &&
                           value!.trim().length < 6) {
-                        return 'Password must be at least 6 characters';
+                        return context.l10n.passwordMinLengthSix;
                       }
                       if ((value?.length ?? 0) > 64) {
-                        return 'Password must be at most 64 characters';
+                        return context.l10n.passwordMaxLength;
                       }
                       return null;
                     },
@@ -157,28 +156,24 @@ class _UserFormCardState extends State<UserFormCard> {
                   TextFormField(
                     controller: _nickNameController,
                     decoration: InputDecoration(
-                      label: CommonFormWidgets.requiredLabel('Nickname'),
+                      label: CommonFormWidgets.requiredLabel(
+                        context.l10n.nickName,
+                      ),
                     ),
-                    validator: (value) => AppFormValidation.requiredText(
-                      value,
-                      'Nickname',
-                      minLength: 2,
-                      maxLength: 40,
-                    ),
+                    validator: (value) =>
+                        _requiredMin(context.l10n.nickName, 2, value),
                     inputFormatters: [LengthLimitingTextInputFormatter(40)],
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _fullNameController,
                     decoration: InputDecoration(
-                      label: CommonFormWidgets.requiredLabel('Full Name'),
+                      label: CommonFormWidgets.requiredLabel(
+                        context.l10n.fullName,
+                      ),
                     ),
-                    validator: (value) => AppFormValidation.requiredText(
-                      value,
-                      'Full name',
-                      minLength: 3,
-                      maxLength: 80,
-                    ),
+                    validator: (value) =>
+                        _requiredMin(context.l10n.fullName, 3, value),
                     inputFormatters: [LengthLimitingTextInputFormatter(80)],
                   ),
                   const SizedBox(height: 24),
@@ -189,7 +184,7 @@ class _UserFormCardState extends State<UserFormCard> {
                         onPressed: _isSaving
                             ? null
                             : () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
+                        child: Text(context.l10n.buttonCancel),
                       ),
                       const SizedBox(width: 12),
                       FilledButton(
@@ -202,7 +197,11 @@ class _UserFormCardState extends State<UserFormCard> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : Text(isEditing ? 'Update User' : 'Create User'),
+                            : Text(
+                                isEditing
+                                    ? context.l10n.updateUser
+                                    : context.l10n.createUser,
+                              ),
                       ),
                     ],
                   ),
@@ -213,5 +212,12 @@ class _UserFormCardState extends State<UserFormCard> {
         ),
       ),
     );
+  }
+
+  String? _requiredMin(String label, int min, String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return context.l10n.requiredField(label);
+    if (trimmed.length < min) return context.l10n.fieldTooShort(label);
+    return null;
   }
 }

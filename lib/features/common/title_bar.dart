@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/router/navigation.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -135,17 +136,17 @@ class _WindowButtonsState extends State<WindowButtons>
       children: [
         _TitleBarButton(
           icon: Icons.remove,
-          tooltip: 'Minimize',
+          tooltip: context.l10n.minimize,
           onPressed: windowManager.minimize,
         ),
         _TitleBarButton(
           icon: _isMaximized ? Icons.filter_none : Icons.crop_square,
-          tooltip: _isMaximized ? 'Restore' : 'Maximize',
+          tooltip: _isMaximized ? context.l10n.restore : context.l10n.maximize,
           onPressed: _maximizeOrRestore,
         ),
         _TitleBarButton(
           icon: Icons.close,
-          tooltip: 'Close',
+          tooltip: context.l10n.close,
           hoverColor: AppColors.errorDark,
           pressedColor: AppColors.errorAccent,
           onPressed: windowManager.close,

@@ -1,3 +1,5 @@
+import 'package:edukita/core/localization/app_language_cubit.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
@@ -19,6 +21,7 @@ import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -126,8 +129,9 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Future<void> _save() async {
+  Future<void> _save({bool applyLanguage = false}) async {
     if (_saving) return;
+    final languageCubit = context.read<AppLanguageCubit>();
     final attendance = double.tryParse(
       _minimumAttendanceController.text.trim(),
     );
@@ -137,6 +141,7 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
     setState(() => _saving = true);
+    final successMessage = context.l10n.messageDataSaved;
     try {
       await _repository.save(
         AppSettingsData(
@@ -158,7 +163,9 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           minimumAttendancePercentage: attendance,
           defaultDashboardRange: _dashboardRange,
-          language: _language,
+          language: applyLanguage
+              ? _language
+              : languageCubit.state.locale.languageCode,
           themeMode: _themeMode,
           uiDensity: _uiDensity,
           dateFormat: _dateFormat,
@@ -166,12 +173,21 @@ class _SettingsPageState extends State<SettingsPage> {
           numberFormat: _numberFormat,
         ),
       );
-      AppToast.showSuccess('Settings saved.');
+      if (applyLanguage &&
+          languageCubit.state.locale.languageCode != _language) {
+        await languageCubit.changeLanguage(Locale(_language));
+      }
+      AppToast.showSuccess(successMessage);
     } catch (error) {
       AppToast.showFailed(error.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  void _changeLanguage(String languageCode) {
+    if (_language == languageCode) return;
+    setState(() => _language = languageCode);
   }
 
   Future<void> _backupDatabase() async {
@@ -242,10 +258,9 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AppPageHeader(
-            title: 'Settings',
-            subtitle:
-                'Manage preferences and application settings.',
+          AppPageHeader(
+            title: context.l10n.settingsTitle,
+            subtitle: context.l10n.settingsSubtitle,
           ),
           const SizedBox(height: AppPageHeaderStyle.bottomGap),
           Expanded(
@@ -278,12 +293,20 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _personalizationPanel() {
+    final currentLanguageCode = context
+        .watch<AppLanguageCubit>()
+        .state
+        .locale
+        .languageCode;
+    final currentLanguageLabel = currentLanguageCode == 'id'
+        ? context.l10n.bahasaIndonesia
+        : context.l10n.english;
+
     return _SettingsPanel(
-      title: 'Personalization',
-      description:
-          'User-facing preferences for language, visual density, and date or number display.',
+      title: context.l10n.personalization,
+      description: context.l10n.personalizationDescription,
       trailing: FilledButton.icon(
-        onPressed: _saving ? null : _save,
+        onPressed: _saving ? null : () => _save(applyLanguage: true),
         icon: _saving
             ? const SizedBox(
                 width: 16,
@@ -291,67 +314,81 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Icon(Icons.save_outlined),
-        label: Text(_saving ? 'Saving' : 'Save'),
+        label: Text(
+          _saving
+              ? context.l10n.buttonSaving
+              : context.l10n.buttonSaveAndRefresh,
+        ),
       ),
-      child: _responsiveGrid([
-        _settingsDropdown(
-          label: 'Language',
-          value: _language,
-          items: const [
-            _SettingsOption('en', 'English'),
-            _SettingsOption('id', 'Bahasa Indonesia'),
-          ],
-          onChanged: (value) => setState(() => _language = value),
-        ),
-        _settingsDropdown(
-          label: 'Theme Mode',
-          value: _themeMode,
-          items: const [
-            _SettingsOption('light', 'Light'),
-            _SettingsOption('dark', 'Dark'),
-            _SettingsOption('system', 'Follow System'),
-          ],
-          onChanged: (value) => setState(() => _themeMode = value),
-        ),
-        _settingsDropdown(
-          label: 'UI Density',
-          value: _uiDensity,
-          items: const [
-            _SettingsOption('compact', 'Compact'),
-            _SettingsOption('normal', 'Normal'),
-            _SettingsOption('comfortable', 'Comfortable'),
-          ],
-          onChanged: (value) => setState(() => _uiDensity = value),
-        ),
-        _settingsDropdown(
-          label: 'Date Format',
-          value: _dateFormat,
-          items: const [
-            _SettingsOption('yyyy-MM-dd', '2026-05-27'),
-            _SettingsOption('dd/MM/yyyy', '27/05/2026'),
-            _SettingsOption('dd MMM yyyy', '27 May 2026'),
-          ],
-          onChanged: (value) => setState(() => _dateFormat = value),
-        ),
-        _settingsDropdown(
-          label: 'Time Format',
-          value: _timeFormat,
-          items: const [
-            _SettingsOption('24h', '24-hour'),
-            _SettingsOption('12h', '12-hour'),
-          ],
-          onChanged: (value) => setState(() => _timeFormat = value),
-        ),
-        _settingsDropdown(
-          label: 'Number Format',
-          value: _numberFormat,
-          items: const [
-            _SettingsOption('id_ID', 'Indonesian'),
-            _SettingsOption('en_US', 'English US'),
-          ],
-          onChanged: (value) => setState(() => _numberFormat = value),
-        ),
-      ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _CurrentLanguageRow(
+            label: context.l10n.currentLanguage,
+            value: currentLanguageLabel,
+          ),
+          const SizedBox(height: 12),
+          _responsiveGrid([
+            _settingsDropdown(
+              label: context.l10n.changeLanguage,
+              value: _language,
+              items: [
+                _SettingsOption('en', context.l10n.english),
+                _SettingsOption('id', context.l10n.bahasaIndonesia),
+              ],
+              onChanged: (value) => _changeLanguage(value),
+            ),
+            _settingsDropdown(
+              label: context.l10n.themeMode,
+              value: _themeMode,
+              items: [
+                _SettingsOption('light', context.l10n.light),
+                _SettingsOption('dark', context.l10n.dark),
+                _SettingsOption('system', context.l10n.followSystem),
+              ],
+              onChanged: (value) => setState(() => _themeMode = value),
+            ),
+            _settingsDropdown(
+              label: context.l10n.uiDensity,
+              value: _uiDensity,
+              items: [
+                _SettingsOption('compact', context.l10n.compact),
+                _SettingsOption('normal', context.l10n.normal),
+                _SettingsOption('comfortable', context.l10n.comfortable),
+              ],
+              onChanged: (value) => setState(() => _uiDensity = value),
+            ),
+            _settingsDropdown(
+              label: context.l10n.dateFormat,
+              value: _dateFormat,
+              items: const [
+                _SettingsOption('yyyy-MM-dd', '2026-05-27'),
+                _SettingsOption('dd/MM/yyyy', '27/05/2026'),
+                _SettingsOption('dd MMM yyyy', '27 May 2026'),
+              ],
+              onChanged: (value) => setState(() => _dateFormat = value),
+            ),
+            _settingsDropdown(
+              label: context.l10n.timeFormat,
+              value: _timeFormat,
+              items: const [
+                _SettingsOption('24h', '24-hour'),
+                _SettingsOption('12h', '12-hour'),
+              ],
+              onChanged: (value) => setState(() => _timeFormat = value),
+            ),
+            _settingsDropdown(
+              label: context.l10n.numberFormat,
+              value: _numberFormat,
+              items: [
+                _SettingsOption('id_ID', context.l10n.indonesian),
+                _SettingsOption('en_US', context.l10n.englishUs),
+              ],
+              onChanged: (value) => setState(() => _numberFormat = value),
+            ),
+          ]),
+        ],
+      ),
     );
   }
 
@@ -363,14 +400,17 @@ class _SettingsPageState extends State<SettingsPage> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.primaryLight),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.admin_panel_settings_outlined, color: AppColors.primary),
-          SizedBox(width: 10),
+          const Icon(
+            Icons.admin_panel_settings_outlined,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Technical settings below are visible to admin users only.',
-              style: TextStyle(
+              context.l10n.technicalSettingsAdminOnly,
+              style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
@@ -384,11 +424,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _generalPanel() {
     return _SettingsPanel(
-      title: 'General Defaults',
-      description:
-          'These values are used as application-wide defaults for exports, currency labels, and eligibility rules.',
+      title: context.l10n.generalDefaults,
+      description: context.l10n.generalDefaultsDescription,
       trailing: FilledButton.icon(
-        onPressed: _saving ? null : _save,
+        onPressed: _saving ? null : () => _save(),
         icon: _saving
             ? const SizedBox(
                 width: 16,
@@ -396,34 +435,36 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Icon(Icons.save_outlined),
-        label: Text(_saving ? 'Saving' : 'Save'),
+        label: Text(
+          _saving ? context.l10n.buttonSaving : context.l10n.buttonSave,
+        ),
       ),
       child: _responsiveGrid([
         TextField(
           controller: _foundationController,
-          decoration: const InputDecoration(labelText: 'Foundation Name'),
+          decoration: InputDecoration(labelText: context.l10n.foundationName),
           inputFormatters: [LengthLimitingTextInputFormatter(80)],
         ),
         TextField(
           controller: _exportPrefixController,
-          decoration: const InputDecoration(labelText: 'Export File Prefix'),
+          decoration: InputDecoration(labelText: context.l10n.exportFilePrefix),
           inputFormatters: [LengthLimitingTextInputFormatter(40)],
         ),
         TextField(
           controller: _currencyCodeController,
-          decoration: const InputDecoration(labelText: 'Currency Code'),
+          decoration: InputDecoration(labelText: context.l10n.currencyCode),
           textCapitalization: TextCapitalization.characters,
           inputFormatters: [LengthLimitingTextInputFormatter(6)],
         ),
         TextField(
           controller: _currencySymbolController,
-          decoration: const InputDecoration(labelText: 'Currency Symbol'),
+          decoration: InputDecoration(labelText: context.l10n.currencySymbol),
           inputFormatters: [LengthLimitingTextInputFormatter(8)],
         ),
         TextField(
           controller: _minimumAttendanceController,
-          decoration: const InputDecoration(
-            labelText: 'Default Minimum Attendance',
+          decoration: InputDecoration(
+            labelText: context.l10n.defaultMinimumAttendance,
             suffixText: '%',
           ),
           keyboardType: TextInputType.number,
@@ -431,19 +472,19 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         AppDropdownButtonFormField<String>(
           initialValue: _dashboardRange,
-          items: const [
-            DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
-            DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
-            DropdownMenuItem(value: '3_month', child: Text('3 Month')),
-            DropdownMenuItem(value: '6_month', child: Text('6 Month')),
-            DropdownMenuItem(value: '1_year', child: Text('1 Year')),
+          items: [
+            DropdownMenuItem(value: 'weekly', child: Text(context.l10n.weekly)),
+            DropdownMenuItem(value: 'monthly', child: Text(context.l10n.monthly)),
+            DropdownMenuItem(value: '3_month', child: Text(context.l10n.threeMonths)),
+            DropdownMenuItem(value: '6_month', child: Text(context.l10n.sixMonths)),
+            DropdownMenuItem(value: '1_year', child: Text(context.l10n.oneYear)),
           ],
           onChanged: (value) {
             if (value == null) return;
             setState(() => _dashboardRange = value);
           },
-          decoration: const InputDecoration(
-            labelText: 'Default Dashboard Range',
+          decoration: InputDecoration(
+            labelText: context.l10n.defaultDashboardRange,
           ),
           dropdownColor: AppColors.white,
           focusColor: AppColors.transparent,
@@ -458,19 +499,18 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _pathsPanel() {
     return _SettingsPanel(
-      title: 'Storage',
-      description:
-          'Current local database and uploaded document storage locations.',
+      title: context.l10n.storage,
+      description: context.l10n.storageDescription,
       child: Column(
         children: [
           _PathRow(
-            label: 'Database',
+            label: context.l10n.database,
             value: _databasePath ?? '-',
             icon: Icons.storage_outlined,
           ),
           const SizedBox(height: 10),
           _PathRow(
-            label: 'Uploads',
+            label: context.l10n.uploads,
             value: _storagePath ?? '-',
             icon: Icons.folder_outlined,
           ),
@@ -481,9 +521,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _toolsPanel() {
     return _SettingsPanel(
-      title: 'Maintenance',
-      description:
-          'Tools for local desktop operation. Backup creates a copy of the SQLite database.',
+      title: context.l10n.maintenance,
+      description: context.l10n.maintenanceDescription,
       child: Wrap(
         spacing: 10,
         runSpacing: 10,
@@ -497,12 +536,14 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.backup_outlined),
-            label: Text(_backingUp ? 'Backing Up' : 'Backup Database'),
+            label: Text(
+              _backingUp ? context.l10n.backingUp : context.l10n.backupDatabase,
+            ),
           ),
           OutlinedButton.icon(
             onPressed: _clearCaches,
             icon: const Icon(Icons.cached_outlined),
-            label: const Text('Clear Cache'),
+            label: Text(context.l10n.clearCache),
           ),
         ],
       ),
@@ -552,9 +593,8 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
       ],
-      selectedItemBuilder: (_) => AppDropdownStyle.selectedLabels(
-        items.map((item) => item.label),
-      ),
+      selectedItemBuilder: (_) =>
+          AppDropdownStyle.selectedLabels(items.map((item) => item.label)),
       onChanged: (value) {
         if (value == null) return;
         onChanged(value);
@@ -575,6 +615,52 @@ class _SettingsOption {
 
   final String value;
   final String label;
+}
+
+class _CurrentLanguageRow extends StatelessWidget {
+  const _CurrentLanguageRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.primaryLight),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.translate_outlined,
+            color: AppColors.primary,
+            size: 18,
+          ),
+          const SizedBox(width: 10),
+          Text(
+            '$label:',
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SettingsPanel extends StatelessWidget {

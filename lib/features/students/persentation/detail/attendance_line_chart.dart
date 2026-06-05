@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/utils/color_extension.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -7,11 +8,11 @@ class AttendanceLineChart extends StatelessWidget {
   const AttendanceLineChart({
     super.key,
     this.monthlyAttendance,
-    this.emptyMessage = 'Attendance will appear after teaching attendance is saved.',
+    this.emptyMessage,
   });
 
   final List<double?>? monthlyAttendance;
-  final String emptyMessage;
+  final String? emptyMessage;
 
   int get year => DateTime.now().year;
 
@@ -29,7 +30,7 @@ class AttendanceLineChart extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Attendance $year',
+                  context.l10n.attendanceChartTitle(year),
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.primary,
@@ -41,7 +42,7 @@ class AttendanceLineChart extends StatelessWidget {
               const SizedBox(width: 10),
               Flexible(
                 child: Text(
-                  'Monthly attendance rate',
+                  context.l10n.monthlyAttendanceRate,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.end,
                   style: TextStyle(
@@ -58,7 +59,7 @@ class AttendanceLineChart extends StatelessWidget {
             child: spots.isEmpty
                 ? Center(
                     child: Text(
-                      emptyMessage,
+                      emptyMessage ?? context.l10n.attendanceChartEmpty,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: AppColors.textSecondary,

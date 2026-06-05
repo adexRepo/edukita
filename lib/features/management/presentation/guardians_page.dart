@@ -1,4 +1,5 @@
 import 'package:edukita/features/management/data/guardian_model.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/management/domain/guardian_cubit.dart';
 import 'package:edukita/features/management/presentation/guardian_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
@@ -51,16 +52,16 @@ class _GuardiansPageState extends State<GuardiansPage> {
       guardKey: 'delete_guardian_$id',
       builder: (context) {
         return AlertDialog(
-          title: const AppDialogTitle('Delete Guardian'),
-          content: const Text('Are you sure you want to delete this guardian?'),
+          title: AppDialogTitle(context.l10n.deleteGuardianTitle),
+          content: Text(context.l10n.deleteGuardianConfirm),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.buttonCancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
+              child: Text(context.l10n.delete),
             ),
           ],
         );
@@ -88,12 +89,14 @@ class _GuardiansPageState extends State<GuardiansPage> {
     return BlocBuilder<GuardianCubit, GuardianState>(
       builder: (context, state) {
         if (state.error != null) {
-          return Center(child: Text('Error: ${state.error}'));
+          return Center(
+            child: Text(context.l10n.errorWithDetails(state.error!)),
+          );
         } else {
           final guardians = state.guardians;
           return Scaffold(
             appBar: AppBar(
-              title: const Text('Guardians'),
+              title: Text(context.l10n.guardians),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.add),
@@ -106,8 +109,8 @@ class _GuardiansPageState extends State<GuardiansPage> {
                 AppLoadingStrip(isLoading: state.isLoading, topPadding: 0),
                 Expanded(
                   child: guardians.isEmpty
-                      ? const Center(
-                          child: Text('No guardians yet. Add a guardian.'),
+                      ? Center(
+                          child: Text(context.l10n.noGuardiansYet),
                         )
                       : ListView.builder(
                           itemCount: guardians.length,
@@ -116,7 +119,7 @@ class _GuardiansPageState extends State<GuardiansPage> {
                             return ListTile(
                               title: Text(guardian.fullName),
                               subtitle: Text(
-                                'Phone: ${guardian.mobileNo ?? 'N/A'}',
+                                '${context.l10n.phone}: ${guardian.mobileNo ?? '-'}',
                               ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,

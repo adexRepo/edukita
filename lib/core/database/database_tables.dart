@@ -74,6 +74,7 @@ class DatabaseTables {
     await studentAssistanceAssessments(db);
     await assistanceRuleTargets(db);
     await assistanceApprovalDocuments(db);
+    await assistanceDistributionDocuments(db);
     await assistanceRecipients(db);
     await indexes(db);
   }
@@ -1087,7 +1088,7 @@ class DatabaseTables {
         minimum_attendance_percentage REAL NOT NULL DEFAULT 75,
         allow_manual_override_below_attendance INTEGER NOT NULL DEFAULT 1,
         status TEXT NOT NULL DEFAULT 'draft'
-          CHECK(status IN ('draft', 'targeted', 'submitted', 'approved', 'cancelled')),
+          CHECK(status IN ('draft', 'targeted', 'submitted', 'approved', 'rejected', 'distributed', 'cancelled')),
         targeted_at TEXT,
         submitted_at TEXT,
         approved_at TEXT,
@@ -1284,6 +1285,24 @@ class DatabaseTables {
     ''');
   }
 
+  static Future<void> assistanceDistributionDocuments(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS assistance_distribution_documents(
+        id TEXT PRIMARY KEY NOT NULL,
+        assistance_period_id TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        file_type TEXT,
+        uploaded_by TEXT,
+        uploaded_at TEXT NOT NULL,
+        remarks TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(assistance_period_id) REFERENCES assistance_periods(id) ON DELETE CASCADE
+      )
+    ''');
+  }
+
   static Future<void> assistanceRecipients(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS assistance_recipients(
@@ -1305,6 +1324,9 @@ class DatabaseTables {
         benefit_items_json TEXT,
         status TEXT NOT NULL DEFAULT 'approved'
           CHECK(status IN ('approved', 'paid', 'distributed', 'cancelled')),
+        distribution_reason TEXT,
+        distributed_at TEXT,
+        distributed_by TEXT,
         approved_by TEXT,
         approved_at TEXT,
         created_at TEXT NOT NULL,
@@ -2162,6 +2184,13 @@ class DatabaseTables {
       columns: const ['assistance_period_id'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_assistance_approval_documents_period ON assistance_approval_documents(assistance_period_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'assistance_distribution_documents',
+      columns: const ['assistance_period_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_assistance_distribution_documents_period ON assistance_distribution_documents(assistance_period_id)',
     );
     await _createIndexIfColumnsExist(
       db,

@@ -1,6 +1,7 @@
 import 'dart:io' as io;
 
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/utils/generated_file_name.dart';
 import 'package:edukita/features/strategy/data/strategy_model.dart';
 import 'package:edukita/features/strategy/domain/strategy_cubit.dart';
@@ -68,16 +69,16 @@ class _StrategyPageState extends State<StrategyPage> {
       guardKey: 'delete_strategy_$id',
       builder: (context) {
         return AlertDialog(
-          title: const AppDialogTitle('Delete Strategy'),
-          content: const Text('Are you sure you want to delete this strategy?'),
+          title: AppDialogTitle(context.l10n.deleteStrategyTitle),
+          content: Text(context.l10n.deleteStrategyConfirm),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.buttonCancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
+              child: Text(context.l10n.delete),
             ),
           ],
         );
@@ -101,6 +102,7 @@ class _StrategyPageState extends State<StrategyPage> {
   }
 
   Future<void> _downloadStrategySample(Strategy strategy) async {
+    final sampleFileLabel = context.l10n.sampleImplementationFile;
     final sourcePath = strategy.sampleFilePath?.trim();
     if (sourcePath == null || sourcePath.isEmpty) {
       AppToast.showFailed('No sample file is attached to this strategy.');
@@ -116,9 +118,9 @@ class _StrategyPageState extends State<StrategyPage> {
     final fileName = strategy.sampleFileName ?? p.basename(sourcePath);
     final location = await getSaveLocation(
       suggestedName: generatedFileName(fileName),
-      acceptedTypeGroups: const [
+      acceptedTypeGroups: [
         XTypeGroup(
-          label: 'Strategy sample file',
+          label: sampleFileLabel,
           extensions: _allowedSampleExtensions,
         ),
       ],
@@ -140,12 +142,14 @@ class _StrategyPageState extends State<StrategyPage> {
     return BlocBuilder<StrategyCubit, StrategyState>(
       builder: (context, state) {
         if (state.error != null) {
-          return Center(child: Text('Error: ${state.error}'));
+          return Center(
+            child: Text(context.l10n.errorWithDetails(state.error!)),
+          );
         } else {
           final strategies = state.strategies;
           return Scaffold(
             appBar: AppBar(
-              title: const Text('Strategies'),
+              title: Text(context.l10n.strategies),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.add),
@@ -158,8 +162,8 @@ class _StrategyPageState extends State<StrategyPage> {
                 AppLoadingStrip(isLoading: state.isLoading, topPadding: 0),
                 Expanded(
                   child: strategies.isEmpty
-                      ? const Center(
-                          child: Text('No strategies yet. Add a strategy.'),
+                      ? Center(
+                          child: Text(context.l10n.noStrategiesYet),
                         )
                       : Padding(
                           padding: const EdgeInsets.all(12),
@@ -187,7 +191,7 @@ class _StrategyPageState extends State<StrategyPage> {
           _showStrategyFormDialog(context, existingStrategy: strategy),
       columns: [
         AppTableColumn(
-          title: 'Code',
+          title: context.l10n.code,
           flex: 2,
           sortValue: (strategy) => _sortValue(strategy.code),
           cell: (strategy) => Text(
@@ -198,7 +202,7 @@ class _StrategyPageState extends State<StrategyPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Name',
+          title: context.l10n.name,
           flex: 3,
           sortValue: (strategy) => _sortValue(strategy.name),
           cell: (strategy) => Text(
@@ -209,7 +213,7 @@ class _StrategyPageState extends State<StrategyPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Description',
+          title: context.l10n.description,
           flex: 5,
           sortValue: (strategy) => _sortValue(strategy.description),
           cell: (strategy) => Text(
@@ -222,7 +226,7 @@ class _StrategyPageState extends State<StrategyPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Rule',
+          title: context.l10n.rule,
           flex: 5,
           sortValue: (strategy) => _sortValue(strategy.rule),
           cell: (strategy) => Text(
@@ -233,7 +237,7 @@ class _StrategyPageState extends State<StrategyPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Sample',
+          title: context.l10n.sample,
           flex: 3,
           sortValue: (strategy) => _sortValue(strategy.sampleFileName),
           cell: (strategy) => Text(
@@ -244,7 +248,7 @@ class _StrategyPageState extends State<StrategyPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Actions',
+          title: context.l10n.actions,
           flex: 3,
           cell: (strategy) => Align(
             alignment: Alignment.centerLeft,
@@ -266,7 +270,7 @@ class _StrategyPageState extends State<StrategyPage> {
                   icon: const Icon(Icons.download_outlined, size: 16),
                 ),
                 IconButton(
-                  tooltip: 'Edit strategy',
+                  tooltip: context.l10n.edit,
                   onPressed: () => _showStrategyFormDialog(
                     context,
                     existingStrategy: strategy,
@@ -279,7 +283,7 @@ class _StrategyPageState extends State<StrategyPage> {
                   icon: const Icon(Icons.edit, size: 16),
                 ),
                 IconButton(
-                  tooltip: 'Delete strategy',
+                  tooltip: context.l10n.delete,
                   onPressed: () => _confirmDelete(context, strategy.id),
                   constraints: const BoxConstraints.tightFor(
                     width: 28,

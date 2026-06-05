@@ -1,0 +1,109 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release-windows:
+    name: Build Windows Installer And Offline Update
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Enable Windows Desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Prepare Version Variables
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          if (-not $tag.StartsWith('v')) {
+            throw "Release tag must start with v. Actual: $tag"
+          }
+          $version = $tag.Substring(1)
+          "RELEASE_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "INSTALLER_FILE=EdukitaSetup_v$version.exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "UPDATE_ZIP=EdukitaUpdate_v$version.zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build Installer
+        shell: pwsh
+        run: |
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue)?.Source
+          if (-not $iscc) {
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          }
+          if (-not (Test-Path $iscc)) {
+            throw "Inno Setup compiler not found."
+          }
+          & $iscc installer/edukita.iss /DMyAppVersion=$env:APP_VERSION
+
+      - name: Verify Installer
+        shell: pwsh
+        run: |
+          $installer = "installer/output/$env:INSTALLER_FILE"
+          if (-not (Test-Path $installer)) {
+            throw "Installer not found: $installer"
+          }
+
+      - name: Create Offline Update Package
+        shell: pwsh
+        run: |
+          $updateDir = "dist/EdukitaUpdate"
+          New-Item -ItemType Directory -Force -Path $updateDir | Out-Null
+
+          $releaseDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd')
+          $updateJson = [ordered]@{
+            appName = "Edukita"
+            version = $env:APP_VERSION
+            tag = $env:RELEASE_TAG
+            releaseDate = $releaseDate
+            installerFile = $env:INSTALLER_FILE
+            minimumSupportedVersion = "1.0.0"
+            releaseNotes = @("See GitHub Release notes for details.")
+          } | ConvertTo-Json -Depth 4
+
+          $updateJson | Out-File -FilePath "$updateDir/update.json" -Encoding utf8
+          Copy-Item "installer/output/$env:INSTALLER_FILE" "$updateDir/$env:INSTALLER_FILE" -Force
+
+          Compress-Archive -Path $updateDir -DestinationPath "dist/$env:UPDATE_ZIP" -Force
+
+      - name: Upload Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EdukitaSetup
+          path: installer/output/${{ env.INSTALLER_FILE }}
+
+      - name: Upload Offline Update Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EdukitaUpdate
+          path: dist/${{ env.UPDATE_ZIP }}
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            installer/output/${{ env.INSTALLER_FILE }}
+            dist/${{ env.UPDATE_ZIP }}

@@ -1,4 +1,5 @@
-import 'package:edukita/core/utils/text_case.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
+import 'package:edukita/core/localization/localized_display.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/common/feature_state.dart';
@@ -87,7 +88,7 @@ class _StudentsPageState extends State<StudentsPage> {
 
   Future<void> _showAddStudentDialog() async {
     if (!_canCreateStudents) {
-      AppToast.showFailed('You do not have permission to create students.');
+      AppToast.showFailed(context.l10n.studentCreateDenied);
       return;
     }
     await AppActionGuard.run('student_form_load_new', () async {
@@ -126,7 +127,7 @@ class _StudentsPageState extends State<StudentsPage> {
 
   Future<void> _showEditStudentDialog(StudentTable row) async {
     if (!_canUpdateStudents) {
-      AppToast.showFailed('You do not have permission to update students.');
+      AppToast.showFailed(context.l10n.studentUpdateDenied);
       return;
     }
     await AppActionGuard.run('student_form_load_${row.id}', () async {
@@ -165,23 +166,23 @@ class _StudentsPageState extends State<StudentsPage> {
 
   Future<void> _confirmDeleteStudent(StudentTable student) async {
     if (!_canDeleteStudents) {
-      AppToast.showFailed('You do not have permission to delete students.');
+      AppToast.showFailed(context.l10n.studentDeleteDenied);
       return;
     }
     final confirmed = await showGuardedDialog<bool>(
       context: context,
       guardKey: 'delete_student_${student.id}',
       builder: (dialogContext) => AlertDialog(
-        title: const AppDialogTitle('Delete Student'),
-        content: Text('Delete ${student.fullName}?'),
+        title: AppDialogTitle(context.l10n.deleteStudent),
+        content: Text(context.l10n.deleteStudentConfirm(student.fullName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: Text(context.l10n.buttonDelete),
           ),
         ],
       ),
@@ -207,17 +208,15 @@ class _StudentsPageState extends State<StudentsPage> {
   @override
   Widget build(BuildContext context) {
     if (!_authorizationLoaded) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (!_canViewStudents) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
           child: Text(
-            'You do not have permission to view students.',
-            style: TextStyle(
+            context.l10n.studentAccessDenied,
+            style: const TextStyle(
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w700,
             ),
@@ -262,7 +261,7 @@ class _StudentsPageState extends State<StudentsPage> {
   Widget _buildTopBar() {
     return Padding(
       padding: AppPageHeaderStyle.pagePadding,
-      child: const AppPageHeader(title: 'Students'),
+      child: AppPageHeader(title: context.l10n.menuStudents),
     );
   }
 
@@ -295,13 +294,30 @@ class _StudentsPageState extends State<StudentsPage> {
   Widget _buildStatsFromState(StudentPageData state) {
     return Row(
       children: [
-        Expanded(child: _buildCard("Total", state.totalStudents.toString())),
+        Expanded(
+          child: _buildCard(context.l10n.total, state.totalStudents.toString()),
+        ),
         const SizedBox(width: 8),
-        Expanded(child: _buildCard("Male", state.maleStudents.toString())),
+        Expanded(
+          child: _buildCard(
+            context.l10n.genderMale,
+            state.maleStudents.toString(),
+          ),
+        ),
         const SizedBox(width: 8),
-        Expanded(child: _buildCard("Female", state.femaleStudents.toString())),
+        Expanded(
+          child: _buildCard(
+            context.l10n.genderFemale,
+            state.femaleStudents.toString(),
+          ),
+        ),
         const SizedBox(width: 8),
-        Expanded(child: _buildCard("Active", state.activeStudents.toString())),
+        Expanded(
+          child: _buildCard(
+            context.l10n.statusActive,
+            state.activeStudents.toString(),
+          ),
+        ),
       ],
     );
   }
@@ -315,14 +331,14 @@ class _StudentsPageState extends State<StudentsPage> {
           ElevatedButton.icon(
             onPressed: _showAddStudentDialog,
             icon: const Icon(Icons.add),
-            label: const Text('Add Student'),
+            label: Text(context.l10n.addStudent),
           ),
 
         const SizedBox(width: 8),
         Row(
           children: [
             MultiFilterButton(
-              title: "Filter Students",
+              title: context.l10n.filterStudents,
               fields: studentFilterFields,
               onApply: (filters) {
                 setState(() {
@@ -351,13 +367,13 @@ class _StudentsPageState extends State<StudentsPage> {
       onPageChanged: (page) => context.read<StudentPageCubit>().goToPage(page),
       columns: [
         AppTableColumn(
-          title: "Student Profile",
+          title: context.l10n.studentProfile,
           flex: 4,
           sortValue: (data) => data.fullName.codeUnitAt(0),
           cell: (s) => StudentProfileCell(student: s),
         ),
         AppTableColumn(
-          title: "Class\nSchool",
+          title: context.l10n.classSchool,
           flex: 3,
           sortValue: (data) => data.className.codeUnitAt(0),
           cell: (s) => Text(
@@ -366,32 +382,32 @@ class _StudentsPageState extends State<StudentsPage> {
           ),
         ),
         AppTableColumn(
-          title: "Age\nGender",
+          title: context.l10n.ageGender,
           flex: 2,
           sortValue: (data) => data.age,
           cell: (s) => Text(
-            '${s.age} y.o\n${s.gender.name.titleWords}',
+            '${s.age} ${context.l10n.years}\n${translateGender(context, s.gender.name)}',
             style: const TextStyle(fontSize: 12, height: 1.2),
           ),
         ),
         AppTableColumn(
-          title: "Score\nStatus",
+          title: context.l10n.scoreStatus,
           flex: 2,
           sortValue: (data) => data.age,
           cell: (s) => Text(
-            '${s.age}/100\n${s.status.name.titleWords}',
+            '${s.age}/100\n${translateStudentStatus(context, s.status.name)}',
             style: const TextStyle(fontSize: 12, height: 1.2),
           ),
         ),
         AppTableColumn(
-          title: "Join Date",
+          title: context.l10n.joinDate,
           flex: 2,
           sortValue: (data) =>
               DateTime.parse(data.joinAt).millisecondsSinceEpoch,
           cell: (s) => Text(s.joinAt, style: const TextStyle(fontSize: 12)),
         ),
         AppTableColumn(
-          title: "Actions",
+          title: context.l10n.actions,
           flex: 2,
           cell: (s) => Align(
             alignment: Alignment.centerLeft,
@@ -399,7 +415,7 @@ class _StudentsPageState extends State<StudentsPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  tooltip: 'Edit student',
+                  tooltip: context.l10n.editStudentTooltip,
                   onPressed: _canUpdateStudents
                       ? () => _showEditStudentDialog(s)
                       : null,
@@ -411,7 +427,7 @@ class _StudentsPageState extends State<StudentsPage> {
                   icon: const Icon(Icons.edit, size: 16),
                 ),
                 IconButton(
-                  tooltip: 'Delete student',
+                  tooltip: context.l10n.deleteStudentTooltip,
                   onPressed: _canDeleteStudents
                       ? () => _confirmDeleteStudent(s)
                       : null,

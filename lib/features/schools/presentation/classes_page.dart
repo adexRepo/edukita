@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/schools/domain/class_cubit.dart';
 import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
@@ -51,16 +52,16 @@ class _ClassesPageState extends State<ClassesPage> {
       guardKey: 'delete_class_$id',
       builder: (context) {
         return AlertDialog(
-          title: const AppDialogTitle('Delete Class'),
-          content: const Text('Are you sure you want to delete this class?'),
+          title: AppDialogTitle(context.l10n.deleteClass),
+          content: Text(context.l10n.deleteClassConfirm),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.buttonCancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
+              child: Text(context.l10n.delete),
             ),
           ],
         );
@@ -88,7 +89,9 @@ class _ClassesPageState extends State<ClassesPage> {
     return BlocBuilder<ClassCubit, ClassState>(
       builder: (context, state) {
         if (state.error != null) {
-          return Center(child: Text('Error: ${state.error}'));
+          return Center(
+            child: Text(context.l10n.errorWithDetails(state.error!)),
+          );
         } else {
           final classes = state.classes;
           return Scaffold(
@@ -109,7 +112,7 @@ class _ClassesPageState extends State<ClassesPage> {
                 AppLoadingStrip(isLoading: state.isLoading, topPadding: 0),
                 Expanded(
                   child: classes.isEmpty
-                ? const Center(child: Text('No classes yet. Add a class.'))
+                ? Center(child: Text(context.l10n.noClassesYet))
                 : ListView.builder(
                     itemCount: classes.length,
                     itemBuilder: (context, index) {

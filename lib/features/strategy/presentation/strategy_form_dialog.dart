@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
 import 'package:edukita/features/strategy/data/strategy_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
@@ -86,7 +87,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
               children: [
                 _twoColumnFormRow(
                   CommonFormWidgets.textField(
-                    label: 'Code',
+                    label: context.l10n.code,
                     value: code,
                     onSaved: (value) =>
                         code = value?.isEmpty ?? true ? null : value,
@@ -94,7 +95,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
                     isRequired: false,
                   ),
                   CommonFormWidgets.textField(
-                    label: 'Name',
+                    label: context.l10n.name,
                     value: name,
                     onSaved: (value) => name = value ?? '',
                     validator: (value) {
@@ -107,7 +108,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
                 ),
                 const SizedBox(height: 14),
                 CommonFormWidgets.textField(
-                  label: 'Description',
+                  label: context.l10n.description,
                   value: description,
                   onSaved: (value) => description =
                       value?.trim().isEmpty ?? true ? null : value?.trim(),
@@ -117,7 +118,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
                 ),
                 const SizedBox(height: 14),
                 CommonFormWidgets.textField(
-                  label: 'Rule',
+                  label: context.l10n.rule,
                   value: rule,
                   onSaved: (value) =>
                       rule = value?.isEmpty ?? true ? null : value,
@@ -135,7 +136,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         ElevatedButton(
           onPressed: _isSaving ? null : _submit,
@@ -145,7 +146,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );
@@ -201,16 +202,16 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
     final hasFile = fileName?.trim().isNotEmpty == true;
 
     return InputDecorator(
-      decoration: const InputDecoration(
-        labelText: 'Sample Implementation File',
+      decoration: InputDecoration(
+        labelText: context.l10n.sampleImplementationFile,
         border: OutlineInputBorder(),
-        helperText: 'Allowed: xls, xlsx, doc, docx, txt, md, pdf',
+        helperText: context.l10n.allowedDocumentTypes,
       ),
       child: Row(
         children: [
           Expanded(
             child: Text(
-              hasFile ? fileName! : 'No file selected',
+              hasFile ? fileName! : context.l10n.noFileSelected,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -230,7 +231,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
           if (hasFile) ...[
             const SizedBox(width: 4),
             IconButton(
-              tooltip: 'Remove file',
+              tooltip: context.l10n.removeFile,
               onPressed: _isSaving
                   ? null
                   : () {
@@ -249,8 +250,8 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
   }
 
   Future<void> _pickSampleFile() async {
-    const sampleGroup = XTypeGroup(
-      label: 'Strategy sample file',
+    final sampleGroup = XTypeGroup(
+      label: context.l10n.sampleImplementationFile,
       extensions: _allowedSampleExtensions,
     );
     final file = await openFile(acceptedTypeGroups: [sampleGroup]);

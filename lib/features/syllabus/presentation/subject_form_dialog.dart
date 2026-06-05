@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/syllabus/data/subject_model.dart';
@@ -68,7 +69,7 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
               children: [
                 _twoColumnFormRow(
                   CommonFormWidgets.textField(
-                    label: 'Name',
+                    label: context.l10n.name,
                     value: name,
                     onSaved: (value) => name = value?.trim() ?? '',
                     validator: (value) {
@@ -79,7 +80,7 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
                     },
                   ),
                   CommonFormWidgets.textField(
-                    label: 'Version',
+                    label: context.l10n.version,
                     value: version,
                     onSaved: (value) => version = _nullIfBlank(value),
                     validator: (_) => null,
@@ -89,14 +90,14 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
                 const SizedBox(height: 14),
                 _twoColumnFormRow(
                   CommonFormWidgets.dropdownField(
-                    label: 'Effective Year',
+                    label: context.l10n.effectiveYear,
                     items: _yearOptions(effectiveYear),
                     value: effectiveYear,
                     onChanged: (value) => setState(() => effectiveYear = value),
                     onSaved: (value) => effectiveYear = value ?? _currentYear(),
                   ),
                   CommonFormWidgets.dropdownField(
-                    label: 'Status',
+                    label: context.l10n.status,
                     items: const ['active', 'inactive'],
                     value: status,
                     onChanged: (value) {
@@ -108,7 +109,7 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
                 ),
                 const SizedBox(height: 14),
                 CommonFormWidgets.textField(
-                  label: 'Description',
+                  label: context.l10n.description,
                   value: description,
                   onSaved: (value) => description = _nullIfBlank(value),
                   maxLines: 3,
@@ -123,7 +124,7 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         ElevatedButton(
           onPressed: _isSaving ? null : _submit,
@@ -133,7 +134,7 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );
@@ -261,7 +262,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                     widget.subjects.isNotEmpty) ...[
                   _twoColumnFormRow(
                     CommonFormWidgets.dropdownFieldTyped<Curriculum>(
-                      label: 'Curriculum',
+                      label: context.l10n.curriculum,
                       items: widget.curriculums,
                       labelBuilder: (curriculum) => curriculum.name,
                       valueBuilder: (curriculum) => curriculum.id,
@@ -269,7 +270,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                       onSaved: (value) => curriculumId = value?.id,
                     ),
                     CommonFormWidgets.dropdownFieldTyped<Subject>(
-                      label: 'Subject',
+                      label: context.l10n.subject,
                       items: widget.subjects,
                       labelBuilder: (subject) => subject.name,
                       valueBuilder: (subject) => subject.id,
@@ -293,7 +294,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                 ] else ...[
                   if (widget.curriculums.isNotEmpty) ...[
                     CommonFormWidgets.dropdownFieldTyped<Curriculum>(
-                      label: 'Curriculum',
+                      label: context.l10n.curriculum,
                       items: widget.curriculums,
                       labelBuilder: (curriculum) => curriculum.name,
                       valueBuilder: (curriculum) => curriculum.id,
@@ -304,7 +305,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                   ],
                   if (widget.subjects.isNotEmpty) ...[
                     CommonFormWidgets.dropdownFieldTyped<Subject>(
-                      label: 'Subject',
+                      label: context.l10n.subject,
                       items: widget.subjects,
                       labelBuilder: (subject) => subject.name,
                       valueBuilder: (subject) => subject.id,
@@ -328,7 +329,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                 ],
                 _twoColumnFormRow(
                   CommonFormWidgets.textField(
-                    label: 'Title',
+                    label: context.l10n.title,
                     value: title,
                     controller: _titleController,
                     onChanged: (value) => title = value,
@@ -341,7 +342,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                     },
                   ),
                   CommonFormWidgets.dropdownField(
-                    label: 'Academic Year',
+                    label: context.l10n.academicYear,
                     items: _yearOptions(academicYear),
                     value: academicYear,
                     onChanged: (value) => setState(() => academicYear = value),
@@ -350,7 +351,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                 ),
                 const SizedBox(height: 14),
                 CommonFormWidgets.textField(
-                  label: 'Description',
+                  label: context.l10n.description,
                   value: description,
                   onSaved: (value) => description = _nullIfBlank(value),
                   maxLines: 3,
@@ -360,7 +361,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                 const SizedBox(height: 14),
                 _twoColumnFormRow(
                   CommonFormWidgets.dropdownFieldTyped<SchoolType>(
-                    label: 'School Type',
+                    label: context.l10n.schoolType,
                     items: SchoolType.values,
                     labelBuilder: (type) => type.label,
                     valueBuilder: (type) => type.storageValue,
@@ -375,7 +376,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                     onSaved: (value) => schoolType = value ?? SchoolType.sd,
                   ),
                   CommonFormWidgets.dropdownField(
-                    label: 'Level',
+                    label: context.l10n.level,
                     items: schoolType.allowedLevels
                         .map((level) => level.toString())
                         .toList(),
@@ -388,7 +389,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                 const SizedBox(height: 14),
                 _twoColumnFormRow(
                   CommonFormWidgets.dropdownField(
-                    label: 'Semester',
+                    label: context.l10n.semester,
                     items: const ['1', '2'],
                     value: semester,
                     isRequired: false,
@@ -396,7 +397,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                     onSaved: (value) => semester = _nullIfBlank(value),
                   ),
                   CommonFormWidgets.dropdownField(
-                    label: 'Status',
+                    label: context.l10n.status,
                     items: const ['active', 'inactive'],
                     value: status,
                     onChanged: (value) {
@@ -459,7 +460,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
     return [
       TextButton(
         onPressed: _isSaving ? null : () => Navigator.pop(context),
-        child: const Text('Cancel'),
+        child: Text(context.l10n.buttonCancel),
       ),
       ElevatedButton(
         onPressed: _isSaving ? null : submit,
@@ -469,7 +470,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                 height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : const Text('Save'),
+            : Text(context.l10n.buttonSave),
       ),
     ];
   }
@@ -513,7 +514,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               CommonFormWidgets.textField(
-                label: 'Subject Name',
+                label: context.l10n.subject,
                 value: name,
                 onSaved: (value) => name = value?.trim() ?? '',
                 validator: (value) {
@@ -525,7 +526,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
-                label: 'Description',
+                label: context.l10n.description,
                 value: description,
                 onSaved: (value) => description = _nullIfBlank(value),
                 maxLines: 3,
@@ -534,7 +535,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.dropdownField(
-                label: 'Status',
+                label: context.l10n.status,
                 items: const ['active', 'inactive'],
                 value: status,
                 onChanged: (value) {
@@ -550,7 +551,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         ElevatedButton(
           onPressed: _isSaving ? null : _submit,
@@ -560,7 +561,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );
@@ -648,7 +649,7 @@ class _UnitFormDialogState extends State<UnitFormDialog> {
               children: [
                 _twoColumnFormRow(
                   CommonFormWidgets.dropdownFieldTyped<Subject>(
-                    label: 'Subject',
+                    label: context.l10n.subject,
                     items: widget.subjects,
                     labelBuilder: (subject) => subject.name,
                     valueBuilder: (subject) => subject.id,
@@ -656,14 +657,14 @@ class _UnitFormDialogState extends State<UnitFormDialog> {
                     onSaved: (value) => subjectId = value?.id ?? '',
                   ),
                   CommonFormWidgets.integerField(
-                    label: 'Sequence No',
+                    label: context.l10n.sequence,
                     value: sequenceNo,
                     onSaved: (value) => sequenceNo = value,
                   ),
                 ),
                 const SizedBox(height: 14),
                 CommonFormWidgets.textField(
-                  label: 'Unit Name',
+                  label: context.l10n.unit,
                   value: name,
                   onSaved: (value) => name = value?.trim() ?? '',
                   validator: (value) {
@@ -675,7 +676,7 @@ class _UnitFormDialogState extends State<UnitFormDialog> {
                 ),
                 const SizedBox(height: 14),
                 CommonFormWidgets.textField(
-                  label: 'Description',
+                  label: context.l10n.description,
                   value: description,
                   onSaved: (value) => description = _nullIfBlank(value),
                   maxLines: 3,
@@ -690,7 +691,7 @@ class _UnitFormDialogState extends State<UnitFormDialog> {
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         ElevatedButton(
           onPressed: _isSaving ? null : _submit,
@@ -700,7 +701,7 @@ class _UnitFormDialogState extends State<UnitFormDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );
@@ -789,7 +790,7 @@ class _CompetencyFormDialogState extends State<CompetencyFormDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 CommonFormWidgets.dropdownFieldTyped<Unit>(
-                  label: 'Unit',
+                  label: context.l10n.unit,
                   items: widget.units,
                   labelBuilder: (unit) => unit.name,
                   valueBuilder: (unit) => unit.id,
@@ -799,14 +800,14 @@ class _CompetencyFormDialogState extends State<CompetencyFormDialog> {
                 const SizedBox(height: 14),
                 _twoColumnFormRow(
                   CommonFormWidgets.textField(
-                    label: 'Code',
+                    label: context.l10n.code,
                     value: code,
                     onSaved: (value) => code = _nullIfBlank(value),
                     validator: (_) => null,
                     isRequired: false,
                   ),
                   CommonFormWidgets.dropdownField(
-                    label: 'Level',
+                    label: context.l10n.level,
                     items: _competencyLevelOptions,
                     value: level,
                     isRequired: false,
@@ -816,7 +817,7 @@ class _CompetencyFormDialogState extends State<CompetencyFormDialog> {
                 ),
                 const SizedBox(height: 14),
                 CommonFormWidgets.textField(
-                  label: 'Description',
+                  label: context.l10n.description,
                   value: description,
                   maxLines: 4,
                   onSaved: (value) => description = value?.trim() ?? '',
@@ -835,7 +836,7 @@ class _CompetencyFormDialogState extends State<CompetencyFormDialog> {
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         ElevatedButton(
           onPressed: _isSaving ? null : _submit,
@@ -845,7 +846,7 @@ class _CompetencyFormDialogState extends State<CompetencyFormDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );

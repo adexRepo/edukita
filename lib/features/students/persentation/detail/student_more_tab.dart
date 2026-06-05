@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/utils/text_case.dart';
 import 'package:edukita/features/students/data/student_advanced_form_data.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
@@ -36,25 +37,26 @@ class _AssistanceHistoryTable extends StatelessWidget {
     return FutureBuilder<StudentDetailInsights>(
       future: context.read<StudentDetailCubit>().loadDetailInsights(studentId),
       builder: (context, snapshot) {
-        final history = snapshot.data?.assistanceHistory ??
+        final history =
+            snapshot.data?.assistanceHistory ??
             const <StudentAssistanceHistoryInsight>[];
 
         return DetailSectionCard(
-          title: 'Assistance History',
+          title: context.l10n.assistanceHistory,
           icon: Icons.volunteer_activism_outlined,
           wrapChildren: false,
           children: [
             if (snapshot.connectionState == ConnectionState.waiting)
-              const DetailEmptySectionText('Loading assistance history...')
+              DetailEmptySectionText(context.l10n.loadingAssistanceHistory)
             else
               DetailDataTable(
-                columns: const [
-                  'Program',
-                  'Period',
-                  'Rule',
-                  'Benefit',
-                  'Status',
-                  'Approved At',
+                columns: [
+                  context.l10n.program,
+                  context.l10n.period,
+                  context.l10n.rule,
+                  context.l10n.benefit,
+                  context.l10n.status,
+                  context.l10n.approvedAt,
                 ],
                 rows: history
                     .map(
@@ -68,8 +70,7 @@ class _AssistanceHistoryTable extends StatelessWidget {
                       ],
                     )
                     .toList(),
-                emptyText:
-                    'No assistance recipient history is available.',
+                emptyText: context.l10n.noAssistanceHistory,
               ),
           ],
         );
@@ -98,17 +99,17 @@ class _GoalsTable extends StatelessWidget {
         ];
 
         return DetailSectionCard(
-          title: 'Goals',
+          title: context.l10n.goals,
           icon: Icons.flag_outlined,
           wrapChildren: false,
           children: [
             if (snapshot.connectionState == ConnectionState.waiting)
-              const DetailEmptySectionText('Loading goals...')
+              DetailEmptySectionText(context.l10n.loadingGoals)
             else
               DetailDataTable(
-                columns: const ['Category', 'Goal'],
+                columns: [context.l10n.category, context.l10n.goal],
                 rows: rows,
-                emptyText: 'No hobby or cita-cita has been added yet.',
+                emptyText: context.l10n.noGoals,
               ),
           ],
         );

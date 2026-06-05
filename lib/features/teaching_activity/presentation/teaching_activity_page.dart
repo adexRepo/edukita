@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/schools/data/school_level_option.dart';
@@ -84,15 +85,15 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
   }) {
     final teacherId = _authScope.isTeacher ? _authScope.teacherId : null;
     return context.read<TeachingActivityCubit>().loadActivities(
-          date: date,
-          teacherId: teacherId,
-          clearTeacherId: !_authScope.isTeacher,
-          classLevel: classLevel,
-          status: status,
-          clearClassLevel: clearClassLevel,
-          clearStatus: clearStatus,
-          forceRefresh: forceRefresh,
-        );
+      date: date,
+      teacherId: teacherId,
+      clearTeacherId: !_authScope.isTeacher,
+      classLevel: classLevel,
+      status: status,
+      clearClassLevel: clearClassLevel,
+      clearStatus: clearStatus,
+      forceRefresh: forceRefresh,
+    );
   }
 
   bool get _canManageReports =>
@@ -106,8 +107,8 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
     }
 
     if (!_canView) {
-      return const AccessDeniedPanel(
-        message: 'You do not have permission to view teaching activities.',
+      return AccessDeniedPanel(
+        message: context.l10n.teachingActivityAccessDenied,
       );
     }
 
@@ -120,7 +121,7 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
         if (state.error != null) {
           showErrorToastWithDetails(
             context,
-            title: 'Teaching Activity Error',
+            title: context.l10n.teachingActivityError,
             error: state.error!,
             message: _cleanError(state.error!),
           );
@@ -133,10 +134,9 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const AppPageHeader(
-              title: 'Teaching Activity',
-              subtitle:
-                  'Open scheduled classes, record attendance, notes, and teaching results.',
+            AppPageHeader(
+              title: context.l10n.teachingActivityTitle,
+              subtitle: context.l10n.teachingActivitySubtitle,
             ),
             BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
               builder: (context, state) =>
@@ -225,10 +225,10 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
       _cacheRevision = currentRevision;
       try {
         await context.read<TeachingActivityCubit>().loadActivities(
-              teacherId: _authScope.isTeacher ? _authScope.teacherId : null,
-              clearTeacherId: !_authScope.isTeacher,
-              forceRefresh: true,
-            );
+          teacherId: _authScope.isTeacher ? _authScope.teacherId : null,
+          clearTeacherId: !_authScope.isTeacher,
+          forceRefresh: true,
+        );
       } finally {
         _refreshScheduled = false;
       }
@@ -262,11 +262,13 @@ class _TeachingActivityFilters extends StatelessWidget {
                         key: ValueKey('teacher-${state.teacherId ?? ''}'),
                         initialValue: state.teacherId ?? '',
                         isExpanded: true,
-                        decoration: const InputDecoration(labelText: 'Teacher'),
+                        decoration: InputDecoration(
+                          labelText: context.l10n.teacher,
+                        ),
                         items: [
-                          const DropdownMenuItem<String>(
+                          DropdownMenuItem<String>(
                             value: '',
-                            child: Text('All teachers'),
+                            child: Text(context.l10n.allTeachers),
                           ),
                           ...teacherState.teachers.map(
                             (teacher) => DropdownMenuItem(
@@ -277,9 +279,9 @@ class _TeachingActivityFilters extends StatelessWidget {
                         ],
                         onChanged: (value) {
                           context.read<TeachingActivityCubit>().loadActivities(
-                                teacherId: value,
-                                clearTeacherId: value == null || value.isEmpty,
-                              );
+                            teacherId: value,
+                            clearTeacherId: value == null || value.isEmpty,
+                          );
                         },
                       );
                     },
@@ -292,11 +294,13 @@ class _TeachingActivityFilters extends StatelessWidget {
                   key: ValueKey('level-${state.classLevel ?? ''}'),
                   initialValue: state.classLevel?.toString() ?? '',
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Level'),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.dashboardLevel,
+                  ),
                   items: [
-                    const DropdownMenuItem<String>(
+                    DropdownMenuItem<String>(
                       value: '',
-                      child: Text('All levels'),
+                      child: Text(context.l10n.allLevels),
                     ),
                     ...SchoolLevelOption.values.map(
                       (level) => DropdownMenuItem(
@@ -307,13 +311,14 @@ class _TeachingActivityFilters extends StatelessWidget {
                   ],
                   onChanged: (value) {
                     context.read<TeachingActivityCubit>().loadActivities(
-                          teacherId:
-                              authScope.isTeacher ? authScope.teacherId : null,
-                          clearTeacherId: !authScope.isTeacher,
-                          classLevel: int.tryParse(value ?? ''),
-                          clearClassId: true,
-                          clearClassLevel: value == null || value.isEmpty,
-                        );
+                      teacherId: authScope.isTeacher
+                          ? authScope.teacherId
+                          : null,
+                      clearTeacherId: !authScope.isTeacher,
+                      classLevel: int.tryParse(value ?? ''),
+                      clearClassId: true,
+                      clearClassLevel: value == null || value.isEmpty,
+                    );
                   },
                 ),
               ),
@@ -324,27 +329,28 @@ class _TeachingActivityFilters extends StatelessWidget {
                   key: ValueKey('status-${state.status ?? ''}'),
                   initialValue: state.status ?? '',
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Status'),
+                  decoration: InputDecoration(labelText: context.l10n.status),
                   items: [
-                    const DropdownMenuItem<String>(
+                    DropdownMenuItem<String>(
                       value: '',
-                      child: Text('All status'),
+                      child: Text(context.l10n.allStatus),
                     ),
                     ...TeachingActivityStatus.values.map(
                       (status) => DropdownMenuItem(
                         value: status,
-                        child: Text(_label(status)),
+                        child: Text(_teachingStatusLabel(context, status)),
                       ),
                     ),
                   ],
                   onChanged: (value) {
                     context.read<TeachingActivityCubit>().loadActivities(
-                          teacherId:
-                              authScope.isTeacher ? authScope.teacherId : null,
-                          clearTeacherId: !authScope.isTeacher,
-                          status: value,
-                          clearStatus: value == null || value.isEmpty,
-                        );
+                      teacherId: authScope.isTeacher
+                          ? authScope.teacherId
+                          : null,
+                      clearTeacherId: !authScope.isTeacher,
+                      status: value,
+                      clearStatus: value == null || value.isEmpty,
+                    );
                   },
                 ),
               ),
@@ -354,7 +360,6 @@ class _TeachingActivityFilters extends StatelessWidget {
       },
     );
   }
-
 }
 
 class _TeachingActivityTablePanel extends StatelessWidget {
@@ -377,7 +382,7 @@ class _TeachingActivityTablePanel extends StatelessWidget {
             builder: (context, state) {
               return AppTable<TeachingActivityListItem>(
                 data: state.activities,
-                emptyMessage: 'No teaching sessions for this filter.',
+                emptyMessage: context.l10n.noTeachingSessionsFilter,
                 onRowTap: (item) async {
                   if (item.activityId != null) {
                     context.go('/teaching-activities/${item.activityId}');
@@ -387,38 +392,38 @@ class _TeachingActivityTablePanel extends StatelessWidget {
                   if (!canManageReports ||
                       !authScope.ownsTeacherData(item.teacherId)) {
                     AppToast.showFailed(
-                      'You do not have permission to start this class.',
+                      context.l10n.teachingActivityAccessDenied,
                     );
                     return;
                   }
 
                   try {
                     await context.read<TeachingActivityCubit>().startClass(
-                          item.scheduleId,
-                        );
+                      item.scheduleId,
+                    );
                   } catch (_) {
                     // The cubit emits the error and the page listener shows it.
                   }
                 },
                 columns: [
                   AppTableColumn(
-                    title: 'Time',
+                    title: context.l10n.time,
                     minWidth: 116,
                     cell: (item) => _CellText(item.displayTime),
                   ),
                   AppTableColumn(
-                    title: 'Level',
+                    title: context.l10n.dashboardLevel,
                     minWidth: 120,
                     cell: (item) => _CellText(item.className ?? '-'),
                   ),
                   AppTableColumn(
-                    title: 'Subject',
+                    title: context.l10n.subject,
                     flex: 2,
                     minWidth: 150,
                     cell: (item) => _CellText(item.subjectName ?? '-'),
                   ),
                   AppTableColumn(
-                    title: 'Unit / Material',
+                    title: context.l10n.unitMaterial,
                     flex: 2,
                     minWidth: 190,
                     cell: (item) => _CellText(
@@ -427,18 +432,18 @@ class _TeachingActivityTablePanel extends StatelessWidget {
                     ),
                   ),
                   AppTableColumn(
-                    title: 'Teacher',
+                    title: context.l10n.teacher,
                     flex: 2,
                     minWidth: 160,
                     cell: (item) => _CellText(item.teacherName ?? '-'),
                   ),
                   AppTableColumn(
-                    title: 'Status',
+                    title: context.l10n.status,
                     minWidth: 120,
                     cell: (item) => _StatusBadge(status: item.status),
                   ),
                   AppTableColumn(
-                    title: 'Action',
+                    title: context.l10n.action,
                     flex: 2,
                     minWidth: 230,
                     cell: (item) => _ActionButtons(
@@ -499,7 +504,7 @@ class _TeachingActivityDatePanel extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.all(14),
-            child: _buildCalendar(),
+            child: _buildCalendar(context),
           ),
           const Divider(height: 1),
           Padding(
@@ -509,10 +514,10 @@ class _TeachingActivityDatePanel extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Selected Date',
-                        style: TextStyle(
+                        context.l10n.selectedDate,
+                        style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
                         ),
@@ -530,22 +535,22 @@ class _TeachingActivityDatePanel extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 _DateSummaryRow(
-                  label: 'Sessions',
+                  label: context.l10n.sessions,
                   value: '${activities.length}',
                   color: AppColors.primaryDark,
                 ),
                 _DateSummaryRow(
-                  label: 'Scheduled',
+                  label: context.l10n.scheduled,
                   value: '$scheduled',
                   color: AppColors.warning,
                 ),
                 _DateSummaryRow(
-                  label: 'In progress',
+                  label: context.l10n.inProgress,
                   value: '$inProgress',
                   color: AppColors.accentBlue,
                 ),
                 _DateSummaryRow(
-                  label: 'Completed',
+                  label: context.l10n.statusCompleted,
                   value: '$completed',
                   color: AppColors.success,
                 ),
@@ -557,7 +562,7 @@ class _TeachingActivityDatePanel extends StatelessWidget {
     );
   }
 
-  Widget _buildCalendar() {
+  Widget _buildCalendar(BuildContext context) {
     final days = _calendarDays(focusedMonth);
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -575,12 +580,12 @@ class _TeachingActivityDatePanel extends StatelessWidget {
               ),
             ),
             IconButton(
-              tooltip: 'Previous month',
+              tooltip: context.l10n.previousMonth,
               onPressed: onPreviousMonth,
               icon: const Icon(Icons.chevron_left),
             ),
             IconButton(
-              tooltip: 'Next month',
+              tooltip: context.l10n.nextMonth,
               onPressed: onNextMonth,
               icon: const Icon(Icons.chevron_right),
             ),
@@ -635,8 +640,8 @@ class _TeachingActivityDatePanel extends StatelessWidget {
                         color: selected
                             ? AppColors.primary
                             : today
-                                ? AppColors.primaryLight.withValues(alpha: 0.16)
-                                : AppColors.transparent,
+                            ? AppColors.primaryLight.withValues(alpha: 0.16)
+                            : AppColors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: today && !selected
@@ -662,9 +667,7 @@ class _TeachingActivityDatePanel extends StatelessWidget {
                           const SizedBox(height: 3),
                           if (hasSession)
                             _calendarDot(
-                              selected
-                                  ? AppColors.white
-                                  : AppColors.accentBlue,
+                              selected ? AppColors.white : AppColors.accentBlue,
                             )
                           else
                             const SizedBox(height: 5),
@@ -752,19 +755,20 @@ class _ActionButtons extends StatelessWidget {
   Widget build(BuildContext context) {
     final cubit = context.read<TeachingActivityCubit>();
     final buttons = <Widget>[];
-    final canAct = canManageReports && authScope.ownsTeacherData(item.teacherId);
+    final canAct =
+        canManageReports && authScope.ownsTeacherData(item.teacherId);
 
     if (item.status == TeachingActivityStatus.scheduled) {
       buttons.add(
         FilledButton(
           onPressed: canAct ? () => cubit.startClass(item.scheduleId) : null,
-          child: const Text('Start Class'),
+          child: Text(context.l10n.startClass),
         ),
       );
       buttons.add(
         TextButton(
           onPressed: canAct ? () => _showCancelDialog(context, item) : null,
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
       );
     } else if (item.status == TeachingActivityStatus.inProgress) {
@@ -773,7 +777,7 @@ class _ActionButtons extends StatelessWidget {
           onPressed: item.activityId == null
               ? null
               : () => context.go('/teaching-activities/${item.activityId}'),
-          child: const Text('Continue'),
+          child: Text(context.l10n.buttonContinue),
         ),
       );
       buttons.add(
@@ -781,7 +785,7 @@ class _ActionButtons extends StatelessWidget {
           onPressed: item.activityId == null || !canAct
               ? null
               : () => cubit.completeActivity(item.activityId!),
-          child: const Text('Complete'),
+          child: Text(context.l10n.complete),
         ),
       );
     } else {
@@ -790,7 +794,7 @@ class _ActionButtons extends StatelessWidget {
           onPressed: item.activityId == null
               ? null
               : () => context.go('/teaching-activities/${item.activityId}'),
-          child: const Text('View Detail'),
+          child: Text(context.l10n.viewDetail),
         ),
       );
     }
@@ -802,22 +806,25 @@ class _ActionButtons extends StatelessWidget {
     BuildContext context,
     TeachingActivityListItem item,
   ) async {
+    final cubit = context.read<TeachingActivityCubit>();
+    final successMessage = context.l10n.teachingSessionCancelled;
     final result = await showGuardedDialog<_CancelSessionResult>(
       context: context,
-      guardKey: 'cancel_teaching_session_${item.scheduleId}_${item.activityId ?? ''}',
+      guardKey:
+          'cancel_teaching_session_${item.scheduleId}_${item.activityId ?? ''}',
       builder: (_) => const _CancelSessionDialog(),
     );
     if (result == null || !context.mounted) return;
 
     try {
-      await context.read<TeachingActivityCubit>().cancelClass(
-            scheduleId: item.scheduleId,
-            activityId: item.activityId,
-            reason: result.reason,
-            notes: result.notes,
-            replacementRequired: result.replacementRequired,
-          );
-      AppToast.showSuccess('Teaching session cancelled.');
+      await cubit.cancelClass(
+        scheduleId: item.scheduleId,
+        activityId: item.activityId,
+        reason: result.reason,
+        notes: result.notes,
+        replacementRequired: result.replacementRequired,
+      );
+      AppToast.showSuccess(successMessage);
     } catch (_) {
       // Cubit listener displays the error.
     }
@@ -845,7 +852,7 @@ class _CancelSessionDialogState extends State<_CancelSessionDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const AppDialogTitle('Cancel Session'),
+      title: AppDialogTitle(context.l10n.cancelSession),
       content: SizedBox(
         width: 420,
         child: Column(
@@ -854,12 +861,12 @@ class _CancelSessionDialogState extends State<_CancelSessionDialog> {
             AppDropdownButtonFormField<String>(
               initialValue: _reason,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Reason'),
+              decoration: InputDecoration(labelText: context.l10n.reason),
               items: CancellationReason.values
                   .map(
                     (reason) => DropdownMenuItem(
                       value: reason,
-                      child: Text(_label(reason)),
+                      child: Text(_cancellationReasonLabel(context, reason)),
                     ),
                   )
                   .toList(),
@@ -871,13 +878,14 @@ class _CancelSessionDialogState extends State<_CancelSessionDialog> {
             TextField(
               controller: _notesController,
               maxLines: 3,
-              decoration: const InputDecoration(labelText: 'Notes'),
+              decoration: InputDecoration(labelText: context.l10n.notes),
             ),
             const SizedBox(height: 8),
             SwitchListTile(
               value: _replacementRequired,
-              onChanged: (value) => setState(() => _replacementRequired = value),
-              title: const Text('Replacement needed'),
+              onChanged: (value) =>
+                  setState(() => _replacementRequired = value),
+              title: Text(context.l10n.replacementNeeded),
               contentPadding: EdgeInsets.zero,
             ),
           ],
@@ -886,7 +894,7 @@ class _CancelSessionDialogState extends State<_CancelSessionDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          child: Text(context.l10n.buttonClose),
         ),
         FilledButton(
           onPressed: () {
@@ -898,7 +906,7 @@ class _CancelSessionDialogState extends State<_CancelSessionDialog> {
               ),
             );
           },
-          child: const Text('Mark Cancelled'),
+          child: Text(context.l10n.markCancelled),
         ),
       ],
     );
@@ -939,7 +947,7 @@ class _StatusBadge extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.28)),
       ),
       child: Text(
-        _label(status),
+        _teachingStatusLabel(context, status),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
@@ -972,10 +980,36 @@ class _CellText extends StatelessWidget {
 String _label(String value) {
   return value
       .split('_')
-      .map((part) => part.isEmpty
-          ? part
-          : '${part[0].toUpperCase()}${part.substring(1)}')
+      .map(
+        (part) => part.isEmpty
+            ? part
+            : '${part[0].toUpperCase()}${part.substring(1)}',
+      )
       .join(' ');
+}
+
+String _teachingStatusLabel(BuildContext context, String status) {
+  return switch (status) {
+    TeachingActivityStatus.scheduled => context.l10n.statusScheduled,
+    TeachingActivityStatus.inProgress => context.l10n.statusInProgress,
+    TeachingActivityStatus.completed => context.l10n.statusCompleted,
+    TeachingActivityStatus.cancelled => context.l10n.statusCancelled,
+    _ => _label(status),
+  };
+}
+
+String _cancellationReasonLabel(BuildContext context, String reason) {
+  return switch (reason) {
+    'teacher_unavailable' => context.l10n.teacherUnavailable,
+    'student_group_unavailable' => context.l10n.studentGroupUnavailable,
+    'public_holiday' => context.l10n.publicHoliday,
+    'room_unavailable' => context.l10n.roomUnavailable,
+    'weather_or_emergency' => context.l10n.weatherOrEmergency,
+    'schedule_mistake' => context.l10n.scheduleMistake,
+    'administrative_reason' => context.l10n.administrativeReason,
+    'other' => context.l10n.other,
+    _ => _label(reason),
+  };
 }
 
 List<DateTime?> _calendarDays(DateTime month) {

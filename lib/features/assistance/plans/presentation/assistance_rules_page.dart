@@ -4,12 +4,14 @@ import 'dart:io' as io;
 import 'dart:typed_data';
 
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/utils/generated_file_name.dart';
 import 'package:edukita/features/assistance/plans/data/assistance_plan_models.dart';
 import 'package:edukita/features/assistance/plans/domain/assistance_plan_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_error_dialog.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
@@ -77,7 +79,9 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
       builder: (context, state) {
         if (widget.embedded) {
           if (state.error != null) {
-            return Center(child: Text('Error: ${state.error}'));
+            return Center(
+              child: Text(context.l10n.errorWithDetails(state.error!)),
+            );
           }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -92,7 +96,7 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
                     ? FilledButton.icon(
                         onPressed: () => _showRuleDialog(context),
                         icon: const Icon(Icons.add),
-                        label: const Text('Add Custom Rule'),
+                        label: Text(context.l10n.addCustomRule),
                       )
                     : null,
               ),
@@ -106,7 +110,9 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
           children: [
             Expanded(
               child: state.error != null
-                  ? Center(child: Text('Error: ${state.error}'))
+                  ? Center(
+                      child: Text(context.l10n.errorWithDetails(state.error!)),
+                    )
                   : Row(
                       children: [
                         _AssistanceNavigator(
@@ -320,7 +326,7 @@ class _AssistanceNavigator extends StatelessWidget {
               padding: _compact
                   ? const EdgeInsets.symmetric(horizontal: 6, vertical: 10)
                   : const EdgeInsets.all(10),
-              child: _compact ? _buildCompact() : _buildExpanded(context),
+              child: _compact ? _buildCompact(context) : _buildExpanded(context),
             ),
           ),
           MouseRegion(
@@ -349,11 +355,11 @@ class _AssistanceNavigator extends StatelessWidget {
     );
   }
 
-  Widget _buildCompact() {
+  Widget _buildCompact(BuildContext context) {
     return Column(
       children: [
         Tooltip(
-          message: 'Expand assistance menu',
+          message: context.l10n.expandAssistanceMenu,
           child: InkWell(
             borderRadius: BorderRadius.circular(8),
             onTap: onToggleWidth,
@@ -426,7 +432,7 @@ class _AssistanceNavigator extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip: 'Minimize assistance menu',
+                tooltip: context.l10n.minimizeAssistanceMenu,
                 onPressed: onToggleWidth,
                 constraints: const BoxConstraints.tightFor(
                   width: 30,
@@ -443,7 +449,7 @@ class _AssistanceNavigator extends StatelessWidget {
           child: ListView(
             children: [
               _AssistanceNavSection(
-                title: 'Setup',
+                title: context.l10n.setup,
                 icon: Icons.tune,
                 expanded: setupOpen,
                 onToggle: onToggleSetup,
@@ -455,7 +461,7 @@ class _AssistanceNavigator extends StatelessWidget {
                 onSelect: onSelect,
               ),
               _AssistanceNavSection(
-                title: 'Workflow',
+                title: context.l10n.workflow,
                 icon: Icons.playlist_add_check,
                 expanded: workflowOpen,
                 onToggle: onToggleWorkflow,
@@ -468,7 +474,7 @@ class _AssistanceNavigator extends StatelessWidget {
                 onSelect: onSelect,
               ),
               _AssistanceNavSection(
-                title: 'History',
+                title: context.l10n.history,
                 icon: Icons.history,
                 expanded: historyOpen,
                 onToggle: onToggleHistory,
@@ -623,7 +629,7 @@ class _AssistanceContentHeader extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           IconButton(
-            tooltip: 'Refresh',
+            tooltip: context.l10n.refresh,
             onPressed: onRefresh,
             icon: const Icon(Icons.refresh),
           ),
@@ -694,18 +700,18 @@ class _PeriodsTab extends StatelessWidget {
       context: context,
       guardKey: 'delete_assistance_period_${period.id}',
       builder: (dialogContext) => AlertDialog(
-        title: const AppDialogTitle('Delete Period'),
+        title: AppDialogTitle(context.l10n.deletePeriod),
         content: Text(
           'Delete ${period.label}? Draft target data is removed.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: Text(context.l10n.delete),
           ),
         ],
       ),
@@ -732,14 +738,14 @@ class _PeriodsTab extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: () => _showPeriodDialog(context),
             icon: const Icon(Icons.add),
-            label: const Text('Add Period'),
+            label: Text(context.l10n.addPeriod),
           ),
         ),
         const SizedBox(height: 12),
         Expanded(
           child: AppTable<AssistancePeriod>(
             data: state.periods,
-            emptyMessage: 'No assistance periods yet',
+            emptyMessage: context.l10n.noAssistancePeriods,
             pageable: Pageable(
               page: 0,
               size: state.periods.length,
@@ -750,7 +756,7 @@ class _PeriodsTab extends StatelessWidget {
                 context.read<AssistancePlanCubit>().selectPeriod(period.id),
             columns: [
               AppTableColumn(
-                title: 'Period',
+                title: context.l10n.period,
                 flex: 3,
                 sortValue: (period) =>
                     period.periodYear * 100 + period.periodMonth,
@@ -764,7 +770,7 @@ class _PeriodsTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Target',
+                title: context.l10n.target,
                 sortValue: (period) => period.targetQuota,
                 cell: (period) => Text(
                   '${period.targetQuota}',
@@ -772,7 +778,7 @@ class _PeriodsTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Fixed',
+                title: context.l10n.fixed,
                 sortValue: (period) => period.fixedQuota,
                 cell: (period) => Text(
                   '${period.fixedQuota}',
@@ -780,7 +786,7 @@ class _PeriodsTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Rolling',
+                title: context.l10n.rolling,
                 sortValue: (period) => period.rollingQuota,
                 cell: (period) => Text(
                   '${period.rollingQuota}',
@@ -788,7 +794,7 @@ class _PeriodsTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Min Att.',
+                title: context.l10n.minimumAttendance,
                 sortValue: (period) =>
                     period.minimumAttendancePercentage.round(),
                 cell: (period) => Text(
@@ -797,7 +803,7 @@ class _PeriodsTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Window',
+                title: context.l10n.window,
                 sortValue: (period) => period.calculationWindowMonths,
                 cell: (period) => Text(
                   '${period.calculationWindowMonths} mo',
@@ -805,13 +811,13 @@ class _PeriodsTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Status',
+                title: context.l10n.status,
                 flex: 2,
                 sortValue: (period) => period.status.index,
                 cell: (period) => _StatusChip(label: period.status.label),
               ),
               AppTableColumn(
-                title: 'Targeted',
+                title: context.l10n.targeted,
                 flex: 2,
                 cell: (period) => Text(
                   _shortDateTime(period.targetedAt),
@@ -820,15 +826,14 @@ class _PeriodsTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Actions',
+                title: context.l10n.actions,
                 flex: 2,
                 cell: (period) => Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      tooltip: 'Edit period',
-                      onPressed:
-                          period.status == AssistancePeriodStatus.approved
+                      tooltip: context.l10n.editPeriod,
+                      onPressed: _periodLocksAssistancePlan(period.status)
                           ? null
                           : () => _showPeriodDialog(context, period: period),
                       constraints: const BoxConstraints.tightFor(
@@ -839,9 +844,8 @@ class _PeriodsTab extends StatelessWidget {
                       icon: const Icon(Icons.edit, size: 16),
                     ),
                     IconButton(
-                      tooltip: 'Delete period',
-                      onPressed:
-                          period.status == AssistancePeriodStatus.approved
+                      tooltip: context.l10n.deletePeriod,
+                      onPressed: _periodLocksAssistancePlan(period.status)
                           ? null
                           : () => _deletePeriod(context, period),
                       constraints: const BoxConstraints.tightFor(
@@ -896,7 +900,7 @@ class _AssistanceRulesTab extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: () => _showRuleDialog(context),
               icon: const Icon(Icons.add),
-              label: const Text('Add Custom Rule'),
+              label: Text(context.l10n.addCustomRule),
             ),
           ),
           const SizedBox(height: 12),
@@ -904,7 +908,7 @@ class _AssistanceRulesTab extends StatelessWidget {
         Expanded(
           child: AppTable<AssistanceRule>(
             data: state.assistanceRules,
-            emptyMessage: 'No assistance rules yet',
+            emptyMessage: context.l10n.noAssistanceRules,
             pageable: Pageable(
               page: 0,
               size: state.assistanceRules.length,
@@ -913,7 +917,7 @@ class _AssistanceRulesTab extends StatelessWidget {
             ),
             columns: [
               AppTableColumn(
-                title: 'Rule Name',
+                title: context.l10n.ruleName,
                 flex: 3,
                 cell: (rule) => Text(
                   rule.displayName,
@@ -925,7 +929,7 @@ class _AssistanceRulesTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Rule Type',
+                title: context.l10n.ruleType,
                 flex: 2,
                 cell: (rule) => Text(
                   rule.ruleType.label,
@@ -934,14 +938,14 @@ class _AssistanceRulesTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Mode',
+                title: context.l10n.mode,
                 cell: (rule) => Text(
                   rule.selectionMode.label,
                   style: const TextStyle(fontSize: 12),
                 ),
               ),
               AppTableColumn(
-                title: 'Description',
+                title: context.l10n.description,
                 flex: 3,
                 cell: (rule) => Text(
                   rule.description ?? '-',
@@ -950,13 +954,13 @@ class _AssistanceRulesTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Default',
+                title: context.l10n.defaultLabel,
                 cell: (rule) => _StatusChip(
                   label: rule.isSystemDefault ? 'System' : 'Custom',
                 ),
               ),
               AppTableColumn(
-                title: 'Active',
+                title: context.l10n.active,
                 cell: (rule) => Switch(
                   value: rule.isActive,
                   onChanged: (value) => context
@@ -965,7 +969,7 @@ class _AssistanceRulesTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Actions',
+                title: context.l10n.actions,
                 cell: (rule) => IconButton(
                   tooltip: rule.isSystemDefault
                       ? 'System rules can only be activated/deactivated'
@@ -1018,16 +1022,20 @@ class _FixedPriorityTab extends StatelessWidget {
       context: context,
       guardKey: 'delete_student_assistance_rule_${rule.id}',
       builder: (dialogContext) => AlertDialog(
-        title: const AppDialogTitle('Delete Student Rule'),
-        content: Text('Delete rule for ${rule.studentName ?? 'this student'}?'),
+        title: AppDialogTitle(context.l10n.deleteStudentRule),
+        content: Text(
+          context.l10n.deleteRuleForStudent(
+            rule.studentName ?? context.l10n.thisStudent,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: Text(context.l10n.delete),
           ),
         ],
       ),
@@ -1055,14 +1063,14 @@ class _FixedPriorityTab extends StatelessWidget {
                 ? null
                 : () => _showRuleDialog(context),
             icon: const Icon(Icons.add),
-            label: const Text('Add Rule'),
+            label: Text(context.l10n.addRule),
           ),
         ),
         const SizedBox(height: 12),
         Expanded(
           child: AppTable<StudentAssistanceRule>(
             data: state.rules,
-            emptyMessage: 'No student assistance rules yet',
+            emptyMessage: context.l10n.noStudentAssistanceRules,
             pageable: Pageable(
               page: 0,
               size: state.rules.length,
@@ -1071,7 +1079,7 @@ class _FixedPriorityTab extends StatelessWidget {
             ),
             columns: [
               AppTableColumn(
-                title: 'Student',
+                title: context.l10n.student,
                 flex: 3,
                 sortValue: (rule) => (rule.studentName ?? '').isEmpty
                     ? 0
@@ -1086,7 +1094,7 @@ class _FixedPriorityTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Type',
+                title: context.l10n.type,
                 flex: 2,
                 sortValue: (rule) => rule.ruleType.index,
                 cell: (rule) => Text(
@@ -1096,7 +1104,7 @@ class _FixedPriorityTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Reason',
+                title: context.l10n.reason,
                 flex: 4,
                 cell: (rule) => Text(
                   rule.reason,
@@ -1105,7 +1113,7 @@ class _FixedPriorityTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Start',
+                title: context.l10n.start,
                 flex: 2,
                 cell: (rule) => Text(
                   rule.startDate,
@@ -1114,7 +1122,7 @@ class _FixedPriorityTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'End',
+                title: context.l10n.end,
                 flex: 2,
                 cell: (rule) => Text(
                   rule.endDate ?? '-',
@@ -1123,7 +1131,7 @@ class _FixedPriorityTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Active',
+                title: context.l10n.active,
                 cell: (rule) => Switch(
                   value: rule.isActive,
                   onChanged: (value) => context
@@ -1132,13 +1140,13 @@ class _FixedPriorityTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Actions',
+                title: context.l10n.actions,
                 flex: 2,
                 cell: (rule) => Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      tooltip: 'Edit rule',
+                      tooltip: context.l10n.edit,
                       onPressed: () => _showRuleDialog(context, rule: rule),
                       constraints: const BoxConstraints.tightFor(
                         width: 28,
@@ -1148,7 +1156,7 @@ class _FixedPriorityTab extends StatelessWidget {
                       icon: const Icon(Icons.edit, size: 16),
                     ),
                     IconButton(
-                      tooltip: 'Delete rule',
+                      tooltip: context.l10n.delete,
                       onPressed: () => _deleteRule(context, rule),
                       constraints: const BoxConstraints.tightFor(
                         width: 28,
@@ -1212,18 +1220,18 @@ class _GenerateTab extends StatelessWidget {
       context: context,
       guardKey: 'delete_assistance_period_rule_${rule.id}',
       builder: (dialogContext) => AlertDialog(
-        title: const AppDialogTitle('Delete Allocation Rule'),
+        title: AppDialogTitle(context.l10n.deleteAllocationRule),
         content: Text(
           'Delete ${rule.displayName}? Any selected target candidates for this allocation will be removed from this period.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: Text(context.l10n.delete),
           ),
         ],
       ),
@@ -1260,8 +1268,8 @@ class _GenerateTab extends StatelessWidget {
   Future<void> _generate(BuildContext context) async {
     final period = state.selectedPeriod;
     if (period == null) return;
-    if (period.status == AssistancePeriodStatus.approved) {
-      AppToast.showFailed('Approved periods cannot be targeted again.');
+    if (_periodLocksAssistancePlan(period.status)) {
+      AppToast.showFailed('This assistance period cannot be targeted again.');
       return;
     }
 
@@ -1272,18 +1280,18 @@ class _GenerateTab extends StatelessWidget {
             context: context,
             guardKey: 'regenerate_assistance_plan_${period.id}',
             builder: (dialogContext) => AlertDialog(
-              title: const AppDialogTitle('Regenerate Assistance Plan?'),
+              title: AppDialogTitle(context.l10n.regenerateAssistancePlan),
               content: const Text(
                 'Existing target candidates for this unapproved period will be replaced.',
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('Cancel'),
+                  child: Text(context.l10n.buttonCancel),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: const Text('Generate'),
+                  child: Text(context.l10n.generate),
                 ),
               ],
             ),
@@ -1319,28 +1327,28 @@ class _GenerateTab extends StatelessWidget {
                 runSpacing: 12,
                 children: [
                   _SummaryCard(
-                    label: 'Target quota',
+                    label: context.l10n.targetQuota,
                     value: '${state.summary.targetQuota}',
                   ),
                   _SummaryCard(
-                    label: 'Allocated quota',
+                    label: context.l10n.allocated,
                     value:
                         '${state.summary.allocatedQuota}/${state.summary.targetQuota}',
                   ),
                   _SummaryCard(
-                    label: 'Selected targets',
+                    label: context.l10n.selectedTargets,
                     value: '${state.summary.approvedCount}',
                   ),
                   _SummaryCard(
-                    label: 'Waitlist count',
+                    label: context.l10n.waitlistCount,
                     value: '${state.summary.waitlistCount}',
                   ),
                   _SummaryCard(
-                    label: 'Ineligible',
+                    label: context.l10n.ineligible,
                     value: '${state.summary.ineligibleCount}',
                   ),
                   _SummaryCard(
-                    label: 'Manual override',
+                    label: context.l10n.manualOverride,
                     value: '${state.summary.manualOverrideCount}',
                   ),
                 ],
@@ -1352,22 +1360,22 @@ class _GenerateTab extends StatelessWidget {
                 allocatedQuota: state.summary.allocatedQuota,
                 onAdd:
                     period == null ||
-                        period.status == AssistancePeriodStatus.approved
+                        _periodLocksAssistancePlan(period.status)
                     ? null
                     : () => _showPeriodRuleDialog(context),
                 onEdit:
                     period == null ||
-                        period.status == AssistancePeriodStatus.approved
+                        _periodLocksAssistancePlan(period.status)
                     ? null
                     : (rule) => _showPeriodRuleDialog(context, rule: rule),
                 onDelete:
                     period == null ||
-                        period.status == AssistancePeriodStatus.approved
+                        _periodLocksAssistancePlan(period.status)
                     ? null
                     : (rule) => _deletePeriodRule(context, rule),
                 onManageCandidates:
                     period == null ||
-                        period.status == AssistancePeriodStatus.approved
+                        _periodLocksAssistancePlan(period.status)
                     ? null
                     : (rule) => _showManualCandidateDialog(context, rule),
               ),
@@ -1379,20 +1387,20 @@ class _GenerateTab extends StatelessWidget {
                   FilledButton.icon(
                     onPressed:
                         period == null ||
-                            period.status == AssistancePeriodStatus.approved ||
+                            _periodLocksAssistancePlan(period.status) ||
                             !allocationAllowed
                         ? null
                         : () => _generate(context),
                     icon: const Icon(Icons.auto_awesome),
-                    label: const Text('Save Target Assistance'),
+                    label: Text(context.l10n.saveTargetAssistance),
                   ),
                 ],
               ),
               const SizedBox(height: 18),
               if (period == null)
-                const SizedBox(
+                SizedBox(
                   height: 160,
-                  child: Center(child: Text('Create a period first.')),
+                  child: Center(child: Text(context.l10n.createPeriodFirst)),
                 )
               else
                 _GenerateInfo(
@@ -1467,7 +1475,7 @@ class _RuleAllocationPanel extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onAdd,
                 icon: const Icon(Icons.add, size: 16),
-                label: const Text('Add Custom Rule'),
+                label: Text(context.l10n.addCustomRule),
               ),
             ],
           ),
@@ -1475,7 +1483,7 @@ class _RuleAllocationPanel extends StatelessWidget {
           Expanded(
             child: AppTable<AssistancePeriodRule>(
               data: rules,
-              emptyMessage: 'No rule allocation yet',
+              emptyMessage: context.l10n.noRuleAllocation,
               pageable: Pageable(
                 page: 0,
                 size: rules.length,
@@ -1491,7 +1499,7 @@ class _RuleAllocationPanel extends StatelessWidget {
                   ),
                 ),
                 AppTableColumn(
-                  title: 'Rule',
+                  title: context.l10n.rule,
                   flex: 3,
                   cell: (rule) => Text(
                     rule.displayName,
@@ -1503,7 +1511,7 @@ class _RuleAllocationPanel extends StatelessWidget {
                   ),
                 ),
                 AppTableColumn(
-                  title: 'Type',
+                  title: context.l10n.type,
                   flex: 2,
                   cell: (rule) => Text(
                     rule.ruleType.label,
@@ -1512,21 +1520,21 @@ class _RuleAllocationPanel extends StatelessWidget {
                   ),
                 ),
                 AppTableColumn(
-                  title: 'Mode',
+                  title: context.l10n.mode,
                   cell: (rule) => Text(
                     rule.selectionMode.label,
                     style: const TextStyle(fontSize: 12),
                   ),
                 ),
                 AppTableColumn(
-                  title: 'Quota',
+                  title: context.l10n.quota,
                   cell: (rule) => Text(
                     '${rule.quota}',
                     style: const TextStyle(fontSize: 12),
                   ),
                 ),
                 AppTableColumn(
-                  title: 'Actions',
+                  title: context.l10n.actions,
                   flex: 2,
                   cell: (rule) {
                     final protected = rule.ruleType.isCorePeriodRule;
@@ -1534,7 +1542,7 @@ class _RuleAllocationPanel extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          tooltip: 'Select students',
+                          tooltip: context.l10n.selectStudents,
                           onPressed:
                               onManageCandidates == null ||
                                   rule.selectionMode !=
@@ -1549,7 +1557,8 @@ class _RuleAllocationPanel extends StatelessWidget {
                           icon: const Icon(Icons.person_add_alt, size: 16),
                         ),
                         IconButton(
-                          tooltip: 'Edit allocation',
+                          tooltip:
+                              '${context.l10n.edit} ${context.l10n.allocation}',
                           onPressed: onEdit == null
                               ? null
                               : () => onEdit!(rule),
@@ -1678,12 +1687,12 @@ class _AssessmentTab extends StatelessWidget {
               child: AppDropdownButtonFormField<AssistanceDecisionStatus?>(
                 initialValue: statusFilter,
                 isExpanded: false,
-                decoration: const InputDecoration(labelText: 'Target Status'),
+                decoration: InputDecoration(labelText: context.l10n.targetStatus),
                 items: [
                   DropdownMenuItem<AssistanceDecisionStatus?>(
                     value: null,
                     child: AppDropdownStyle.menuItemLabel(
-                      label: 'All',
+                      label: context.l10n.all,
                       selected: statusFilter == null,
                     ),
                   ),
@@ -1718,12 +1727,12 @@ class _AssessmentTab extends StatelessWidget {
               child: AppDropdownButtonFormField<AssistanceRuleType?>(
                 initialValue: typeFilter,
                 isExpanded: false,
-                decoration: const InputDecoration(labelText: 'Rule Type'),
+                decoration: InputDecoration(labelText: context.l10n.ruleType),
                 items: [
                   DropdownMenuItem<AssistanceRuleType?>(
                     value: null,
                     child: AppDropdownStyle.menuItemLabel(
-                      label: 'All',
+                      label: context.l10n.all,
                       selected: typeFilter == null,
                     ),
                   ),
@@ -1758,7 +1767,7 @@ class _AssessmentTab extends StatelessWidget {
           child: rows.isEmpty
               ? AppTable<StudentAssistanceAssessment>(
                   data: const [],
-                  emptyMessage: 'No target candidates yet',
+                  emptyMessage: context.l10n.noTargetCandidates,
                   pageable: const Pageable(
                     page: 0,
                     size: 0,
@@ -1767,47 +1776,47 @@ class _AssessmentTab extends StatelessWidget {
                   ),
                   columns: [
                     AppTableColumn(
-                      title: 'Student',
+                      title: context.l10n.student,
                       flex: 3,
                       cell: (item) => const SizedBox.shrink(),
                     ),
                     AppTableColumn(
-                      title: 'Rule',
+                      title: context.l10n.rule,
                       flex: 2,
                       cell: (item) => const SizedBox.shrink(),
                     ),
                     AppTableColumn(
-                      title: 'Priority',
+                      title: context.l10n.priority,
                       cell: (item) => const SizedBox.shrink(),
                     ),
                     AppTableColumn(
-                      title: 'Reason',
+                      title: context.l10n.reason,
                       flex: 3,
                       cell: (item) => const SizedBox.shrink(),
                     ),
                     AppTableColumn(
-                      title: 'Attendance',
+                      title: context.l10n.attendance,
                       cell: (item) => const SizedBox.shrink(),
                     ),
                     AppTableColumn(
-                      title: 'Improve',
+                      title: context.l10n.improve,
                       cell: (item) => const SizedBox.shrink(),
                     ),
                     AppTableColumn(
-                      title: 'Total',
+                      title: context.l10n.total,
                       cell: (item) => const SizedBox.shrink(),
                     ),
                     AppTableColumn(
-                      title: 'Rank',
+                      title: context.l10n.rank,
                       cell: (item) => const SizedBox.shrink(),
                     ),
                     AppTableColumn(
-                      title: 'Status',
+                      title: context.l10n.status,
                       flex: 2,
                       cell: (item) => const SizedBox.shrink(),
                     ),
                     AppTableColumn(
-                      title: 'Actions',
+                      title: context.l10n.actions,
                       cell: (item) => const SizedBox.shrink(),
                     ),
                   ],
@@ -1819,8 +1828,11 @@ class _AssessmentTab extends StatelessWidget {
                         title: entry.key,
                         rows: entry.value,
                         locked:
-                            state.selectedPeriod?.status ==
-                            AssistancePeriodStatus.approved,
+                            state.selectedPeriod == null
+                                ? false
+                                : _periodLocksAssistancePlan(
+                                    state.selectedPeriod!.status,
+                                  ),
                       ),
                   ],
                 ),
@@ -1830,17 +1842,17 @@ class _AssessmentTab extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             PopupMenuButton<_RecipientExportFormat>(
-              tooltip: 'Export assistance plan',
+              tooltip: context.l10n.exportAssistancePlan,
               enabled: state.assessments.isNotEmpty,
               onSelected: (format) => _exportPlan(context, format),
-              itemBuilder: (context) => const [
+              itemBuilder: (context) => [
                 PopupMenuItem(
                   value: _RecipientExportFormat.pdf,
-                  child: Text('Export PDF'),
+                  child: Text(context.l10n.exportPdf),
                 ),
                 PopupMenuItem(
                   value: _RecipientExportFormat.excel,
-                  child: Text('Export Excel'),
+                  child: Text(context.l10n.exportExcel),
                 ),
               ],
               child: Opacity(
@@ -1926,7 +1938,7 @@ class _RecipientsTab extends StatelessWidget {
             Expanded(child: _PeriodPicker(state: state)),
             const SizedBox(width: 10),
             PopupMenuButton<_RecipientExportFormat>(
-              tooltip: 'Download recipients history',
+              tooltip: context.l10n.downloadRecipientsHistory,
               enabled: state.recipients.isNotEmpty,
               color: AppColors.white,
               surfaceTintColor: AppColors.white,
@@ -1991,7 +2003,7 @@ class _RecipientsTab extends StatelessWidget {
         Expanded(
           child: AppTable<AssistanceRecipient>(
             data: state.recipients,
-            emptyMessage: 'No approved recipients yet',
+            emptyMessage: context.l10n.noApprovedRecipients,
             pageable: Pageable(
               page: 0,
               size: state.recipients.length,
@@ -2000,7 +2012,7 @@ class _RecipientsTab extends StatelessWidget {
             ),
             columns: [
               AppTableColumn(
-                title: 'Student',
+                title: context.l10n.student,
                 flex: 3,
                 sortValue: (item) => (item.studentName ?? '').isEmpty
                     ? 0
@@ -2015,7 +2027,7 @@ class _RecipientsTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Month/Year',
+                title: context.l10n.monthYear,
                 flex: 2,
                 sortValue: (item) =>
                     (item.periodYear ?? 0) * 100 + (item.periodMonth ?? 0),
@@ -2028,7 +2040,7 @@ class _RecipientsTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Rule',
+                title: context.l10n.rule,
                 flex: 2,
                 sortValue: (item) => item.ruleType.index,
                 cell: (item) => Text(
@@ -2038,7 +2050,7 @@ class _RecipientsTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Score',
+                title: context.l10n.score,
                 sortValue: (item) => item.finalScore.round(),
                 cell: (item) => Text(
                   _score(item.finalScore),
@@ -2046,7 +2058,7 @@ class _RecipientsTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Rank',
+                title: context.l10n.rank,
                 sortValue: (item) => item.rankNo ?? 999999,
                 cell: (item) => Text(
                   item.rankNo?.toString() ?? '-',
@@ -2054,13 +2066,13 @@ class _RecipientsTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Status',
+                title: context.l10n.status,
                 flex: 2,
                 sortValue: (item) => item.status.index,
                 cell: (item) => _StatusChip(label: item.status.label),
               ),
               AppTableColumn(
-                title: 'Approved At',
+                title: context.l10n.approvedAt,
                 flex: 2,
                 cell: (item) => Text(
                   _shortDateTime(item.approvedAt),
@@ -2069,7 +2081,7 @@ class _RecipientsTab extends StatelessWidget {
                 ),
               ),
               AppTableColumn(
-                title: 'Approved By',
+                title: context.l10n.approvedBy,
                 flex: 2,
                 cell: (item) => Text(
                   item.approvedBy ?? '-',
@@ -2114,7 +2126,9 @@ class _ApprovalDocumentTabState extends State<_ApprovalDocumentTab> {
     final document = state.approvalDocuments.isEmpty
         ? null
         : state.approvalDocuments.first;
-    final locked = period?.status == AssistancePeriodStatus.approved;
+    final locked = period == null
+        ? false
+        : _periodLocksAssistancePlan(period.status);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2122,7 +2136,7 @@ class _ApprovalDocumentTabState extends State<_ApprovalDocumentTab> {
         _PeriodPicker(state: state),
         const SizedBox(height: 12),
         if (period == null)
-          const Expanded(child: Center(child: Text('Select a period first.')))
+          Expanded(child: Center(child: Text(context.l10n.selectPeriodFirst)))
         else
           Expanded(
             child: ListView(
@@ -2159,7 +2173,7 @@ class _ApprovalDocumentTabState extends State<_ApprovalDocumentTab> {
                           OutlinedButton.icon(
                             onPressed: locked || _saving ? null : _pickFile,
                             icon: const Icon(Icons.attach_file, size: 18),
-                            label: const Text('Choose File'),
+                            label: Text(context.l10n.chooseFile),
                           ),
                         ],
                       ),
@@ -2167,15 +2181,15 @@ class _ApprovalDocumentTabState extends State<_ApprovalDocumentTab> {
                       TextField(
                         enabled: !locked && !_saving,
                         controller: _uploadedByController,
-                        decoration: const InputDecoration(
-                          labelText: 'Uploaded By',
+                        decoration: InputDecoration(
+                          labelText: context.l10n.uploadedBy,
                         ),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         enabled: !locked && !_saving,
                         controller: _remarksController,
-                        decoration: const InputDecoration(labelText: 'Remarks'),
+                        decoration: InputDecoration(labelText: context.l10n.remarks),
                         maxLines: 3,
                       ),
                       const SizedBox(height: 12),
@@ -2187,8 +2201,8 @@ class _ApprovalDocumentTabState extends State<_ApprovalDocumentTab> {
                               : _upload,
                           icon: const Icon(Icons.verified),
                           label: _saving
-                              ? const Text('Uploading...')
-                              : const Text('Upload & Approve'),
+                              ? Text(context.l10n.uploading)
+                              : Text(context.l10n.uploadApprove),
                         ),
                       ),
                     ],
@@ -2203,9 +2217,9 @@ class _ApprovalDocumentTabState extends State<_ApprovalDocumentTab> {
 
   Future<void> _pickFile() async {
     final file = await openFile(
-      acceptedTypeGroups: const [
+      acceptedTypeGroups: [
         XTypeGroup(
-          label: 'Approval Document',
+          label: context.l10n.approvalDocument,
           extensions: ['pdf', 'jpg', 'jpeg', 'png'],
         ),
       ],
@@ -2269,18 +2283,18 @@ class _ApprovalStatusCard extends StatelessWidget {
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
-          _InfoLine(label: 'Status', value: period.status.label),
+          _InfoLine(label: context.l10n.status, value: period.status.label),
           _InfoLine(
-            label: 'Approved at',
+            label: context.l10n.approvedAt,
             value: _shortDateTime(period.approvedAt),
           ),
-          _InfoLine(label: 'Approved by', value: period.approvedBy ?? '-'),
-          _InfoLine(label: 'Document', value: document?.fileName ?? '-'),
+          _InfoLine(label: context.l10n.approvedBy, value: period.approvedBy ?? '-'),
+          _InfoLine(label: context.l10n.document, value: document?.fileName ?? '-'),
           _InfoLine(
-            label: 'Uploaded at',
+            label: context.l10n.uploadedAt,
             value: _shortDateTime(document?.uploadedAt),
           ),
-          _InfoLine(label: 'Remarks', value: document?.remarks ?? '-'),
+          _InfoLine(label: context.l10n.remarks, value: document?.remarks ?? '-'),
         ],
       ),
     );
@@ -2327,7 +2341,7 @@ class _AssessmentGroup extends StatelessWidget {
               ),
               columns: [
                 AppTableColumn(
-                  title: 'Student',
+                  title: context.l10n.student,
                   flex: 3,
                   sortValue: (item) => (item.studentName ?? '').isEmpty
                       ? 0
@@ -2342,7 +2356,7 @@ class _AssessmentGroup extends StatelessWidget {
                   ),
                 ),
                 AppTableColumn(
-                  title: 'Rule',
+                  title: context.l10n.rule,
                   flex: 2,
                   sortValue: (item) => item.ruleType.index,
                   cell: (item) => Text(
@@ -2352,14 +2366,14 @@ class _AssessmentGroup extends StatelessWidget {
                   ),
                 ),
                 AppTableColumn(
-                  title: 'Mode',
+                  title: context.l10n.mode,
                   cell: (item) => Text(
                     item.selectionMode.label,
                     style: const TextStyle(fontSize: 12),
                   ),
                 ),
                 AppTableColumn(
-                  title: 'Priority',
+                  title: context.l10n.priority,
                   sortValue: (item) => item.priorityLevel,
                   cell: (item) => Text(
                     '${item.priorityLevel}',
@@ -2367,7 +2381,7 @@ class _AssessmentGroup extends StatelessWidget {
                   ),
                 ),
                 AppTableColumn(
-                  title: 'Reason',
+                  title: context.l10n.reason,
                   flex: 3,
                   cell: (item) => Text(
                     item.priorityReason ?? '-',
@@ -2376,7 +2390,7 @@ class _AssessmentGroup extends StatelessWidget {
                   ),
                 ),
                 AppTableColumn(
-                  title: 'Attendance',
+                  title: context.l10n.attendance,
                   sortValue: (item) => item.attendanceScore?.round() ?? 0,
                   cell: (item) => Text(
                     _score(item.attendanceScore),
@@ -2384,7 +2398,7 @@ class _AssessmentGroup extends StatelessWidget {
                   ),
                 ),
                 AppTableColumn(
-                  title: 'Bonus',
+                  title: context.l10n.bonus,
                   sortValue: (item) => item.rotationBonus?.round() ?? 0,
                   cell: (item) => Text(
                     _score(item.rotationBonus),
@@ -2392,7 +2406,7 @@ class _AssessmentGroup extends StatelessWidget {
                   ),
                 ),
                 AppTableColumn(
-                  title: 'Total',
+                  title: context.l10n.total,
                   sortValue: (item) => item.totalScore.round(),
                   cell: (item) => Text(
                     _score(item.totalScore),
@@ -2400,7 +2414,7 @@ class _AssessmentGroup extends StatelessWidget {
                   ),
                 ),
                 AppTableColumn(
-                  title: 'Rank',
+                  title: context.l10n.rank,
                   sortValue: (item) => item.rankNo ?? 999999,
                   cell: (item) => Text(
                     item.rankNo?.toString() ?? '-',
@@ -2408,7 +2422,7 @@ class _AssessmentGroup extends StatelessWidget {
                   ),
                 ),
                 AppTableColumn(
-                  title: 'Eligibility',
+                  title: context.l10n.eligibility,
                   flex: 2,
                   sortValue: (item) => item.eligibilityStatus.index,
                   cell: (item) => _StatusChip(
@@ -2421,19 +2435,19 @@ class _AssessmentGroup extends StatelessWidget {
                   ),
                 ),
                 AppTableColumn(
-                  title: 'Target Status',
+                  title: context.l10n.targetStatus,
                   flex: 2,
                   sortValue: (item) => item.decisionStatus.index,
                   cell: (item) => _StatusChip(label: item.decisionStatus.label),
                 ),
                 AppTableColumn(
-                  title: 'Actions',
+                  title: context.l10n.actions,
                   flex: 2,
                   cell: (item) => Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        tooltip: 'Manual override',
+                        tooltip: context.l10n.manualOverride,
                         onPressed: locked
                             ? null
                             : () => showGuardedDialog<void>(
@@ -2454,7 +2468,7 @@ class _AssessmentGroup extends StatelessWidget {
                         icon: const Icon(Icons.tune, size: 16),
                       ),
                       IconButton(
-                        tooltip: 'Remove target',
+                        tooltip: context.l10n.removeTarget,
                         onPressed:
                             locked ||
                                 item.decisionStatus ==
@@ -2519,7 +2533,7 @@ class _PeriodPicker extends StatelessWidget {
           ? state.selectedPeriodId
           : null,
       isExpanded: false,
-      decoration: const InputDecoration(labelText: 'Assistance Period'),
+      decoration: InputDecoration(labelText: context.l10n.assistancePeriod),
       items: state.periods
           .map(
             (period) => DropdownMenuItem(
@@ -2613,17 +2627,17 @@ class _GenerateInfo extends StatelessWidget {
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
-          _InfoLine(label: 'Status', value: period.status.label),
+          _InfoLine(label: context.l10n.status, value: period.status.label),
           _InfoLine(
-            label: 'Targeted at',
+            label: context.l10n.targetedAt,
             value: _shortDateTime(period.targetedAt),
           ),
           _InfoLine(
-            label: 'Approved at',
+            label: context.l10n.approvedAt,
             value: _shortDateTime(period.approvedAt),
           ),
-          _InfoLine(label: 'Approved by', value: period.approvedBy ?? '-'),
-          _InfoLine(label: 'Target candidates', value: '$assessmentCount'),
+          _InfoLine(label: context.l10n.approvedBy, value: period.approvedBy ?? '-'),
+          _InfoLine(label: context.l10n.targetCandidates, value: '$assessmentCount'),
         ],
       ),
     );
@@ -2752,7 +2766,9 @@ class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
     }).toList();
 
     return AlertDialog(
-      title: AppDialogTitle('Select ${widget.rule.displayName} Candidates'),
+      title: AppDialogTitle(
+        context.l10n.selectRuleCandidates(widget.rule.displayName),
+      ),
       content: SizedBox(
         width: 620,
         height: 560,
@@ -2763,8 +2779,8 @@ class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
                 Expanded(
                   child: TextField(
                     controller: _searchController,
-                    decoration: const InputDecoration(
-                      labelText: 'Search student',
+                    decoration: InputDecoration(
+                      labelText: context.l10n.searchStudent,
                       prefixIcon: Icon(Icons.search),
                     ),
                     onChanged: (_) => setState(() {}),
@@ -2779,8 +2795,8 @@ class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
             const SizedBox(height: 10),
             TextField(
               controller: _reasonController,
-              decoration: const InputDecoration(
-                labelText: 'Reason / override note for newly selected students',
+              decoration: InputDecoration(
+                labelText: context.l10n.overrideReasonHint,
               ),
             ),
             const SizedBox(height: 10),
@@ -2830,7 +2846,7 @@ class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          child: Text(context.l10n.close),
         ),
       ],
     );
@@ -2842,29 +2858,40 @@ class _ManualCandidateDialogState extends State<_ManualCandidateDialog> {
     bool value,
   ) async {
     final cubit = context.read<AssistancePlanCubit>();
-    if (!value && selected != null) {
-      await cubit.deleteRuleCandidate(selected.id);
-      await _load();
-      return;
-    }
-    if (value && selected == null) {
-      if (_candidates.length >= widget.rule.quota) {
-        AppToast.showFailed(
-          'Selected candidates already reached this rule quota.',
-        );
+    try {
+      if (!value && selected != null) {
+        await cubit.deleteRuleCandidate(selected.id);
+        if (!mounted) return;
+        await _load();
         return;
       }
-      await cubit.saveRuleCandidate(
-        StudentAssistanceRuleCandidate(
-          assistancePeriodId: widget.periodId,
-          assistancePeriodRuleId: widget.rule.id,
-          studentId: student.id,
-          reason: _reasonController.text.trim().isEmpty
-              ? null
-              : _reasonController.text.trim(),
-        ),
+      if (value && selected == null) {
+        if (_candidates.length >= widget.rule.quota) {
+          AppToast.showFailed(
+            'Selected candidates already reached this rule quota.',
+          );
+          return;
+        }
+        await cubit.saveRuleCandidate(
+          StudentAssistanceRuleCandidate(
+            assistancePeriodId: widget.periodId,
+            assistancePeriodRuleId: widget.rule.id,
+            studentId: student.id,
+            reason: _reasonController.text.trim().isEmpty
+                ? null
+                : _reasonController.text.trim(),
+          ),
+        );
+        if (!mounted) return;
+        await _load();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      showErrorToastWithDetails(
+        context,
+        title: context.l10n.failedUpdateCandidates,
+        error: e,
       );
-      await _load();
     }
   }
 }
@@ -2944,7 +2971,7 @@ class _AssistancePeriodDialogState extends State<_AssistancePeriodDialog> {
               AppDropdownButtonFormField<int>(
                 initialValue: _month,
                 isExpanded: false,
-                decoration: const InputDecoration(labelText: 'Month'),
+                decoration: InputDecoration(labelText: context.l10n.month),
                 items: List.generate(
                   12,
                   (index) => DropdownMenuItem(
@@ -2975,7 +3002,7 @@ class _AssistancePeriodDialogState extends State<_AssistancePeriodDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _yearController,
-                decoration: const InputDecoration(labelText: 'Year'),
+                decoration: InputDecoration(labelText: context.l10n.year),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   final year = int.tryParse(value ?? '');
@@ -2986,7 +3013,7 @@ class _AssistancePeriodDialogState extends State<_AssistancePeriodDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _quotaController,
-                decoration: const InputDecoration(labelText: 'Target Quota'),
+                decoration: InputDecoration(labelText: context.l10n.targetQuota),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   final quota = int.tryParse(value ?? '');
@@ -2997,8 +3024,8 @@ class _AssistancePeriodDialogState extends State<_AssistancePeriodDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _windowController,
-                decoration: const InputDecoration(
-                  labelText: 'Calculation Window (months)',
+                decoration: InputDecoration(
+                  labelText: context.l10n.calculationWindowMonths,
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
@@ -3012,8 +3039,8 @@ class _AssistancePeriodDialogState extends State<_AssistancePeriodDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _minAttendanceController,
-                decoration: const InputDecoration(
-                  labelText: 'Minimum Attendance (%)',
+                decoration: InputDecoration(
+                  labelText: context.l10n.minimumAttendancePercent,
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
@@ -3032,7 +3059,7 @@ class _AssistancePeriodDialogState extends State<_AssistancePeriodDialog> {
                 value: _allowOverride,
                 onChanged: (value) =>
                     setState(() => _allowOverride = value ?? true),
-                title: const Text('Allow manager override below attendance'),
+                title: Text(context.l10n.allowManagerOverride),
               ),
             ],
           ),
@@ -3041,7 +3068,7 @@ class _AssistancePeriodDialogState extends State<_AssistancePeriodDialog> {
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         FilledButton(
           onPressed: _saving ? null : _save,
@@ -3051,7 +3078,7 @@ class _AssistancePeriodDialogState extends State<_AssistancePeriodDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );
@@ -3182,7 +3209,7 @@ class _AssistancePeriodRuleDialogState
                 AppDropdownButtonFormField<AssistanceRuleType>(
                   initialValue: _ruleType,
                   isExpanded: false,
-                  decoration: const InputDecoration(labelText: 'Rule Type'),
+                  decoration: InputDecoration(labelText: context.l10n.ruleType),
                   items: ruleTypes
                       .map(
                         (type) => DropdownMenuItem(
@@ -3212,12 +3239,12 @@ class _AssistancePeriodRuleDialogState
                     initialValue:
                         _selectedAssistanceRuleId ?? newCustomRuleValue,
                     isExpanded: false,
-                    decoration: const InputDecoration(labelText: 'Rule Master'),
+                    decoration: InputDecoration(labelText: context.l10n.ruleMaster),
                     items: [
                       DropdownMenuItem(
                         value: newCustomRuleValue,
                         child: AppDropdownStyle.menuItemLabel(
-                          label: 'New Custom Rule',
+                          label: context.l10n.newCustomRule,
                           selected: _selectedAssistanceRuleId == null,
                         ),
                       ),
@@ -3264,7 +3291,7 @@ class _AssistancePeriodRuleDialogState
                   TextFormField(
                     controller: _ruleNameController,
                     readOnly: _selectedAssistanceRuleId != null,
-                    decoration: const InputDecoration(labelText: 'Rule Name'),
+                    decoration: InputDecoration(labelText: context.l10n.ruleName),
                     validator: (value) => value == null || value.trim().isEmpty
                         ? 'Rule name is required'
                         : null,
@@ -3276,7 +3303,7 @@ class _AssistancePeriodRuleDialogState
                     Expanded(
                       child: TextFormField(
                         controller: _quotaController,
-                        decoration: const InputDecoration(labelText: 'Quota'),
+                        decoration: InputDecoration(labelText: context.l10n.quota),
                         keyboardType: TextInputType.number,
                         validator: (value) {
                           final quota = int.tryParse(value ?? '');
@@ -3291,8 +3318,8 @@ class _AssistancePeriodRuleDialogState
                     Expanded(
                       child: TextFormField(
                         controller: _priorityController,
-                        decoration: const InputDecoration(
-                          labelText: 'Priority Order',
+                        decoration: InputDecoration(
+                          labelText: context.l10n.priorityOrder,
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
@@ -3310,8 +3337,8 @@ class _AssistancePeriodRuleDialogState
                 AppDropdownButtonFormField<AssistanceSelectionMode>(
                   initialValue: _selectionMode,
                   isExpanded: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Selection Mode',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.selectionMode,
                   ),
                   items: selectionModes
                       .map(
@@ -3339,8 +3366,8 @@ class _AssistancePeriodRuleDialogState
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _minScoreController,
-                  decoration: const InputDecoration(
-                    labelText: 'Minimum Score (optional)',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.minimumScoreOptional,
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) {
@@ -3353,13 +3380,13 @@ class _AssistancePeriodRuleDialogState
                 const SizedBox(height: 8),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Carry unused quota to next rule'),
+                  title: Text(context.l10n.carryUnusedQuota),
                   value: _carryOver,
                   onChanged: (value) => setState(() => _carryOver = value),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Active'),
+                  title: Text(context.l10n.active),
                   value: _active,
                   onChanged: (value) => setState(() => _active = value),
                 ),
@@ -3371,7 +3398,7 @@ class _AssistancePeriodRuleDialogState
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         FilledButton(
           onPressed: _saving ? null : _save,
@@ -3381,7 +3408,7 @@ class _AssistancePeriodRuleDialogState
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );
@@ -3475,25 +3502,25 @@ class _AssistanceRuleDialogState extends State<_AssistanceRuleDialog> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Rule Name'),
+                decoration: InputDecoration(labelText: context.l10n.ruleName),
                 validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Rule name is required'
+                    ? context.l10n.ruleNameRequired
                     : null,
               ),
               const SizedBox(height: 12),
-              const Row(
+              Row(
                 children: [
                   Expanded(
                     child: InputDecorator(
-                      decoration: InputDecoration(labelText: 'Rule Type'),
-                      child: Text('Custom Rule'),
+                      decoration: InputDecoration(labelText: context.l10n.ruleType),
+                      child: Text(context.l10n.customRule),
                     ),
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: InputDecorator(
-                      decoration: InputDecoration(labelText: 'Selection Mode'),
-                      child: Text('Manual'),
+                      decoration: InputDecoration(labelText: context.l10n.selectionMode),
+                      child: Text(context.l10n.manual),
                     ),
                   ),
                 ],
@@ -3501,14 +3528,14 @@ class _AssistanceRuleDialogState extends State<_AssistanceRuleDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _descriptionController,
-                decoration: const InputDecoration(labelText: 'Description'),
+                decoration: InputDecoration(labelText: context.l10n.description),
                 maxLines: 3,
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: _active,
                 onChanged: (value) => setState(() => _active = value),
-                title: const Text('Active'),
+                title: Text(context.l10n.active),
               ),
             ],
           ),
@@ -3517,7 +3544,7 @@ class _AssistanceRuleDialogState extends State<_AssistanceRuleDialog> {
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         FilledButton(
           onPressed: _saving ? null : _save,
@@ -3527,7 +3554,7 @@ class _AssistanceRuleDialogState extends State<_AssistanceRuleDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );
@@ -3646,7 +3673,7 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
                 AppDropdownButtonFormField<String>(
                   initialValue: _studentId,
                   isExpanded: false,
-                  decoration: const InputDecoration(labelText: 'Student'),
+                  decoration: InputDecoration(labelText: context.l10n.student),
                   items: widget.students
                       .map(
                         (student) => DropdownMenuItem(
@@ -3676,7 +3703,7 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
                 AppDropdownButtonFormField<AssistanceRuleType>(
                   initialValue: _type,
                   isExpanded: false,
-                  decoration: const InputDecoration(labelText: 'Rule Type'),
+                  decoration: InputDecoration(labelText: context.l10n.ruleType),
                   items: AssistanceRuleType.studentRuleTypes
                       .map(
                         (type) => DropdownMenuItem(
@@ -3714,7 +3741,7 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _ruleNameController,
-                    decoration: const InputDecoration(labelText: 'Rule Name'),
+                    decoration: InputDecoration(labelText: context.l10n.ruleName),
                     validator: (value) => value == null || value.trim().isEmpty
                         ? 'Rule name is required'
                         : null,
@@ -3723,7 +3750,7 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _reasonController,
-                  decoration: const InputDecoration(labelText: 'Reason'),
+                  decoration: InputDecoration(labelText: context.l10n.reason),
                   maxLines: 3,
                   validator: (value) => value == null || value.trim().isEmpty
                       ? 'Reason is required'
@@ -3732,8 +3759,8 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _scoreController,
-                  decoration: const InputDecoration(
-                    labelText: 'Score Override (optional)',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.scoreOverrideOptional,
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) {
@@ -3744,17 +3771,20 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
                   },
                 ),
                 const SizedBox(height: 12),
-                _DateField(controller: _startController, label: 'Start Date'),
+                _DateField(
+                  controller: _startController,
+                  label: context.l10n.startDate,
+                ),
                 const SizedBox(height: 12),
                 _DateField(
                   controller: _endController,
-                  label: 'End Date',
+                  label: context.l10n.endDate,
                   requiredField: false,
                 ),
                 const SizedBox(height: 8),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Active'),
+                  title: Text(context.l10n.active),
                   value: _isActive,
                   onChanged: (value) => setState(() => _isActive = value),
                 ),
@@ -3766,7 +3796,7 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         FilledButton(
           onPressed: _saving ? null : _save,
@@ -3776,7 +3806,7 @@ class _FixedPriorityRuleDialogState extends State<_FixedPriorityRuleDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );
@@ -4348,7 +4378,7 @@ class _AssessmentOverrideDialogState extends State<_AssessmentOverrideDialog> {
                 AppDropdownButtonFormField<AssistanceDecisionStatus>(
                   initialValue: _status,
                   isExpanded: false,
-                  decoration: const InputDecoration(labelText: 'Target Status'),
+                  decoration: InputDecoration(labelText: context.l10n.targetStatus),
                   items: AssistanceDecisionStatus.values
                       .map(
                         (status) => DropdownMenuItem(
@@ -4379,8 +4409,8 @@ class _AssessmentOverrideDialogState extends State<_AssessmentOverrideDialog> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _priorityController,
-                  decoration: const InputDecoration(
-                    labelText: 'Priority Level',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.priorityLevel,
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) => int.tryParse(value ?? '') == null
@@ -4390,24 +4420,24 @@ class _AssessmentOverrideDialogState extends State<_AssessmentOverrideDialog> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _reasonController,
-                  decoration: const InputDecoration(
-                    labelText: 'Priority Reason',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.priorityReason,
                   ),
                   maxLines: 2,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _noteController,
-                  decoration: const InputDecoration(
-                    labelText: 'Special Case Note',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.specialCaseNote,
                   ),
                   maxLines: 3,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _supportController,
-                  decoration: const InputDecoration(
-                    labelText: 'Approved Amount or Support',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.approvedAmountSupport,
                   ),
                 ),
               ],
@@ -4418,7 +4448,7 @@ class _AssessmentOverrideDialogState extends State<_AssessmentOverrideDialog> {
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         FilledButton(
           onPressed: _saving ? null : _save,
@@ -4428,7 +4458,7 @@ class _AssessmentOverrideDialogState extends State<_AssessmentOverrideDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );
@@ -4478,4 +4508,11 @@ String _dateOnly(DateTime value) {
 String? _blankToNull(String value) {
   final trimmed = value.trim();
   return trimmed.isEmpty ? null : trimmed;
+}
+
+bool _periodLocksAssistancePlan(AssistancePeriodStatus status) {
+  return status == AssistancePeriodStatus.approved ||
+      status == AssistancePeriodStatus.rejected ||
+      status == AssistancePeriodStatus.distributed ||
+      status == AssistancePeriodStatus.cancelled;
 }

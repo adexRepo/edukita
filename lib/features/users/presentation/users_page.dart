@@ -1,4 +1,5 @@
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/features/users/data/user_model.dart';
@@ -51,11 +52,11 @@ class _UsersPageState extends State<UsersPage> {
     }
     final creating = user == null;
     if (creating && !state.canCreateUsers) {
-      AppToast.showFailed('You do not have permission to create users.');
+      AppToast.showFailed(context.l10n.noPermissionCreateUsers);
       return;
     }
     if (!creating && !state.canUpdateUsers) {
-      AppToast.showFailed('You do not have permission to update users.');
+      AppToast.showFailed(context.l10n.noPermissionUpdateUsers);
       return;
     }
     final session = await AuthSessionCache.instance.read();
@@ -92,27 +93,36 @@ class _UsersPageState extends State<UsersPage> {
     if (user.username == 'admin') return;
     final state = context.read<UserManagementCubit>().state;
     if (!state.canDeleteUsers) {
-      AppToast.showFailed('You do not have permission to activate or deactivate users.');
+      AppToast.showFailed(context.l10n.noPermissionToggleUsers);
       return;
     }
     final targetActive = !user.isActive;
+    final actionLabel = targetActive
+        ? context.l10n.activate
+        : context.l10n.deactivate;
     final confirmed = await showGuardedDialog<bool>(
       context: context,
       guardKey: 'toggle_user_${user.id}',
       builder: (context) {
         return AlertDialog(
-          title: AppDialogTitle(targetActive ? 'Activate User' : 'Deactivate User'),
+          title: AppDialogTitle(
+            targetActive
+                ? context.l10n.activateUser
+                : context.l10n.deactivateUser,
+          ),
           content: Text(
-            '${targetActive ? 'Activate' : 'Deactivate'} ${user.fullName}?',
+            targetActive
+                ? context.l10n.activateUserConfirm(user.fullName)
+                : context.l10n.deactivateUserConfirm(user.fullName),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.buttonCancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: Text(targetActive ? 'Activate' : 'Deactivate'),
+              child: Text(actionLabel),
             ),
           ],
         );
@@ -130,8 +140,8 @@ class _UsersPageState extends State<UsersPage> {
           final users = _filteredUsers(state.users);
           final isAdmin = state.currentRole.isAdmin;
           if (!state.loading && !state.canViewUsers) {
-            return const AccessDeniedPanel(
-              message: 'You do not have permission to view user management.',
+            return AccessDeniedPanel(
+              message: context.l10n.noPermissionViewUserManagement,
             );
           }
           return Column(
@@ -139,15 +149,15 @@ class _UsersPageState extends State<UsersPage> {
               Padding(
                 padding: AppPageHeaderStyle.pagePadding,
                 child: AppPageHeader(
-                  title: 'User Management',
+                  title: context.l10n.menuUserManagement,
                   subtitle: isAdmin
-                      ? 'Manage users, role permissions, teacher links, and special access.'
-                      : 'Manage app users, teacher links, and extra menu access.',
+                      ? context.l10n.userManagementSubtitleAdmin
+                      : context.l10n.userManagementSubtitleStandard,
                   trailing: (!isAdmin || _tabIndex == 0) && state.canCreateUsers
                       ? FilledButton.icon(
                           onPressed: () => _showUserDialog(),
                           icon: const Icon(Icons.add),
-                          label: const Text('Add User'),
+                          label: Text(context.l10n.addUser),
                         )
                       : null,
                 ),
@@ -163,16 +173,16 @@ class _UsersPageState extends State<UsersPage> {
                       onSelectionChanged: (selected) {
                         setState(() => _tabIndex = selected.first);
                       },
-                      segments: const [
+                      segments: [
                         ButtonSegment(
                           value: 0,
-                          icon: Icon(Icons.people_alt_outlined),
-                          label: Text('Users'),
+                          icon: const Icon(Icons.people_alt_outlined),
+                          label: Text(context.l10n.usersTab),
                         ),
                         ButtonSegment(
                           value: 1,
-                          icon: Icon(Icons.admin_panel_settings_outlined),
-                          label: Text('Roles & Permissions'),
+                          icon: const Icon(Icons.admin_panel_settings_outlined),
+                          label: Text(context.l10n.rolesPermissions),
                         ),
                       ],
                     ),
@@ -195,10 +205,9 @@ class _UsersPageState extends State<UsersPage> {
                                 TextField(
                                   onChanged: (value) =>
                                       setState(() => _query = value),
-                                  decoration: const InputDecoration(
-                                    prefixIcon: Icon(Icons.search),
-                                    hintText:
-                                        'Search username, full name, or teacher',
+                                  decoration: InputDecoration(
+                                    prefixIcon: const Icon(Icons.search),
+                                    hintText: context.l10n.searchUsersHint,
                                   ),
                                 ),
                                 const SizedBox(height: 12),
@@ -236,7 +245,7 @@ class _UsersPageState extends State<UsersPage> {
       ),
       columns: [
         AppTableColumn(
-          title: 'User',
+          title: context.l10n.user,
           flex: 4,
           minWidth: 180,
           sortValue: (user) =>
@@ -249,13 +258,13 @@ class _UsersPageState extends State<UsersPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Role',
+          title: context.l10n.role,
           flex: 2,
           minWidth: 110,
-          cell: (user) => _pill(user.role.label),
+          cell: (user) => _pill(_roleLabel(context, user.role)),
         ),
         AppTableColumn(
-          title: 'Teacher Link',
+          title: context.l10n.teacherLink,
           flex: 3,
           minWidth: 160,
           cell: (user) => Text(
@@ -266,28 +275,30 @@ class _UsersPageState extends State<UsersPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Status',
+          title: context.l10n.status,
           flex: 2,
           minWidth: 100,
           cell: (user) => _pill(
-            user.isActive ? 'Active' : 'Inactive',
+            user.isActive
+                ? context.l10n.statusActive
+                : context.l10n.statusInactive,
             color: user.isActive ? AppColors.primaryDark : AppColors.errorDark,
           ),
         ),
         AppTableColumn(
-          title: 'Extra Access',
+          title: context.l10n.extraAccess,
           flex: 3,
           minWidth: 170,
           cell: (user) {
             final count = state.extraAccessByUser[user.id]?.length ?? 0;
             return Text(
-              count == 0 ? '-' : '$count menu${count == 1 ? '' : 's'}',
+              count == 0 ? '-' : context.l10n.extraAccessCount(count),
               style: const TextStyle(fontSize: 12),
             );
           },
         ),
         AppTableColumn(
-          title: 'Actions',
+          title: context.l10n.actions,
           flex: 2,
           minWidth: 120,
           cell: (user) {
@@ -300,7 +311,7 @@ class _UsersPageState extends State<UsersPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  tooltip: 'Edit user',
+                  tooltip: context.l10n.editUserTooltip,
                   onPressed: canUpdate ? () => _showUserDialog(user: user) : null,
                   constraints:
                       const BoxConstraints.tightFor(width: 28, height: 28),
@@ -308,7 +319,9 @@ class _UsersPageState extends State<UsersPage> {
                   icon: const Icon(Icons.edit, size: 16),
                 ),
                 IconButton(
-                  tooltip: user.isActive ? 'Deactivate' : 'Activate',
+                  tooltip: user.isActive
+                      ? context.l10n.deactivate
+                      : context.l10n.activate,
                   onPressed: canDelete && !protectedAdmin
                       ? () => _toggleActive(user)
                       : null,
@@ -353,6 +366,44 @@ class _UsersPageState extends State<UsersPage> {
       ),
     );
   }
+
+}
+
+String _roleLabel(BuildContext context, AppUserRole role) {
+  return switch (role) {
+    AppUserRole.admin => context.l10n.roleAdmin,
+    AppUserRole.staff => context.l10n.roleStaff,
+    AppUserRole.teacher => context.l10n.roleTeacher,
+  };
+}
+
+String _menuLabel(BuildContext context, String menuCode) {
+  return switch (menuCode) {
+    'dashboard' => context.l10n.menuDashboard,
+    'students' => context.l10n.menuStudents,
+    'teachers' => context.l10n.menuTeachers,
+    'parameters' => context.l10n.menuParameter,
+    'schedules' => context.l10n.menuSchedule,
+    'teaching_activities' => context.l10n.menuTeachingActivity,
+    'assistance_programs' => context.l10n.menuAssistancePrograms,
+    'reports' => context.l10n.menuReports,
+    'users' => context.l10n.menuUserManagement,
+    _ => menuCode,
+  };
+}
+
+String _permissionActionLabel(
+  BuildContext context,
+  AppPermissionAction action,
+) {
+  return switch (action) {
+    AppPermissionAction.view => context.l10n.permissionView,
+    AppPermissionAction.create => context.l10n.permissionCreate,
+    AppPermissionAction.update => context.l10n.permissionUpdate,
+    AppPermissionAction.delete => context.l10n.permissionDelete,
+    AppPermissionAction.export => context.l10n.permissionExport,
+    AppPermissionAction.approve => context.l10n.permissionApprove,
+  };
 }
 
 class _RolePermissionsPanel extends StatefulWidget {
@@ -435,10 +486,13 @@ class _RolePermissionsPanelState extends State<_RolePermissionsPanel> {
 
   Future<void> _save() async {
     if (_saving) return;
+    final successMessage = context.l10n.rolePermissionsUpdated(
+      _roleLabel(context, _selectedRole),
+    );
     setState(() => _saving = true);
     try {
       await widget.onSave(_selectedRole, _draft);
-      AppToast.showSuccess('${_selectedRole.label} permissions updated.');
+      AppToast.showSuccess(successMessage);
     } catch (e) {
       AppToast.showFailed(e.toString().replaceFirst('Bad state: ', ''));
     } finally {
@@ -485,15 +539,15 @@ class _RolePermissionsPanelState extends State<_RolePermissionsPanel> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Roles & Permissions',
+                      context.l10n.rolesPermissions,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'Admin always has full access. Configure menu actions for Staff and Teacher roles.',
-                      style: TextStyle(
+                    Text(
+                      context.l10n.rolesPermissionsSubtitle,
+                      style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
                       ),
@@ -507,19 +561,25 @@ class _RolePermissionsPanelState extends State<_RolePermissionsPanel> {
                 child: SegmentedButton<AppUserRole>(
                   selected: {_selectedRole},
                   onSelectionChanged: (selected) => _changeRole(selected.first),
-                  segments: const [
+                  segments: [
                     ButtonSegment(
                       value: AppUserRole.staff,
                       label: SizedBox(
                         width: 74,
-                        child: Text('Staff', textAlign: TextAlign.center),
+                        child: Text(
+                          _roleLabel(context, AppUserRole.staff),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
                     ButtonSegment(
                       value: AppUserRole.teacher,
                       label: SizedBox(
                         width: 74,
-                        child: Text('Teacher', textAlign: TextAlign.center),
+                        child: Text(
+                          _roleLabel(context, AppUserRole.teacher),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
                   ],
@@ -529,7 +589,7 @@ class _RolePermissionsPanelState extends State<_RolePermissionsPanel> {
               FilledButton.icon(
                 onPressed: _saving ? null : _save,
                 icon: const Icon(Icons.save_outlined),
-                label: Text(_saving ? 'Saving...' : 'Save'),
+                label: Text(_saving ? context.l10n.saving : context.l10n.save),
               ),
             ],
           ),
@@ -544,14 +604,14 @@ class _RolePermissionsPanelState extends State<_RolePermissionsPanel> {
               totalPages: 1,
               totalItems: AppMenuAccessRegistry.all.length,
             ),
-            emptyMessage: 'No menu available',
+            emptyMessage: context.l10n.noMenuAvailable,
             columns: [
               AppTableColumn(
-                title: 'Menu',
+                title: context.l10n.menuColumn,
                 flex: 3,
                 minWidth: 220,
                 cell: (menu) => Text(
-                  menu.label,
+                  _menuLabel(context, menu.code),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -562,7 +622,7 @@ class _RolePermissionsPanelState extends State<_RolePermissionsPanel> {
               ),
               for (final action in AppPermissionAction.values)
                 AppTableColumn(
-                  title: action.label,
+                  title: _permissionActionLabel(context, action),
                   flex: 1,
                   minWidth: 92,
                   alignment: Alignment.center,
@@ -650,6 +710,9 @@ class _UserDialogState extends State<_UserDialog> {
 
   Future<void> _save() async {
     if (_saving || !_formKey.currentState!.validate()) return;
+    final successMessage = _editing
+        ? context.l10n.userUpdated
+        : context.l10n.userCreated;
     setState(() => _saving = true);
     try {
       final existing = widget.user;
@@ -666,7 +729,7 @@ class _UserDialogState extends State<_UserDialog> {
         createdBy: existing?.createdBy ?? widget.currentUserId,
       );
       await widget.onSave(user, _extraMenuCodes.toList());
-      AppToast.showSuccess(_editing ? 'User updated.' : 'User created.');
+      AppToast.showSuccess(successMessage);
       if (mounted) Navigator.pop(context);
     } catch (e) {
       AppToast.showFailed(e.toString().replaceFirst('Bad state: ', ''));
@@ -689,7 +752,9 @@ class _UserDialogState extends State<_UserDialog> {
     }).toList();
 
     return AlertDialog(
-      title: AppDialogTitle(_editing ? 'Edit User' : 'Create User'),
+      title: AppDialogTitle(
+        _editing ? context.l10n.editUser : context.l10n.createUser,
+      ),
       content: SizedBox(
         width: 620,
         child: Form(
@@ -704,8 +769,10 @@ class _UserDialogState extends State<_UserDialog> {
                       child: TextFormField(
                         controller: _usernameController,
                         enabled: !_editing,
-                        decoration: const InputDecoration(labelText: 'Username'),
-                        validator: _requiredMin('Username', 3),
+                        decoration: InputDecoration(
+                          labelText: context.l10n.username,
+                        ),
+                        validator: _requiredMin(context.l10n.username, 3),
                         inputFormatters: [
                           LengthLimitingTextInputFormatter(32),
                           FilteringTextInputFormatter.allow(
@@ -721,17 +788,17 @@ class _UserDialogState extends State<_UserDialog> {
                         obscureText: true,
                         decoration: InputDecoration(
                           labelText:
-                              _editing ? 'New Password' : 'Password',
-                          hintText: _editing ? 'Leave empty to keep' : null,
+                              _editing ? context.l10n.newPassword : context.l10n.password,
+                          hintText: _editing ? context.l10n.leaveEmptyToKeep : null,
                         ),
                         validator: (value) {
                           if (!_editing &&
                               (value == null || value.trim().isEmpty)) {
-                            return 'Password is required';
+                            return context.l10n.passwordRequired;
                           }
                           if ((value?.trim().isNotEmpty ?? false) &&
                               value!.trim().length < 4) {
-                            return 'Password must be at least 4 characters';
+                            return context.l10n.passwordMinLength;
                           }
                           return null;
                         },
@@ -748,8 +815,10 @@ class _UserDialogState extends State<_UserDialog> {
                     Expanded(
                       child: TextFormField(
                         controller: _nickNameController,
-                        decoration: const InputDecoration(labelText: 'Nickname'),
-                        validator: _requiredMin('Nickname', 2),
+                        decoration: InputDecoration(
+                          labelText: context.l10n.nickName,
+                        ),
+                        validator: _requiredMin(context.l10n.nickName, 2),
                         inputFormatters: [
                           LengthLimitingTextInputFormatter(40),
                         ],
@@ -759,8 +828,10 @@ class _UserDialogState extends State<_UserDialog> {
                     Expanded(
                       child: TextFormField(
                         controller: _fullNameController,
-                        decoration: const InputDecoration(labelText: 'Full Name'),
-                        validator: _requiredMin('Full name', 3),
+                        decoration: InputDecoration(
+                          labelText: context.l10n.fullName,
+                        ),
+                        validator: _requiredMin(context.l10n.fullName, 3),
                         inputFormatters: [
                           LengthLimitingTextInputFormatter(80),
                         ],
@@ -774,12 +845,12 @@ class _UserDialogState extends State<_UserDialog> {
                     Expanded(
                       child: DropdownButtonFormField<AppUserRole>(
                         initialValue: _role,
-                        decoration: const InputDecoration(labelText: 'Role'),
+                        decoration: InputDecoration(labelText: context.l10n.role),
                         items: roleOptions
                             .map(
                               (role) => DropdownMenuItem(
                                 value: role,
-                                child: Text(role.label),
+                                child: Text(_roleLabel(context, role)),
                               ),
                             )
                             .toList(),
@@ -799,7 +870,9 @@ class _UserDialogState extends State<_UserDialog> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: _role.isTeacher ? _teacherId : null,
-                        decoration: const InputDecoration(labelText: 'Teacher'),
+                        decoration: InputDecoration(
+                          labelText: context.l10n.teacher,
+                        ),
                         items: teachers
                             .map(
                               (teacher) => DropdownMenuItem(
@@ -817,7 +890,7 @@ class _UserDialogState extends State<_UserDialog> {
                                 setState(() => _teacherId = teacherId),
                         validator: (_) {
                           if (_role.isTeacher && _teacherId == null) {
-                            return 'Teacher is required';
+                            return context.l10n.teacherRequired;
                           }
                           return null;
                         },
@@ -829,7 +902,7 @@ class _UserDialogState extends State<_UserDialog> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Extra Menu Access',
+                    context.l10n.extraMenuAccess,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
@@ -838,11 +911,11 @@ class _UserDialogState extends State<_UserDialog> {
                 ),
                 const SizedBox(height: 8),
                 if (extraMenus.isEmpty)
-                  const Align(
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'No extra menu access available for this role.',
-                      style: TextStyle(
+                      context.l10n.noExtraMenuAccess,
+                      style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
                       ),
@@ -855,7 +928,7 @@ class _UserDialogState extends State<_UserDialog> {
                     children: [
                       for (final menu in extraMenus)
                         FilterChip(
-                          label: Text(menu.label),
+                          label: Text(_menuLabel(context, menu.code)),
                           selected: _extraMenuCodes.contains(menu.code),
                           onSelected: (selected) {
                             setState(() {
@@ -877,11 +950,11 @@ class _UserDialogState extends State<_UserDialog> {
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         FilledButton(
           onPressed: _saving ? null : _save,
-          child: Text(_saving ? 'Saving...' : 'Save'),
+          child: Text(_saving ? context.l10n.saving : context.l10n.save),
         ),
       ],
     );
@@ -901,7 +974,7 @@ class _UserDialogState extends State<_UserDialog> {
         0,
         Teacher(
           id: linkedTeacherId,
-          fullName: user?.teacherName ?? 'Linked teacher',
+          fullName: user?.teacherName ?? context.l10n.linkedTeacher,
         ),
       );
     }
@@ -911,8 +984,8 @@ class _UserDialogState extends State<_UserDialog> {
   FormFieldValidator<String> _requiredMin(String label, int min) {
     return (value) {
       final trimmed = value?.trim() ?? '';
-      if (trimmed.isEmpty) return '$label is required';
-      if (trimmed.length < min) return '$label is too short';
+      if (trimmed.isEmpty) return context.l10n.requiredField(label);
+      if (trimmed.length < min) return context.l10n.fieldTooShort(label);
       return null;
     };
   }

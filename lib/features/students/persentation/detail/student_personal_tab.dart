@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/persentation/detail/detail_info_pill.dart';
 import 'package:edukita/features/students/persentation/detail/detail_section_card.dart';
@@ -16,14 +17,29 @@ class StudentPersonalTab extends StatelessWidget {
       children: [
         StudentInformationSection(student: student),
         DetailSectionCard(
-          title: 'Physical Attributes',
+          title: context.l10n.physicalAttributes,
           icon: Icons.accessibility_new_outlined,
           children: [
-            DetailInfoPill(label: 'Height', value: _numberOrDash(student.height, 'cm')),
-            DetailInfoPill(label: 'Weight', value: _numberOrDash(student.weight, 'kg')),
-            DetailInfoPill(label: 'Uniform', value: _intOrDash(student.uniformSize)),
-            DetailInfoPill(label: 'Pants', value: _intOrDash(student.pantsSize)),
-            DetailInfoPill(label: 'Shoes', value: _intOrDash(student.shoesSize)),
+            DetailInfoPill(
+              label: context.l10n.height,
+              value: _numberOrDash(student.height, 'cm'),
+            ),
+            DetailInfoPill(
+              label: context.l10n.weight,
+              value: _numberOrDash(student.weight, 'kg'),
+            ),
+            DetailInfoPill(
+              label: context.l10n.uniform,
+              value: _intOrDash(student.uniformSize),
+            ),
+            DetailInfoPill(
+              label: context.l10n.pants,
+              value: _intOrDash(student.pantsSize),
+            ),
+            DetailInfoPill(
+              label: context.l10n.shoes,
+              value: _intOrDash(student.shoesSize),
+            ),
           ],
         ),
       ],

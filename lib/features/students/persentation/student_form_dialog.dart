@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
@@ -37,7 +38,9 @@ class StudentFormDialog extends StatelessWidget {
         .toDouble();
 
     return AlertDialog(
-      title: AppDialogTitle(isEditing ? 'Edit Student' : 'Add Student'),
+      title: AppDialogTitle(
+        isEditing ? context.l10n.editStudent : context.l10n.addStudent,
+      ),
       contentPadding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
       content: SizedBox(
         width: dialogWidth,

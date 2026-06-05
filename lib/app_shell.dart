@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
 
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
@@ -114,16 +115,16 @@ class _AppShellState extends State<AppShell> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const AppDialogTitle('Logout?'),
-          content: const Text('You will return to the login screen.'),
+          title: AppDialogTitle(context.l10n.logoutTitle),
+          content: Text(context.l10n.logoutMessage),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.buttonCancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Logout'),
+              child: Text(context.l10n.menuLogout),
             ),
           ],
         );
@@ -208,7 +209,9 @@ class _AppShellState extends State<AppShell> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _allowedMenuCodes = AppMenuAccessRegistry.defaultCodesForRole(sessionRole);
+        _allowedMenuCodes = AppMenuAccessRegistry.defaultCodesForRole(
+          sessionRole,
+        );
       });
     }
   }
@@ -289,10 +292,10 @@ class _AppShellState extends State<AppShell> {
       });
     }
     final pageTitle = location.startsWith('/settings')
-        ? 'Settings'
+        ? context.l10n.menuSettings
         : selectedIndex >= 0
-            ? visibleMenuItems[selectedIndex].label
-            : '';
+        ? visibleMenuItems[selectedIndex].localizedLabel(context)
+        : '';
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -405,9 +408,8 @@ class _PrimaryRailState extends State<_PrimaryRail> {
                 return Padding(
                   key: ValueKey(item.route),
                   padding: const EdgeInsets.only(bottom: 4),
-                  child: Tooltip(
-                    message: item.label,
-                    waitDuration: const Duration(seconds: 1),
+                  child: _RailTooltip(
+                    message: item.localizedLabel(context),
                     child: ReorderableDragStartListener(
                       index: index,
                       child: MouseRegion(
@@ -416,7 +418,8 @@ class _PrimaryRailState extends State<_PrimaryRail> {
                         onExit: (_) => setState(() => _hoveredRoute = null),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(8),
-                          onTap: widget.navigationLocked ||
+                          onTap:
+                              widget.navigationLocked ||
                                   widget.location.startsWith(item.route)
                               ? null
                               : () => widget.onNavigate(item.route),
@@ -440,15 +443,15 @@ class _PrimaryRailState extends State<_PrimaryRail> {
           const Divider(height: 1, thickness: 1, color: AppColors.border),
           Padding(
             padding: const EdgeInsets.fromLTRB(6, 8, 6, 4),
-            child: Tooltip(
-              message: 'Preferences',
-              waitDuration: const Duration(seconds: 1),
+            child: _RailTooltip(
+              message: context.l10n.menuPreferences,
               child: MouseRegion(
                 onEnter: (_) => setState(() => _settingsHovered = true),
                 onExit: (_) => setState(() => _settingsHovered = false),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(8),
-                  onTap: widget.navigationLocked ||
+                  onTap:
+                      widget.navigationLocked ||
                           widget.location.startsWith('/settings')
                       ? null
                       : () => widget.onNavigate('/settings'),
@@ -468,9 +471,8 @@ class _PrimaryRailState extends State<_PrimaryRail> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(6, 4, 6, 8),
-            child: Tooltip(
-              message: 'Logout',
-              waitDuration: const Duration(seconds: 1),
+            child: _RailTooltip(
+              message: context.l10n.menuLogout,
               child: MouseRegion(
                 onEnter: (_) => setState(() => _logoutHovered = true),
                 onExit: (_) => setState(() => _logoutHovered = false),
@@ -520,8 +522,8 @@ class _RailButtonBox extends StatelessWidget {
         color: selected
             ? AppColors.primary.withValues(alpha: 0.14)
             : hovered
-                ? AppColors.white
-                : AppColors.transparent,
+            ? AppColors.white
+            : AppColors.transparent,
         borderRadius: BorderRadius.circular(8),
         border: selected
             ? Border.all(color: AppColors.primary.withValues(alpha: 0.24))
@@ -553,6 +555,98 @@ class _RailButtonContent extends StatelessWidget {
   }
 }
 
+class _RailTooltip extends StatefulWidget {
+  const _RailTooltip({required this.message, required this.child});
+
+  final String message;
+  final Widget child;
+
+  @override
+  State<_RailTooltip> createState() => _RailTooltipState();
+}
+
+class _RailTooltipState extends State<_RailTooltip> {
+  final LayerLink _link = LayerLink();
+  OverlayEntry? _entry;
+
+  @override
+  void dispose() {
+    _hide();
+    super.dispose();
+  }
+
+  void _show() {
+    if (_entry != null) return;
+    final overlay = Overlay.maybeOf(context);
+    if (overlay == null) return;
+
+    _entry = OverlayEntry(
+      builder: (context) {
+        return Positioned(
+          left: 0,
+          top: 0,
+          child: IgnorePointer(
+            child: CompositedTransformFollower(
+              link: _link,
+              showWhenUnlinked: false,
+              targetAnchor: Alignment.centerRight,
+              followerAnchor: Alignment.centerLeft,
+              offset: const Offset(8, 0),
+              child: Material(
+                color: AppColors.transparent,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.black87.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: AppColors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 6,
+                    ),
+                    child: Text(
+                      widget.message,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        height: 1.1,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    overlay.insert(_entry!);
+  }
+
+  void _hide() {
+    _entry?.remove();
+    _entry = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CompositedTransformTarget(
+      link: _link,
+      child: MouseRegion(
+        onEnter: (_) => _show(),
+        onExit: (_) => _hide(),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
 class _SidebarItem {
   const _SidebarItem({
     required this.label,
@@ -565,4 +659,19 @@ class _SidebarItem {
   final IconData icon;
   final String route;
   final String permissionCode;
+
+  String localizedLabel(BuildContext context) {
+    return switch (permissionCode) {
+      'dashboard' => context.l10n.menuDashboard,
+      'students' => context.l10n.menuStudents,
+      'teachers' => context.l10n.menuTeachers,
+      'parameters' => context.l10n.menuParameter,
+      'schedules' => context.l10n.menuSchedule,
+      'teaching_activities' => context.l10n.menuTeachingActivity,
+      'assistance_programs' => context.l10n.menuAssistancePrograms,
+      'reports' => context.l10n.menuReports,
+      'users' => context.l10n.menuUserManagement,
+      _ => label,
+    };
+  }
 }

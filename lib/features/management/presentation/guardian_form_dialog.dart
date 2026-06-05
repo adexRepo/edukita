@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:edukita/features/management/data/guardian_model.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:flutter/material.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
@@ -46,7 +47,9 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: AppDialogTitle(
-        widget.guardian == null ? 'Add Guardian' : 'Edit Guardian',
+        widget.guardian == null
+            ? context.l10n.addGuardian
+            : context.l10n.editGuardian,
       ),
       content: SingleChildScrollView(
         child: Form(
@@ -55,7 +58,7 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               CommonFormWidgets.textField(
-                label: 'Full Name',
+                label: context.l10n.fullName,
                 value: fullName,
                 onSaved: (value) => fullName = value ?? '',
                 validator: (value) => AppFormValidation.requiredText(
@@ -68,7 +71,7 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
-                label: 'Mobile No',
+                label: context.l10n.mobileNo,
                 value: mobileNo,
                 onSaved: (value) => mobileNo = value?.trim(),
                 keyboardType: TextInputType.phone,
@@ -78,7 +81,7 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
-                label: 'Occupation',
+                label: context.l10n.occupation,
                 value: occupation,
                 onSaved: (value) => occupation = value?.trim(),
                 validator: (value) => AppFormValidation.optionalText(
@@ -91,7 +94,7 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
-                label: 'Address',
+                label: context.l10n.address,
                 value: address,
                 onSaved: (value) => address = value?.trim(),
                 maxLines: 3,
@@ -110,7 +113,7 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         ElevatedButton(
           onPressed: _isSaving ? null : _submit,
@@ -120,7 +123,7 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.save),
         ),
       ],
     );

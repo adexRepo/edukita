@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
+import 'package:edukita/features/assistance/presentation/assistance_localized_display.dart';
 import 'package:edukita/features/assistance/programs/data/assistance_program_model.dart';
 import 'package:edukita/features/assistance/programs/domain/assistance_program_cubit.dart';
 import 'package:edukita/features/assistance/programs/presentation/assistance_program_form_dialog.dart';
@@ -79,15 +81,17 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
     }
 
     if (!_canView) {
-      return const AccessDeniedPanel(
-        message: 'You do not have permission to view assistance programs.',
+      return AccessDeniedPanel(
+        message: context.l10n.noPermissionViewAssistancePrograms,
       );
     }
 
     final content = BlocBuilder<AssistanceProgramCubit, AssistanceProgramState>(
       builder: (context, state) {
         if (state.error != null && state.programs.isEmpty) {
-          return Center(child: Text('Error: ${state.error}'));
+          return Center(
+            child: Text(context.l10n.errorWithDetails(state.error!)),
+          );
         }
 
         final pageContent = Column(
@@ -119,7 +123,7 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
     if (widget.embedded) return content;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Assistance Programs')),
+      appBar: AppBar(title: Text(context.l10n.assistanceProgramsTitle)),
       body: Padding(padding: const EdgeInsets.all(16), child: content),
     );
   }
@@ -130,14 +134,13 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AppPageHeader(
-          title: 'Assistance Programs',
-          subtitle:
-              'Maintain reusable assistance programs, benefit types, and default support values.',
+          title: context.l10n.assistanceProgramsTitle,
+          subtitle: context.l10n.assistanceProgramsSubtitle,
           trailing: _canCreate
               ? ElevatedButton.icon(
                   onPressed: () => _openForm(context),
                   icon: const Icon(Icons.add, size: 17),
-                  label: const Text('Add Program'),
+                  label: Text(context.l10n.addProgram),
                 )
               : null,
         ),
@@ -156,8 +159,8 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
                   prefixIcon: const Icon(Icons.search, size: 18),
                   suffixIcon: state.query.trim().isEmpty
                       ? null
-                      : IconButton(
-                          tooltip: 'Clear search',
+                        : IconButton(
+                          tooltip: context.l10n.clearSearch,
                           onPressed: () {
                             _searchController.clear();
                             _searchDebounce?.cancel();
@@ -165,17 +168,18 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
                           },
                           icon: const Icon(Icons.close, size: 18),
                         ),
-                  hintText: 'Search code, name, description',
+                  hintText: context.l10n.searchCodeNameDescription,
                 ),
               ),
             ),
             SizedBox(
               width: 170,
               child: _filterDropdown<AssistanceProgramCategory>(
-                label: 'Category',
+                label: context.l10n.category,
                 value: state.category,
                 values: AssistanceProgramCategory.values,
-                labelBuilder: (item) => item.label,
+                labelBuilder: (item) =>
+                    translateAssistanceCategory(context, item),
                 valueBuilder: (item) => item.value,
                 onChanged: cubit.setCategory,
               ),
@@ -183,10 +187,11 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
             SizedBox(
               width: 170,
               child: _filterDropdown<AssistanceBenefitType>(
-                label: 'Benefit',
+                label: context.l10n.benefit,
                 value: state.benefitType,
                 values: AssistanceBenefitType.values,
-                labelBuilder: (item) => item.label,
+                labelBuilder: (item) =>
+                    translateAssistanceBenefitType(context, item),
                 valueBuilder: (item) => item.value,
                 onChanged: cubit.setBenefitType,
               ),
@@ -194,10 +199,11 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
             SizedBox(
               width: 170,
               child: _filterDropdown<AssistanceFrequency>(
-                label: 'Frequency',
+                label: context.l10n.frequency,
                 value: state.frequency,
                 values: AssistanceFrequency.values,
-                labelBuilder: (item) => item.label,
+                labelBuilder: (item) =>
+                    translateAssistanceFrequency(context, item),
                 valueBuilder: (item) => item.value,
                 onChanged: cubit.setFrequency,
               ),
@@ -205,9 +211,11 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
             SizedBox(
               width: 145,
               child: CommonFormWidgets.dropdownFieldTyped<_StatusFilter>(
-                label: 'Status',
+                label: context.l10n.status,
                 items: _StatusFilter.values,
-                labelBuilder: (item) => item.label,
+                labelBuilder: (item) => item.isActive == true
+                    ? context.l10n.statusActive
+                    : context.l10n.statusInactive,
                 valueBuilder: (item) => item.value,
                 value: _StatusFilter.fromActive(state.isActive),
                 isRequired: false,
@@ -223,7 +231,7 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
                   cubit.clearFilters();
                 },
                 icon: const Icon(Icons.filter_alt_off_outlined, size: 17),
-                label: const Text('Clear'),
+                label: Text(context.l10n.clearSearch),
               ),
           ],
         ),
@@ -255,7 +263,7 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
     final programs = state.programs;
     return AppTable<AssistanceProgram>(
       data: programs,
-      emptyMessage: 'No assistance programs found',
+      emptyMessage: context.l10n.noAssistancePrograms,
       deferRowTap: false,
       pageable: Pageable(
         page: 0,
@@ -268,7 +276,7 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
           : null,
       columns: [
         AppTableColumn(
-          title: 'Code',
+          title: context.l10n.code,
           flex: 2,
           minWidth: 150,
           sortValue: (program) => _sortValue(program.code),
@@ -280,7 +288,7 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Name',
+          title: context.l10n.name,
           flex: 3,
           minWidth: 180,
           sortValue: (program) => _sortValue(program.name),
@@ -292,36 +300,38 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Category',
+          title: context.l10n.category,
           flex: 2,
           sortValue: (program) => _sortValue(program.category.label),
-          cell: (program) => _pill(program.category.label),
+          cell: (program) =>
+              _pill(translateAssistanceCategory(context, program.category)),
         ),
         AppTableColumn(
-          title: 'Benefit',
+          title: context.l10n.benefit,
           flex: 2,
           sortValue: (program) => _sortValue(program.benefitType.label),
           cell: (program) => Text(
-            program.benefitType.label,
+            translateAssistanceBenefitType(context, program.benefitType),
             style: const TextStyle(fontSize: 12),
           ),
         ),
         AppTableColumn(
-          title: 'Frequency',
+          title: context.l10n.frequency,
           flex: 2,
           sortValue: (program) => _sortValue(program.frequency.label),
           cell: (program) => Text(
-            program.frequency.label,
+            translateAssistanceFrequency(context, program.frequency),
             style: const TextStyle(fontSize: 12),
           ),
         ),
         AppTableColumn(
-          title: 'Default Benefit',
+          title: context.l10n.defaultBenefit,
           flex: 3,
           minWidth: 200,
           sortValue: (program) => _sortValue(program.defaultBenefit),
           cell: (program) => Text(
             _benefitSummary(
+              context,
               program,
               state.benefitsByProgramId[program.id] ?? const [],
             ),
@@ -331,24 +341,26 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Status',
+          title: context.l10n.status,
           flex: 1,
           minWidth: 110,
           sortValue: (program) => program.isActive ? 1 : 0,
           cell: (program) => _pill(
-            program.isActive ? 'Active' : 'Inactive',
+            program.isActive
+                ? context.l10n.statusActive
+                : context.l10n.statusInactive,
             muted: !program.isActive,
           ),
         ),
         AppTableColumn(
-          title: 'Actions',
+          title: context.l10n.actions,
           flex: 2,
           minWidth: 120,
           cell: (program) => Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
-                tooltip: 'Edit program',
+                tooltip: context.l10n.editProgramTooltip,
                 onPressed: _canUpdate
                     ? () => _openForm(context, program: program)
                     : null,
@@ -358,7 +370,9 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
                 icon: const Icon(Icons.edit, size: 16),
               ),
               IconButton(
-                tooltip: program.isActive ? 'Deactivate' : 'Activate',
+                tooltip: program.isActive
+                    ? context.l10n.deactivate
+                    : context.l10n.activate,
                 onPressed: _canUpdate
                     ? () => _toggleActive(context, program)
                     : null,
@@ -421,13 +435,13 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
   }) async {
     if (program == null && !_canCreate) {
       AppToast.showFailed(
-        'You do not have permission to create assistance programs.',
+        context.l10n.noPermissionCreateAssistancePrograms,
       );
       return;
     }
     if (program != null && !_canUpdate) {
       AppToast.showFailed(
-        'You do not have permission to update assistance programs.',
+        context.l10n.noPermissionUpdateAssistancePrograms,
       );
       return;
     }
@@ -458,21 +472,20 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
   ) async {
     if (!_canUpdate) {
       AppToast.showFailed(
-        'You do not have permission to update assistance programs.',
+        context.l10n.noPermissionUpdateAssistancePrograms,
       );
       return;
     }
+    final cubit = context.read<AssistanceProgramCubit>();
+    final successMessage = program.isActive
+        ? context.l10n.assistanceProgramDeactivated
+        : context.l10n.assistanceProgramActivated;
+    final failedMessage = context.l10n.failedUpdateAssistanceProgramStatus;
     try {
-      await context
-          .read<AssistanceProgramCubit>()
-          .setActive(program, !program.isActive);
-      AppToast.showSuccess(
-        program.isActive
-            ? 'Assistance program deactivated.'
-            : 'Assistance program activated.',
-      );
+      await cubit.setActive(program, !program.isActive);
+      AppToast.showSuccess(successMessage);
     } catch (_) {
-      AppToast.showFailed('Failed to update assistance program status.');
+      AppToast.showFailed(failedMessage);
     }
   }
 
@@ -483,13 +496,18 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
   }
 
   String _benefitSummary(
+    BuildContext context,
     AssistanceProgram program,
     List<AssistanceProgramBenefit> benefits,
   ) {
     final active = benefits.where((benefit) => benefit.isActive).toList();
     if (active.isEmpty) return program.defaultBenefit;
     return active
-        .map((benefit) => '${benefit.schoolType.label}: ${benefit.summary}')
+        .map(
+          (benefit) =>
+              '${translateAssistanceSchoolType(context, benefit.schoolType)}: '
+              '${benefit.summary}',
+        )
         .join('\n');
   }
 }

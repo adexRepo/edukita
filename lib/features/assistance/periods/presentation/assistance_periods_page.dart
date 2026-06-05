@@ -3,7 +3,9 @@ import 'dart:io' as io;
 import 'dart:typed_data';
 
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/utils/generated_file_name.dart';
+import 'package:edukita/features/assistance/presentation/assistance_localized_display.dart';
 import 'package:edukita/features/assistance/programs/data/assistance_program_model.dart';
 import 'package:edukita/features/assistance/programs/domain/assistance_program_cubit.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
@@ -54,13 +56,13 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
   bool get _canDelete =>
       _authScope.canDelete(AppMenuAccessRegistry.assistancePrograms.code);
   bool get _canExport => _authScope.can(
-        AppMenuAccessRegistry.assistancePrograms.code,
-        AppPermissionAction.export,
-      );
+    AppMenuAccessRegistry.assistancePrograms.code,
+    AppPermissionAction.export,
+  );
   bool get _canApprove => _authScope.can(
-        AppMenuAccessRegistry.assistancePrograms.code,
-        AppPermissionAction.approve,
-      );
+    AppMenuAccessRegistry.assistancePrograms.code,
+    AppPermissionAction.approve,
+  );
 
   @override
   void initState() {
@@ -96,8 +98,8 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
     }
 
     if (!_canView) {
-      return const AccessDeniedPanel(
-        message: 'You do not have permission to view assistance programs.',
+      return AccessDeniedPanel(
+        message: context.l10n.noPermissionViewAssistancePrograms,
       );
     }
 
@@ -109,7 +111,10 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
       final selected = planState.periods
           .where((period) => period.id == _selectedPeriod!.id)
           .cast<AssistancePeriod?>()
-          .firstWhere((period) => period != null, orElse: () => _selectedPeriod);
+          .firstWhere(
+            (period) => period != null,
+            orElse: () => _selectedPeriod,
+          );
       return _AssistancePeriodDetail(
         period: selected ?? _selectedPeriod!,
         state: planState,
@@ -128,15 +133,14 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AppPageHeader(
-            title: 'Assistance Periods',
-            subtitle:
-                'Manage assistance periods, target candidates, approval, and recipients.',
+            title: context.l10n.assistancePeriodsTitle,
+            subtitle: context.l10n.assistancePeriodsSubtitle,
             trailing: ElevatedButton.icon(
               onPressed: programs.isEmpty || !_canCreate
                   ? null
                   : () => _showCreatePeriodDialog(context, programs),
               icon: const Icon(Icons.add),
-              label: const Text('Create'),
+              label: Text(context.l10n.create),
             ),
           ),
           AppLoadingStrip(
@@ -170,6 +174,9 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
     final approved = periods
         .where((period) => period.status == AssistancePeriodStatus.approved)
         .length;
+    final distributed = periods
+        .where((period) => period.status == AssistancePeriodStatus.distributed)
+        .length;
     final thisMonth = periods
         .where(
           (period) =>
@@ -177,16 +184,41 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
         )
         .length;
 
-    return Row(
-      children: [
-        Expanded(child: _summaryCard('Draft', '$draft')),
-        const SizedBox(width: 12),
-        Expanded(child: _summaryCard('Targeted', '$targeted')),
-        const SizedBox(width: 12),
-        Expanded(child: _summaryCard('Approved', '$approved')),
-        const SizedBox(width: 12),
-        Expanded(child: _summaryCard('This Month', '$thisMonth Active')),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        var cardWidth = (constraints.maxWidth - 48) / 5;
+        if (cardWidth < 160) cardWidth = (constraints.maxWidth - 12) / 2;
+        if (cardWidth < 160) cardWidth = constraints.maxWidth;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            SizedBox(
+              width: cardWidth,
+              child: _summaryCard(context.l10n.draft, '$draft'),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _summaryCard(context.l10n.targeted, '$targeted'),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _summaryCard(context.l10n.approved, '$approved'),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _summaryCard(context.l10n.distributed, '$distributed'),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _summaryCard(
+                context.l10n.thisMonth,
+                context.l10n.activeCount(thisMonth),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -227,10 +259,9 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
     final years = {
       DateTime.now().year,
       ...context.watch<AssistancePlanCubit>().state.periods.map(
-            (period) => period.periodYear,
-          ),
-    }.toList()
-      ..sort((a, b) => b.compareTo(a));
+        (period) => period.periodYear,
+      ),
+    }.toList()..sort((a, b) => b.compareTo(a));
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -250,16 +281,16 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
               child: TextField(
                 controller: _searchController,
                 onChanged: (value) => setState(() => _query = value),
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  hintText: 'Search period, program, month',
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: context.l10n.searchPeriodProgramMonth,
                 ),
               ),
             ),
             SizedBox(
               width: 210,
               child: CommonFormWidgets.dropdownFieldTyped<AssistanceProgram>(
-                label: 'Program',
+                label: context.l10n.program,
                 items: programs,
                 labelBuilder: (program) => program.name,
                 valueBuilder: (program) => program.id,
@@ -274,21 +305,24 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
             ),
             SizedBox(
               width: 170,
-              child: CommonFormWidgets.dropdownFieldTyped<AssistancePeriodStatus>(
-                label: 'Status',
-                items: AssistancePeriodStatus.values,
-                labelBuilder: (status) => status.label,
-                valueBuilder: (status) => status.value,
-                value: _statusFilter,
-                isRequired: false,
-                onChanged: (status) => setState(() => _statusFilter = status),
-                onSaved: (_) {},
-              ),
+              child:
+                  CommonFormWidgets.dropdownFieldTyped<AssistancePeriodStatus>(
+                    label: context.l10n.status,
+                    items: AssistancePeriodStatus.values,
+                    labelBuilder: (status) =>
+                        translateAssistancePeriodStatus(context, status),
+                    valueBuilder: (status) => status.value,
+                    value: _statusFilter,
+                    isRequired: false,
+                    onChanged: (status) =>
+                        setState(() => _statusFilter = status),
+                    onSaved: (_) {},
+                  ),
             ),
             SizedBox(
               width: 130,
               child: CommonFormWidgets.dropdownFieldTyped<int>(
-                label: 'Year',
+                label: context.l10n.year,
                 items: years,
                 labelBuilder: (year) => '$year',
                 valueBuilder: (year) => '$year',
@@ -308,7 +342,9 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
     List<AssistancePeriod> periods,
     List<AssistanceProgram> programs,
   ) {
-    final programNames = {for (final program in programs) program.id: program.name};
+    final programNames = {
+      for (final program in programs) program.id: program.name,
+    };
     final query = _query.trim().toLowerCase();
     return periods.where((period) {
       if (_programFilter.isNotEmpty &&
@@ -323,16 +359,13 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
       final programName = programNames[period.assistanceProgramId] ?? '';
       return period.label.toLowerCase().contains(query) ||
           programName.toLowerCase().contains(query) ||
-          AssistancePeriod.monthName(period.periodMonth)
-              .toLowerCase()
-              .contains(query);
+          AssistancePeriod.monthName(
+            period.periodMonth,
+          ).toLowerCase().contains(query);
     }).toList();
   }
 
-  AssistanceProgram? _programById(
-    List<AssistanceProgram> programs,
-    String id,
-  ) {
+  AssistanceProgram? _programById(List<AssistanceProgram> programs, String id) {
     for (final program in programs) {
       if (program.id == id) return program;
     }
@@ -344,10 +377,12 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
     required List<AssistancePeriod> periods,
     required List<AssistanceProgram> programs,
   }) {
-    final programNames = {for (final program in programs) program.id: program.name};
+    final programNames = {
+      for (final program in programs) program.id: program.name,
+    };
     return AppTable<AssistancePeriod>(
       data: periods,
-      emptyMessage: 'No assistance periods found',
+      emptyMessage: context.l10n.noAssistancePeriods,
       pageable: Pageable(
         page: 0,
         size: periods.length,
@@ -360,31 +395,35 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
       },
       columns: [
         AppTableColumn(
-          title: 'Period Name',
+          title: context.l10n.periodName,
           flex: 4,
           minWidth: 220,
           cell: (period) => _text(period.label, bold: true),
         ),
         AppTableColumn(
-          title: 'Program',
+          title: context.l10n.program,
           flex: 3,
           minWidth: 180,
-          cell: (period) => _text(programNames[period.assistanceProgramId] ?? '-'),
+          cell: (period) =>
+              _text(programNames[period.assistanceProgramId] ?? '-'),
         ),
         AppTableColumn(
-          title: 'Target',
+          title: context.l10n.target,
           cell: (period) => _text('${period.targetQuota}'),
         ),
         AppTableColumn(
-          title: 'Selected',
-          cell: (period) => _text('${_selectedCount(period)}/${period.targetQuota}'),
+          title: context.l10n.selected,
+          cell: (period) =>
+              _text('${_selectedCount(period)}/${period.targetQuota}'),
         ),
         AppTableColumn(
-          title: 'Status',
-          cell: (period) => _statusChip(period.status.label),
+          title: context.l10n.status,
+          cell: (period) => _statusChip(
+            translateAssistancePeriodStatus(context, period.status),
+          ),
         ),
         AppTableColumn(
-          title: 'Action',
+          title: context.l10n.action,
           flex: 3,
           minWidth: 170,
           cell: (period) => Row(
@@ -395,17 +434,17 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
                   context.read<AssistancePlanCubit>().selectPeriod(period.id);
                   setState(() => _selectedPeriod = period);
                 },
-                child: Text(_actionForStatus(period.status)),
+                child: Text(_actionForStatus(context, period.status)),
               ),
               IconButton(
-                tooltip: period.status == AssistancePeriodStatus.approved
-                    ? 'Approved period cannot be deleted'
-                    : 'Delete period',
-                onPressed: period.status == AssistancePeriodStatus.approved
+                tooltip: _periodLocksTargetPlan(period.status)
+                    ? context.l10n.approvedFinalizedPeriodCannotDelete
+                    : context.l10n.deletePeriod,
+                onPressed: _periodLocksTargetPlan(period.status)
                     ? null
                     : _canDelete
-                        ? () => _confirmDeletePeriod(context, period)
-                        : null,
+                    ? () => _confirmDeletePeriod(context, period)
+                    : null,
                 icon: const Icon(
                   Icons.delete_outline,
                   size: 18,
@@ -425,37 +464,35 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
     AssistancePeriod period,
   ) async {
     if (!_canDelete) {
-      AppToast.showFailed('You do not have permission to delete periods.');
+      AppToast.showFailed(context.l10n.noPermissionDeletePeriods);
       return;
     }
     final confirmed = await showGuardedDialog<bool>(
       context: context,
       guardKey: 'delete_assistance_period_${period.id}',
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Assistance Period?'),
-        content: Text(
-          'This will delete "${period.label}" with its rules, target candidates, and recipient data. This action cannot be undone.',
-        ),
+        title: Text(context.l10n.deleteAssistancePeriodTitle),
+        content: Text(context.l10n.deleteAssistancePeriodMessage(period.label)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.errorDark,
-            ),
-            child: const Text('Delete Period'),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
+            child: Text(context.l10n.deletePeriodButton),
           ),
         ],
       ),
     );
     if (confirmed != true || !context.mounted) return;
 
+    final cubit = context.read<AssistancePlanCubit>();
+    final successMessage = context.l10n.assistancePeriodDeleted;
     try {
-      await context.read<AssistancePlanCubit>().deletePeriod(period.id);
-      AppToast.showSuccess('Assistance period deleted.');
+      await cubit.deletePeriod(period.id);
+      AppToast.showSuccess(successMessage);
     } catch (e) {
       AppToast.showFailed(e.toString());
     }
@@ -465,17 +502,21 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
     final state = context.read<AssistancePlanCubit>().state;
     if (state.selectedPeriodId != period.id) return 0;
     return state.assessments
-        .where((item) => item.decisionStatus == AssistanceDecisionStatus.approved)
+        .where(
+          (item) => item.decisionStatus == AssistanceDecisionStatus.approved,
+        )
         .length;
   }
 
-  String _actionForStatus(AssistancePeriodStatus status) {
+  String _actionForStatus(BuildContext context, AssistancePeriodStatus status) {
     return switch (status) {
-      AssistancePeriodStatus.draft => 'Setup',
-      AssistancePeriodStatus.targeted => 'Open',
-      AssistancePeriodStatus.submitted => 'Upload Doc',
-      AssistancePeriodStatus.approved => 'Recipients',
-      AssistancePeriodStatus.cancelled => 'Open',
+      AssistancePeriodStatus.draft => context.l10n.setup,
+      AssistancePeriodStatus.targeted => context.l10n.open,
+      AssistancePeriodStatus.submitted => context.l10n.review,
+      AssistancePeriodStatus.approved => context.l10n.finalize,
+      AssistancePeriodStatus.rejected => context.l10n.view,
+      AssistancePeriodStatus.distributed => context.l10n.report,
+      AssistancePeriodStatus.cancelled => context.l10n.report,
     };
   }
 
@@ -553,7 +594,8 @@ class _AssistancePeriodDetail extends StatefulWidget {
   final bool canApprove;
 
   @override
-  State<_AssistancePeriodDetail> createState() => _AssistancePeriodDetailState();
+  State<_AssistancePeriodDetail> createState() =>
+      _AssistancePeriodDetailState();
 }
 
 class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
@@ -563,7 +605,7 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -585,7 +627,9 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
       ),
     );
     final selected = widget.state.assessments
-        .where((item) => item.decisionStatus == AssistanceDecisionStatus.approved)
+        .where(
+          (item) => item.decisionStatus == AssistanceDecisionStatus.approved,
+        )
         .length;
     final remaining = (widget.period.targetQuota - selected).clamp(0, 999999);
 
@@ -612,12 +656,21 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
                           ),
                         ),
                         const SizedBox(width: 10),
-                        _statusChip(widget.period.status.label),
+                        _statusChip(
+                          translateAssistancePeriodStatus(
+                            context,
+                            widget.period.status,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: AppPageHeaderStyle.titleSubtitleGap),
                     Text(
-                      '${widget.period.label} | ${_periodDateRange(widget.period)} | Target: ${widget.period.targetQuota}\nMin Attendance: ${widget.period.minimumAttendancePercentage.toStringAsFixed(0)}% | Calculation: ${_calculationRange(widget.period)}',
+                      '${widget.period.label} | ${_periodDateRange(widget.period)} | '
+                      '${context.l10n.target}: ${widget.period.targetQuota}\n'
+                      '${context.l10n.minimumAttendance}: '
+                      '${widget.period.minimumAttendancePercentage.toStringAsFixed(0)}% | '
+                      '${context.l10n.calculation}: ${_calculationRange(widget.period)}',
                       style: AppPageHeaderStyle.subtitleStyle(context),
                     ),
                   ],
@@ -630,7 +683,7 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
                   OutlinedButton.icon(
                     onPressed: widget.onBack,
                     icon: const Icon(Icons.arrow_back),
-                    label: const Text('Back'),
+                    label: Text(context.l10n.back),
                   ),
                 ],
               ),
@@ -639,25 +692,39 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
           const SizedBox(height: AppPageHeaderStyle.bottomGap),
           Row(
             children: [
-              Expanded(child: _summaryCard('Target', '${widget.period.targetQuota}')),
+              Expanded(
+                child: _summaryCard(
+                  context.l10n.target,
+                  '${widget.period.targetQuota}',
+                ),
+              ),
               const SizedBox(width: 12),
-              Expanded(child: _summaryCard('Selected', '$selected')),
+              Expanded(child: _summaryCard(context.l10n.selected, '$selected')),
               const SizedBox(width: 12),
-              Expanded(child: _summaryCard('Remaining', '$remaining')),
+              Expanded(
+                child: _summaryCard(context.l10n.remaining, '$remaining'),
+              ),
               const SizedBox(width: 12),
-              Expanded(child: _summaryCard('Status', widget.period.status.label)),
+              Expanded(
+                child: _summaryCard(
+                  context.l10n.status,
+                  translateAssistancePeriodStatus(
+                    context,
+                    widget.period.status,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           TabBar(
             controller: _tabController,
             isScrollable: true,
-            tabs: const [
-              Tab(text: 'Setup'),
-              Tab(text: 'Target Candidates'),
-              Tab(text: 'Review & Export'),
-              Tab(text: 'Approval Document'),
-              Tab(text: 'Recipients'),
+            tabs: [
+              Tab(text: context.l10n.setup),
+              Tab(text: context.l10n.targetCandidates),
+              Tab(text: context.l10n.reviewApproval),
+              Tab(text: context.l10n.report),
             ],
           ),
           const SizedBox(height: 12),
@@ -665,25 +732,22 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _SetupTab(
-                  period: widget.period,
-                  state: widget.state,
-                ),
+                _SetupTab(period: widget.period, state: widget.state),
                 _TargetsTab(
                   period: widget.period,
                   state: widget.state,
-                  canUpdate: widget.canUpdate,
-                  canDelete: widget.canDelete,
+                  canUpdate:
+                      widget.canUpdate &&
+                      !_periodLocksTargetPlan(widget.period.status),
+                  canDelete:
+                      widget.canDelete &&
+                      !_periodLocksTargetPlan(widget.period.status),
                 ),
-                _ReviewTab(
+                _ReviewApprovalTab(
                   period: widget.period,
                   state: widget.state,
                   canUpdate: widget.canUpdate,
                   canExport: widget.canExport,
-                ),
-                _ApprovalTab(
-                  period: widget.period,
-                  state: widget.state,
                   canApprove: widget.canApprove,
                 ),
                 _RecipientsTab(
@@ -691,6 +755,7 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
                   state: widget.state,
                   program: program,
                   canUpdate: widget.canUpdate,
+                  canApprove: widget.canApprove,
                   canExport: widget.canExport,
                 ),
               ],
@@ -713,9 +778,18 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
+            ),
             const SizedBox(height: 6),
-            Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
           ],
         ),
       ),
@@ -742,10 +816,7 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
 }
 
 class _SetupTab extends StatelessWidget {
-  const _SetupTab({
-    required this.period,
-    required this.state,
-  });
+  const _SetupTab({required this.period, required this.state});
 
   final AssistancePeriod period;
   final AssistancePlanState state;
@@ -766,9 +837,12 @@ class _SetupTab extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Period Info',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                Text(
+                  context.l10n.periodInfo,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Wrap(
@@ -776,44 +850,46 @@ class _SetupTab extends StatelessWidget {
                   runSpacing: 10,
                   children: [
                     _SetupInfoTile(
-                      label: 'Period Name',
+                      label: context.l10n.periodName,
                       value: period.label,
                       icon: Icons.event_note_outlined,
                       wide: true,
                     ),
                     _SetupInfoTile(
-                      label: 'Date Range',
+                      label: context.l10n.dateRange,
                       value: _periodDateRange(period),
                       icon: Icons.date_range_outlined,
                       wide: true,
                     ),
                     _SetupInfoTile(
-                      label: 'Target Quota',
+                      label: context.l10n.targetQuota,
                       value: '${period.targetQuota}',
                       icon: Icons.groups_outlined,
                     ),
                     _SetupInfoTile(
-                      label: 'Minimum Attendance',
+                      label: context.l10n.minimumAttendance,
                       value:
                           '${period.minimumAttendancePercentage.toStringAsFixed(0)}%',
                       icon: Icons.fact_check_outlined,
                     ),
                     _SetupInfoTile(
-                      label: 'Calculation Window',
-                      value: '${period.calculationWindowMonths} months',
+                      label: context.l10n.calculationWindow,
+                      value: context.l10n.monthsCount(
+                        period.calculationWindowMonths,
+                      ),
                       icon: Icons.history_outlined,
                     ),
                     _SetupInfoTile(
-                      label: 'Calculation Range',
+                      label: context.l10n.calculationRange,
                       value: _calculationRange(period),
                       icon: Icons.timeline_outlined,
                       wide: true,
                     ),
                     _SetupInfoTile(
-                      label: 'Manual Override',
+                      label: context.l10n.manualOverride,
                       value: period.allowManualOverrideBelowAttendance
-                          ? 'Allowed'
-                          : 'Not allowed',
+                          ? context.l10n.allowed
+                          : context.l10n.notAllowed,
                       icon: Icons.verified_user_outlined,
                     ),
                   ],
@@ -823,9 +899,9 @@ class _SetupTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
-        const Text(
-          'Rules Used',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+        Text(
+          context.l10n.rulesUsed,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 8),
         Expanded(
@@ -838,11 +914,30 @@ class _SetupTab extends StatelessWidget {
               totalPages: state.periodRules.isEmpty ? 0 : 1,
             ),
             columns: [
-              AppTableColumn(title: 'No', cell: (rule) => _text('${rule.priorityOrder}')),
-              AppTableColumn(title: 'Rule', flex: 3, cell: (rule) => _text(rule.displayName, bold: true)),
-              AppTableColumn(title: 'Quota', cell: (rule) => _text('${rule.quota}')),
-              AppTableColumn(title: 'Mode', cell: (rule) => _text(rule.selectionMode.label)),
-              AppTableColumn(title: 'Selected', cell: (rule) => _text('${_selectedForRule(rule)}/${rule.quota}')),
+              AppTableColumn(
+                title: context.l10n.number,
+                cell: (rule) => _text('${rule.priorityOrder}'),
+              ),
+              AppTableColumn(
+                title: context.l10n.rule,
+                flex: 3,
+                cell: (rule) => _text(rule.displayName, bold: true),
+              ),
+              AppTableColumn(
+                title: context.l10n.quota,
+                cell: (rule) => _text('${rule.quota}'),
+              ),
+              AppTableColumn(
+                title: context.l10n.mode,
+                cell: (rule) => _text(
+                  translateAssistanceSelectionMode(context, rule.selectionMode),
+                ),
+              ),
+              AppTableColumn(
+                title: context.l10n.selected,
+                cell: (rule) =>
+                    _text('${_selectedForRule(rule)}/${rule.quota}'),
+              ),
             ],
           ),
         ),
@@ -951,7 +1046,9 @@ class _TargetsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = state.assessments
-        .where((item) => item.decisionStatus == AssistanceDecisionStatus.approved)
+        .where(
+          (item) => item.decisionStatus == AssistanceDecisionStatus.approved,
+        )
         .length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -959,46 +1056,49 @@ class _TargetsTab extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _sectionTitle('Target Candidates\nSelected: $selected / ${period.targetQuota}'),
+              child: _sectionTitle(
+                '${context.l10n.targetCandidates}\n'
+                '${context.l10n.selected}: $selected / ${period.targetQuota}',
+              ),
             ),
             ElevatedButton.icon(
               onPressed: canUpdate
                   ? () async {
-                final cubit = context.read<AssistancePlanCubit>();
-                try {
-                  await cubit.generateSelectedPeriod();
-                  if (!context.mounted) return;
-                  AppToast.showSuccess('Target candidates saved.');
-                } catch (e) {
-                  if (!context.mounted) return;
-                  showErrorToastWithDetails(
-                    context,
-                    title: 'Auto Target Failed',
-                    error: e,
-                  );
-                }
-              }
+                      final cubit = context.read<AssistancePlanCubit>();
+                      try {
+                        await cubit.generateSelectedPeriod();
+                        if (!context.mounted) return;
+                        AppToast.showSuccess(context.l10n.autoTargetsGenerated);
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        showErrorToastWithDetails(
+                          context,
+                          title: context.l10n.autoTargetFailed,
+                          error: e,
+                        );
+                      }
+                    }
                   : null,
               icon: const Icon(Icons.auto_awesome),
-              label: const Text('Auto Target'),
+              label: Text(context.l10n.autoTarget),
             ),
             const SizedBox(width: 8),
             FilledButton.icon(
               onPressed: canUpdate
                   ? () async {
-                final cubit = context.read<AssistancePlanCubit>();
-                try {
-                  await cubit.markPlanTargeted();
-                  if (!context.mounted) return;
-                  AppToast.showSuccess('Target plan saved.');
-                } catch (e) {
-                  if (!context.mounted) return;
-                  AppToast.showFailed(e.toString());
-                }
-              }
+                      final cubit = context.read<AssistancePlanCubit>();
+                      try {
+                        await cubit.markPlanTargeted();
+                        if (!context.mounted) return;
+                        AppToast.showSuccess(context.l10n.targetPlanSaved);
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        AppToast.showFailed(e.toString());
+                      }
+                    }
                   : null,
               icon: const Icon(Icons.save),
-              label: const Text('Save Target Plan'),
+              label: Text(context.l10n.saveTargetPlan),
             ),
           ],
         ),
@@ -1056,57 +1156,104 @@ class _RuleTargetSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${rule.displayName}   ${rule.selectionMode.label} | Quota ${rule.quota} | ${rows.length}/${rule.quota}',
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: canUpdate
-                      ? () async {
-                    final cubit = context.read<AssistancePlanCubit>();
-                    if (rule.selectionMode == AssistanceSelectionMode.auto) {
-                      try {
-                        await cubit.generateSelectedPeriod();
-                        if (!context.mounted) return;
-                        AppToast.showSuccess('Auto targets saved.');
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        showErrorToastWithDetails(
-                          context,
-                          title: 'Auto Target Failed',
-                          error: e,
-                        );
-                      }
-                      return;
-                    }
-                    await showGuardedDialog<void>(
-                      context: context,
-                      guardKey: 'select_assistance_students_${rule.id}',
-                      builder: (_) => BlocProvider.value(
-                        value: cubit,
-                        child: _SelectStudentsDialog(rule: rule, state: state),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final title = Text(
+                  '${rule.displayName}   '
+                  '${translateAssistanceSelectionMode(context, rule.selectionMode)} | '
+                  '${context.l10n.quota} ${rule.quota} | '
+                  '${rows.length}/${rule.quota}',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                );
+                final actions = Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.end,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: canUpdate
+                          ? () async {
+                              final cubit = context.read<AssistancePlanCubit>();
+                              if (rule.selectionMode ==
+                                  AssistanceSelectionMode.auto) {
+                                try {
+                                  await cubit.generateSelectedPeriod();
+                                  if (!context.mounted) return;
+                                  AppToast.showSuccess(
+                                    context.l10n.autoTargetsGenerated,
+                                  );
+                                } catch (e) {
+                                  if (!context.mounted) return;
+                                  showErrorToastWithDetails(
+                                    context,
+                                    title: context.l10n.autoTargetFailed,
+                                    error: e,
+                                  );
+                                }
+                                return;
+                              }
+                              await showGuardedDialog<void>(
+                                context: context,
+                                guardKey:
+                                    'select_assistance_students_${rule.id}',
+                                builder: (_) => BlocProvider.value(
+                                  value: cubit,
+                                  child: _SelectStudentsDialog(
+                                    rule: rule,
+                                    state: state,
+                                  ),
+                                ),
+                              );
+                            }
+                          : null,
+                      icon: Icon(
+                        rule.selectionMode == AssistanceSelectionMode.auto
+                            ? Icons.auto_awesome
+                            : Icons.person_add_alt,
                       ),
-                    );
-                  }
-                      : null,
-                  icon: Icon(rule.selectionMode == AssistanceSelectionMode.auto
-                      ? Icons.auto_awesome
-                      : Icons.person_add_alt),
-                  label: Text(rule.selectionMode == AssistanceSelectionMode.auto
-                      ? 'Auto Target'
-                      : 'Select Students'),
-                ),
-              ],
+                      label: Text(
+                        rule.selectionMode == AssistanceSelectionMode.auto
+                            ? context.l10n.autoTarget
+                            : context.l10n.selectStudents,
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: rows.isEmpty || !canDelete
+                          ? null
+                          : () => _removeAllTargetCandidates(context, rows),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                        side: const BorderSide(color: AppColors.error),
+                      ),
+                      icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+                      label: Text(context.l10n.removeAll),
+                    ),
+                  ],
+                );
+                if (constraints.maxWidth < 620) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      title,
+                      const SizedBox(height: 8),
+                      Align(alignment: Alignment.centerRight, child: actions),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: title),
+                    const SizedBox(width: 8),
+                    actions,
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 10),
             SizedBox(
               height: rows.isEmpty ? 90 : 220,
               child: rows.isEmpty
-                  ? const Center(child: Text('No candidates selected yet.'))
+                  ? Center(child: Text(context.l10n.noCandidatesSelected))
                   : AppTable<StudentAssistanceAssessment>(
                       data: rows,
                       pageable: Pageable(
@@ -1116,21 +1263,51 @@ class _RuleTargetSection extends StatelessWidget {
                         totalPages: 1,
                       ),
                       columns: [
-                        AppTableColumn(title: 'Rank', cell: (item) => _text('${item.rankNo ?? '-'}')),
-                        AppTableColumn(title: 'Student', flex: 3, cell: (item) => _text(item.studentName ?? item.studentId, bold: true)),
-                        AppTableColumn(title: 'Attendance', cell: (item) => _text('${(item.attendanceScore ?? 0).toStringAsFixed(0)}%')),
-                        AppTableColumn(title: 'Score', cell: (item) => _text(item.totalScore.toStringAsFixed(0))),
-                        AppTableColumn(title: 'Status', cell: (item) => _text(item.eligibilityStatus.label)),
                         AppTableColumn(
-                          title: 'Action',
+                          title: context.l10n.rank,
+                          cell: (item) => _text('${item.rankNo ?? '-'}'),
+                        ),
+                        AppTableColumn(
+                          title: context.l10n.student,
+                          flex: 3,
+                          cell: (item) => _text(
+                            item.studentName ?? item.studentId,
+                            bold: true,
+                          ),
+                        ),
+                        AppTableColumn(
+                          title: context.l10n.attendance,
+                          cell: (item) => _text(
+                            '${(item.attendanceScore ?? 0).toStringAsFixed(0)}%',
+                          ),
+                        ),
+                        AppTableColumn(
+                          title: context.l10n.score,
+                          cell: (item) =>
+                              _text(item.totalScore.toStringAsFixed(0)),
+                        ),
+                        AppTableColumn(
+                          title: context.l10n.status,
+                          cell: (item) => _text(item.eligibilityStatus.label),
+                        ),
+                        AppTableColumn(
+                          title: context.l10n.reason,
+                          flex: 2,
+                          cell: (item) => _text(
+                            item.specialCaseNote ?? item.priorityReason ?? '-',
+                          ),
+                        ),
+                        AppTableColumn(
+                          title: context.l10n.action,
                           cell: (item) => IconButton(
-                            tooltip: 'Remove target',
-                            onPressed: item.decisionStatus ==
+                            tooltip: context.l10n.removeTarget,
+                            onPressed:
+                                item.decisionStatus ==
                                     AssistanceDecisionStatus.cancelled
                                 ? null
                                 : canDelete
-                                    ? () => _removeTargetCandidate(context, item)
-                                    : null,
+                                ? () => _removeTargetCandidate(context, item)
+                                : null,
                             icon: const Icon(
                               Icons.delete_outline,
                               size: 18,
@@ -1156,21 +1333,19 @@ class _RuleTargetSection extends StatelessWidget {
       context: context,
       guardKey: 'remove_assistance_target_${item.id}',
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Remove Target Candidate?'),
+        title: Text(context.l10n.removeTargetCandidateTitle),
         content: Text(
           'Remove ${item.studentName ?? item.studentId} from ${rule.displayName} targets?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.errorDark,
-            ),
-            child: const Text('Remove'),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
+            child: Text(context.l10n.remove),
           ),
         ],
       ),
@@ -1179,14 +1354,54 @@ class _RuleTargetSection extends StatelessWidget {
 
     try {
       await context.read<AssistancePlanCubit>().updateAssessment(
-            item.copyWith(
-              decisionStatus: AssistanceDecisionStatus.cancelled,
-              priorityReason: item.priorityReason ?? 'Removed from target plan',
-            ),
-          );
+        item.copyWith(
+          decisionStatus: AssistanceDecisionStatus.cancelled,
+          priorityReason: item.priorityReason ?? 'Removed from target plan',
+        ),
+      );
       AppToast.showSuccess('Target candidate removed.');
     } catch (e) {
       AppToast.showFailed(e.toString());
+    }
+  }
+
+  Future<void> _removeAllTargetCandidates(
+    BuildContext context,
+    List<StudentAssistanceAssessment> rows,
+  ) async {
+    final confirmed = await showGuardedDialog<bool>(
+      context: context,
+      guardKey: 'remove_all_assistance_targets_${rule.id}',
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.l10n.removeAllTargetCandidatesTitle),
+        content: Text(
+          'Remove all ${rows.length} selected candidates from ${rule.displayName}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(context.l10n.buttonCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
+            child: Text(context.l10n.removeAll),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await context.read<AssistancePlanCubit>().cancelRuleTargets(rule.id);
+      AppToast.showSuccess('Target candidates removed.');
+    } catch (e) {
+      if (!context.mounted) return;
+      showErrorToastWithDetails(
+        context,
+        title: context.l10n.failedRemoveTargets,
+        error: e,
+      );
     }
   }
 }
@@ -1207,7 +1422,10 @@ class _ReviewTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eligible = state.assessments
-        .where((item) => item.eligibilityStatus == AssistanceEligibilityStatus.eligible)
+        .where(
+          (item) =>
+              item.eligibilityStatus == AssistanceEligibilityStatus.eligible,
+        )
         .length;
     final manual = state.assessments
         .where((item) => item.selectionMode == AssistanceSelectionMode.manual)
@@ -1230,12 +1448,44 @@ class _ReviewTab extends StatelessWidget {
               totalPages: state.assessments.isEmpty ? 0 : 1,
             ),
             columns: [
-              AppTableColumn(title: 'Student', flex: 3, cell: (item) => _text(item.studentName ?? item.studentId, bold: true)),
-              AppTableColumn(title: 'Rule', flex: 2, cell: (item) => _text(item.ruleName ?? item.ruleType.label)),
-              AppTableColumn(title: 'Source', cell: (item) => _text(item.selectionMode.label)),
-              AppTableColumn(title: 'Attendance', cell: (item) => _text('${(item.attendanceScore ?? 0).toStringAsFixed(0)}%')),
-              AppTableColumn(title: 'Score', cell: (item) => _text(item.totalScore.toStringAsFixed(0))),
-              AppTableColumn(title: 'Status', cell: (item) => _text(item.decisionStatus.label)),
+              AppTableColumn(
+                title: context.l10n.student,
+                flex: 3,
+                cell: (item) =>
+                    _text(item.studentName ?? item.studentId, bold: true),
+              ),
+              AppTableColumn(
+                title: context.l10n.rule,
+                flex: 2,
+                cell: (item) => _text(item.ruleName ?? item.ruleType.label),
+              ),
+              AppTableColumn(
+                title: context.l10n.source,
+                cell: (item) => _text(item.selectionMode.label),
+              ),
+              AppTableColumn(
+                title: context.l10n.attendance,
+                cell: (item) =>
+                    _text('${(item.attendanceScore ?? 0).toStringAsFixed(0)}%'),
+              ),
+              AppTableColumn(
+                title: context.l10n.score,
+                cell: (item) => _text(item.totalScore.toStringAsFixed(0)),
+              ),
+              AppTableColumn(
+                title: context.l10n.status,
+                cell: (item) => _text(item.decisionStatus.label),
+              ),
+              AppTableColumn(
+                title: context.l10n.eligibility,
+                cell: (item) => _text(item.eligibilityStatus.label),
+              ),
+              AppTableColumn(
+                title: context.l10n.reason,
+                flex: 2,
+                cell: (item) =>
+                    _text(item.specialCaseNote ?? item.priorityReason ?? '-'),
+              ),
             ],
           ),
         ),
@@ -1248,45 +1498,111 @@ class _ReviewTab extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: canExport
                     ? () => _exportPlan(
-                  context: context,
-                  period: period,
-                  state: state,
-                  format: _AssistanceExportFormat.excel,
-                )
+                        context: context,
+                        period: period,
+                        state: state,
+                        format: _AssistanceExportFormat.excel,
+                      )
                     : null,
                 icon: const Icon(Icons.table_view),
-                label: const Text('Export Excel'),
+                label: Text(context.l10n.exportExcel),
               ),
               OutlinedButton.icon(
                 onPressed: canExport
                     ? () => _exportPlan(
-                  context: context,
-                  period: period,
-                  state: state,
-                  format: _AssistanceExportFormat.pdf,
-                )
+                        context: context,
+                        period: period,
+                        state: state,
+                        format: _AssistanceExportFormat.pdf,
+                      )
                     : null,
                 icon: const Icon(Icons.picture_as_pdf),
-                label: const Text('Export PDF'),
+                label: Text(context.l10n.exportPdf),
               ),
               FilledButton.icon(
                 onPressed: canUpdate
                     ? () async {
-                  try {
-                    await context.read<AssistancePlanCubit>().markPlanSubmitted();
-                    AppToast.showSuccess('Assistance plan marked as submitted.');
-                  } catch (e) {
-                    AppToast.showFailed(e.toString());
-                  }
-                }
+                        try {
+                          await context
+                              .read<AssistancePlanCubit>()
+                              .markPlanSubmitted();
+                          AppToast.showSuccess(
+                            'Assistance plan marked as submitted.',
+                          );
+                        } catch (e) {
+                          AppToast.showFailed(e.toString());
+                        }
+                      }
                     : null,
                 icon: const Icon(Icons.send),
-                label: const Text('Mark as Submitted'),
+                label: Text(context.l10n.markAsSubmitted),
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ReviewApprovalTab extends StatelessWidget {
+  const _ReviewApprovalTab({
+    required this.period,
+    required this.state,
+    required this.canUpdate,
+    required this.canExport,
+    required this.canApprove,
+  });
+
+  final AssistancePeriod period;
+  final AssistancePlanState state;
+  final bool canUpdate;
+  final bool canExport;
+  final bool canApprove;
+
+  @override
+  Widget build(BuildContext context) {
+    if (period.status == AssistancePeriodStatus.rejected) {
+      return _periodStatusMessage(
+        icon: Icons.block_outlined,
+        title: context.l10n.statusRejected,
+        message:
+            'Target candidates are kept for audit, but final distribution is not available.',
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked = constraints.maxWidth < 980;
+        final review = _ReviewTab(
+          period: period,
+          state: state,
+          canUpdate: canUpdate && !_periodLocksTargetPlan(period.status),
+          canExport: canExport,
+        );
+        final approval = _ApprovalTab(
+          period: period,
+          state: state,
+          canApprove: canApprove,
+        );
+        if (stacked) {
+          return ListView(
+            children: [
+              SizedBox(height: 430, child: review),
+              const SizedBox(height: 12),
+              approval,
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(flex: 3, child: review),
+            const SizedBox(width: 12),
+            Expanded(flex: 2, child: approval),
+          ],
+        );
+      },
     );
   }
 }
@@ -1307,8 +1623,9 @@ class _ApprovalTab extends StatefulWidget {
 }
 
 class _ApprovalTabState extends State<_ApprovalTab> {
-  final TextEditingController _uploadedByController =
-      TextEditingController(text: 'Admin');
+  final TextEditingController _uploadedByController = TextEditingController(
+    text: 'Admin',
+  );
   final TextEditingController _remarksController = TextEditingController();
   XFile? _selectedFile;
   bool _saving = false;
@@ -1325,7 +1642,11 @@ class _ApprovalTabState extends State<_ApprovalTab> {
     final doc = widget.state.approvalDocuments.isEmpty
         ? null
         : widget.state.approvalDocuments.first;
-    final locked = widget.period.status == AssistancePeriodStatus.approved;
+    final locked = _periodLocksTargetPlan(widget.period.status);
+    final approved =
+        widget.period.status == AssistancePeriodStatus.approved ||
+        widget.period.status == AssistancePeriodStatus.distributed ||
+        widget.period.status == AssistancePeriodStatus.cancelled;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1371,7 +1692,9 @@ class _ApprovalTabState extends State<_ApprovalTab> {
                         const SizedBox(height: 4),
                         Text(
                           locked
-                              ? 'Signed approval document has been uploaded. This period is locked.'
+                              ? approved
+                                    ? 'Signed approval document has been uploaded. Targets are now official recipients.'
+                                    : 'This assistance period is locked.'
                               : 'Upload the signed approval document to approve this period and create recipients.',
                           style: const TextStyle(
                             color: AppColors.textSecondary,
@@ -1439,25 +1762,25 @@ class _ApprovalTabState extends State<_ApprovalTab> {
               runSpacing: 10,
               children: [
                 _SetupInfoTile(
-                  label: 'File',
+                  label: context.l10n.file,
                   value: doc.fileName,
                   icon: Icons.description_outlined,
                   wide: true,
                 ),
                 _SetupInfoTile(
-                  label: 'Uploaded By',
+                  label: context.l10n.uploadedBy,
                   value: doc.uploadedBy ?? '-',
                   icon: Icons.person_outline,
                 ),
                 _SetupInfoTile(
-                  label: 'Uploaded At',
+                  label: context.l10n.uploadedAt,
                   value: doc.uploadedAt,
                   icon: Icons.schedule_outlined,
                   wide: true,
                 ),
                 if ((doc.remarks ?? '').trim().isNotEmpty)
                   _SetupInfoTile(
-                    label: 'Remarks',
+                    label: context.l10n.remarks,
                     value: doc.remarks!,
                     icon: Icons.notes_outlined,
                     wide: true,
@@ -1483,7 +1806,7 @@ class _ApprovalTabState extends State<_ApprovalTab> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Upload Signed Approval',
+              'Approval Decision',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 10),
@@ -1538,9 +1861,11 @@ class _ApprovalTabState extends State<_ApprovalTab> {
                       ),
                     ),
                     OutlinedButton.icon(
-                      onPressed: _saving || !widget.canApprove ? null : _pickFile,
+                      onPressed: _saving || !widget.canApprove
+                          ? null
+                          : _pickFile,
                       icon: const Icon(Icons.attach_file, size: 17),
-                      label: const Text('Browse'),
+                      label: Text(context.l10n.browse),
                     ),
                   ],
                 ),
@@ -1555,7 +1880,7 @@ class _ApprovalTabState extends State<_ApprovalTab> {
                   width: 320,
                   child: TextField(
                     controller: _uploadedByController,
-                    decoration: const InputDecoration(labelText: 'Uploaded By'),
+                    decoration: InputDecoration(labelText: context.l10n.uploadedBy),
                   ),
                 ),
                 SizedBox(
@@ -1563,7 +1888,7 @@ class _ApprovalTabState extends State<_ApprovalTab> {
                   child: TextField(
                     controller: _remarksController,
                     maxLines: 3,
-                    decoration: const InputDecoration(labelText: 'Remarks'),
+                    decoration: InputDecoration(labelText: context.l10n.remarks),
                   ),
                 ),
               ],
@@ -1571,14 +1896,29 @@ class _ApprovalTabState extends State<_ApprovalTab> {
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: _saving || _selectedFile == null || !widget.canApprove
-                    ? null
-                    : _upload,
-                icon: const Icon(Icons.verified),
-                label: Text(
-                  _saving ? 'Uploading...' : 'Upload & Approve Period',
-                ),
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _saving || !widget.canApprove ? null : _reject,
+                    icon: const Icon(Icons.block_outlined),
+                    label: Text(context.l10n.rejectPeriod),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.errorDark,
+                      side: const BorderSide(color: AppColors.error),
+                    ),
+                  ),
+                  FilledButton.icon(
+                    onPressed:
+                        _saving || _selectedFile == null || !widget.canApprove
+                        ? null
+                        : _upload,
+                    icon: const Icon(Icons.verified),
+                    label: Text(
+                      _saving ? 'Uploading...' : 'Upload & Approve Period',
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1587,15 +1927,56 @@ class _ApprovalTabState extends State<_ApprovalTab> {
     );
   }
 
+  Future<void> _reject() async {
+    if (!widget.canApprove) {
+      AppToast.showFailed('You do not have permission to approve periods.');
+      return;
+    }
+    final confirmed = await showGuardedDialog<bool>(
+      context: context,
+      guardKey: 'reject_assistance_period_${widget.period.id}',
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.l10n.rejectAssistancePeriodTitle),
+        content: Text(context.l10n.rejectedPeriodAuditNotice),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(context.l10n.buttonCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
+            child: Text(context.l10n.reject),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _saving = true);
+    try {
+      await context.read<AssistancePlanCubit>().rejectSelectedPeriod(
+        rejectedBy: _uploadedByController.text.trim().isEmpty
+            ? 'Admin'
+            : _uploadedByController.text.trim(),
+        reason: _remarksController.text,
+      );
+      AppToast.showSuccess('Assistance period rejected.');
+      if (mounted) setState(() => _saving = false);
+    } catch (e) {
+      AppToast.showFailed(e.toString());
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   Future<void> _pickFile() async {
     if (!widget.canApprove) {
       AppToast.showFailed('You do not have permission to approve periods.');
       return;
     }
     final file = await openFile(
-      acceptedTypeGroups: const [
+      acceptedTypeGroups: [
         XTypeGroup(
-          label: 'Approval Document',
+          label: context.l10n.approvalDocument,
           extensions: ['pdf', 'jpg', 'jpeg', 'png'],
         ),
       ],
@@ -1619,11 +2000,11 @@ class _ApprovalTabState extends State<_ApprovalTab> {
     setState(() => _saving = true);
     try {
       await context.read<AssistancePlanCubit>().uploadApprovalDocument(
-            sourcePath: file.path,
-            fileName: file.name,
-            uploadedBy: uploadedBy,
-            remarks: _remarksController.text,
-          );
+        sourcePath: file.path,
+        fileName: file.name,
+        uploadedBy: uploadedBy,
+        remarks: _remarksController.text,
+      );
       AppToast.showSuccess('Approval document uploaded. Period approved.');
       if (mounted) {
         setState(() {
@@ -1644,6 +2025,7 @@ class _RecipientsTab extends StatefulWidget {
     required this.state,
     required this.program,
     required this.canUpdate,
+    required this.canApprove,
     required this.canExport,
   });
 
@@ -1651,6 +2033,7 @@ class _RecipientsTab extends StatefulWidget {
   final AssistancePlanState state;
   final AssistanceProgram program;
   final bool canUpdate;
+  final bool canApprove;
   final bool canExport;
 
   @override
@@ -1659,28 +2042,58 @@ class _RecipientsTab extends StatefulWidget {
 
 class _RecipientsTabState extends State<_RecipientsTab> {
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _distributionByController = TextEditingController(
+    text: 'Admin',
+  );
+  final TextEditingController _distributionRemarksController =
+      TextEditingController();
+  final TextEditingController _cancelReasonController = TextEditingController();
   AssistanceRecipientStatus? _statusFilter;
   AssistanceRuleType? _ruleFilter;
   String _query = '';
+  XFile? _distributionFile;
+  bool _distributionSaving = false;
+  bool _finalizing = false;
 
   @override
   void dispose() {
     _searchController.dispose();
+    _distributionByController.dispose();
+    _distributionRemarksController.dispose();
+    _cancelReasonController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.period.status == AssistancePeriodStatus.rejected) {
+      return _periodStatusMessage(
+        icon: Icons.block_outlined,
+        title: context.l10n.reportNotAvailable,
+        message: context.l10n.rejectedPeriodNoDistribution,
+      );
+    }
+    if (widget.period.status != AssistancePeriodStatus.approved &&
+        widget.period.status != AssistancePeriodStatus.distributed &&
+        widget.period.status != AssistancePeriodStatus.cancelled) {
+      return _periodStatusMessage(
+        icon: Icons.assignment_turned_in_outlined,
+        title: context.l10n.approvalRequiredFirst,
+        message:
+            'Upload the signed approval document in Review & Approval before managing distribution.',
+      );
+    }
+
     final recipients = _filteredRecipients();
-    final ruleOptions = widget.state.recipients
-        .map((item) => item.ruleType)
-        .toSet()
-        .toList()
-      ..sort((a, b) => a.label.compareTo(b.label));
+    final ruleOptions =
+        widget.state.recipients.map((item) => item.ruleType).toSet().toList()
+          ..sort((a, b) => a.label.compareTo(b.label));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _distributionPanel(),
+        const SizedBox(height: 12),
         DecoratedBox(
           decoration: BoxDecoration(
             color: AppColors.white,
@@ -1699,41 +2112,45 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                   child: TextField(
                     controller: _searchController,
                     onChanged: (value) => setState(() => _query = value),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       prefixIcon: Icon(Icons.search),
-                      hintText: 'Search recipient or rule',
+                      hintText: context.l10n.searchRecipientOrRule,
                     ),
                   ),
                 ),
                 SizedBox(
                   width: 170,
-                  child: CommonFormWidgets.dropdownFieldTyped<AssistanceRecipientStatus>(
-                    label: 'Status',
-                    items: AssistanceRecipientStatus.values,
-                    labelBuilder: (status) => status.label,
-                    valueBuilder: (status) => status.value,
-                    value: _statusFilter,
-                    isRequired: false,
-                    onChanged: (status) => setState(() {
-                      _statusFilter = status;
-                    }),
-                    onSaved: (_) {},
-                  ),
+                  child:
+                      CommonFormWidgets.dropdownFieldTyped<
+                        AssistanceRecipientStatus
+                      >(
+                        label: context.l10n.status,
+                        items: AssistanceRecipientStatus.values,
+                        labelBuilder: (status) => status.label,
+                        valueBuilder: (status) => status.value,
+                        value: _statusFilter,
+                        isRequired: false,
+                        onChanged: (status) => setState(() {
+                          _statusFilter = status;
+                        }),
+                        onSaved: (_) {},
+                      ),
                 ),
                 SizedBox(
                   width: 220,
-                  child: CommonFormWidgets.dropdownFieldTyped<AssistanceRuleType>(
-                    label: 'Rule',
-                    items: ruleOptions,
-                    labelBuilder: (rule) => rule.label,
-                    valueBuilder: (rule) => rule.value,
-                    value: _ruleFilter,
-                    isRequired: false,
-                    onChanged: (rule) => setState(() {
-                      _ruleFilter = rule;
-                    }),
-                    onSaved: (_) {},
-                  ),
+                  child:
+                      CommonFormWidgets.dropdownFieldTyped<AssistanceRuleType>(
+                        label: context.l10n.rule,
+                        items: ruleOptions,
+                        labelBuilder: (rule) => rule.label,
+                        valueBuilder: (rule) => rule.value,
+                        value: _ruleFilter,
+                        isRequired: false,
+                        onChanged: (rule) => setState(() {
+                          _ruleFilter = rule;
+                        }),
+                        onSaved: (_) {},
+                      ),
                 ),
                 OutlinedButton.icon(
                   onPressed: _hasFilter
@@ -1747,17 +2164,17 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                         }
                       : null,
                   icon: const Icon(Icons.filter_alt_off, size: 18),
-                  label: const Text('Clear'),
+                  label: Text(context.l10n.clear),
                 ),
                 OutlinedButton.icon(
                   onPressed: recipients.isEmpty || !widget.canExport
                       ? null
                       : () => _exportRecipients(
-                            period: widget.period,
-                            program: widget.program,
-                            recipients: recipients,
-                            format: _AssistanceExportFormat.excel,
-                          ),
+                          period: widget.period,
+                          program: widget.program,
+                          recipients: recipients,
+                          format: _AssistanceExportFormat.excel,
+                        ),
                   icon: const Icon(Icons.table_view, size: 18),
                   label: const Text('Excel'),
                 ),
@@ -1765,11 +2182,11 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                   onPressed: recipients.isEmpty || !widget.canExport
                       ? null
                       : () => _exportRecipients(
-                            period: widget.period,
-                            program: widget.program,
-                            recipients: recipients,
-                            format: _AssistanceExportFormat.pdf,
-                          ),
+                          period: widget.period,
+                          program: widget.program,
+                          recipients: recipients,
+                          format: _AssistanceExportFormat.pdf,
+                        ),
                   icon: const Icon(Icons.picture_as_pdf, size: 18),
                   label: const Text('PDF'),
                 ),
@@ -1782,8 +2199,8 @@ class _RecipientsTabState extends State<_RecipientsTab> {
           child: AppTable<AssistanceRecipient>(
             data: recipients,
             emptyMessage: widget.state.recipients.isEmpty
-                ? 'No recipients yet. Upload approval document first.'
-                : 'No recipients match the current filter.',
+                ? context.l10n.noRecipientsYet
+                : context.l10n.noRecipientsMatch,
             pageable: Pageable(
               page: 0,
               size: recipients.length,
@@ -1791,13 +2208,32 @@ class _RecipientsTabState extends State<_RecipientsTab> {
               totalPages: recipients.isEmpty ? 0 : 1,
             ),
             columns: [
-              AppTableColumn(title: 'Student', flex: 3, cell: (item) => _text(item.studentName ?? item.studentId, bold: true)),
-              AppTableColumn(title: 'Program', flex: 2, cell: (_) => _text(widget.program.name)),
-              AppTableColumn(title: 'Rule', flex: 2, cell: (item) => _text(item.ruleName ?? item.ruleType.label)),
-              AppTableColumn(title: 'Benefit', cell: (item) => _text(_recipientBenefit(item, widget.program))),
-              AppTableColumn(title: 'Status', cell: (item) => _text(item.status.label)),
               AppTableColumn(
-                title: 'Action',
+                title: context.l10n.student,
+                flex: 3,
+                cell: (item) =>
+                    _text(item.studentName ?? item.studentId, bold: true),
+              ),
+              AppTableColumn(
+                title: context.l10n.program,
+                flex: 2,
+                cell: (_) => _text(widget.program.name),
+              ),
+              AppTableColumn(
+                title: context.l10n.rule,
+                flex: 2,
+                cell: (item) => _text(item.ruleName ?? item.ruleType.label),
+              ),
+              AppTableColumn(
+                title: context.l10n.benefit,
+                cell: (item) => _text(_recipientBenefit(item, widget.program)),
+              ),
+              AppTableColumn(
+                title: context.l10n.status,
+                cell: (item) => _text(item.status.label),
+              ),
+              AppTableColumn(
+                title: context.l10n.action,
                 flex: 2,
                 cell: (item) {
                   final benefitType = AssistanceBenefitType.fromValue(
@@ -1807,26 +2243,48 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                       ? AssistanceRecipientStatus.paid
                       : AssistanceRecipientStatus.distributed;
                   final label = nextStatus == AssistanceRecipientStatus.paid
-                      ? 'Mark Paid'
-                      : 'Mark Distributed';
+                      ? context.l10n.markPaid
+                      : context.l10n.markDistributed;
                   final done = item.status == nextStatus;
-                  return TextButton(
-                    onPressed: done || !widget.canUpdate
-                        ? null
-                        : () async {
-                            try {
-                              await context
-                                  .read<AssistancePlanCubit>()
-                                  .updateRecipientStatus(
-                                    recipientId: item.id,
-                                    status: nextStatus,
-                                  );
-                              AppToast.showSuccess('Recipient status updated.');
-                            } catch (e) {
-                              AppToast.showFailed(e.toString());
-                            }
-                          },
-                    child: Text(done ? item.status.label : label),
+                  final canEdit =
+                      widget.canUpdate &&
+                      widget.period.status == AssistancePeriodStatus.approved;
+                  return Wrap(
+                    spacing: 4,
+                    children: [
+                      TextButton(
+                        onPressed: done || !canEdit
+                            ? null
+                            : () => _updateRecipientStatus(item, nextStatus),
+                        child: Text(done ? item.status.label : label),
+                      ),
+                      IconButton(
+                        tooltip: context.l10n.cancelRecipient,
+                        onPressed:
+                            item.status ==
+                                    AssistanceRecipientStatus.cancelled ||
+                                !canEdit
+                            ? null
+                            : () => _cancelRecipient(item),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          size: 18,
+                          color: AppColors.error,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: context.l10n.resetStatus,
+                        onPressed:
+                            item.status == AssistanceRecipientStatus.approved ||
+                                !canEdit
+                            ? null
+                            : () => _updateRecipientStatus(
+                                item,
+                                AssistanceRecipientStatus.approved,
+                              ),
+                        icon: const Icon(Icons.restart_alt, size: 18),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -1835,6 +2293,328 @@ class _RecipientsTabState extends State<_RecipientsTab> {
         ),
       ],
     );
+  }
+
+  Widget _distributionPanel() {
+    final doc = widget.state.distributionDocuments.isEmpty
+        ? null
+        : widget.state.distributionDocuments.first;
+    final editable = widget.period.status == AssistancePeriodStatus.approved;
+    final pending = widget.state.recipients
+        .where((item) => item.status == AssistanceRecipientStatus.approved)
+        .length;
+    final finalStatus =
+        widget.period.status == AssistancePeriodStatus.distributed ||
+        widget.period.status == AssistancePeriodStatus.cancelled;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Report & Finalized',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        finalStatus
+                            ? 'This assistance period has been finalized.'
+                            : 'Fill each recipient status and upload the signed distribution list before finalizing.',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _distributionStatusPill(widget.period.status.label),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _SetupInfoTile(
+                  label: context.l10n.pendingRecipientStatus,
+                  value: '$pending',
+                  icon: Icons.pending_actions_outlined,
+                ),
+                _SetupInfoTile(
+                  label: context.l10n.distributionProof,
+                  value: doc?.fileName ?? 'Not uploaded',
+                  icon: Icons.fact_check_outlined,
+                  wide: true,
+                ),
+                if (editable)
+                  OutlinedButton.icon(
+                    onPressed: _distributionSaving || !widget.canUpdate
+                        ? null
+                        : _pickDistributionFile,
+                    icon: const Icon(Icons.attach_file, size: 18),
+                    label: Text(_distributionFile?.name ?? 'Choose File'),
+                  ),
+                if (editable)
+                  SizedBox(
+                    width: 220,
+                    child: TextField(
+                      controller: _distributionByController,
+                      decoration: InputDecoration(
+                        labelText: context.l10n.handledBy,
+                      ),
+                    ),
+                  ),
+                if (editable)
+                  SizedBox(
+                    width: 280,
+                    child: TextField(
+                      controller: _distributionRemarksController,
+                      decoration: InputDecoration(labelText: context.l10n.remarks),
+                    ),
+                  ),
+                if (editable)
+                  FilledButton.icon(
+                    onPressed:
+                        _distributionSaving ||
+                            _distributionFile == null ||
+                            !widget.canUpdate
+                        ? null
+                        : _uploadDistributionProof,
+                    icon: const Icon(Icons.upload_file, size: 18),
+                    label: Text(
+                      _distributionSaving ? 'Uploading...' : 'Upload Proof',
+                    ),
+                  ),
+                if (editable)
+                  FilledButton.icon(
+                    onPressed: _finalizing || !widget.canApprove
+                        ? null
+                        : _finalize,
+                    icon: const Icon(Icons.done_all, size: 18),
+                    label: Text(
+                      _finalizing ? 'Finalizing...' : 'Finalize Distributed',
+                    ),
+                  ),
+                if (editable)
+                  OutlinedButton.icon(
+                    onPressed: _finalizing || !widget.canApprove
+                        ? null
+                        : _cancelPeriod,
+                    icon: const Icon(Icons.cancel_outlined, size: 18),
+                    label: Text(context.l10n.cancelPeriod),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.errorDark,
+                      side: const BorderSide(color: AppColors.error),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _distributionStatusPill(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: AppColors.primaryDark,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickDistributionFile() async {
+    final file = await openFile(
+      acceptedTypeGroups: [
+        XTypeGroup(
+          label: context.l10n.distributionProof,
+          extensions: ['pdf', 'jpg', 'jpeg', 'png'],
+        ),
+      ],
+    );
+    if (file == null || !mounted) return;
+    setState(() => _distributionFile = file);
+  }
+
+  Future<void> _uploadDistributionProof() async {
+    final file = _distributionFile;
+    if (file == null) return;
+    final uploadedBy = _distributionByController.text.trim();
+    if (uploadedBy.isEmpty) {
+      AppToast.showFailed('Handled by is required.');
+      return;
+    }
+    setState(() => _distributionSaving = true);
+    try {
+      await context.read<AssistancePlanCubit>().uploadDistributionDocument(
+        sourcePath: file.path,
+        fileName: file.name,
+        uploadedBy: uploadedBy,
+        remarks: _distributionRemarksController.text,
+      );
+      AppToast.showSuccess('Distribution proof uploaded.');
+      if (mounted) {
+        setState(() {
+          _distributionFile = null;
+          _distributionSaving = false;
+        });
+      }
+    } catch (e) {
+      AppToast.showFailed(e.toString());
+      if (mounted) setState(() => _distributionSaving = false);
+    }
+  }
+
+  Future<void> _updateRecipientStatus(
+    AssistanceRecipient recipient,
+    AssistanceRecipientStatus status, {
+    String? reason,
+  }) async {
+    try {
+      await context.read<AssistancePlanCubit>().updateRecipientStatus(
+        recipientId: recipient.id,
+        status: status,
+        reason: reason,
+        updatedBy: _distributionByController.text,
+      );
+      AppToast.showSuccess('Recipient status updated.');
+    } catch (e) {
+      AppToast.showFailed(e.toString());
+    }
+  }
+
+  Future<void> _cancelRecipient(AssistanceRecipient recipient) async {
+    final controller = TextEditingController(
+      text: recipient.distributionReason ?? '',
+    );
+    final reason = await showGuardedDialog<String>(
+      context: context,
+      guardKey: 'cancel_assistance_recipient_${recipient.id}',
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.l10n.cancelRecipientDistribution),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          decoration: InputDecoration(
+            labelText: context.l10n.cancellationReason,
+            hintText: context.l10n.outOfCityExample,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.l10n.buttonCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
+            child: Text(context.l10n.buttonSave),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (reason == null || !mounted) return;
+    await _updateRecipientStatus(
+      recipient,
+      AssistanceRecipientStatus.cancelled,
+      reason: reason,
+    );
+  }
+
+  Future<void> _finalize() async {
+    setState(() => _finalizing = true);
+    try {
+      await context.read<AssistancePlanCubit>().finalizeSelectedDistribution(
+        finalizedBy: _distributionByController.text.trim().isEmpty
+            ? 'Admin'
+            : _distributionByController.text.trim(),
+      );
+      AppToast.showSuccess('Assistance period finalized as distributed.');
+      if (mounted) setState(() => _finalizing = false);
+    } catch (e) {
+      if (!mounted) return;
+      showErrorToastWithDetails(
+        context,
+        title: context.l10n.finalizeDistributionFailed,
+        error: e,
+      );
+      if (mounted) setState(() => _finalizing = false);
+    }
+  }
+
+  Future<void> _cancelPeriod() async {
+    _cancelReasonController.clear();
+    final reason = await showGuardedDialog<String>(
+      context: context,
+      guardKey: 'cancel_assistance_period_distribution_${widget.period.id}',
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.l10n.cancelAssistancePeriodTitle),
+        content: TextField(
+          controller: _cancelReasonController,
+          maxLines: 3,
+          decoration: InputDecoration(
+            labelText: context.l10n.cancellationReason,
+            hintText: context.l10n.approvedPeriodCancellationHint,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.l10n.back),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, _cancelReasonController.text),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
+            child: Text(context.l10n.cancelPeriod),
+          ),
+        ],
+      ),
+    );
+    if (reason == null || !mounted) return;
+    setState(() => _finalizing = true);
+    try {
+      await context.read<AssistancePlanCubit>().cancelSelectedDistribution(
+        cancelledBy: _distributionByController.text.trim().isEmpty
+            ? 'Admin'
+            : _distributionByController.text.trim(),
+        reason: reason,
+      );
+      AppToast.showSuccess('Assistance period cancelled.');
+      if (mounted) setState(() => _finalizing = false);
+    } catch (e) {
+      AppToast.showFailed(e.toString());
+      if (mounted) setState(() => _finalizing = false);
+    }
   }
 
   bool get _hasFilter =>
@@ -1911,7 +2691,7 @@ class _SelectStudentsDialogState extends State<_SelectStudentsDialog> {
     }).toList();
 
     return AlertDialog(
-      title: Text('Select Students - ${widget.rule.displayName}'),
+      title: Text(context.l10n.selectStudentsForRule(widget.rule.displayName)),
       content: SizedBox(
         width: 780,
         height: 560,
@@ -1926,9 +2706,9 @@ class _SelectStudentsDialogState extends State<_SelectStudentsDialog> {
             TextField(
               controller: _searchController,
               onChanged: (value) => setState(() => _query = value),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 prefixIcon: Icon(Icons.search),
-                hintText: 'Search student',
+                hintText: context.l10n.searchStudent,
               ),
             ),
             const SizedBox(height: 12),
@@ -1945,11 +2725,9 @@ class _SelectStudentsDialogState extends State<_SelectStudentsDialog> {
                   AppTableColumn(
                     title: '',
                     cell: (student) {
-                      final selected = _selectedStudentIds.contains(
-                        student.id,
-                      );
-                      final canSelectMore = _selectedStudentIds.length <
-                          remaining;
+                      final selected = _selectedStudentIds.contains(student.id);
+                      final canSelectMore =
+                          _selectedStudentIds.length < remaining;
                       return Checkbox(
                         value: selected,
                         onChanged: !selected && !canSelectMore
@@ -1967,25 +2745,31 @@ class _SelectStudentsDialogState extends State<_SelectStudentsDialog> {
                     },
                   ),
                   AppTableColumn(
-                    title: 'Student',
+                    title: context.l10n.student,
                     flex: 3,
                     cell: (student) => _text(student.name, bold: true),
                   ),
                   AppTableColumn(
-                    title: 'Class',
+                    title: context.l10n.className,
                     cell: (student) => _text(student.className ?? '-'),
                   ),
                   AppTableColumn(
-                    title: 'Level',
+                    title: context.l10n.level,
                     cell: (student) => _text(student.level ?? '-'),
                   ),
                   AppTableColumn(
-                    title: 'Reason',
+                    title: context.l10n.minimumAttendancePercent,
+                    cell: (student) => _text(
+                      '${(student.attendancePercentage ?? 0).toStringAsFixed(0)}%',
+                    ),
+                  ),
+                  AppTableColumn(
+                    title: context.l10n.reason,
                     flex: 3,
                     cell: (student) => TextField(
                       controller: _reasonController(student.id),
-                      decoration: const InputDecoration(
-                        hintText: 'Reason',
+                      decoration: InputDecoration(
+                        hintText: context.l10n.reason,
                         contentPadding: EdgeInsets.symmetric(
                           horizontal: 10,
                           vertical: 8,
@@ -2002,7 +2786,7 @@ class _SelectStudentsDialogState extends State<_SelectStudentsDialog> {
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         FilledButton(
           onPressed: _saving || _selectedStudentIds.isEmpty ? null : _save,
@@ -2023,18 +2807,25 @@ class _SelectStudentsDialogState extends State<_SelectStudentsDialog> {
     setState(() => _saving = true);
     try {
       final cubit = context.read<AssistancePlanCubit>();
-      for (final studentId in _selectedStudentIds) {
-        final reason = _reasonController(studentId).text.trim();
-        await cubit.saveManualTarget(
-          rule: widget.rule,
-          studentId: studentId,
-          reason: reason,
-        );
-      }
+      final reasonsByStudentId = {
+        for (final studentId in _selectedStudentIds)
+          studentId: _reasonController(studentId).text.trim().isEmpty
+              ? null
+              : _reasonController(studentId).text.trim(),
+      };
+      await cubit.saveManualTargets(
+        rule: widget.rule,
+        reasonsByStudentId: reasonsByStudentId,
+      );
       AppToast.showSuccess('Manual targets saved.');
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      AppToast.showFailed(e.toString());
+      if (!mounted) return;
+      showErrorToastWithDetails(
+        context,
+        title: context.l10n.failedSaveManualTargets,
+        error: e,
+      );
       if (mounted) setState(() => _saving = false);
     }
   }
@@ -2091,9 +2882,11 @@ class _CreateAssistancePeriodDialogState
       child: Form(
         key: _formKey,
         child: StepProcessCard(
-          title: 'Create Assistance Period',
+          title: context.l10n.createAssistancePeriod,
           continueText: 'Next',
-          completedText: _saving ? 'Creating...' : 'Create Period',
+          completedText: _saving
+              ? context.l10n.creating
+              : context.l10n.createPeriod,
           backText: 'Back',
           onClose: _saving ? null : () => Navigator.pop(context),
           onContinueRequested: _onStepContinue,
@@ -2102,15 +2895,15 @@ class _CreateAssistancePeriodDialogState
           },
           steps: [
             ProcessStepItem(
-              title: 'Period Info',
+              title: context.l10n.periodInfoStep,
               content: _periodInfoStep(),
             ),
             ProcessStepItem(
-              title: 'Rules & Quota',
+              title: context.l10n.rulesQuota,
               content: _rulesStep(),
             ),
             ProcessStepItem(
-              title: 'Review Setup',
+              title: context.l10n.reviewSetup,
               content: _reviewStep(),
             ),
           ],
@@ -2123,7 +2916,7 @@ class _CreateAssistancePeriodDialogState
     return ListView(
       children: [
         CommonFormWidgets.dropdownFieldTyped<AssistanceProgram>(
-          label: 'Program',
+          label: context.l10n.program,
           items: widget.programs,
           labelBuilder: (program) => program.name,
           valueBuilder: (program) => program.id,
@@ -2140,18 +2933,32 @@ class _CreateAssistancePeriodDialogState
         ),
         const SizedBox(height: 14),
         CommonFormWidgets.textField(
-          label: 'Period Name',
+          label: context.l10n.periodName,
           value: _periodName,
           onSaved: (value) => _periodName = value?.trim() ?? '',
           validator: (value) =>
-              value?.trim().isEmpty == true ? 'Period name is required' : null,
+              value?.trim().isEmpty == true
+              ? context.l10n.periodNameRequired
+              : null,
         ),
         const SizedBox(height: 14),
         Row(
           children: [
-            Expanded(child: _dateField('Start Date', _startDate, (date) => _startDate = date)),
+            Expanded(
+              child: _dateField(
+                context.l10n.startDate,
+                _startDate,
+                (date) => _startDate = date,
+              ),
+            ),
             const SizedBox(width: 12),
-            Expanded(child: _dateField('End Date', _endDate, (date) => _endDate = date)),
+            Expanded(
+              child: _dateField(
+                context.l10n.endDate,
+                _endDate,
+                (date) => _endDate = date,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 14),
@@ -2159,7 +2966,7 @@ class _CreateAssistancePeriodDialogState
           children: [
             Expanded(
               child: CommonFormWidgets.integerField(
-                label: 'Target Quota',
+                label: context.l10n.targetQuota,
                 value: _targetQuota,
                 isRequired: true,
                 onChanged: (value) => setState(() {
@@ -2171,7 +2978,7 @@ class _CreateAssistancePeriodDialogState
             const SizedBox(width: 12),
             Expanded(
               child: CommonFormWidgets.integerField(
-                label: 'Calculation Window',
+                label: context.l10n.calculationWindow,
                 value: _calculationWindow,
                 onChanged: (value) => setState(() {
                   _calculationWindow = value ?? 3;
@@ -2182,7 +2989,7 @@ class _CreateAssistancePeriodDialogState
             const SizedBox(width: 12),
             Expanded(
               child: CommonFormWidgets.doubleField(
-                label: 'Minimum Attendance',
+                label: context.l10n.minimumAttendance,
                 value: _minimumAttendance,
                 onChanged: (value) => setState(() {
                   _minimumAttendance = value ?? 75;
@@ -2196,14 +3003,18 @@ class _CreateAssistancePeriodDialogState
           contentPadding: EdgeInsets.zero,
           value: _allowOverride,
           onChanged: (value) => setState(() => _allowOverride = value ?? true),
-          title: const Text('Allow Manual Override Below Attendance'),
+          title: Text(context.l10n.allowManualOverrideBelowAttendance),
         ),
-        Text('Calculation Range: ${_calculationRangeDraft()}'),
+        Text('${context.l10n.calculationRange}: ${_calculationRangeDraft()}'),
       ],
     );
   }
 
-  Widget _dateField(String label, DateTime value, ValueChanged<DateTime> onSaved) {
+  Widget _dateField(
+    String label,
+    DateTime value,
+    ValueChanged<DateTime> onSaved,
+  ) {
     return TextFormField(
       readOnly: true,
       controller: TextEditingController(text: _formatDisplayDate(value)),
@@ -2226,12 +3037,13 @@ class _CreateAssistancePeriodDialogState
 
   Widget _rulesStep() {
     final statusText = _remaining == 0
-        ? 'Remaining: 0'
+        ? '${context.l10n.remaining}: 0'
         : _remaining > 0
-            ? 'Remaining: $_remaining'
-            : 'Over allocated: ${-_remaining}';
-    final statusColor =
-        _remaining == 0 ? AppColors.primaryDark : AppColors.errorDark;
+        ? '${context.l10n.remaining}: $_remaining'
+        : '${context.l10n.overAllocated}: ${-_remaining}';
+    final statusColor = _remaining == 0
+        ? AppColors.primaryDark
+        : AppColors.errorDark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -2242,16 +3054,24 @@ class _CreateAssistancePeriodDialogState
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _quotaBadge('Target', '$_targetQuota', AppColors.textPrimary),
-                  _quotaBadge('Allocated', '$_allocated', AppColors.textPrimary),
-                  _quotaBadge('Status', statusText, statusColor),
+                  _quotaBadge(
+                    context.l10n.target,
+                    '$_targetQuota',
+                    AppColors.textPrimary,
+                  ),
+                  _quotaBadge(
+                    context.l10n.allocation,
+                    '$_allocated',
+                    AppColors.textPrimary,
+                  ),
+                  _quotaBadge(context.l10n.status, statusText, statusColor),
                 ],
               ),
             ),
             OutlinedButton.icon(
               onPressed: _showAddRuleDialog,
               icon: const Icon(Icons.add, size: 17),
-              label: const Text('Add Rule'),
+              label: Text(context.l10n.addRule),
             ),
           ],
         ),
@@ -2288,24 +3108,24 @@ class _CreateAssistancePeriodDialogState
                       _RuleTableCell(
                         width: 52,
                         isHeader: true,
-                        child: const _RuleHeaderText('No'),
+                        child: _RuleHeaderText(context.l10n.number),
                       ),
-                      const Expanded(
+                      Expanded(
                         flex: 3,
                         child: _RuleTableCell(
                           isHeader: true,
-                          child: _RuleHeaderText('Rule'),
+                          child: _RuleHeaderText(context.l10n.rule),
                         ),
                       ),
                       _RuleTableCell(
                         width: 116,
                         isHeader: true,
-                        child: const _RuleHeaderText('Mode'),
+                        child: _RuleHeaderText(context.l10n.mode),
                       ),
                       _RuleTableCell(
                         width: 112,
                         isHeader: true,
-                        child: const _RuleHeaderText('Quota'),
+                        child: _RuleHeaderText(context.l10n.quota),
                       ),
                       _RuleTableCell(
                         width: 52,
@@ -2368,7 +3188,7 @@ class _CreateAssistancePeriodDialogState
                                 child: ReorderableDragStartListener(
                                   index: index,
                                   child: Tooltip(
-                                    message: 'Drag to reorder',
+                                    message: context.l10n.dragToReorder,
                                     child: Container(
                                       width: 28,
                                       height: 28,
@@ -2418,7 +3238,10 @@ class _CreateAssistancePeriodDialogState
                             _RuleTableCell(
                               width: 116,
                               child: Text(
-                                rule.type.defaultSelectionMode.label,
+                                translateAssistanceSelectionMode(
+                                  context,
+                                  rule.type.defaultSelectionMode,
+                                ),
                                 style: const TextStyle(
                                   color: AppColors.textSecondary,
                                   fontSize: 12,
@@ -2449,7 +3272,7 @@ class _CreateAssistancePeriodDialogState
                               width: 52,
                               showRightBorder: false,
                               child: IconButton(
-                                tooltip: 'Remove',
+                                tooltip: context.l10n.remove,
                                 onPressed: () =>
                                     setState(() => _rules.removeAt(index)),
                                 icon: const Icon(Icons.close, size: 17),
@@ -2485,10 +3308,7 @@ class _CreateAssistancePeriodDialogState
             TextSpan(text: '$label: '),
             TextSpan(
               text: value,
-              style: TextStyle(
-                color: valueColor,
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(color: valueColor, fontWeight: FontWeight.w800),
             ),
           ],
         ),
@@ -2498,12 +3318,13 @@ class _CreateAssistancePeriodDialogState
 
   Widget _reviewStep() {
     final statusText = _remaining == 0
-        ? 'Ready'
+        ? context.l10n.ready
         : _remaining > 0
-            ? 'Remaining $_remaining'
-            : 'Over ${-_remaining}';
-    final statusColor =
-        _remaining == 0 ? AppColors.primaryDark : AppColors.errorDark;
+        ? 'Remaining $_remaining'
+        : 'Over ${-_remaining}';
+    final statusColor = _remaining == 0
+        ? AppColors.primaryDark
+        : AppColors.errorDark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2514,10 +3335,7 @@ class _CreateAssistancePeriodDialogState
           children: [
             _reviewBadge('Program', _program.name),
             _reviewBadge('Period', _periodName),
-            _reviewBadge(
-              'Date',
-              _dateRange(_startDate, _endDate),
-            ),
+            _reviewBadge('Date', _dateRange(_startDate, _endDate)),
             _reviewBadge('Target', '$_targetQuota'),
             _reviewBadge(
               'Min Attendance',
@@ -2529,8 +3347,8 @@ class _CreateAssistancePeriodDialogState
           ],
         ),
         const SizedBox(height: 14),
-        const Text(
-          'Rules',
+        Text(
+          context.l10n.rules,
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 8),
@@ -2547,30 +3365,30 @@ class _CreateAssistancePeriodDialogState
                       top: Radius.circular(12),
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
                       _RuleTableCell(
                         width: 54,
                         isHeader: true,
-                        child: _RuleHeaderText('No'),
+                        child: _RuleHeaderText(context.l10n.number),
                       ),
                       Expanded(
                         flex: 3,
                         child: _RuleTableCell(
                           isHeader: true,
-                          child: _RuleHeaderText('Rule'),
+                          child: _RuleHeaderText(context.l10n.rule),
                         ),
                       ),
                       _RuleTableCell(
                         width: 110,
                         isHeader: true,
-                        child: _RuleHeaderText('Mode'),
+                        child: _RuleHeaderText(context.l10n.mode),
                       ),
                       _RuleTableCell(
                         width: 86,
                         isHeader: true,
                         showRightBorder: false,
-                        child: _RuleHeaderText('Quota'),
+                        child: _RuleHeaderText(context.l10n.quota),
                       ),
                     ],
                   ),
@@ -2747,7 +3565,7 @@ class _CreateAssistancePeriodDialogState
           guardKey: 'create_assistance_remove_zero_quota_rules',
           builder: (context) {
             return AlertDialog(
-              title: const Text('Remove zero quota rules?'),
+              title: Text(context.l10n.removeZeroQuotaRulesTitle),
               content: Text(
                 'Some selected rules have quota 0: $zeroQuotaRules.\n\n'
                 'If you continue, those rules will be removed from this '
@@ -2756,11 +3574,11 @@ class _CreateAssistancePeriodDialogState
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel'),
+                  child: Text(context.l10n.buttonCancel),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.pop(context, true),
-                  child: const Text('OK, Remove & Continue'),
+                  child: Text(context.l10n.removeContinue),
                 ),
               ],
             );
@@ -2777,37 +3595,37 @@ class _CreateAssistancePeriodDialogState
     setState(() => _saving = true);
     try {
       await context.read<AssistancePlanCubit>().createAssistancePeriod(
-            assistanceProgramId: _program.id,
-            periodName: _periodName,
-            startDate: _dateOnly(_startDate),
-            endDate: _dateOnly(_endDate),
-            month: _startDate.month,
-            year: _startDate.year,
-            targetQuota: _targetQuota,
-            benefitAmount: _program.defaultAmount,
-            benefitItemDescription: _program.defaultItemDescription,
-            calculationWindowMonths: _calculationWindow,
-            minimumAttendancePercentage: _minimumAttendance,
-            allowManualOverrideBelowAttendance: _allowOverride,
-            rules: [
-              for (var i = 0; i < _rules.length; i++)
-                AssistancePeriodRule(
-                  assistancePeriodId: '',
-                  assistanceRuleId: null,
-                  ruleType: _rules[i].type,
-                  quota: _rules[i].quota,
-                  priorityOrder: i,
-                  selectionMode: _rules[i].type.defaultSelectionMode,
-                ),
-            ],
-          );
+        assistanceProgramId: _program.id,
+        periodName: _periodName,
+        startDate: _dateOnly(_startDate),
+        endDate: _dateOnly(_endDate),
+        month: _startDate.month,
+        year: _startDate.year,
+        targetQuota: _targetQuota,
+        benefitAmount: _program.defaultAmount,
+        benefitItemDescription: _program.defaultItemDescription,
+        calculationWindowMonths: _calculationWindow,
+        minimumAttendancePercentage: _minimumAttendance,
+        allowManualOverrideBelowAttendance: _allowOverride,
+        rules: [
+          for (var i = 0; i < _rules.length; i++)
+            AssistancePeriodRule(
+              assistancePeriodId: '',
+              assistanceRuleId: null,
+              ruleType: _rules[i].type,
+              quota: _rules[i].quota,
+              priorityOrder: i,
+              selectionMode: _rules[i].type.defaultSelectionMode,
+            ),
+        ],
+      );
       AppToast.showSuccess('Assistance period created.');
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
         showErrorToastWithDetails(
           context,
-          title: 'Create Assistance Period Failed',
+        title: context.l10n.createAssistancePeriodFailed,
           error: e,
         );
       }
@@ -2827,7 +3645,7 @@ class _CreateAssistancePeriodDialogState
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Select Assistance Rule'),
+              title: Text(context.l10n.selectAssistanceRule),
               content: SizedBox(
                 width: 420,
                 child: ListView(
@@ -2854,7 +3672,7 @@ class _CreateAssistancePeriodDialogState
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                  child: Text(context.l10n.buttonCancel),
                 ),
                 FilledButton(
                   onPressed: () {
@@ -2865,7 +3683,7 @@ class _CreateAssistancePeriodDialogState
                     });
                     Navigator.pop(context);
                   },
-                  child: const Text('Add Selected'),
+                  child: Text(context.l10n.addSelected),
                 ),
               ],
             );
@@ -3159,10 +3977,7 @@ class _RuleTableFrame extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: child,
-      ),
+      child: ClipRRect(borderRadius: BorderRadius.circular(12), child: child),
     );
   }
 }
@@ -3198,11 +4013,7 @@ class _RuleTableCell extends StatelessWidget {
       ),
     );
 
-    return SizedBox(
-      width: width,
-      height: double.infinity,
-      child: content,
-    );
+    return SizedBox(width: width, height: double.infinity, child: content);
   }
 }
 
@@ -3222,6 +4033,53 @@ Widget _text(String text, {bool bold = false}) {
   );
 }
 
+Widget _periodStatusMessage({
+  required IconData icon,
+  required String title,
+  required String message,
+}) {
+  return Center(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 520),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 34, color: AppColors.primaryDark),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 String _recipientBenefit(
   AssistanceRecipient recipient,
   AssistanceProgram program,
@@ -3229,6 +4087,13 @@ String _recipientBenefit(
   final snapshot = recipient.benefitSummary;
   if (snapshot != '-') return snapshot;
   return program.defaultBenefit;
+}
+
+bool _periodLocksTargetPlan(AssistancePeriodStatus status) {
+  return status == AssistancePeriodStatus.approved ||
+      status == AssistancePeriodStatus.rejected ||
+      status == AssistancePeriodStatus.distributed ||
+      status == AssistancePeriodStatus.cancelled;
 }
 
 String _dateOnly(DateTime value) {

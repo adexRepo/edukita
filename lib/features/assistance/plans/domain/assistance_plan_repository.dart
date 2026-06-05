@@ -13,6 +13,13 @@ class AssistancePlanRepository {
 
   final DatabaseProvider _dbProvider;
 
+  bool _locksTargetPlan(AssistancePeriodStatus status) {
+    return status == AssistancePeriodStatus.approved ||
+        status == AssistancePeriodStatus.rejected ||
+        status == AssistancePeriodStatus.distributed ||
+        status == AssistancePeriodStatus.cancelled;
+  }
+
   List<AssistancePeriodRule> _defaultCorePeriodRules({
     required String periodId,
     String? createdAt,
@@ -414,8 +421,8 @@ class AssistancePlanRepository {
     }
 
     final period = await getPeriodById(rule.assistancePeriodId);
-    if (period?.status == AssistancePeriodStatus.approved) {
-      throw Exception('Approved periods cannot be edited.');
+    if (period != null && _locksTargetPlan(period.status)) {
+      throw Exception('This assistance period cannot be edited anymore.');
     }
 
     final db = await _dbProvider.database;
@@ -553,8 +560,8 @@ class AssistancePlanRepository {
     if (rows.isEmpty) return;
     final rule = AssistancePeriodRule.fromMap(rows.first);
     final period = await getPeriodById(rule.assistancePeriodId);
-    if (period?.status == AssistancePeriodStatus.approved) {
-      throw Exception('Approved periods cannot be edited.');
+    if (period != null && _locksTargetPlan(period.status)) {
+      throw Exception('This assistance period cannot be edited anymore.');
     }
     if (rule.ruleType.isCorePeriodRule) {
       throw Exception(
@@ -725,8 +732,8 @@ class AssistancePlanRepository {
   }
 
   Future<void> updatePeriod(AssistancePeriod period) async {
-    if (period.status == AssistancePeriodStatus.approved) {
-      throw Exception('Approved periods cannot be edited.');
+    if (_locksTargetPlan(period.status)) {
+      throw Exception('This assistance period cannot be edited anymore.');
     }
 
     final db = await _dbProvider.database;
@@ -746,8 +753,8 @@ class AssistancePlanRepository {
   Future<void> deletePeriod(String id) async {
     final period = await getPeriodById(id);
     if (period == null) return;
-    if (period.status == AssistancePeriodStatus.approved) {
-      throw Exception('Approved periods cannot be deleted.');
+    if (_locksTargetPlan(period.status)) {
+      throw Exception('Approved or finalized periods cannot be deleted.');
     }
 
     final db = await _dbProvider.database;
@@ -769,6 +776,11 @@ class AssistancePlanRepository {
       );
       await txn.delete(
         'assistance_approval_documents',
+        where: 'assistance_period_id = ?',
+        whereArgs: [id],
+      );
+      await txn.delete(
+        'assistance_distribution_documents',
         where: 'assistance_period_id = ?',
         whereArgs: [id],
       );
@@ -905,8 +917,15 @@ class AssistancePlanRepository {
       );
     }
 
-    final map = effective.toMap()
-      ..['updated_at'] = DateTime.now().toIso8601String();
+    final candidateColumns = await _tableColumns(
+      db,
+      'student_assistance_rule_candidates',
+    );
+    final map = _candidateMapForColumns(
+      effective,
+      candidateColumns,
+    );
+    map['updated_at'] = DateTime.now().toIso8601String();
     final updated = await db.update(
       'student_assistance_rule_candidates',
       map,
@@ -929,8 +948,8 @@ class AssistancePlanRepository {
   }) async {
     final period = await getPeriodById(rule.assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
-    if (period.status == AssistancePeriodStatus.approved) {
-      throw Exception('Approved period target candidates cannot be changed.');
+    if (_locksTargetPlan(period.status)) {
+      throw Exception('Target candidates cannot be changed after approval.');
     }
 
     final db = await _dbProvider.database;
@@ -1070,12 +1089,12 @@ class AssistancePlanRepository {
     await db.transaction((txn) async {
       await txn.insert(
         'student_assistance_rule_candidates',
-        _filterMapForColumns(candidate.toMap(), candidateColumns),
+        _candidateMapForColumns(candidate, candidateColumns),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
       await txn.insert(
         'student_assistance_assessments',
-        _filterMapForColumns(assessment.toMap(), assessmentColumns),
+        _assessmentMapForColumns(assessment, assessmentColumns),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
       await txn.delete(
@@ -1100,7 +1119,9 @@ class AssistancePlanRepository {
     );
   }
 
-  Future<List<AssistanceStudentOption>> getActiveStudents() async {
+  Future<List<AssistanceStudentOption>> getActiveStudents({
+    String? periodId,
+  }) async {
     final db = await _dbProvider.database;
     final rows = await db.rawQuery('''
       SELECT s.id, s.full_name, c.name AS class_name, c.level
@@ -1109,7 +1130,24 @@ class AssistancePlanRepository {
       WHERE s.status = 'active'
       ORDER BY s.full_name ASC
     ''');
-    return rows.map(AssistanceStudentOption.fromMap).toList();
+    final students = rows.map(AssistanceStudentOption.fromMap).toList();
+    if (periodId == null || periodId.isEmpty) return students;
+
+    final period = await getPeriodById(periodId);
+    if (period == null) return students;
+    final calculation = _calculationWindow(
+      period.periodMonth,
+      period.periodYear,
+      period.calculationWindowMonths,
+    );
+    final attendanceScores = await _attendanceScores(
+      calculation.start,
+      calculation.end,
+    );
+    return [
+      for (final student in students)
+        student.copyWith(attendancePercentage: attendanceScores[student.id] ?? 0),
+    ];
   }
 
   Future<List<StudentAssistanceAssessment>> getAssessments({
@@ -1273,11 +1311,26 @@ class AssistancePlanRepository {
     return rows.map(AssistanceApprovalDocument.fromMap).toList();
   }
 
+  Future<List<AssistanceDistributionDocument>> getDistributionDocuments({
+    String? periodId,
+  }) async {
+    final db = await _dbProvider.database;
+    final rows = await db.query(
+      'assistance_distribution_documents',
+      where: periodId == null || periodId.isEmpty
+          ? null
+          : 'assistance_period_id = ?',
+      whereArgs: periodId == null || periodId.isEmpty ? null : [periodId],
+      orderBy: 'uploaded_at DESC',
+    );
+    return rows.map(AssistanceDistributionDocument.fromMap).toList();
+  }
+
   Future<void> markPlanSubmitted(String assistancePeriodId) async {
     final period = await getPeriodById(assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
-    if (period.status == AssistancePeriodStatus.approved) {
-      throw Exception('Approved periods are locked.');
+    if (_locksTargetPlan(period.status)) {
+      throw Exception('This assistance period is locked.');
     }
     final db = await _dbProvider.database;
     final now = DateTime.now().toIso8601String();
@@ -1296,8 +1349,8 @@ class AssistancePlanRepository {
   Future<void> markPlanTargeted(String assistancePeriodId) async {
     final period = await getPeriodById(assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
-    if (period.status == AssistancePeriodStatus.approved) {
-      throw Exception('Approved periods are locked.');
+    if (_locksTargetPlan(period.status)) {
+      throw Exception('This assistance period is locked.');
     }
 
     final selectedTargets = await getAssessments(
@@ -1333,8 +1386,8 @@ class AssistancePlanRepository {
   }) async {
     final period = await getPeriodById(assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
-    if (period.status == AssistancePeriodStatus.approved) {
-      throw Exception('This period is already approved.');
+    if (_locksTargetPlan(period.status)) {
+      throw Exception('This assistance period cannot be approved again.');
     }
 
     final ext = p.extension(fileName).replaceFirst('.', '').toLowerCase();
@@ -1382,6 +1435,10 @@ class AssistancePlanRepository {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
+      final recipientColumns = await _executorTableColumns(
+        txn,
+        'assistance_recipients',
+      );
       for (final target in approvedTargets) {
         final benefit = await _benefitSnapshotForStudent(
           txn,
@@ -1411,7 +1468,7 @@ class AssistancePlanRepository {
         );
         await txn.insert(
           'assistance_recipients',
-          recipient.toMap(),
+          _recipientMapForColumns(recipient, recipientColumns),
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
       }
@@ -1448,6 +1505,228 @@ class AssistancePlanRepository {
     });
   }
 
+  Future<void> rejectAssistancePeriod({
+    required String assistancePeriodId,
+    required String rejectedBy,
+    String? reason,
+  }) async {
+    final period = await getPeriodById(assistancePeriodId);
+    if (period == null) throw Exception('Assistance period not found.');
+    if (_locksTargetPlan(period.status)) {
+      throw Exception('This assistance period cannot be rejected.');
+    }
+
+    final db = await _dbProvider.database;
+    final now = DateTime.now().toIso8601String();
+    await db.update(
+      'assistance_periods',
+      {
+        'status': AssistancePeriodStatus.rejected.value,
+        'approved_by': rejectedBy,
+        'approved_at': now,
+        'updated_at': now,
+      },
+      where: 'id = ?',
+      whereArgs: [assistancePeriodId],
+    );
+    if ((reason ?? '').trim().isNotEmpty) {
+      await db.update(
+        'student_assistance_assessments',
+        {
+          'decision_status': AssistanceDecisionStatus.rejected.value,
+          'special_case_note': reason!.trim(),
+          'updated_at': now,
+        },
+        where: 'assistance_period_id = ? AND decision_status = ?',
+        whereArgs: [
+          assistancePeriodId,
+          AssistanceDecisionStatus.approved.value,
+        ],
+      );
+    }
+  }
+
+  Future<void> uploadDistributionDocument({
+    required String assistancePeriodId,
+    required String sourcePath,
+    required String fileName,
+    required String uploadedBy,
+    String? remarks,
+  }) async {
+    final period = await getPeriodById(assistancePeriodId);
+    if (period == null) throw Exception('Assistance period not found.');
+    if (period.status != AssistancePeriodStatus.approved) {
+      throw Exception('Distribution proof can only be uploaded for approved periods.');
+    }
+
+    final ext = p.extension(fileName).replaceFirst('.', '').toLowerCase();
+    if (!const ['pdf', 'jpg', 'jpeg', 'png'].contains(ext)) {
+      throw Exception('Distribution proof must be PDF, JPG, or PNG.');
+    }
+
+    final recipients = await getRecipients(periodId: assistancePeriodId);
+    if (recipients.isEmpty) {
+      throw Exception('No recipients found for this approved period.');
+    }
+
+    final storedPath = await _copyDistributionDocument(
+      periodId: assistancePeriodId,
+      sourcePath: sourcePath,
+      fileName: fileName,
+    );
+
+    final db = await _dbProvider.database;
+    final now = DateTime.now().toIso8601String();
+    final document = AssistanceDistributionDocument(
+      assistancePeriodId: assistancePeriodId,
+      fileName: p.basename(storedPath),
+      filePath: storedPath,
+      fileType: ext,
+      uploadedBy: uploadedBy,
+      uploadedAt: now,
+      remarks: remarks?.trim().isEmpty == true ? null : remarks?.trim(),
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    await db.insert(
+      'assistance_distribution_documents',
+      document.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<void> finalizeAssistanceDistribution({
+    required String assistancePeriodId,
+    required String finalizedBy,
+  }) async {
+    final period = await getPeriodById(assistancePeriodId);
+    if (period == null) throw Exception('Assistance period not found.');
+    if (period.status != AssistancePeriodStatus.approved) {
+      throw Exception('Only approved periods can be finalized.');
+    }
+
+    final recipients = await getRecipients(periodId: assistancePeriodId);
+    if (recipients.isEmpty) {
+      throw Exception('No recipients found for this period.');
+    }
+
+    final pending = recipients
+        .where((item) => item.status == AssistanceRecipientStatus.approved)
+        .toList();
+    if (pending.isNotEmpty) {
+      throw Exception(
+        'Fill distribution status for every recipient before finalizing.',
+      );
+    }
+
+    final cancelledWithoutReason = recipients.where((item) {
+      return item.status == AssistanceRecipientStatus.cancelled &&
+          (item.distributionReason ?? '').trim().isEmpty;
+    }).toList();
+    if (cancelledWithoutReason.isNotEmpty) {
+      throw Exception('Cancelled recipients require a reason.');
+    }
+
+    final distributedCount = recipients.where((item) {
+      return item.status == AssistanceRecipientStatus.paid ||
+          item.status == AssistanceRecipientStatus.distributed;
+    }).length;
+    if (distributedCount == 0) {
+      throw Exception(
+        'No recipient is paid or distributed. Cancel the period instead.',
+      );
+    }
+
+    final documents = await getDistributionDocuments(periodId: assistancePeriodId);
+    if (documents.isEmpty) {
+      throw Exception('Upload signed distribution proof before finalizing.');
+    }
+
+    final db = await _dbProvider.database;
+    final now = DateTime.now().toIso8601String();
+    await db.transaction((txn) async {
+      await txn.update(
+        'assistance_recipients',
+        {
+          'distributed_by': finalizedBy,
+          'distributed_at': now,
+          'updated_at': now,
+        },
+        where:
+            'assistance_period_id = ? AND status IN (?, ?) AND (distributed_by IS NULL OR distributed_by = ?)',
+        whereArgs: [
+          assistancePeriodId,
+          AssistanceRecipientStatus.paid.value,
+          AssistanceRecipientStatus.distributed.value,
+          '',
+        ],
+      );
+      await txn.update(
+        'assistance_periods',
+        {
+          'status': AssistancePeriodStatus.distributed.value,
+          'updated_at': now,
+        },
+        where: 'id = ?',
+        whereArgs: [assistancePeriodId],
+      );
+    });
+  }
+
+  Future<void> cancelApprovedAssistancePeriod({
+    required String assistancePeriodId,
+    required String cancelledBy,
+    String? reason,
+  }) async {
+    final period = await getPeriodById(assistancePeriodId);
+    if (period == null) throw Exception('Assistance period not found.');
+    if (period.status != AssistancePeriodStatus.approved) {
+      throw Exception('Only approved periods can be cancelled from distribution.');
+    }
+    final cancelledReason = reason?.trim();
+    if (cancelledReason == null || cancelledReason.isEmpty) {
+      throw Exception('Cancellation reason is required.');
+    }
+
+    final recipients = await getRecipients(periodId: assistancePeriodId);
+    final hasDistributedRecipient = recipients.any((item) {
+      return item.status == AssistanceRecipientStatus.paid ||
+          item.status == AssistanceRecipientStatus.distributed;
+    });
+    if (hasDistributedRecipient) {
+      throw Exception(
+        'Some recipients are already paid or distributed. Finalize distribution instead and cancel only the affected recipients.',
+      );
+    }
+
+    final db = await _dbProvider.database;
+    final now = DateTime.now().toIso8601String();
+    await db.transaction((txn) async {
+      await txn.update(
+        'assistance_recipients',
+        {
+          'status': AssistanceRecipientStatus.cancelled.value,
+          'distribution_reason': cancelledReason,
+          'distributed_at': now,
+          'distributed_by': cancelledBy,
+          'updated_at': now,
+        },
+        where: 'assistance_period_id = ?',
+        whereArgs: [assistancePeriodId],
+      );
+      await txn.update(
+        'assistance_periods',
+        {
+          'status': AssistancePeriodStatus.cancelled.value,
+          'updated_at': now,
+        },
+        where: 'id = ?',
+        whereArgs: [assistancePeriodId],
+      );
+    });
+  }
+
   Future<String> _copyApprovalDocument({
     required String periodId,
     required String sourcePath,
@@ -1469,14 +1748,40 @@ class AssistancePlanRepository {
     return storedPath;
   }
 
+  Future<String> _copyDistributionDocument({
+    required String periodId,
+    required String sourcePath,
+    required String fileName,
+  }) async {
+    final storagePath = await AppStoragePaths.storageDirectory();
+    final baseDir = io.Directory(
+      p.join(storagePath, 'assistance_distributions', periodId),
+    );
+    if (!await baseDir.exists()) {
+      await baseDir.create(recursive: true);
+    }
+    final safeName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]+'), '_');
+    final storedPath = p.join(
+      baseDir.path,
+      '${DateTime.now().millisecondsSinceEpoch}_$safeName',
+    );
+    await io.File(sourcePath).copy(storedPath);
+    return storedPath;
+  }
+
   Future<void> generateAssistancePeriod(String assistancePeriodId) async {
-    final db = await _dbProvider.database;
+    final targetAssessments = await buildGeneratedTargets(assistancePeriodId);
+    await saveTargetPlan(assistancePeriodId, targetAssessments);
+  }
+
+  Future<List<StudentAssistanceAssessment>> buildGeneratedTargets(
+    String assistancePeriodId,
+  ) async {
     final period = await getPeriodById(assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
-    if (period.status == AssistancePeriodStatus.approved) {
-      throw Exception('Approved periods cannot be targeted again.');
+    if (_locksTargetPlan(period.status)) {
+      throw Exception('This assistance period cannot be targeted again.');
     }
-
     final rules =
         (await getPeriodRules(
             period.id,
@@ -1550,6 +1855,10 @@ class AssistancePlanRepository {
       var rank = 1;
       for (final candidate in candidates) {
         if (assessedStudentIds.contains(candidate.studentId)) continue;
+        if (candidate.eligibilityStatus ==
+            AssistanceEligibilityStatus.ineligible) {
+          continue;
+        }
         final selectedForRule = selectedIds.contains(candidate.studentId);
         targetAssessments.add(
           StudentAssistanceAssessment(
@@ -1574,21 +1883,14 @@ class AssistancePlanRepository {
             calculationEndDate: calculation.end,
             specialCaseNote: candidate.specialCaseNote,
             totalScore: candidate.totalScore,
-            rankNo:
-                selectedForRule ||
-                    candidate.eligibilityStatus !=
-                        AssistanceEligibilityStatus.ineligible
-                ? rank
-                : null,
+            rankNo: rank,
             decisionStatus: selectedForRule
                 ? AssistanceDecisionStatus.approved
-                : candidate.eligibilityStatus ==
-                      AssistanceEligibilityStatus.ineligible
-                ? AssistanceDecisionStatus.rejected
                 : AssistanceDecisionStatus.waitlist,
             eligibilityStatus: candidate.eligibilityStatus,
             createdAt: now,
             updatedAt: now,
+            studentName: candidate.studentName,
           ),
         );
         assessedStudentIds.add(candidate.studentId);
@@ -1612,16 +1914,129 @@ class AssistancePlanRepository {
       }
     }
 
+    return targetAssessments;
+  }
+
+  Future<StudentAssistanceAssessment> buildManualTarget({
+    required AssistancePeriodRule rule,
+    required String studentId,
+    String? reason,
+    StudentAssistanceAssessment? existing,
+  }) async {
+    final period = await getPeriodById(rule.assistancePeriodId);
+    if (period == null) throw Exception('Assistance period not found.');
+    if (_locksTargetPlan(period.status)) {
+      throw Exception('Target candidates cannot be changed after approval.');
+    }
+
+    final calculation = _calculationWindow(
+      period.periodMonth,
+      period.periodYear,
+      period.calculationWindowMonths,
+    );
+    final attendanceScores = await _attendanceScores(
+      calculation.start,
+      calculation.end,
+    );
+    final attendance = attendanceScores[studentId] ?? 0;
+    final reasonText = reason?.trim();
+    final belowMinimum = attendance < period.minimumAttendancePercentage;
+    final canOverride =
+        belowMinimum &&
+        period.allowManualOverrideBelowAttendance &&
+        reasonText != null &&
+        reasonText.isNotEmpty;
+    if (belowMinimum && !canOverride) {
+      throw Exception(
+        'Attendance ${attendance.toStringAsFixed(0)}% is below the minimum ${period.minimumAttendancePercentage.toStringAsFixed(0)}%. Add a reason to use manual override.',
+      );
+    }
+
+    final eligibilityStatus = canOverride
+        ? AssistanceEligibilityStatus.overridden
+        : AssistanceEligibilityStatus.eligible;
+    final now = DateTime.now().toIso8601String();
+    final candidate = StudentAssistanceRuleCandidate(
+      assistancePeriodId: rule.assistancePeriodId,
+      assistancePeriodRuleId: rule.id,
+      studentId: studentId,
+      reason: reason,
+      attendanceScore: attendance,
+      eligibilityStatus: eligibilityStatus,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    );
+    final totalScore = _manualTotalScore(rule.ruleType, attendance, null);
+    return StudentAssistanceAssessment(
+      id: existing?.id,
+      assistancePeriodId: rule.assistancePeriodId,
+      studentId: studentId,
+      ruleId: existing?.ruleId,
+      assistancePeriodRuleId: rule.id,
+      ruleCandidateId: candidate.id,
+      ruleType: rule.ruleType,
+      ruleName: rule.displayName,
+      selectionMode: rule.selectionMode,
+      priorityLevel: rule.priorityOrder,
+      priorityReason: reasonText == null || reasonText.isEmpty
+          ? rule.displayName
+          : reasonText,
+      economicScore: existing?.economicScore,
+      academicScore: existing?.academicScore,
+      attendanceScore: attendance,
+      behaviorScore: existing?.behaviorScore,
+      teacherRecommendationScore: existing?.teacherRecommendationScore,
+      improvementScore: existing?.improvementScore,
+      rotationBonus: existing?.rotationBonus,
+      calculationStartDate: calculation.start,
+      calculationEndDate: calculation.end,
+      specialCaseNote: reasonText == null || reasonText.isEmpty
+          ? null
+          : reasonText,
+      totalScore: totalScore,
+      rankNo: existing?.rankNo,
+      decisionStatus: AssistanceDecisionStatus.approved,
+      eligibilityStatus: eligibilityStatus,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    );
+  }
+
+  Future<void> saveTargetPlan(
+    String assistancePeriodId,
+    List<StudentAssistanceAssessment> assessments,
+  ) async {
+    final period = await getPeriodById(assistancePeriodId);
+    if (period == null) throw Exception('Assistance period not found.');
+    if (_locksTargetPlan(period.status)) {
+      throw Exception('This assistance period is locked.');
+    }
+
+    final selectedTargets = assessments
+        .where(
+          (item) =>
+              item.assistancePeriodId == assistancePeriodId &&
+              item.decisionStatus == AssistanceDecisionStatus.approved,
+        )
+        .toList();
+    if (selectedTargets.length > period.targetQuota) {
+      throw Exception(
+        'Selected targets (${selectedTargets.length}) exceed target quota (${period.targetQuota}).',
+      );
+    }
+
+    final db = await _dbProvider.database;
+    final now = DateTime.now().toIso8601String();
     await db.transaction((txn) async {
       await txn.delete(
         'assistance_rule_targets',
         where: 'assistance_period_id = ?',
-        whereArgs: [period.id],
+        whereArgs: [assistancePeriodId],
       );
       await txn.delete(
         'student_assistance_assessments',
         where: 'assistance_period_id = ?',
-        whereArgs: [period.id],
+        whereArgs: [assistancePeriodId],
       );
 
       final assessmentColumns = await _executorTableColumns(
@@ -1632,10 +2047,14 @@ class AssistancePlanRepository {
         txn,
         'assistance_rule_targets',
       );
-      for (final assessment in targetAssessments) {
+      for (final assessment in assessments) {
+        if (assessment.assistancePeriodId != assistancePeriodId) continue;
         await txn.insert(
           'student_assistance_assessments',
-          _filterMapForColumns(assessment.toMap(), assessmentColumns),
+          _assessmentMapForColumns(
+            assessment.copyWith(updatedAt: now),
+            assessmentColumns,
+          ),
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
         await txn.insert(
@@ -1678,7 +2097,11 @@ class AssistancePlanRepository {
       'id': assessment.id,
       'assistance_period_id': assessment.assistancePeriodId,
       'assistance_period_rule_id': assessment.assistancePeriodRuleId ?? '',
+      'scholarship_period_id': assessment.assistancePeriodId,
+      'scholarship_period_rule_id': assessment.assistancePeriodRuleId ?? '',
       'assistance_rule_id': null,
+      'scholarship_rule_id': null,
+      'scholarship_type': assessment.ruleType.normalized.value,
       'student_rule_id': assessment.ruleId,
       'student_id': assessment.studentId,
       'rule_name': assessment.displayName,
@@ -1860,8 +2283,8 @@ class AssistancePlanRepository {
   ) async {
     final period = await getPeriodById(assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
-    if (period.status == AssistancePeriodStatus.approved) {
-      throw Exception('Assistance period is already approved.');
+    if (_locksTargetPlan(period.status)) {
+      throw Exception('This assistance period cannot be approved again.');
     }
 
     final approvedAssessments = await getAssessments(
@@ -1878,6 +2301,10 @@ class AssistancePlanRepository {
     final now = DateTime.now().toIso8601String();
 
     await db.transaction((txn) async {
+      final recipientColumns = await _executorTableColumns(
+        txn,
+        'assistance_recipients',
+      );
       for (final assessment in approvedAssessments) {
         final benefit = await _benefitSnapshotForStudent(
           txn,
@@ -1907,7 +2334,7 @@ class AssistancePlanRepository {
         );
         await txn.insert(
           'assistance_recipients',
-          recipient.toMap(),
+          _recipientMapForColumns(recipient, recipientColumns),
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
       }
@@ -1937,8 +2364,8 @@ class AssistancePlanRepository {
     final db = await _dbProvider.database;
     final period = await getPeriodById(assessment.assistancePeriodId);
     if (period == null) throw Exception('Assistance period not found.');
-    if (period.status == AssistancePeriodStatus.approved) {
-      throw Exception('Approved period target candidates cannot be changed.');
+    if (_locksTargetPlan(period.status)) {
+      throw Exception('Target candidates cannot be changed after approval.');
     }
 
     final updatedType = assessment.ruleType;
@@ -1976,14 +2403,14 @@ class AssistancePlanRepository {
     final targetColumns = await _tableColumns(db, 'assistance_rule_targets');
     final updatedCount = await db.update(
       'student_assistance_assessments',
-      _filterMapForColumns(updated.toMap(), assessmentColumns),
+      _assessmentMapForColumns(updated, assessmentColumns),
       where: 'id = ?',
       whereArgs: [assessment.id],
     );
     if (updatedCount == 0) {
       await db.insert(
         'student_assistance_assessments',
-        _filterMapForColumns(updated.toMap(), assessmentColumns),
+        _assessmentMapForColumns(updated, assessmentColumns),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     }
@@ -1996,14 +2423,109 @@ class AssistancePlanRepository {
     }
   }
 
+  Future<void> cancelRuleTargets(String periodRuleId) async {
+    final db = await _dbProvider.database;
+    final ruleRows = await db.query(
+      'assistance_period_rules',
+      where: 'id = ?',
+      whereArgs: [periodRuleId],
+      limit: 1,
+    );
+    if (ruleRows.isEmpty) return;
+    final rule = AssistancePeriodRule.fromMap(ruleRows.first);
+    final period = await getPeriodById(rule.assistancePeriodId);
+    if (period == null) throw Exception('Assistance period not found.');
+    if (_locksTargetPlan(period.status)) {
+      throw Exception('Target candidates cannot be changed after approval.');
+    }
+
+    final now = DateTime.now().toIso8601String();
+    await db.transaction((txn) async {
+      await txn.rawUpdate(
+        '''
+        UPDATE student_assistance_assessments
+        SET decision_status = ?,
+            priority_reason = CASE
+              WHEN priority_reason IS NULL OR priority_reason = ''
+              THEN ?
+              ELSE priority_reason
+            END,
+            updated_at = ?
+        WHERE assistance_period_rule_id = ?
+          AND decision_status = ?
+        ''',
+        [
+          AssistanceDecisionStatus.cancelled.value,
+          'Removed from target plan',
+          now,
+          periodRuleId,
+          AssistanceDecisionStatus.approved.value,
+        ],
+      );
+      await txn.update(
+        'assistance_rule_targets',
+        {
+          'target_status': 'removed',
+          'reason': 'Removed from target plan',
+          'updated_at': now,
+        },
+        where: 'assistance_period_rule_id = ? AND target_status = ?',
+        whereArgs: [periodRuleId, 'selected'],
+      );
+    });
+    await _touchPeriodUpdatedAt(rule.assistancePeriodId);
+  }
+
   Future<void> updateRecipientStatus({
     required String recipientId,
     required AssistanceRecipientStatus status,
+    String? reason,
+    String? updatedBy,
   }) async {
     final db = await _dbProvider.database;
+    final rows = await db.query(
+      'assistance_recipients',
+      where: 'id = ?',
+      whereArgs: [recipientId],
+      limit: 1,
+    );
+    if (rows.isEmpty) throw Exception('Recipient not found.');
+    final recipient = AssistanceRecipient.fromMap(rows.first);
+    final period = await getPeriodById(recipient.assistancePeriodId);
+    if (period == null) throw Exception('Assistance period not found.');
+    if (period.status != AssistancePeriodStatus.approved) {
+      throw Exception('Recipient distribution can only be changed while period is approved.');
+    }
+
+    final trimmedReason = reason?.trim();
+    if (status == AssistanceRecipientStatus.cancelled &&
+        (trimmedReason == null || trimmedReason.isEmpty)) {
+      throw Exception('Cancellation reason is required for this recipient.');
+    }
+
+    final now = DateTime.now().toIso8601String();
+    final values = <String, Object?>{
+      'status': status.value,
+      'updated_at': now,
+    };
+    if (status == AssistanceRecipientStatus.approved) {
+      values['distribution_reason'] = null;
+      values['distributed_at'] = null;
+      values['distributed_by'] = null;
+    } else {
+      values['distribution_reason'] = status == AssistanceRecipientStatus.cancelled
+          ? trimmedReason
+          : trimmedReason?.isEmpty == true
+              ? null
+              : trimmedReason;
+      values['distributed_at'] = now;
+      values['distributed_by'] = updatedBy?.trim().isEmpty == true
+          ? null
+          : updatedBy?.trim();
+    }
     await db.update(
       'assistance_recipients',
-      {'status': status.value, 'updated_at': DateTime.now().toIso8601String()},
+      values,
       where: 'id = ?',
       whereArgs: [recipientId],
     );
@@ -2194,16 +2716,6 @@ class AssistancePlanRepository {
       if (selectedStudentIds.contains(student.id)) continue;
       final attendance = attendanceScores[student.id] ?? 0;
       if (attendance < period.minimumAttendancePercentage) {
-        candidates.add(
-          _RuleCandidate(
-            studentId: student.id,
-            studentName: student.name,
-            attendanceScore: attendance,
-            totalScore: attendance,
-            priorityReason: 'Below minimum attendance',
-            eligibilityStatus: AssistanceEligibilityStatus.ineligible,
-          ),
-        );
         continue;
       }
 
@@ -2274,7 +2786,7 @@ class AssistancePlanRepository {
               ? academic
               : (academic * 0.75) + (behavior * 0.25);
       final attendance = attendanceScores[student.id] ?? 0;
-      final eligible = attendance >= period.minimumAttendancePercentage;
+      if (attendance < period.minimumAttendancePercentage) continue;
       candidates.add(
         _RuleCandidate(
           studentId: student.id,
@@ -2284,9 +2796,7 @@ class AssistancePlanRepository {
           behaviorScore: behavior,
           totalScore: (combined * 0.70) + (attendance * 0.30),
           priorityReason: 'Average session score ${combined.toStringAsFixed(1)}',
-          eligibilityStatus: eligible
-              ? AssistanceEligibilityStatus.eligible
-              : AssistanceEligibilityStatus.ineligible,
+          eligibilityStatus: AssistanceEligibilityStatus.eligible,
         ),
       );
     }
@@ -2323,7 +2833,7 @@ class AssistancePlanRepository {
       final latest = scores.entries.last.value;
       final improvement = latest - first;
       final attendance = attendanceScores[student.id] ?? 0;
-      final eligible = attendance >= period.minimumAttendancePercentage;
+      if (attendance < period.minimumAttendancePercentage) continue;
       candidates.add(
         _RuleCandidate(
           studentId: student.id,
@@ -2334,9 +2844,7 @@ class AssistancePlanRepository {
           totalScore: (improvement * 0.70) + (attendance * 0.30),
           priorityReason:
               'Score growth ${improvement >= 0 ? '+' : ''}${improvement.toStringAsFixed(1)}',
-          eligibilityStatus: eligible
-              ? AssistanceEligibilityStatus.eligible
-              : AssistanceEligibilityStatus.ineligible,
+          eligibilityStatus: AssistanceEligibilityStatus.eligible,
         ),
       );
     }
@@ -2635,6 +3143,63 @@ class AssistancePlanRepository {
       for (final entry in map.entries)
         if (columns.contains(entry.key)) entry.key: entry.value,
     };
+  }
+
+  Map<String, Object?> _candidateMapForColumns(
+    StudentAssistanceRuleCandidate candidate,
+    Set<String> columns,
+  ) {
+    final map = candidate.toMap();
+    if (columns.contains('scholarship_period_id')) {
+      map['scholarship_period_id'] = candidate.assistancePeriodId;
+    }
+    if (columns.contains('scholarship_period_rule_id')) {
+      map['scholarship_period_rule_id'] = candidate.assistancePeriodRuleId;
+    }
+    return _filterMapForColumns(map, columns);
+  }
+
+  Map<String, Object?> _assessmentMapForColumns(
+    StudentAssistanceAssessment assessment,
+    Set<String> columns,
+  ) {
+    final map = assessment.toMap();
+    if (columns.contains('scholarship_period_id')) {
+      map['scholarship_period_id'] = assessment.assistancePeriodId;
+    }
+    if (columns.contains('scholarship_period_rule_id')) {
+      map['scholarship_period_rule_id'] =
+          assessment.assistancePeriodRuleId ?? '';
+    }
+    if (columns.contains('scholarship_rule_id')) {
+      map['scholarship_rule_id'] = assessment.ruleId;
+    }
+    if (columns.contains('scholarship_type')) {
+      map['scholarship_type'] = assessment.ruleType.normalized.value;
+    }
+    return _filterMapForColumns(map, columns);
+  }
+
+  Map<String, Object?> _recipientMapForColumns(
+    AssistanceRecipient recipient,
+    Set<String> columns,
+  ) {
+    final map = recipient.toMap();
+    if (columns.contains('scholarship_period_id')) {
+      map['scholarship_period_id'] = recipient.assistancePeriodId;
+    }
+    if (columns.contains('scholarship_period_rule_id')) {
+      map['scholarship_period_rule_id'] =
+          recipient.assistancePeriodRuleId ?? '';
+    }
+    if (columns.contains('scholarship_rule_target_id')) {
+      map['scholarship_rule_target_id'] =
+          recipient.assistanceRuleTargetId ?? '';
+    }
+    if (columns.contains('scholarship_type')) {
+      map['scholarship_type'] = recipient.ruleType.normalized.value;
+    }
+    return _filterMapForColumns(map, columns);
   }
 
   Future<Map<String, Object?>> _periodRuleMap(

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
@@ -27,6 +28,7 @@ import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key});
@@ -203,19 +205,19 @@ class _SchedulePageState extends State<SchedulePage> {
     required List<Strategy> strategies,
   }) async {
     if (existingSchedule == null && !_canCreateSchedule) {
-      AppToast.showFailed('You do not have permission to create schedules.');
+      AppToast.showFailed(context.l10n.scheduleCreateDenied);
       return;
     }
     if (existingSchedule == null &&
         _authScope.isTeacher &&
         _authScope.teacherId == null) {
-      AppToast.showFailed('Your user is not linked to a teacher profile.');
+      AppToast.showFailed(context.l10n.userNotLinkedTeacher);
       return;
     }
     if (existingSchedule != null &&
         (!_canUpdateSchedule ||
             !_authScope.ownsTeacherData(existingSchedule.teacherId))) {
-      AppToast.showFailed('You do not have permission to update this schedule.');
+      AppToast.showFailed(context.l10n.scheduleUpdateDenied);
       return;
     }
     final cubit = context.read<ScheduleCubit>();
@@ -253,11 +255,11 @@ class _SchedulePageState extends State<SchedulePage> {
     required bool isSchoolEvent,
   }) async {
     if (existingEvent == null && !_canCreateEvent) {
-      AppToast.showFailed('You do not have permission to create events.');
+      AppToast.showFailed(context.l10n.eventCreateDenied);
       return;
     }
     if (existingEvent != null && !_canUpdateEvent) {
-      AppToast.showFailed('You do not have permission to update events.');
+      AppToast.showFailed(context.l10n.eventUpdateDenied);
       return;
     }
     final cubit = context.read<ScheduleCubit>();
@@ -288,7 +290,7 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Future<void> _confirmDeleteSchedule(Schedule schedule) async {
     if (!_canDeleteSchedule || !_authScope.ownsTeacherData(schedule.teacherId)) {
-      AppToast.showFailed('You do not have permission to delete this schedule.');
+      AppToast.showFailed(context.l10n.scheduleDeleteDenied);
       return;
     }
     final cubit = context.read<ScheduleCubit>();
@@ -297,16 +299,20 @@ class _SchedulePageState extends State<SchedulePage> {
       guardKey: 'delete_schedule_${schedule.id}',
       builder: (context) {
         return AlertDialog(
-          title: const AppDialogTitle('Delete Schedule'),
-          content: Text('Delete ${schedule.title ?? 'this schedule'}?'),
+          title: AppDialogTitle(context.l10n.deleteSchedule),
+          content: Text(
+            context.l10n.deleteScheduleConfirm(
+              schedule.title ?? context.l10n.thisSchedule,
+            ),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.buttonCancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
+              child: Text(context.l10n.buttonDelete),
             ),
           ],
         );
@@ -331,7 +337,7 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Future<void> _confirmDeleteEvent(ScheduleEvent event) async {
     if (!_canDeleteEvent) {
-      AppToast.showFailed('You do not have permission to delete events.');
+      AppToast.showFailed(context.l10n.eventDeleteDenied);
       return;
     }
     final cubit = context.read<ScheduleCubit>();
@@ -340,16 +346,16 @@ class _SchedulePageState extends State<SchedulePage> {
       guardKey: 'delete_event_${event.id}',
       builder: (context) {
         return AlertDialog(
-          title: const AppDialogTitle('Delete Event'),
-          content: Text('Delete ${event.title}?'),
+          title: AppDialogTitle(context.l10n.deleteEvent),
+          content: Text(context.l10n.deleteEventConfirm(event.title)),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.buttonCancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
+              child: Text(context.l10n.buttonDelete),
             ),
           ],
         );
@@ -387,11 +393,11 @@ class _SchedulePageState extends State<SchedulePage> {
     }
 
     if (!_canViewSchedule) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
           child: Text(
-            'You do not have permission to view schedules.',
-            style: TextStyle(
+            context.l10n.scheduleAccessDenied,
+            style: const TextStyle(
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w700,
             ),
@@ -442,11 +448,13 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Widget _buildHeader(BuildContext context, ScheduleState state) {
     return AppPageHeader(
-      title: 'Schedule Calendar',
-      subtitle:
-          '${state.schedules.length} teaching schedules, ${state.events.length} events',
+      title: context.l10n.scheduleCalendar,
+      subtitle: context.l10n.scheduleHeaderSummary(
+        state.schedules.length,
+        state.events.length,
+      ),
       trailing: IconButton(
-        tooltip: 'Refresh schedules',
+        tooltip: context.l10n.refreshSchedules,
         onPressed: () => _reloadSchedules(forceRefresh: true),
         icon: const Icon(Icons.refresh),
       ),
@@ -495,9 +503,9 @@ class _SchedulePageState extends State<SchedulePage> {
                   _showSearchOverlay(fieldContext, updatedResults);
                 },
                 onTap: () => _showSearchOverlay(fieldContext, results),
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  hintText: 'Find schedule, event, teacher, level',
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: context.l10n.findScheduleHint,
                 ),
               ),
             );
@@ -543,7 +551,7 @@ class _SchedulePageState extends State<SchedulePage> {
     required List<School> schools,
   }) {
     return PopupMenuButton<_ScheduleAddType>(
-      tooltip: 'Add schedule or event',
+      tooltip: context.l10n.addScheduleOrEvent,
       onSelected: (type) {
         switch (type) {
           case _ScheduleAddType.schedule:
@@ -566,33 +574,33 @@ class _SchedulePageState extends State<SchedulePage> {
         PopupMenuItem(
           value: _ScheduleAddType.schedule,
           enabled: units.isNotEmpty,
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.school_outlined, size: 18),
-              SizedBox(width: 10),
-              Text('Teaching schedule'),
+              const Icon(Icons.school_outlined, size: 18),
+              const SizedBox(width: 10),
+              Text(context.l10n.teachingSchedule),
             ],
           ),
         ),
         if (_canCreateEvent)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: _ScheduleAddType.schoolEvent,
             child: Row(
               children: [
-                Icon(Icons.event_outlined, size: 18),
-                SizedBox(width: 10),
-                Text('School event'),
+                const Icon(Icons.event_outlined, size: 18),
+                const SizedBox(width: 10),
+                Text(context.l10n.schoolEvent),
               ],
             ),
           ),
         if (_canCreateEvent)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: _ScheduleAddType.otherEvent,
             child: Row(
               children: [
-                Icon(Icons.add_alarm_outlined, size: 18),
-                SizedBox(width: 10),
-                Text('Other event'),
+                const Icon(Icons.add_alarm_outlined, size: 18),
+                const SizedBox(width: 10),
+                Text(context.l10n.otherEvent),
               ],
             ),
           ),
@@ -604,20 +612,24 @@ class _SchedulePageState extends State<SchedulePage> {
           color: AppColors.primary,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.add, color: AppColors.white, size: 18),
-            SizedBox(width: 8),
+            const Icon(Icons.add, color: AppColors.white, size: 18),
+            const SizedBox(width: 8),
             Text(
-              'Add',
-              style: TextStyle(
+              context.l10n.buttonAdd,
+              style: const TextStyle(
                 color: AppColors.white,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            SizedBox(width: 6),
-            Icon(Icons.keyboard_arrow_down, color: AppColors.white, size: 18),
+            const SizedBox(width: 6),
+            const Icon(
+              Icons.keyboard_arrow_down,
+              color: AppColors.white,
+              size: 18,
+            ),
           ],
         ),
       ),
@@ -634,9 +646,9 @@ class _SchedulePageState extends State<SchedulePage> {
           border: Border.all(color: AppColors.border),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Text(
-          'No matching schedule or event.',
-          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        child: Text(
+          context.l10n.noMatchingSchedule,
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
         ),
       );
     }
@@ -820,7 +832,7 @@ class _SchedulePageState extends State<SchedulePage> {
     required List<School> schools,
   }) {
     if (state.error != null) {
-      return Center(child: Text('Error: ${state.error}'));
+      return Center(child: Text(context.l10n.errorWithDetails(state.error!)));
     }
 
     return LayoutBuilder(
@@ -903,7 +915,7 @@ class _SchedulePageState extends State<SchedulePage> {
           children: [
             Expanded(
               child: Text(
-                _monthTitle(_focusedMonth),
+                _monthTitle(context, _focusedMonth),
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
@@ -911,7 +923,7 @@ class _SchedulePageState extends State<SchedulePage> {
               ),
             ),
             IconButton(
-              tooltip: 'Previous month',
+              tooltip: context.l10n.previousMonth,
               onPressed: () => setState(() {
                 final newMonth = DateTime(
                   _focusedMonth.year,
@@ -924,7 +936,7 @@ class _SchedulePageState extends State<SchedulePage> {
               icon: const Icon(Icons.chevron_left),
             ),
             IconButton(
-              tooltip: 'Next month',
+              tooltip: context.l10n.nextMonth,
               onPressed: () => setState(() {
                 final newMonth = DateTime(
                   _focusedMonth.year,
@@ -1098,10 +1110,13 @@ class _SchedulePageState extends State<SchedulePage> {
       children: [
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
-                'Events',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                context.l10n.events,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             Text(
@@ -1116,9 +1131,12 @@ class _SchedulePageState extends State<SchedulePage> {
         ),
         const SizedBox(height: 10),
         if (events.isEmpty)
-          const Text(
-            'No school event on this date.',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          Text(
+            context.l10n.noSchoolEventOnDate,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+            ),
           )
         else
           for (final event in events) ...[
@@ -1181,7 +1199,7 @@ class _SchedulePageState extends State<SchedulePage> {
             ),
           ),
           IconButton(
-            tooltip: 'Edit event',
+            tooltip: context.l10n.editEvent,
             visualDensity: VisualDensity.compact,
             onPressed: _canUpdateEvent
                 ? () => _showEventForm(
@@ -1244,7 +1262,7 @@ class _SchedulePageState extends State<SchedulePage> {
               children: [
                 Expanded(
                   child: Text(
-                    _timelineTitle(dates),
+                    _timelineTitle(context, dates),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -1355,9 +1373,9 @@ class _SchedulePageState extends State<SchedulePage> {
           bottom: BorderSide(color: AppColors.border),
         ),
       ),
-      child: const Text(
-        'Date',
-        style: TextStyle(
+      child: Text(
+        context.l10n.date,
+        style: const TextStyle(
           color: AppColors.textSecondary,
           fontSize: 11,
           fontWeight: FontWeight.w700,
@@ -1560,9 +1578,9 @@ class _SchedulePageState extends State<SchedulePage> {
     final unit = _findUnit(units, schedule.unitId);
     final title = schedule.title?.trim().isNotEmpty == true
         ? schedule.title!
-        : unit?.name ?? 'Schedule';
+        : unit?.name ?? context.l10n.menuSchedule;
     final teacher = _findTeacher(teachers, schedule.teacherId);
-    final teacherName = teacher?.fullName ?? 'No teacher assigned';
+    final teacherName = teacher?.fullName ?? context.l10n.noTeacherAssigned;
     final startHour = _hourOf(schedule.startAt);
     final endHour = _endHour(schedule.startAt, schedule.endAt);
     final startsHere = hour == startHour;
@@ -1740,7 +1758,7 @@ class _SchedulePageState extends State<SchedulePage> {
       width: 20,
       height: 24,
       child: PopupMenuButton<String>(
-        tooltip: 'Actions',
+        tooltip: context.l10n.actions,
         padding: EdgeInsets.zero,
         iconSize: 15,
         color: AppColors.white,
@@ -1751,9 +1769,13 @@ class _SchedulePageState extends State<SchedulePage> {
           if (value == 'delete') onDelete();
         },
         itemBuilder: (context) => [
-          if (canEdit) const PopupMenuItem(value: 'edit', child: Text('Edit')),
+          if (canEdit)
+            PopupMenuItem(value: 'edit', child: Text(context.l10n.buttonEdit)),
           if (canDelete)
-            const PopupMenuItem(value: 'delete', child: Text('Delete')),
+            PopupMenuItem(
+              value: 'delete',
+              child: Text(context.l10n.buttonDelete),
+            ),
         ],
       ),
     );
@@ -1872,35 +1894,16 @@ class _SchedulePageState extends State<SchedulePage> {
         first.day == second.day;
   }
 
-  String _monthTitle(DateTime date) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    return '${months[date.month - 1]} ${date.year}';
+  String _localeName(BuildContext context) {
+    return Localizations.localeOf(context).toLanguageTag();
   }
 
-  String _longDate(DateTime date) {
-    const days = [
-      'Sunday',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-    ];
-    return '${days[date.weekday % 7]}, ${_monthTitle(date)} ${date.day}';
+  String _monthTitle(BuildContext context, DateTime date) {
+    return DateFormat.yMMMM(_localeName(context)).format(date);
+  }
+
+  String _longDate(BuildContext context, DateTime date) {
+    return DateFormat.yMMMMEEEEd(_localeName(context)).format(date);
   }
 
   int _hourOf(String? time) {
@@ -1991,33 +1994,19 @@ class _SchedulePageState extends State<SchedulePage> {
     _rangeEndDate = null;
   }
 
-  String _timelineTitle(List<DateTime> dates) {
-    if (dates.isEmpty) return _longDate(_selectedDate);
-    if (dates.length == 1) return _displayDate(dates.first);
-    return '${_displayDate(dates.first)} - ${_displayDate(dates.last)}';
+  String _timelineTitle(BuildContext context, List<DateTime> dates) {
+    if (dates.isEmpty) return _longDate(context, _selectedDate);
+    if (dates.length == 1) return _displayDate(context, dates.first);
+    return '${_displayDate(context, dates.first)} - ${_displayDate(context, dates.last)}';
   }
 
-  String _displayDate(DateTime date) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  String _displayDate(BuildContext context, DateTime date) {
+    return DateFormat.yMMMMd(_localeName(context)).format(date);
   }
 
   String _shortWeekday(DateTime date) {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return days[date.weekday % 7];
+    return DateFormat.E(Localizations.localeOf(context).toLanguageTag())
+        .format(date);
   }
 
   String _hourLabel(int hour) {
@@ -2075,7 +2064,7 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 
   String? _eventTimeSummary(ScheduleEvent event) {
-    if (event.wholeDay) return 'Whole day';
+    if (event.wholeDay) return context.l10n.wholeDay;
     return _timeRange(event.startAt, event.endAt);
   }
 
@@ -2238,7 +2227,9 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
 
     return AlertDialog(
       title: AppDialogTitle(
-        widget.schedule == null ? 'Add Schedule' : 'Edit Schedule',
+        widget.schedule == null
+            ? context.l10n.addSchedule
+            : context.l10n.editSchedule,
       ),
       content: SizedBox(
         width: 520,
@@ -2249,17 +2240,18 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 CommonFormWidgets.dropdownFieldTyped<SchoolLevelOption>(
-                  label: 'Level',
+                  label: context.l10n.level,
                   items: SchoolLevelOption.values,
                   labelBuilder: (item) => item.label,
                   valueBuilder: (item) => item.level.toString(),
                   value: selectedLevel,
                   onSaved: (value) =>
-                      classLevel = value?.level ?? SchoolLevelOption.values.first.level,
+                      classLevel =
+                          value?.level ?? SchoolLevelOption.values.first.level,
                 ),
                 const SizedBox(height: 16),
                 CommonFormWidgets.dropdownFieldTyped<Teacher>(
-                  label: 'Teacher',
+                  label: context.l10n.teacher,
                   items: widget.teachers,
                   labelBuilder: (item) => item.fullName,
                   valueBuilder: (item) => item.id,
@@ -2269,7 +2261,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                 ),
                 const SizedBox(height: 16),
                 CommonFormWidgets.dropdownFieldTyped<Unit>(
-                  label: 'Unit',
+                  label: context.l10n.unit,
                   items: widget.units,
                   labelBuilder: (item) => item.name,
                   valueBuilder: (item) => item.id,
@@ -2278,7 +2270,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                 ),
                 const SizedBox(height: 16),
                 CommonFormWidgets.dropdownFieldTyped<Strategy>(
-                  label: 'Strategy',
+                  label: context.l10n.menuStrategy,
                   items: widget.strategies,
                   labelBuilder: (item) => item.name,
                   valueBuilder: (item) => item.id,
@@ -2288,7 +2280,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                 ),
                 const SizedBox(height: 16),
                 CommonFormWidgets.textField(
-                  label: 'Title',
+                  label: context.l10n.title,
                   value: title,
                   onSaved: (value) => title = _nullIfBlank(value),
                   validator: (_) => null,
@@ -2299,7 +2291,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                   children: [
                     Expanded(
                       child: _PickerFormField(
-                        label: 'Date',
+                        label: context.l10n.date,
                         controller: _dateController,
                         hint: AppFormFieldStyle.dateFormat,
                         icon: Icons.calendar_today,
@@ -2313,7 +2305,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                         onSaved: (value) => date = _nullIfBlank(value),
                         validator: (value) {
                           if (value?.trim().isEmpty ?? true) {
-                            return 'Date is required';
+                            return '${context.l10n.date} is required';
                           }
                           return null;
                         },
@@ -2322,7 +2314,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _PickerFormField(
-                        label: 'Start',
+                        label: context.l10n.start,
                         controller: _startController,
                         hint: AppFormFieldStyle.timeFormat,
                         icon: Icons.schedule,
@@ -2341,7 +2333,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _PickerFormField(
-                        label: 'End',
+                        label: context.l10n.end,
                         controller: _endController,
                         hint: AppFormFieldStyle.timeFormat,
                         icon: Icons.schedule,
@@ -2361,7 +2353,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                 ),
                 const SizedBox(height: 16),
                 CommonFormWidgets.textField(
-                  label: 'Description',
+                  label: context.l10n.description,
                   value: description,
                   onSaved: (value) => description = _nullIfBlank(value),
                   maxLines: 3,
@@ -2379,7 +2371,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         ElevatedButton(
           onPressed: _isSaving ? null : _submit,
@@ -2389,7 +2381,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );
@@ -2416,6 +2408,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
       endAt: endAt,
     );
 
+    final cannotSaveTitle = context.l10n.cannotSaveSchedule;
     setState(() => _isSaving = true);
 
     try {
@@ -2425,7 +2418,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
     } catch (e) {
       AppToast.showFailed(
         _scheduleSaveErrorMessage(e),
-        title: 'Cannot Save Schedule',
+        title: cannotSaveTitle,
       );
       if (mounted) setState(() => _isSaving = false);
     }
@@ -2545,7 +2538,9 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
     final singleDay = _startDateController.text == _endDateController.text;
 
     return AlertDialog(
-      title: AppDialogTitle(widget.event == null ? 'Add Event' : 'Edit Event'),
+      title: AppDialogTitle(
+        widget.event == null ? context.l10n.addEvent : context.l10n.editEvent,
+      ),
       content: SizedBox(
         width: 520,
         child: SingleChildScrollView(
@@ -2555,12 +2550,12 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 CommonFormWidgets.textField(
-                  label: 'Event Name',
+                  label: context.l10n.eventName,
                   value: title,
                   onSaved: (value) => title = value?.trim() ?? '',
                   validator: (value) {
                     if (value?.trim().isEmpty ?? true) {
-                      return 'Event name is required';
+                      return '${context.l10n.eventName} is required';
                     }
                     return null;
                   },
@@ -2568,7 +2563,7 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                 const SizedBox(height: 16),
                 if (widget.showType) ...[
                   CommonFormWidgets.dropdownField(
-                    label: 'Type',
+                    label: context.l10n.type,
                     items: eventTypes,
                     value: type,
                     onSaved: (value) => type = value ?? eventTypes.first,
@@ -2577,7 +2572,7 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                 ],
                 if (widget.showSchool) ...[
                   CommonFormWidgets.dropdownFieldTyped<School>(
-                    label: 'School',
+                    label: context.l10n.school,
                     items: widget.schools,
                     labelBuilder: (item) => item.name ?? 'Unnamed School',
                     valueBuilder: (item) => item.id,
@@ -2591,7 +2586,7 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                   children: [
                     Expanded(
                       child: _PickerFormField(
-                        label: 'Start Date',
+                        label: context.l10n.startDate,
                         controller: _startDateController,
                         hint: AppFormFieldStyle.dateFormat,
                         icon: Icons.calendar_today,
@@ -2615,7 +2610,7 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                         onSaved: (value) => date = value?.trim() ?? '',
                         validator: (value) {
                           if (value?.trim().isEmpty ?? true) {
-                            return 'Start date is required';
+                            return '${context.l10n.startDate} is required';
                           }
                           return null;
                         },
@@ -2624,7 +2619,7 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _PickerFormField(
-                        label: 'End Date',
+                        label: context.l10n.endDate,
                         controller: _endDateController,
                         hint: AppFormFieldStyle.dateFormat,
                         icon: Icons.event_available,
@@ -2649,13 +2644,13 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                         onSaved: (value) => endDate = value?.trim() ?? date,
                         validator: (value) {
                           if (value?.trim().isEmpty ?? true) {
-                            return 'End date is required';
+                            return '${context.l10n.endDate} is required';
                           }
                           if (value!.trim().compareTo(
                                 _startDateController.text,
                               ) <
                               0) {
-                            return 'End date must be after start date';
+                            return context.l10n.endDateAfterStartDate;
                           }
                           return null;
                         },
@@ -2666,11 +2661,11 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Whole day'),
+                  title: Text(context.l10n.wholeDay),
                   subtitle: Text(
                     singleDay
-                        ? 'Use when this event takes the full selected day.'
-                        : 'Whole day is available only for one-day events.',
+                        ? context.l10n.wholeDaySubtitle
+                        : context.l10n.wholeDayUnavailableSubtitle,
                   ),
                   value: singleDay && wholeDay,
                   onChanged: singleDay
@@ -2688,7 +2683,7 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                   children: [
                     Expanded(
                       child: _PickerFormField(
-                        label: 'Start',
+                        label: context.l10n.start,
                         controller: _startTimeController,
                         hint: AppFormFieldStyle.timeFormat,
                         icon: Icons.schedule,
@@ -2708,7 +2703,7 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _PickerFormField(
-                        label: 'End',
+                        label: context.l10n.end,
                         controller: _endTimeController,
                         hint: AppFormFieldStyle.timeFormat,
                         icon: Icons.schedule,
@@ -2729,7 +2724,7 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                 ),
                 const SizedBox(height: 16),
                 CommonFormWidgets.textField(
-                  label: 'Description',
+                  label: context.l10n.description,
                   value: description,
                   onSaved: (value) => description = _nullIfBlank(value),
                   maxLines: 3,
@@ -2747,7 +2742,7 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         ElevatedButton(
           onPressed: _isSaving ? null : _submit,
@@ -2757,7 +2752,7 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );

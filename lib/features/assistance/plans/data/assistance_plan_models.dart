@@ -116,6 +116,8 @@ enum AssistancePeriodStatus {
   targeted('targeted', 'Targeted'),
   submitted('submitted', 'Submitted'),
   approved('approved', 'Approved'),
+  rejected('rejected', 'Rejected'),
+  distributed('distributed', 'Distributed'),
   cancelled('cancelled', 'Cancelled');
 
   const AssistancePeriodStatus(this.value, this.label);
@@ -1035,6 +1037,9 @@ class AssistanceRecipient {
     this.benefitDescription,
     this.benefitItemsJson,
     this.status = AssistanceRecipientStatus.approved,
+    this.distributionReason,
+    this.distributedAt,
+    this.distributedBy,
     this.approvedBy,
     this.approvedAt,
     String? createdAt,
@@ -1063,6 +1068,9 @@ class AssistanceRecipient {
   final String? benefitDescription;
   final String? benefitItemsJson;
   final AssistanceRecipientStatus status;
+  final String? distributionReason;
+  final String? distributedAt;
+  final String? distributedBy;
   final String? approvedBy;
   final String? approvedAt;
   final String createdAt;
@@ -1105,6 +1113,9 @@ class AssistanceRecipient {
       benefitDescription: map['benefit_description'] as String?,
       benefitItemsJson: map['benefit_items_json'] as String?,
       status: AssistanceRecipientStatus.fromValue(map['status']?.toString()),
+      distributionReason: map['distribution_reason'] as String?,
+      distributedAt: map['distributed_at'] as String?,
+      distributedBy: map['distributed_by'] as String?,
       approvedBy: map['approved_by'] as String?,
       approvedAt: map['approved_at'] as String?,
       createdAt: map['created_at']?.toString(),
@@ -1134,6 +1145,9 @@ class AssistanceRecipient {
       'benefit_description': benefitDescription,
       'benefit_items_json': benefitItemsJson,
       'status': status.value,
+      'distribution_reason': distributionReason,
+      'distributed_at': distributedAt,
+      'distributed_by': distributedBy,
       'approved_by': approvedBy,
       'approved_at': approvedAt,
       'created_at': createdAt,
@@ -1159,6 +1173,65 @@ String _formatRupiah(double amount) {
     buffer.write(',${parts.last}');
   }
   return 'Rp ${buffer.toString()}';
+}
+
+class AssistanceDistributionDocument {
+  AssistanceDistributionDocument({
+    String? id,
+    required this.assistancePeriodId,
+    required this.fileName,
+    required this.filePath,
+    this.fileType,
+    this.uploadedBy,
+    String? uploadedAt,
+    this.remarks,
+    String? createdAt,
+    String? updatedAt,
+  }) : id = id ?? const Uuid().v4(),
+       uploadedAt = uploadedAt ?? DateTime.now().toIso8601String(),
+       createdAt = createdAt ?? DateTime.now().toIso8601String(),
+       updatedAt = updatedAt ?? DateTime.now().toIso8601String();
+
+  final String id;
+  final String assistancePeriodId;
+  final String fileName;
+  final String filePath;
+  final String? fileType;
+  final String? uploadedBy;
+  final String uploadedAt;
+  final String? remarks;
+  final String createdAt;
+  final String updatedAt;
+
+  factory AssistanceDistributionDocument.fromMap(Map<String, Object?> map) {
+    return AssistanceDistributionDocument(
+      id: map['id']?.toString(),
+      assistancePeriodId: map['assistance_period_id'] as String,
+      fileName: map['file_name']?.toString() ?? '',
+      filePath: map['file_path']?.toString() ?? '',
+      fileType: map['file_type'] as String?,
+      uploadedBy: map['uploaded_by'] as String?,
+      uploadedAt: map['uploaded_at']?.toString(),
+      remarks: map['remarks'] as String?,
+      createdAt: map['created_at']?.toString(),
+      updatedAt: map['updated_at']?.toString(),
+    );
+  }
+
+  Map<String, Object?> toMap() {
+    return {
+      'id': id,
+      'assistance_period_id': assistancePeriodId,
+      'file_name': fileName,
+      'file_path': filePath,
+      'file_type': fileType,
+      'uploaded_by': uploadedBy,
+      'uploaded_at': uploadedAt,
+      'remarks': remarks,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+    };
+  }
 }
 
 class AssistanceApprovalDocument {
@@ -1226,12 +1299,14 @@ class AssistanceStudentOption {
     required this.name,
     this.className,
     this.level,
+    this.attendancePercentage,
   });
 
   final String id;
   final String name;
   final String? className;
   final String? level;
+  final double? attendancePercentage;
 
   factory AssistanceStudentOption.fromMap(Map<String, Object?> map) {
     return AssistanceStudentOption(
@@ -1239,6 +1314,23 @@ class AssistanceStudentOption {
       name: map['full_name']?.toString() ?? '-',
       className: map['class_name']?.toString(),
       level: map['level']?.toString(),
+      attendancePercentage: (map['attendance_percentage'] as num?)?.toDouble(),
+    );
+  }
+
+  AssistanceStudentOption copyWith({
+    String? id,
+    String? name,
+    String? className,
+    String? level,
+    double? attendancePercentage,
+  }) {
+    return AssistanceStudentOption(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      className: className ?? this.className,
+      level: level ?? this.level,
+      attendancePercentage: attendancePercentage ?? this.attendancePercentage,
     );
   }
 }

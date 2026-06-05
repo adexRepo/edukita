@@ -647,6 +647,24 @@ class DatabaseMigrations {
       column: 'benefit_items_json',
       definition: 'TEXT',
     );
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_recipients',
+      column: 'distribution_reason',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_recipients',
+      column: 'distributed_at',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_recipients',
+      column: 'distributed_by',
+      definition: 'TEXT',
+    );
     await DatabaseTables.indexes(db);
     await DatabaseSeed.ensureAssistancePrograms(db);
     await DatabaseSeed.ensureAssistanceProgramBenefits(db);
@@ -709,7 +727,9 @@ class DatabaseMigrations {
         createSql.contains("'pending_review'") ||
         createSql.contains('fixed_quota') ||
         createSql.contains('rolling_quota') ||
-        createSql.contains('generated_at');
+        createSql.contains('generated_at') ||
+        !createSql.contains("'rejected'") ||
+        !createSql.contains("'distributed'");
     if (!hasOldPeriodShape) return;
 
     await db.execute('DROP INDEX IF EXISTS idx_assistance_periods_month_year');
@@ -735,7 +755,7 @@ class DatabaseMigrations {
           minimum_attendance_percentage REAL NOT NULL DEFAULT 75,
           allow_manual_override_below_attendance INTEGER NOT NULL DEFAULT 1,
           status TEXT NOT NULL DEFAULT 'draft'
-            CHECK(status IN ('draft', 'targeted', 'submitted', 'approved', 'cancelled')),
+            CHECK(status IN ('draft', 'targeted', 'submitted', 'approved', 'rejected', 'distributed', 'cancelled')),
           targeted_at TEXT,
           submitted_at TEXT,
           approved_at TEXT,
@@ -929,6 +949,8 @@ class DatabaseMigrations {
     await DatabaseTables.studentAssistanceRules(db);
     await DatabaseTables.studentAssistanceRuleCandidates(db);
     await DatabaseTables.studentAssistanceAssessments(db);
+    await DatabaseTables.assistanceApprovalDocuments(db);
+    await DatabaseTables.assistanceDistributionDocuments(db);
     await DatabaseTables.assistanceRecipients(db);
     await DatabaseTables.indexes(db);
   }
@@ -958,6 +980,8 @@ class DatabaseMigrations {
     await DatabaseTables.studentAssistanceRuleCandidates(db);
     await DatabaseTables.studentAssistanceRules(db);
     await DatabaseTables.studentAssistanceAssessments(db);
+    await DatabaseTables.assistanceApprovalDocuments(db);
+    await DatabaseTables.assistanceDistributionDocuments(db);
     await DatabaseTables.assistanceRecipients(db);
     await DatabaseTables.indexes(db);
   }
@@ -968,6 +992,7 @@ class DatabaseMigrations {
     await DatabaseTables.assistancePeriodRules(db);
     await DatabaseTables.assistanceRuleTargets(db);
     await DatabaseTables.assistanceApprovalDocuments(db);
+    await DatabaseTables.assistanceDistributionDocuments(db);
     await DatabaseTables.assistanceRecipients(db);
 
     await _addColumnIfMissing(
@@ -992,6 +1017,24 @@ class DatabaseMigrations {
       db,
       table: 'assistance_recipients',
       column: 'assistance_rule_target_id',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_recipients',
+      column: 'distribution_reason',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_recipients',
+      column: 'distributed_at',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'assistance_recipients',
+      column: 'distributed_by',
       definition: 'TEXT',
     );
 

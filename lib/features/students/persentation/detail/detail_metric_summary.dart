@@ -1,4 +1,5 @@
-import 'package:edukita/core/utils/text_case.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
+import 'package:edukita/core/localization/localized_display.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/persentation/detail/detail_metric_card.dart';
 import 'package:flutter/material.dart';
@@ -15,23 +16,23 @@ class DetailMetricSummary extends StatelessWidget {
         final isNarrow = constraints.maxWidth < 680;
         final cards = [
           DetailMetricCard(
-            label: 'Class',
+            label: context.l10n.className,
             value: student.className,
             icon: Icons.class_outlined,
           ),
           DetailMetricCard(
-            label: 'School',
+            label: context.l10n.school,
             value: student.schoolName,
             icon: Icons.account_balance_outlined,
           ),
           DetailMetricCard(
-            label: 'Status',
-            value: student.status.name.titleWords,
+            label: context.l10n.status,
+            value: translateStudentStatus(context, student.status.name),
             icon: Icons.verified_user_outlined,
           ),
           DetailMetricCard(
-            label: 'Age',
-            value: '${student.age} years',
+            label: context.l10n.age,
+            value: '${student.age} ${context.l10n.years}',
             icon: Icons.cake_outlined,
           ),
         ];

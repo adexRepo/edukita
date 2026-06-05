@@ -1,5 +1,6 @@
 import 'package:edukita/features/common/title_bar.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:edukita/core/database/database_provider.dart';
@@ -225,9 +226,9 @@ class _LoginPageState extends State<LoginPage> {
                                 textInputAction: TextInputAction.next,
                                 onSubmitted: (_) =>
                                     _passwordFocusNode.requestFocus(),
-                                decoration: const InputDecoration(
-                                  labelText: 'Username',
-                                  border: OutlineInputBorder(),
+                                decoration: InputDecoration(
+                                  labelText: context.l10n.username,
+                                  border: const OutlineInputBorder(),
                                 ),
                               ),
                               const SizedBox(height: 16),
@@ -238,9 +239,9 @@ class _LoginPageState extends State<LoginPage> {
                                 onSubmitted: (_) {
                                   if (!_loading) _login();
                                 },
-                                decoration: const InputDecoration(
-                                  labelText: 'Password',
-                                  border: OutlineInputBorder(),
+                                decoration: InputDecoration(
+                                  labelText: context.l10n.password,
+                                  border: const OutlineInputBorder(),
                                 ),
                                 obscureText: true,
                               ),
@@ -268,7 +269,7 @@ class _LoginPageState extends State<LoginPage> {
                                           strokeWidth: 2,
                                         ),
                                       )
-                                    : const Text('Login'),
+                                    : Text(context.l10n.login),
                               ),
                             ],
                           ),

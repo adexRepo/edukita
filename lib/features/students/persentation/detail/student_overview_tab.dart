@@ -1,4 +1,5 @@
-import 'package:edukita/core/utils/text_case.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
+import 'package:edukita/core/localization/localized_display.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/data/student_detail_insight_data.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
@@ -28,48 +29,60 @@ class StudentOverviewTab extends StatelessWidget {
               monthlyAttendance: insights?.monthlyAttendance,
             ),
             DetailSectionCard(
-              title: 'Quick Profile',
+              title: context.l10n.quickProfile,
               icon: Icons.dashboard_outlined,
               children: [
-                DetailInfoPill(label: 'Name', value: student.fullName),
-                DetailInfoPill(label: 'Student No', value: student.studentNo),
-                DetailInfoPill(label: 'Age', value: '${student.age} years'),
-                DetailInfoPill(label: 'Class', value: student.className),
                 DetailInfoPill(
-                  label: 'Status',
-                  value: student.status.name.titleWords,
+                  label: context.l10n.name,
+                  value: student.fullName,
+                ),
+                DetailInfoPill(
+                  label: context.l10n.studentNo,
+                  value: student.studentNo,
+                ),
+                DetailInfoPill(
+                  label: context.l10n.age,
+                  value: '${student.age} ${context.l10n.years}',
+                ),
+                DetailInfoPill(
+                  label: context.l10n.className,
+                  value: student.className,
+                ),
+                DetailInfoPill(
+                  label: context.l10n.status,
+                  value: translateStudentStatus(context, student.status.name),
                 ),
               ],
             ),
             DetailSectionCard(
-              title: 'Aggregated Snapshot',
+              title: context.l10n.aggregatedSnapshot,
               icon: Icons.insights_outlined,
               children: [
                 if (snapshot.connectionState == ConnectionState.waiting)
-                  const DetailEmptySectionText('Loading student snapshot...')
+                  DetailEmptySectionText(context.l10n.loadingStudentSnapshot)
                 else if (insights == null)
-                  const DetailEmptySectionText('No student snapshot available.')
+                  DetailEmptySectionText(context.l10n.noStudentSnapshot)
                 else ...[
                   DetailInfoPill(
-                    label: 'Attendance',
+                    label: context.l10n.attendance,
                     value: _percentOrDash(
                       insights.attendance.attendancePercentage,
                     ),
                   ),
                   DetailInfoPill(
-                    label: 'Attendance Records',
+                    label: context.l10n.attendanceRecords,
                     value: insights.attendance.totalRecords.toString(),
                   ),
                   DetailInfoPill(
-                    label: 'Average Score',
+                    label: context.l10n.averageScore,
                     value: _scoreOrDash(insights.learning.averageScore),
                   ),
                   DetailInfoPill(
-                    label: 'Teacher Notes',
+                    label: context.l10n.teacherNotes,
                     value: insights.recentTeacherNotes.length.toString(),
                   ),
                   DetailInfoPill(
-                    label: 'Assistance',
+                    label: context.l10n.assistance,
                     value: insights.assistanceHistory.length.toString(),
                   ),
                 ],
@@ -94,24 +107,26 @@ class _OverviewSignals extends StatelessWidget {
     final attention = <String>[
       if (attendance.totalRecords > 0 &&
           (attendance.attendancePercentage ?? 100) < 75)
-        'Attendance below 75%',
-      if (attendance.absentCount > 0) '${attendance.absentCount} absence record(s)',
+        context.l10n.attendanceBelowThreshold,
+      if (attendance.absentCount > 0)
+        context.l10n.absenceRecords(attendance.absentCount),
       if (attendance.permissionCount > 0)
-        '${attendance.permissionCount} permission record(s)',
+        context.l10n.permissionRecords(attendance.permissionCount),
       if (insights.recentTeacherNotes.isNotEmpty)
-        '${insights.recentTeacherNotes.length} recent teacher note(s)',
+        context.l10n.recentTeacherNotesCount(
+          insights.recentTeacherNotes.length,
+        ),
     ];
 
     return DetailSectionCard(
-      title: 'Needs Attention',
+      title: context.l10n.needsAttention,
       icon: Icons.flag_outlined,
       children: [
         if (attention.isEmpty)
-          const DetailEmptySectionText(
-            'No attention flags from attendance or teacher notes.',
-          )
+          DetailEmptySectionText(context.l10n.noAttentionNeeded)
         else
-          for (final item in attention) DetailInfoPill(label: 'Signal', value: item),
+          for (final item in attention)
+            DetailInfoPill(label: context.l10n.signal, value: item),
       ],
     );
   }

@@ -1,4 +1,5 @@
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/schools/domain/class_cubit.dart';
@@ -99,7 +100,9 @@ class _SchoolsPageState extends State<SchoolsPage> {
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
               return AlertDialog(
-                title: AppDialogTitle('Classes - ${school.name ?? '-'}'),
+                title: AppDialogTitle(
+                  context.l10n.classesForSchool(school.name ?? '-'),
+                ),
                 content: const SizedBox(
                   width: 720,
                   height: 180,
@@ -108,7 +111,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Close'),
+                    child: Text(context.l10n.close),
                   ),
                 ],
               );
@@ -173,16 +176,16 @@ class _SchoolsPageState extends State<SchoolsPage> {
       context: context,
       guardKey: 'delete_class_${schoolClass.id}',
       builder: (dialogContext) => AlertDialog(
-        title: const AppDialogTitle('Delete Class'),
-        content: Text('Delete ${schoolClass.name}?'),
+        title: AppDialogTitle(context.l10n.deleteClass),
+        content: Text(context.l10n.deleteNamedItem(schoolClass.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: Text(context.l10n.delete),
           ),
         ],
       ),
@@ -211,16 +214,18 @@ class _SchoolsPageState extends State<SchoolsPage> {
       context: context,
       guardKey: 'delete_school_${school.id}',
       builder: (dialogContext) => AlertDialog(
-        title: const AppDialogTitle('Delete School'),
-        content: Text('Delete ${school.name ?? 'this school'}?'),
+        title: AppDialogTitle(context.l10n.deleteSchool),
+        content: Text(
+          context.l10n.deleteNamedItem(school.name ?? context.l10n.school),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: Text(context.l10n.delete),
           ),
         ],
       ),
@@ -270,16 +275,16 @@ class _SchoolsPageState extends State<SchoolsPage> {
   Widget _buildTopBar() {
     return Padding(
       padding: AppPageHeaderStyle.pagePadding,
-      child: const AppPageHeader(
-        title: 'Schools',
-        subtitle: 'Manage school profiles and their class structures.',
+      child: AppPageHeader(
+        title: context.l10n.schools,
+        subtitle: context.l10n.schoolsSubtitle,
       ),
     );
   }
 
   Widget _buildContent(SchoolState state) {
     if (state.error != null) {
-      return Center(child: Text('Error: ${state.error}'));
+      return Center(child: Text(context.l10n.errorWithDetails(state.error!)));
     }
 
     final normalizedQuery = _schoolSearchQuery.trim().toLowerCase();
@@ -304,8 +309,8 @@ class _SchoolsPageState extends State<SchoolsPage> {
                 return Center(
                   child: Text(
                     state.schools.isEmpty
-                        ? 'No schools yet.'
-                        : 'No schools match your search.',
+                        ? context.l10n.noSchoolsYet
+                        : context.l10n.noSchoolsMatch,
                   ),
                 );
               }
@@ -321,7 +326,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
                 onRowTap: _showClassDialog,
                 columns: [
                   AppTableColumn(
-                    title: 'School',
+                    title: context.l10n.school,
                     flex: 4,
                     sortValue: (school) {
                       final name = school.name ?? '';
@@ -337,7 +342,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
                     ),
                   ),
                   AppTableColumn(
-                    title: 'Type',
+                    title: context.l10n.type,
                     flex: 2,
                     sortValue: (school) => school.type?.index ?? 0,
                     cell: (school) => Text(
@@ -347,7 +352,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
                     ),
                   ),
                   AppTableColumn(
-                    title: 'Address',
+                    title: context.l10n.address,
                     flex: 4,
                     sortValue: (school) {
                       final address = school.address ?? '';
@@ -360,7 +365,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
                     ),
                   ),
                   AppTableColumn(
-                    title: 'Classes',
+                    title: context.l10n.classes,
                     flex: 2,
                     sortValue: (school) => classCounts[school.id] ?? 0,
                     cell: (school) => Text(
@@ -369,7 +374,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
                     ),
                   ),
                   AppTableColumn(
-                    title: 'Actions',
+                    title: context.l10n.actions,
                     flex: 2,
                     cell: (school) => Align(
                       alignment: Alignment.centerLeft,
@@ -377,7 +382,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            tooltip: 'Edit school',
+                            tooltip: context.l10n.edit,
                             onPressed: () =>
                                 _showSchoolFormDialog(school: school),
                             constraints: const BoxConstraints.tightFor(
@@ -388,7 +393,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
                             icon: const Icon(Icons.edit, size: 16),
                           ),
                           IconButton(
-                            tooltip: 'Delete school',
+                            tooltip: context.l10n.delete,
                             onPressed: () => _confirmDeleteSchool(school),
                             constraints: const BoxConstraints.tightFor(
                               width: 28,
@@ -425,24 +430,24 @@ class _SchoolsPageState extends State<SchoolsPage> {
               _schoolSearchQuery = value;
             });
           },
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             prefixIcon: Icon(Icons.search),
-            hintText: 'Search school name',
+            hintText: context.l10n.searchSchoolName,
           ),
         );
         final addButton = FilledButton.icon(
           onPressed: () => _showSchoolFormDialog(),
           icon: const Icon(Icons.add),
-          label: const Text('Add School'),
+          label: Text(context.l10n.addSchool),
         );
 
         if (widget.embedded) {
           final title = AppPageHeader(
-            title: 'Schools',
-            subtitle: 'Manage school profiles and their class structures.',
+            title: context.l10n.schools,
+            subtitle: context.l10n.schoolsSubtitle,
           );
           final refresh = IconButton(
-            tooltip: 'Refresh schools',
+            tooltip: context.l10n.refresh,
             onPressed: () {
               context.read<SchoolCubit>().loadSchools(forceRefresh: true);
               _refreshClassCounts();
@@ -520,7 +525,7 @@ class _SchoolClassesDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: AppDialogTitle('Classes - ${school.name ?? '-'}'),
+      title: AppDialogTitle(context.l10n.classesForSchool(school.name ?? '-')),
       content: SizedBox(
         width: 720,
         height: 420,
@@ -531,13 +536,13 @@ class _SchoolClassesDialog extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: () => onAdd(),
                 icon: const Icon(Icons.add),
-                label: const Text('Add Class'),
+                label: Text(context.l10n.addClass),
               ),
             ),
             const SizedBox(height: 12),
             Expanded(
               child: classes.isEmpty
-                  ? const Center(child: Text('No classes for this school.'))
+                  ? Center(child: Text(context.l10n.noClassesForSchool))
                   : AppTable<SchoolClass>(
                       data: classes,
                       pageable: Pageable(
@@ -548,7 +553,7 @@ class _SchoolClassesDialog extends StatelessWidget {
                       ),
                       columns: [
                         AppTableColumn(
-                          title: 'Class',
+                          title: context.l10n.className,
                           flex: 3,
                           sortValue: (schoolClass) =>
                               schoolClass.name.codeUnitAt(0),
@@ -562,7 +567,7 @@ class _SchoolClassesDialog extends StatelessWidget {
                           ),
                         ),
                         AppTableColumn(
-                          title: 'Level',
+                          title: context.l10n.level,
                           flex: 2,
                           sortValue: (schoolClass) => schoolClass.level,
                           cell: (schoolClass) => Text(
@@ -571,7 +576,7 @@ class _SchoolClassesDialog extends StatelessWidget {
                           ),
                         ),
                         AppTableColumn(
-                          title: 'Section',
+                          title: context.l10n.section,
                           flex: 2,
                           sortValue: (schoolClass) =>
                               schoolClass.section?.codeUnitAt(0) ?? 0,
@@ -582,7 +587,7 @@ class _SchoolClassesDialog extends StatelessWidget {
                           ),
                         ),
                         AppTableColumn(
-                          title: 'Year',
+                          title: context.l10n.year,
                           flex: 2,
                           sortValue: (schoolClass) =>
                               int.tryParse(schoolClass.year) ?? 0,
@@ -593,13 +598,13 @@ class _SchoolClassesDialog extends StatelessWidget {
                           ),
                         ),
                         AppTableColumn(
-                          title: 'Actions',
+                          title: context.l10n.actions,
                           flex: 2,
                           cell: (schoolClass) => Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                tooltip: 'Edit class',
+                                tooltip: context.l10n.edit,
                                 onPressed: () => onEdit(schoolClass),
                                 constraints: const BoxConstraints.tightFor(
                                   width: 28,
@@ -609,7 +614,7 @@ class _SchoolClassesDialog extends StatelessWidget {
                                 icon: const Icon(Icons.edit, size: 16),
                               ),
                               IconButton(
-                                tooltip: 'Delete class',
+                                tooltip: context.l10n.delete,
                                 onPressed: () => onDelete(schoolClass),
                                 constraints: const BoxConstraints.tightFor(
                                   width: 28,
@@ -635,7 +640,7 @@ class _SchoolClassesDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          child: Text(context.l10n.close),
         ),
       ],
     );

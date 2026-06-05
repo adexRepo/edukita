@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/students/data/student_advanced_form_data.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
@@ -37,52 +38,54 @@ class StudentActivitiesTab extends StatelessWidget {
                 .toList();
 
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const DetailSectionCard(
-                title: 'Extracurricular',
+              return DetailSectionCard(
+                title: context.l10n.extracurricular,
                 icon: Icons.emoji_events_outlined,
                 wrapChildren: false,
-                children: [DetailEmptySectionText('Loading activities...')],
+                children: [
+                  DetailEmptySectionText(context.l10n.loadingActivities),
+                ],
               );
             }
 
             return Column(
               children: [
                 DetailSectionCard(
-                  title: 'Extracurricular',
+                  title: context.l10n.extracurricular,
                   icon: Icons.emoji_events_outlined,
                   wrapChildren: false,
                   children: [
                     DetailDataTable(
-                      columns: const [
-                        'Type',
-                        'Activity',
-                        'Role',
-                        'Achievement',
-                        'Start Date',
-                        'End Date',
+                      columns: [
+                        context.l10n.type,
+                        context.l10n.activity,
+                        context.l10n.role,
+                        context.l10n.achievement,
+                        context.l10n.startDate,
+                        context.l10n.endDate,
                       ],
                       rows: extracurricular.map(_activityRow).toList(),
-                      emptyText: 'No extracurricular activity has been added.',
+                      emptyText: context.l10n.noExtracurricularActivity,
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 DetailSectionCard(
-                  title: 'Extra Activity Records',
+                  title: context.l10n.extraActivityRecords,
                   icon: Icons.event_note_outlined,
                   wrapChildren: false,
                   children: [
                     DetailDataTable(
-                      columns: const [
-                        'Type',
-                        'Activity',
-                        'Role',
-                        'Achievement',
-                        'Start Date',
-                        'End Date',
+                      columns: [
+                        context.l10n.type,
+                        context.l10n.activity,
+                        context.l10n.role,
+                        context.l10n.achievement,
+                        context.l10n.startDate,
+                        context.l10n.endDate,
                       ],
                       rows: otherActivities.map(_activityRow).toList(),
-                      emptyText: 'No extra activity has been added.',
+                      emptyText: context.l10n.noExtraActivity,
                     ),
                   ],
                 ),

@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/theme/app_theme.dart';
@@ -166,7 +167,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
       context: context,
       guardKey: 'school_form_change_type_${_type.name}_${newType.name}',
       builder: (dialogContext) => AlertDialog(
-        title: const AppDialogTitle('Change School Type'),
+        title: AppDialogTitle(context.l10n.changeSchoolType),
         content: Text(
           'Changing the school type from ${_type.label} to ${newType.label} '
           'will remove the classes already created for ${_type.label}.',
@@ -174,11 +175,11 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep Type'),
+            child: Text(context.l10n.keepType),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Remove Classes'),
+            child: Text(context.l10n.removeClasses),
           ),
         ],
       ),
@@ -262,18 +263,18 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
       context: context,
       guardKey: 'school_form_clear_classes',
       builder: (dialogContext) => AlertDialog(
-        title: const AppDialogTitle('Clear Classes'),
+        title: AppDialogTitle(context.l10n.clearClasses),
         content: const Text(
           'Remove all registered classes from this school form?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Clear All'),
+            child: Text(context.l10n.clearAll),
           ),
         ],
       ),
@@ -373,7 +374,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         FilledButton(
           onPressed: _isSaving ? null : _submit,
@@ -383,7 +384,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );
@@ -491,7 +492,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
             IconButton.filledTonal(
               onPressed: _isSaving ? null : () => _showClassDraftDialog(),
               icon: const Icon(Icons.add),
-              tooltip: 'Add class',
+              tooltip: context.l10n.addClass,
               style: IconButton.styleFrom(
                 backgroundColor: AppColors.accentBlue.withValues(alpha: 0.1),
                 foregroundColor: AppColors.accentBlue,
@@ -507,7 +508,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
             IconButton.filledTonal(
               onPressed: _isSaving ? null : _generateClassDrafts,
               icon: const Icon(Icons.auto_awesome),
-              tooltip: 'Generate all level with section A/B/C',
+              tooltip: context.l10n.generateClassesTooltip,
               style: IconButton.styleFrom(
                 backgroundColor: AppColors.warning.withValues(alpha: 0.12),
                 foregroundColor: AppColors.warning,
@@ -525,7 +526,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
                   ? null
                   : _removeAllClassDrafts,
               icon: const Icon(Icons.cleaning_services_outlined),
-              tooltip: 'Clear all classes',
+              tooltip: context.l10n.clearAll,
               style: IconButton.styleFrom(
                 backgroundColor: AppColors.error.withValues(alpha: 0.1),
                 foregroundColor: AppColors.errorDark,
@@ -738,16 +739,16 @@ class _ClassTableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Row(
         children: [
-          SizedBox(width: 42, child: _ClassHeaderText('No')),
-          Expanded(flex: 3, child: _ClassHeaderText('Class Name')),
-          Expanded(flex: 2, child: _ClassHeaderText('Level')),
-          Expanded(flex: 2, child: _ClassHeaderText('Section')),
-          Expanded(flex: 2, child: _ClassHeaderText('Year')),
-          SizedBox(width: 74, child: _ClassHeaderText('Actions')),
+          SizedBox(width: 42, child: _ClassHeaderText(context.l10n.number)),
+          Expanded(flex: 3, child: _ClassHeaderText(context.l10n.className)),
+          Expanded(flex: 2, child: _ClassHeaderText(context.l10n.level)),
+          Expanded(flex: 2, child: _ClassHeaderText(context.l10n.section)),
+          Expanded(flex: 2, child: _ClassHeaderText(context.l10n.year)),
+          SizedBox(width: 74, child: _ClassHeaderText(context.l10n.actions)),
         ],
       ),
     );
@@ -861,7 +862,7 @@ class _ClassTableRow extends StatelessWidget {
                     child: Row(
                       children: [
                         IconButton(
-                          tooltip: 'Edit class',
+                          tooltip: context.l10n.edit,
                           constraints: const BoxConstraints.tightFor(
                             width: 32,
                             height: 32,
@@ -871,7 +872,7 @@ class _ClassTableRow extends StatelessWidget {
                           icon: const Icon(Icons.edit, size: 16),
                         ),
                         IconButton(
-                          tooltip: 'Remove class',
+                          tooltip: context.l10n.remove,
                           constraints: const BoxConstraints.tightFor(
                             width: 32,
                             height: 32,
@@ -1011,21 +1012,21 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
                 enableInteractiveSelection: !widget.autoName,
                 decoration: InputDecoration(
                   label: widget.autoName
-                      ? const Text('Class Name')
-                      : requiredLabel(context, 'Name'),
+                      ? Text(context.l10n.className)
+                      : requiredLabel(context, context.l10n.name),
                   hintText: widget.autoName
-                      ? 'Generated from level + section'
-                      : 'Class name',
+                      ? context.l10n.generatedClassHint
+                      : context.l10n.className,
                 ),
                 validator: (value) {
                   if (widget.autoName) return null;
                   if (value == null || value.trim().isEmpty) {
-                    return 'Class name is required';
+                    return context.l10n.classNameRequired;
                   }
                   if (value.trim().length > 40) {
-                    return 'Class name must be at most 40 characters';
+                    return context.l10n.classNameMax40;
                   }
-                  if (_isDuplicate()) return 'Duplicate class and year';
+                  if (_isDuplicate()) return context.l10n.duplicateClassYear;
                   return null;
                 },
                 inputFormatters: [LengthLimitingTextInputFormatter(40)],
@@ -1035,7 +1036,7 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
                 initialValue: _level,
                 isExpanded: false,
                 decoration: InputDecoration(
-                  label: requiredLabel(context, 'Level'),
+                  label: requiredLabel(context, context.l10n.level),
                   hintText: widget.type.levelHint,
                 ),
                 items: widget.type.allowedLevels
@@ -1070,8 +1071,8 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
                         });
                       },
                 validator: (value) {
-                  if (value == null) return 'Level is required';
-                  if (_isDuplicate()) return 'Duplicate class and year';
+                  if (value == null) return context.l10n.levelRequired;
+                  if (_isDuplicate()) return context.l10n.duplicateClassYear;
                   return null;
                 },
               ),
@@ -1080,8 +1081,8 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
                 controller: _sectionController,
                 decoration: InputDecoration(
                   label: widget.autoName
-                      ? requiredLabel(context, 'Section')
-                      : const Text('Section'),
+                      ? requiredLabel(context, context.l10n.section)
+                      : Text(context.l10n.section),
                 ),
                 textCapitalization: TextCapitalization.characters,
                 inputFormatters: [
@@ -1095,7 +1096,7 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
                 validator: (value) {
                   final text = value?.trim() ?? '';
                   if (!widget.autoName && text.isEmpty) return null;
-                  if (text.isEmpty) return 'Section is required';
+                  if (text.isEmpty) return context.l10n.sectionRequired;
                   if (!RegExp(r'^[A-Z]$').hasMatch(text.toUpperCase())) {
                     return 'Alphabet only';
                   }
@@ -1131,9 +1132,9 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
-        FilledButton(onPressed: _submit, child: const Text('Save')),
+        FilledButton(onPressed: _submit, child: Text(context.l10n.buttonSave)),
       ],
     );
   }

@@ -1,4 +1,5 @@
-import 'package:edukita/core/utils/text_case.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
+import 'package:edukita/core/localization/localized_display.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/data/student_detail_insight_data.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
@@ -26,39 +27,43 @@ class StudentAcademicTab extends StatelessWidget {
           children: [
             DetailMetricSummary(student: student),
             DetailSectionCard(
-              title: 'Learning Summary',
+              title: context.l10n.learningSummary,
               icon: Icons.assignment_outlined,
               children: [
                 if (snapshot.connectionState == ConnectionState.waiting)
-                  const DetailEmptySectionText('Loading learning summary...')
+                  DetailEmptySectionText(context.l10n.loadingLearningSummary)
                 else if (insights == null)
-                  const DetailEmptySectionText('No learning summary available.')
+                  DetailEmptySectionText(context.l10n.noLearningSummary)
                 else ...[
                   DetailInfoPill(
-                    label: 'Average Score',
+                    label: context.l10n.averageScore,
                     value: _scoreOrDash(insights.learning.averageScore),
                   ),
                   DetailInfoPill(
-                    label: 'Assessments',
+                    label: context.l10n.assessments,
                     value: insights.learning.assessmentCount.toString(),
                   ),
                   DetailInfoPill(
-                    label: 'Latest',
+                    label: context.l10n.latest,
                     value: _textOrDash(insights.learning.latestAssessmentDate),
                   ),
                 ],
               ],
             ),
             DetailSectionCard(
-              title: 'Competency Average',
+              title: context.l10n.competencyAverage,
               icon: Icons.stacked_bar_chart_outlined,
               wrapChildren: false,
               children: [
                 if (snapshot.connectionState == ConnectionState.waiting)
-                  const DetailEmptySectionText('Loading competency records...')
+                  DetailEmptySectionText(context.l10n.loadingCompetencyRecords)
                 else
                   DetailDataTable(
-                    columns: const ['Competency', 'Average', 'Records'],
+                    columns: [
+                      context.l10n.competency,
+                      context.l10n.averageScore,
+                      context.l10n.records,
+                    ],
                     rows: (insights?.competencies ?? const [])
                         .map(
                           (item) => [
@@ -68,27 +73,26 @@ class StudentAcademicTab extends StatelessWidget {
                           ],
                         )
                         .toList(),
-                    emptyText:
-                        'No competency scores have been saved from teaching sessions.',
+                    emptyText: context.l10n.noCompetencyScores,
                   ),
               ],
             ),
             DetailSectionCard(
-              title: 'Teaching Attendance',
+              title: context.l10n.teachingAttendance,
               icon: Icons.fact_check_outlined,
               wrapChildren: false,
               children: [
                 if (snapshot.connectionState == ConnectionState.waiting)
-                  const DetailEmptySectionText('Loading attendance records...')
+                  DetailEmptySectionText(context.l10n.loadingAttendanceRecords)
                 else
                   DetailDataTable(
-                    columns: const [
-                      'Date',
-                      'Session',
-                      'Time',
-                      'Status',
-                      'Check In',
-                      'Note',
+                    columns: [
+                      context.l10n.date,
+                      context.l10n.session,
+                      context.l10n.time,
+                      context.l10n.status,
+                      context.l10n.checkIn,
+                      context.l10n.note,
                     ],
                     rows: (insights?.recentAttendance ?? const [])
                         .map(
@@ -96,14 +100,13 @@ class StudentAcademicTab extends StatelessWidget {
                             item.date,
                             item.session,
                             _textOrDash(item.time),
-                            item.status.titleWords,
+                            translateAttendanceStatus(context, item.status),
                             _textOrDash(item.checkIn),
                             _textOrDash(item.note),
                           ],
                         )
                         .toList(),
-                    emptyText:
-                        'No teaching attendance has been saved for this student.',
+                    emptyText: context.l10n.noTeachingAttendance,
                   ),
               ],
             ),

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
@@ -32,11 +33,10 @@ class _DashboardPageState extends State<DashboardPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 AppPageHeader(
-                  title: 'Dashboard',
-                  subtitle:
-                      'Foundation education overview and operation snapshot.',
+                  title: context.l10n.menuDashboard,
+                  subtitle: context.l10n.dashboardSubtitle,
                   trailing: IconButton(
-                    tooltip: 'Refresh dashboard',
+                    tooltip: context.l10n.dashboardRefresh,
                     onPressed: state.isLoading ? null : cubit.refreshCounters,
                     icon: const Icon(Icons.refresh),
                   ),
@@ -108,7 +108,7 @@ class _DashboardFilters extends StatelessWidget {
       children: [
         _FilterBox(
           icon: Icons.stairs_outlined,
-          label: 'Level',
+          label: context.l10n.dashboardLevel,
           child: _LevelFilterButton(
             state: state,
             onLevelsChanged: onLevelsChanged,
@@ -139,7 +139,7 @@ class _LevelFilterButton extends StatelessWidget {
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 220),
             child: Text(
-              DashboardCubit.levelsLabel(state.levels),
+              _localizedLevelsLabel(context, state.levels),
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: AppColors.textPrimary,
@@ -208,12 +208,12 @@ class _LevelFilterButton extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Select Levels',
+                                  context.l10n.dashboardSelectLevels,
                                   style: TextStyle(
                                     color: AppColors.textPrimary,
                                     fontSize: 16,
@@ -222,7 +222,7 @@ class _LevelFilterButton extends StatelessWidget {
                                 ),
                                 SizedBox(height: 2),
                                 Text(
-                                  'Choose one or multiple school levels.',
+                                  context.l10n.dashboardSelectLevelsDescription,
                                   style: TextStyle(
                                     color: AppColors.textSecondary,
                                     fontSize: 12,
@@ -232,7 +232,7 @@ class _LevelFilterButton extends StatelessWidget {
                             ),
                           ),
                           IconButton(
-                            tooltip: 'Close',
+                            tooltip: context.l10n.buttonClose,
                             onPressed: () => Navigator.pop(dialogContext),
                             icon: const Icon(Icons.close, size: 18),
                           ),
@@ -244,7 +244,7 @@ class _LevelFilterButton extends StatelessWidget {
                           child: Column(
                             children: [
                               _LevelCheckTile(
-                                title: 'All Levels',
+                                title: context.l10n.dashboardAllLevels,
                                 value: selected.isEmpty,
                                 onChanged: (_) {
                                   setState(selected.clear);
@@ -252,21 +252,21 @@ class _LevelFilterButton extends StatelessWidget {
                               ),
                               const Divider(height: 14),
                               _LevelCheckTile(
-                                title: 'All SD',
+                                title: context.l10n.dashboardAllSd,
                                 value: hasAll(DashboardCubit.sdLevels),
                                 onChanged: (_) {
                                   toggleGroup(DashboardCubit.sdLevels);
                                 },
                               ),
                               _LevelCheckTile(
-                                title: 'All SMP',
+                                title: context.l10n.dashboardAllSmp,
                                 value: hasAll(DashboardCubit.smpLevels),
                                 onChanged: (_) {
                                   toggleGroup(DashboardCubit.smpLevels);
                                 },
                               ),
                               _LevelCheckTile(
-                                title: 'All SMA',
+                                title: context.l10n.dashboardAllSma,
                                 value: hasAll(DashboardCubit.smaLevels),
                                 onChanged: (_) {
                                   toggleGroup(DashboardCubit.smaLevels);
@@ -275,7 +275,7 @@ class _LevelFilterButton extends StatelessWidget {
                               const Divider(height: 14),
                               for (final level in DashboardCubit.allLevelValues)
                                 _LevelCheckTile(
-                                  title: DashboardCubit.levelLabel(level),
+                                  title: _localizedLevelLabel(context, level),
                                   value: selected.contains(level),
                                   onChanged: (checked) {
                                     toggleLevel(level, checked);
@@ -290,7 +290,7 @@ class _LevelFilterButton extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              DashboardCubit.levelsLabel(selected.toList()),
+                              _localizedLevelsLabel(context, selected.toList()),
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: AppColors.textSecondary,
@@ -304,14 +304,14 @@ class _LevelFilterButton extends StatelessWidget {
                             onPressed: () {
                               setState(selected.clear);
                             },
-                            child: const Text('Clear'),
+                            child: Text(context.l10n.dashboardClear),
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton(
                             onPressed: () {
                               Navigator.pop(dialogContext, selected.toList());
                             },
-                            child: const Text('Apply'),
+                            child: Text(context.l10n.dashboardApply),
                           ),
                         ],
                       ),
@@ -462,30 +462,33 @@ class _KpiStrip extends StatelessWidget {
     final items = [
       _KpiItem(
         icon: Icons.groups_outlined,
-        title: 'Active Students',
+        title: context.l10n.dashboardActiveStudents,
         value: _formatInt(state.studentCount),
-        note: '${_formatInt(knownGenderCount)} with gender data',
+        note:
+            '${_formatInt(knownGenderCount)} ${context.l10n.dashboardWithGenderData}',
         color: AppColors.primary,
       ),
       _KpiItem(
         icon: Icons.fact_check_outlined,
-        title: 'Avg Attendance',
+        title: context.l10n.dashboardAverageAttendance,
         value: attendance == null ? '-' : '${attendance.toStringAsFixed(0)}%',
-        note: '${_formatInt(state.attendanceTotal)} attendance records',
+        note:
+            '${_formatInt(state.attendanceTotal)} ${context.l10n.dashboardAttendanceRecords}',
         color: AppColors.success,
       ),
       _KpiItem(
         icon: Icons.school_outlined,
-        title: 'Avg Academic',
+        title: context.l10n.dashboardAverageAcademic,
         value: academic == null ? '-' : '${academic.toStringAsFixed(0)}%',
-        note: '${_formatInt(state.academicAverages.length)} active subjects',
+        note:
+            '${_formatInt(state.academicAverages.length)} ${context.l10n.dashboardActiveSubjects}',
         color: AppColors.accentBlue,
       ),
       _KpiItem(
         icon: Icons.event_available_outlined,
-        title: 'Teaching Sessions',
+        title: context.l10n.dashboardTeachingSessions,
         value: _formatInt(sessionTotal),
-        note: state.range.label,
+        note: _localizedRangeLabel(context, state.range),
         color: AppColors.warning,
       ),
     ];
@@ -647,10 +650,7 @@ class _DashboardOverviewGrid extends StatelessWidget {
               const SizedBox(height: spacing),
               _StudentGenderCard(state: state),
               const SizedBox(height: spacing),
-              _ProgressPanel(
-                state: state,
-                onRangeChanged: onRangeChanged,
-              ),
+              _ProgressPanel(state: state, onRangeChanged: onRangeChanged),
               const SizedBox(height: spacing),
               _AttendanceDonutCard(
                 state: state,
@@ -831,8 +831,8 @@ class _StudentGenderCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _MetricCardTitle(
-                  title: 'Students',
-                  description: 'Active student composition by gender.',
+                  title: context.l10n.dashboardStudentsTitle,
+                  description: context.l10n.dashboardStudentsDescription,
                 ),
               ),
             ],
@@ -942,7 +942,7 @@ class _StudentGenderCard extends StatelessWidget {
                   child: _StudentGenderLegend(
                     color: const Color(0xFFBDEEFF),
                     value: _formatInt(boys),
-                    label: 'Boys',
+                    label: context.l10n.dashboardBoys,
                     percent: boysPercent,
                   ),
                 ),
@@ -951,7 +951,7 @@ class _StudentGenderCard extends StatelessWidget {
                   child: _StudentGenderLegend(
                     color: const Color(0xFFFFDF68),
                     value: _formatInt(girls),
-                    label: 'Girls',
+                    label: context.l10n.dashboardGirls,
                     percent: girlsPercent,
                   ),
                 ),
@@ -1086,8 +1086,9 @@ class _AttendanceDonutCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _MetricCardTitle(
-                  title: 'Attendance',
-                  description: '${state.range.label} attendance records.',
+                  title: context.l10n.dashboardAttendanceTitle,
+                  description:
+                      '${_localizedRangeLabel(context, state.range)} ${context.l10n.dashboardAttendanceRecords}.',
                 ),
               ),
               const SizedBox(width: 10),
@@ -1170,9 +1171,9 @@ class _AttendanceDonutCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            const Text(
-                              'Records',
-                              style: TextStyle(
+                            Text(
+                              context.l10n.dashboardRecords,
+                              style: const TextStyle(
                                 color: AppColors.textSecondary,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -1200,22 +1201,22 @@ class _AttendanceDonutCard extends StatelessWidget {
               children: [
                 _AttendanceLegend(
                   color: AppColors.success,
-                  label: 'Present',
+                  label: context.l10n.attendancePresent,
                   percent: presentPercent,
                 ),
                 _AttendanceLegend(
                   color: AppColors.error,
-                  label: 'Absent',
+                  label: context.l10n.attendanceAbsent,
                   percent: absentPercent,
                 ),
                 _AttendanceLegend(
                   color: AppColors.accentBlue,
-                  label: 'Sick',
+                  label: context.l10n.attendanceSick,
                   percent: sickPercent,
                 ),
                 _AttendanceLegend(
                   color: AppColors.accentPurple,
-                  label: 'Permission',
+                  label: context.l10n.attendancePermission,
                   percent: permissionPercent,
                 ),
               ],
@@ -1363,9 +1364,9 @@ class _AcademicAverageScoreCardState extends State<_AcademicAverageScoreCard> {
             children: [
               Expanded(
                 child: _MetricCardTitle(
-                  title: 'Academic Average Score',
+                  title: context.l10n.dashboardAcademicAverageScore,
                   description:
-                      '${widget.state.range.label} subject score average.',
+                      '${_localizedRangeLabel(context, widget.state.range)} ${context.l10n.dashboardSubjectScoreAverage}',
                 ),
               ),
               const SizedBox(width: 10),
@@ -1377,7 +1378,9 @@ class _AcademicAverageScoreCardState extends State<_AcademicAverageScoreCard> {
           ),
           const SizedBox(height: 10),
           if (averages.isEmpty)
-            const Expanded(child: _EmptyPanelMessage('No subjects yet.'))
+            Expanded(
+              child: _EmptyPanelMessage(context.l10n.dashboardNoSubjectsYet),
+            )
           else
             Expanded(
               child: Column(
@@ -1480,14 +1483,14 @@ class _AcademicScrollControls extends StatelessWidget {
             _AcademicScrollButton(
               icon: Icons.chevron_left,
               enabled: canScrollBackward,
-              tooltip: 'Previous subjects',
+              tooltip: context.l10n.dashboardPreviousSubjects,
               onPressed: onPrevious,
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Text(
-                'Swap subjects',
-                style: TextStyle(
+                context.l10n.dashboardSwapSubjects,
+                style: const TextStyle(
                   color: AppColors.primaryDark,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
@@ -1497,7 +1500,7 @@ class _AcademicScrollControls extends StatelessWidget {
             _AcademicScrollButton(
               icon: Icons.chevron_right,
               enabled: canScrollForward,
-              tooltip: 'Next subjects',
+              tooltip: context.l10n.dashboardNextSubjects,
               onPressed: onNext,
             ),
           ],
@@ -1643,9 +1646,12 @@ class _ProgressPanel extends StatelessWidget {
     final academic = state.averageAcademicScore?.toStringAsFixed(0) ?? '-';
     final social = state.averageSocialScore?.toStringAsFixed(0) ?? '-';
     return _DashboardPanel(
-      title: 'Student Progress Trend',
-      subtitle:
-          'Attendance $attendance% | Academic $academic% | Notes $social%',
+      title: context.l10n.dashboardStudentProgressTrend,
+      subtitle: context.l10n.dashboardProgressSubtitle(
+        attendance,
+        academic,
+        social,
+      ),
       icon: Icons.show_chart_outlined,
       trailing: _MetricRangeFilter(
         value: state.range,
@@ -1688,8 +1694,10 @@ class _MetricRangeFilter extends StatelessWidget {
           ),
           items: DashboardRange.values
               .map(
-                (range) =>
-                    DropdownMenuItem(value: range, child: Text(range.label)),
+                (range) => DropdownMenuItem(
+                  value: range,
+                  child: Text(_localizedRangeLabel(context, range)),
+                ),
               )
               .toList(),
           onChanged: (range) {
@@ -1716,9 +1724,7 @@ class _StudentProgressChart extends StatelessWidget {
         attendance.isNotEmpty || academic.isNotEmpty || social.isNotEmpty;
 
     if (!hasData) {
-      return const _EmptyPanelMessage(
-        'No progress data is available for this filter yet.',
-      );
+      return _EmptyPanelMessage(context.l10n.dashboardNoProgressData);
     }
 
     return Column(
@@ -1873,10 +1879,19 @@ class _ChartLegend extends StatelessWidget {
     return Wrap(
       spacing: 12,
       runSpacing: 6,
-      children: const [
-        _LegendItem(color: AppColors.primary, label: 'Attendance'),
-        _LegendItem(color: AppColors.accentBlue, label: 'Academic'),
-        _LegendItem(color: AppColors.accentPurple, label: 'Teacher Notes'),
+      children: [
+        _LegendItem(
+          color: AppColors.primary,
+          label: context.l10n.dashboardAttendanceTitle,
+        ),
+        _LegendItem(
+          color: AppColors.accentBlue,
+          label: context.l10n.dashboardAcademic,
+        ),
+        _LegendItem(
+          color: AppColors.accentPurple,
+          label: context.l10n.dashboardTeacherNotes,
+        ),
       ],
     );
   }
@@ -1924,14 +1939,11 @@ class _SessionProgressPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = state.sessionStatus;
-    final total = items.fold<int>(
-      0,
-      (sum, item) => sum + item.count,
-    );
+    final total = items.fold<int>(0, (sum, item) => sum + item.count);
 
     return _DashboardPanel(
-      title: 'Session Progress',
-      subtitle: state.range.label,
+      title: context.l10n.dashboardSessionProgress,
+      subtitle: _localizedRangeLabel(context, state.range),
       icon: Icons.pending_actions_outlined,
       trailing: _MetricRangeFilter(
         value: state.range,
@@ -1940,7 +1952,7 @@ class _SessionProgressPanel extends StatelessWidget {
       child: SizedBox(
         height: _dashboardPanelContentHeight,
         child: total == 0
-            ? const _EmptyPanelMessage('No teaching session in this range.')
+            ? _EmptyPanelMessage(context.l10n.dashboardNoTeachingSessionRange)
             : _SessionStatusChart(items: items, total: total),
       ),
     );
@@ -1980,7 +1992,7 @@ class _SessionStatusChart extends StatelessWidget {
                         ? 0
                         : ((item.count / total) * 100).round();
                     return BarTooltipItem(
-                      '${item.status}\n${item.count} sessions ($percent%)',
+                      '${_localizedStatusLabel(context, item.status)}\n${item.count} ${context.l10n.dashboardSessions} ($percent%)',
                       const TextStyle(
                         color: AppColors.white,
                         fontSize: 11,
@@ -2038,7 +2050,12 @@ class _SessionStatusChart extends StatelessWidget {
                         child: SizedBox(
                           width: 62,
                           child: Text(
-                            _shortStatus(items[index].status),
+                            _shortStatus(
+                              _localizedStatusLabel(
+                                context,
+                                items[index].status,
+                              ),
+                            ),
                             textAlign: TextAlign.center,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -2083,7 +2100,8 @@ class _SessionStatusChart extends StatelessWidget {
             for (final item in items)
               _LegendItem(
                 color: _statusColor(item.status),
-                label: '${item.status} ${item.count}',
+                label:
+                    '${_localizedStatusLabel(context, item.status)} ${item.count}',
               ),
           ],
         ),
@@ -2102,15 +2120,13 @@ class _UpcomingSchedulePanel extends StatelessWidget {
     final schedules = state.upcomingSchedules.take(5).toList();
 
     return _DashboardPanel(
-      title: 'Upcoming Schedule This Week',
-      subtitle: 'Teaching schedule for the next 7 days',
+      title: context.l10n.dashboardUpcomingScheduleThisWeek,
+      subtitle: context.l10n.dashboardUpcomingScheduleSubtitle,
       icon: Icons.calendar_month_outlined,
       child: SizedBox(
         height: _dashboardPanelContentHeight,
         child: schedules.isEmpty
-            ? const _EmptyPanelMessage(
-                'No upcoming teaching schedule this week.',
-              )
+            ? _EmptyPanelMessage(context.l10n.dashboardNoUpcomingSchedule)
             : Column(
                 children: [
                   for (var index = 0; index < schedules.length; index++)
@@ -2176,11 +2192,11 @@ class _AttentionPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _DashboardPanel(
-      title: 'Students Need Attention',
-      subtitle: 'Attendance, score, and follow-up signals',
+      title: context.l10n.dashboardStudentsNeedAttention,
+      subtitle: context.l10n.dashboardStudentsNeedAttentionSubtitle,
       icon: Icons.flag_outlined,
       child: state.attentionStudents.isEmpty
-          ? const _EmptyPanelMessage('No attention signal in this range.')
+          ? _EmptyPanelMessage(context.l10n.dashboardNoAttentionSignal)
           : Column(
               children: [
                 for (final item in state.attentionStudents)
@@ -2213,13 +2229,12 @@ class _TopLearnersPanel extends StatelessWidget {
     final learners = state.topLearners.take(5).toList();
 
     return _DashboardPanel(
-      title: 'Top Learners',
-      subtitle: 'Academic score and teacher notes ranking',
+      title: context.l10n.dashboardTopLearners,
+      subtitle: context.l10n.dashboardTopLearnersSubtitle,
       icon: Icons.workspace_premium_outlined,
-      trailing: const Tooltip(
-        message:
-            'Points = 65% academic average + 35% teacher note score.\nNote score is scaled from 0-5 stars to 0-100.',
-        child: Icon(
+      trailing: Tooltip(
+        message: context.l10n.dashboardTopLearnersTooltip,
+        child: const Icon(
           Icons.info_outline,
           color: AppColors.textSecondary,
           size: 18,
@@ -2228,9 +2243,7 @@ class _TopLearnersPanel extends StatelessWidget {
       child: SizedBox(
         height: _dashboardPanelContentHeight,
         child: learners.isEmpty
-            ? const _EmptyPanelMessage(
-                'No academic or teacher note score is available yet.',
-              )
+            ? _EmptyPanelMessage(context.l10n.dashboardNoLearnerScore)
             : Column(
                 children: [
                   for (var index = 0; index < learners.length; index++)
@@ -2306,7 +2319,7 @@ class _TopLearnerItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                  learner.studentName,
+                      learner.studentName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -2317,7 +2330,7 @@ class _TopLearnerItem extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                  learner.studentNo,
+                      learner.studentNo,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -2344,7 +2357,7 @@ class _TopLearnerItem extends StatelessWidget {
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    '${learner.points} pts',
+                    '${learner.points} ${context.l10n.dashboardPointsShort}',
                     style: const TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 12,
@@ -2413,11 +2426,11 @@ class _RecentNotesPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _DashboardPanel(
-      title: 'Recent Teacher Notes',
-      subtitle: state.range.label,
+      title: context.l10n.dashboardRecentTeacherNotes,
+      subtitle: _localizedRangeLabel(context, state.range),
       icon: Icons.speaker_notes_outlined,
       child: state.recentNotes.isEmpty
-          ? const _EmptyPanelMessage('No teacher notes in this range.')
+          ? _EmptyPanelMessage(context.l10n.dashboardNoTeacherNotes)
           : Column(
               children: [
                 for (final note in state.recentNotes)
@@ -2627,6 +2640,81 @@ class _EmptyPanelMessage extends StatelessWidget {
       ),
     );
   }
+}
+
+String _localizedRangeLabel(BuildContext context, DashboardRange range) {
+  return switch (range) {
+    DashboardRange.weekly => context.l10n.rangeWeekly,
+    DashboardRange.monthly => context.l10n.rangeMonthly,
+    DashboardRange.threeMonths => context.l10n.rangeThreeMonths,
+    DashboardRange.sixMonths => context.l10n.rangeSixMonths,
+    DashboardRange.oneYear => context.l10n.rangeOneYear,
+  };
+}
+
+String _localizedLevelsLabel(BuildContext context, List<int> levels) {
+  final values = DashboardCubit.normalizeLevels(levels);
+  if (values.isEmpty) return context.l10n.dashboardAllLevels;
+
+  final remaining = values.toSet();
+  final labels = <String>[];
+  void takeGroup(List<int> group, String label) {
+    if (group.every(remaining.contains)) {
+      labels.add(label);
+      remaining.removeAll(group);
+    }
+  }
+
+  if (remaining.remove(0)) labels.add('TK/PAUD');
+  takeGroup(DashboardCubit.sdLevels, context.l10n.dashboardAllSd);
+  takeGroup(DashboardCubit.smpLevels, context.l10n.dashboardAllSmp);
+  takeGroup(DashboardCubit.smaLevels, context.l10n.dashboardAllSma);
+  if (remaining.remove(13)) labels.add(context.l10n.dashboardUniversity);
+  labels.addAll(
+    remaining.map((level) => _localizedLevelShortLabel(context, level)),
+  );
+
+  if (labels.length <= 3) return labels.join(', ');
+  return '${labels.take(2).join(', ')} +${labels.length - 2}';
+}
+
+String _localizedLevelShortLabel(BuildContext context, int level) {
+  if (level == 0) return 'TK/PAUD';
+  if (level >= 1 && level <= 6) return 'SD $level';
+  if (level >= 7 && level <= 9) return 'SMP $level';
+  if (level >= 10 && level <= 12) return 'SMA $level';
+  if (level == 13) return context.l10n.dashboardUniversity;
+  return '${context.l10n.dashboardLevelLabel} $level';
+}
+
+String _localizedLevelLabel(BuildContext context, int? level) {
+  if (level == null) return '-';
+  if (level == 0) return 'TK/PAUD';
+  if (level >= 1 && level <= 6) {
+    return 'SD - ${context.l10n.dashboardLevelLabel} $level';
+  }
+  if (level >= 7 && level <= 9) {
+    return 'SMP - ${context.l10n.dashboardLevelLabel} $level';
+  }
+  if (level >= 10 && level <= 12) {
+    return 'SMA - ${context.l10n.dashboardLevelLabel} $level';
+  }
+  if (level == 13) return context.l10n.dashboardUniversity;
+  return '${context.l10n.dashboardLevelLabel} $level';
+}
+
+String _localizedStatusLabel(BuildContext context, String status) {
+  return switch (status.trim().toLowerCase()) {
+    'completed' => context.l10n.statusCompleted,
+    'in progress' => context.l10n.dashboardStatusInProgress,
+    'cancelled' || 'canceled' => context.l10n.statusCancelled,
+    'active' => context.l10n.statusActive,
+    'inactive' => context.l10n.statusInactive,
+    'draft' => context.l10n.statusDraft,
+    'approved' => context.l10n.statusApproved,
+    'rejected' => context.l10n.statusRejected,
+    _ => status,
+  };
 }
 
 BoxDecoration _panelDecoration() {

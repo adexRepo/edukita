@@ -13,32 +13,39 @@ Future<void> showErrorDetailDialog(
       : context;
   if (dialogContext == null || !dialogContext.mounted) return;
 
-  await showGuardedDialog<void>(
-    context: dialogContext,
-    guardKey: 'error_detail_${title}_${error.hashCode}',
-    builder: (dialogContext) => AlertDialog(
-      title: Text(title),
-      content: SizedBox(
-        width: 720,
-        height: 360,
-        child: Scrollbar(
-          thumbVisibility: true,
-          child: SingleChildScrollView(
-            child: SelectableText(
-              error.toString(),
-              style: const TextStyle(fontSize: 12, height: 1.35),
+  final scrollController = ScrollController();
+  try {
+    await showGuardedDialog<void>(
+      context: dialogContext,
+      guardKey: 'error_detail_${title}_${error.hashCode}',
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: SizedBox(
+          width: 720,
+          height: 360,
+          child: Scrollbar(
+            controller: scrollController,
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              controller: scrollController,
+              child: SelectableText(
+                error.toString(),
+                style: const TextStyle(fontSize: 12, height: 1.35),
+              ),
             ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext),
-          child: const Text('Close'),
-        ),
-      ],
-    ),
-  );
+    );
+  } finally {
+    scrollController.dispose();
+  }
 }
 
 void showErrorToastWithDetails(

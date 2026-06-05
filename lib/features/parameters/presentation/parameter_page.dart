@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/assistance/programs/presentation/assistance_programs_page.dart';
 import 'package:edukita/features/report_definitions/presentation/report_definitions_page.dart';
 import 'package:edukita/features/schools/presentation/schools_page.dart';
@@ -92,8 +93,8 @@ class _ParameterPageState extends State<ParameterPage> {
     }
 
     if (!_canViewParameters) {
-      return const AccessDeniedPanel(
-        message: 'You do not have permission to view parameters.',
+      return AccessDeniedPanel(
+        message: context.l10n.noPermissionViewParameters,
       );
     }
 
@@ -102,9 +103,9 @@ class _ParameterPageState extends State<ParameterPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AppPageHeader(
-            title: 'Parameter',
-            subtitle: 'Academic, teaching, assistance, and system parameters.',
+          AppPageHeader(
+            title: context.l10n.menuParameter,
+            subtitle: context.l10n.parameterSubtitle,
           ),
           const SizedBox(height: AppPageHeaderStyle.bottomGap),
           Expanded(
@@ -184,8 +185,8 @@ class _ParameterPageState extends State<ParameterPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AppPageHeader(
-              title: _selectedTitle,
-              subtitle: _parameterDescription(_selectedTitle),
+              title: _menuLabel(context, _selectedTitle),
+              subtitle: _parameterDescription(context, _selectedTitle),
             ),
             const SizedBox(height: AppPageHeaderStyle.bottomGap),
             Expanded(
@@ -197,7 +198,7 @@ class _ParameterPageState extends State<ParameterPage> {
                 ),
                 child: Center(
                   child: Text(
-                    _selectedTitle,
+                    _menuLabel(context, _selectedTitle),
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -211,13 +212,28 @@ class _ParameterPageState extends State<ParameterPage> {
     );
   }
 
-  String _parameterDescription(String title) {
+  String _parameterDescription(BuildContext context, String title) {
     return switch (title) {
-      'Config' =>
-        'Manage system-wide parameter settings used across the application.',
-      'Reports' =>
-        'Maintain dynamic report definitions used by the Reports menu.',
-      _ => 'Maintain parameter data used by Edukita modules.',
+      'Config' => context.l10n.configDescription,
+      'Reports' => context.l10n.reportDefinitionsDescription,
+      _ => context.l10n.parameterDefaultDescription,
+    };
+  }
+
+  String _menuLabel(BuildContext context, String title) {
+    return switch (title) {
+      'Schools' => context.l10n.schools,
+      'Curriculum' => context.l10n.curriculum,
+      'Syllabus' => context.l10n.syllabus,
+      'Subjects' => context.l10n.subjects,
+      'Units' => context.l10n.units,
+      'Competencies' => context.l10n.competencies,
+      'Strategies' => context.l10n.strategies,
+      'Programs' => context.l10n.programs,
+      'Rules' => context.l10n.rules,
+      'Reports' => context.l10n.reports,
+      'Config' => context.l10n.config,
+      _ => title,
     };
   }
 
@@ -254,7 +270,7 @@ class _ParameterSectionTile extends StatelessWidget {
         initiallyExpanded: initiallyExpanded,
         leading: Icon(section.icon, size: 18, color: AppColors.primaryDark),
         title: Text(
-          section.title,
+          _parameterSectionLabel(context, section.title),
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
         ),
         tilePadding: const EdgeInsets.symmetric(horizontal: 14),
@@ -309,7 +325,7 @@ class _ParameterMenuTile extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  item.title,
+                  _parameterMenuLabel(context, item.title),
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12,
@@ -345,4 +361,31 @@ class _ParameterMenuItem {
 
   final String title;
   final IconData icon;
+}
+
+String _parameterSectionLabel(BuildContext context, String title) {
+  return switch (title) {
+    'Academic' => context.l10n.academicParameters,
+    'Teaching' => context.l10n.teachingParameters,
+    'Assistance' => context.l10n.assistance,
+    'System' => context.l10n.systemParameters,
+    _ => title,
+  };
+}
+
+String _parameterMenuLabel(BuildContext context, String title) {
+  return switch (title) {
+    'Schools' => context.l10n.schools,
+    'Curriculum' => context.l10n.curriculum,
+    'Syllabus' => context.l10n.syllabus,
+    'Subjects' => context.l10n.subjects,
+    'Units' => context.l10n.units,
+    'Competencies' => context.l10n.competencies,
+    'Strategies' => context.l10n.strategies,
+    'Programs' => context.l10n.programs,
+    'Rules' => context.l10n.rules,
+    'Reports' => context.l10n.reports,
+    'Config' => context.l10n.config,
+    _ => title,
+  };
 }

@@ -10,6 +10,7 @@ class AssistancePlanState {
     this.assessments = const [],
     this.recipients = const [],
     this.approvalDocuments = const [],
+    this.distributionDocuments = const [],
     this.summary = const AssistanceSummary(),
     this.selectedPeriodId,
     this.isLoading = false,
@@ -24,6 +25,7 @@ class AssistancePlanState {
   final List<StudentAssistanceAssessment> assessments;
   final List<AssistanceRecipient> recipients;
   final List<AssistanceApprovalDocument> approvalDocuments;
+  final List<AssistanceDistributionDocument> distributionDocuments;
   final AssistanceSummary summary;
   final String? selectedPeriodId;
   final bool isLoading;
@@ -47,6 +49,7 @@ class AssistancePlanState {
     List<StudentAssistanceAssessment>? assessments,
     List<AssistanceRecipient>? recipients,
     List<AssistanceApprovalDocument>? approvalDocuments,
+    List<AssistanceDistributionDocument>? distributionDocuments,
     AssistanceSummary? summary,
     Object? selectedPeriodId = _unset,
     bool? isLoading,
@@ -61,6 +64,7 @@ class AssistancePlanState {
       assessments: assessments ?? this.assessments,
       recipients: recipients ?? this.recipients,
       approvalDocuments: approvalDocuments ?? this.approvalDocuments,
+      distributionDocuments: distributionDocuments ?? this.distributionDocuments,
       summary: summary ?? this.summary,
       selectedPeriodId: identical(selectedPeriodId, _unset)
           ? this.selectedPeriodId

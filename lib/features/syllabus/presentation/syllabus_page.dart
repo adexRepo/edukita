@@ -1,6 +1,7 @@
 import 'dart:io' as io;
 
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/utils/generated_file_name.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/syllabus/data/subject_model.dart';
@@ -217,16 +218,18 @@ class _SyllabusPageState extends State<SyllabusPage> {
       guardKey: 'delete_parameter_${title}_$subject',
       builder: (context) {
         return AlertDialog(
-          title: AppDialogTitle('Delete $title'),
+          title: AppDialogTitle(context.l10n.deleteItemTitle(title)),
           content: _DeleteImpactContent(subject: subject, impact: impact),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.buttonCancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: Text(hasImpact ? 'Delete Anyway' : 'Delete'),
+              child: Text(
+                hasImpact ? context.l10n.deleteAnyway : context.l10n.delete,
+              ),
             ),
           ],
         );
@@ -250,6 +253,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
   }
 
   Future<void> _downloadStrategySample(Strategy strategy) async {
+    final sampleFileLabel = context.l10n.sampleImplementationFile;
     final sourcePath = strategy.sampleFilePath?.trim();
     if (sourcePath == null || sourcePath.isEmpty) {
       AppToast.showFailed('No sample file is attached to this strategy.');
@@ -265,9 +269,9 @@ class _SyllabusPageState extends State<SyllabusPage> {
     final fileName = strategy.sampleFileName ?? p.basename(sourcePath);
     final location = await getSaveLocation(
       suggestedName: generatedFileName(fileName),
-      acceptedTypeGroups: const [
+      acceptedTypeGroups: [
         XTypeGroup(
-          label: 'Strategy sample file',
+          label: sampleFileLabel,
           extensions: _allowedStrategySampleExtensions,
         ),
       ],
@@ -375,10 +379,12 @@ class _SyllabusPageState extends State<SyllabusPage> {
 
   Widget _buildContent(SubjectState state, StrategyState strategyState) {
     if (state.error != null) {
-      return Center(child: Text('Error: ${state.error}'));
+      return Center(child: Text(context.l10n.errorWithDetails(state.error!)));
     }
     if (strategyState.error != null) {
-      return Center(child: Text('Error: ${strategyState.error}'));
+      return Center(
+        child: Text(context.l10n.errorWithDetails(strategyState.error!)),
+      );
     }
 
     return Column(
@@ -404,11 +410,13 @@ class _SyllabusPageState extends State<SyllabusPage> {
             onChanged: (value) => setState(() => _searchQuery = value),
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.search),
-              hintText: 'Search ${_selectedView.label.toLowerCase()}',
+              hintText: context.l10n.searchItems(
+                _selectedView.label.toLowerCase(),
+              ),
               suffixIcon: _searchQuery.isEmpty
                   ? null
                   : IconButton(
-                      tooltip: 'Clear search',
+                      tooltip: context.l10n.clearSearch,
                       onPressed: () {
                         setState(() => _searchQuery = '');
                         _searchController.clear();
@@ -420,7 +428,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
         );
         final action = _buildAddButton(state);
         final refresh = IconButton(
-          tooltip: 'Refresh curriculum',
+          tooltip: context.l10n.refresh,
           onPressed: () {
             context.read<SubjectCubit>().loadCurriculum(forceRefresh: true);
             context.read<StrategyCubit>().loadStrategies(forceRefresh: true);
@@ -511,37 +519,37 @@ class _SyllabusPageState extends State<SyllabusPage> {
     return AppTable<Curriculum>(
       data: rows,
       pageable: _pageableFor(rows.length),
-      emptyMessage: 'No curriculums found',
+      emptyMessage: context.l10n.noCurriculumsFound,
       onRowTap: (curriculum) =>
           _showCurriculumForm(existingCurriculum: curriculum),
       columns: [
         AppTableColumn(
-          title: 'Curriculum',
+          title: context.l10n.curriculum,
           flex: 2,
           cell: (curriculum) =>
               _titleCell(curriculum.name, subtitle: curriculum.description),
         ),
         AppTableColumn(
-          title: 'Version',
+          title: context.l10n.version,
           cell: (curriculum) => _textCell(_dash(curriculum.version)),
         ),
         AppTableColumn(
-          title: 'Effective Year',
+          title: context.l10n.effectiveYear,
           sortValue: (curriculum) =>
               int.tryParse(curriculum.effectiveYear ?? ''),
           cell: (curriculum) => _textCell(_dash(curriculum.effectiveYear)),
         ),
         AppTableColumn(
-          title: 'Status',
+          title: context.l10n.status,
           cell: (curriculum) => _StatusChip(label: curriculum.status),
         ),
         AppTableColumn(
-          title: 'Actions',
+          title: context.l10n.actions,
           cell: (curriculum) => _actionCell(
             onEdit: () => _showCurriculumForm(existingCurriculum: curriculum),
             onDelete: () => _confirmDelete(
-              title: 'Curriculum',
-              subject: 'curriculum',
+              title: context.l10n.curriculum,
+              subject: context.l10n.curriculum,
               onDelete: () =>
                   context.read<SubjectCubit>().deleteCurriculum(curriculum.id),
             ),
@@ -574,7 +582,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
     return AppTable<Syllabus>(
       data: rows,
       pageable: _pageableFor(rows.length),
-      emptyMessage: 'No syllabus found',
+      emptyMessage: context.l10n.noSyllabusFound,
       onRowTap: (syllabus) => _showSyllabusForm(
         state.curriculums,
         subjects: state.subjects,
@@ -582,13 +590,13 @@ class _SyllabusPageState extends State<SyllabusPage> {
       ),
       columns: [
         AppTableColumn(
-          title: 'Syllabus',
+          title: context.l10n.syllabus,
           flex: 4,
           cell: (syllabus) =>
               _titleCell(syllabus.title, subtitle: syllabus.description),
         ),
         AppTableColumn(
-          title: 'Curriculum\nSubject',
+          title: '${context.l10n.curriculum}\n${context.l10n.subject}',
           flex: 3,
           cell: (syllabus) => _textCell(
             '${_findCurriculum(state.curriculums, syllabus.curriculumId)?.name ?? '-'}\n${_findSubject(state.subjects, syllabus.subjectId)?.name ?? '-'}',
@@ -596,7 +604,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Academic\nSemester',
+          title: '${context.l10n.academic}\n${context.l10n.semester}',
           flex: 2,
           sortValue: (syllabus) => int.tryParse(syllabus.academicYear ?? ''),
           cell: (syllabus) => _textCell(
@@ -605,7 +613,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
           ),
         ),
         AppTableColumn(
-          title: 'School Type\nLevel',
+          title: '${context.l10n.schoolType}\n${context.l10n.level}',
           flex: 2,
           cell: (syllabus) => _textCell(
             '${_schoolTypeLabel(syllabus.schoolType).toUpperCase()}\nLevel ${_dash(syllabus.level)}',
@@ -613,12 +621,12 @@ class _SyllabusPageState extends State<SyllabusPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Status',
+          title: context.l10n.status,
           flex: 1,
           cell: (syllabus) => _StatusChip(label: syllabus.status),
         ),
         AppTableColumn(
-          title: 'Actions',
+          title: context.l10n.actions,
           flex: 1,
           cell: (syllabus) => _actionCell(
             onEdit: () => _showSyllabusForm(
@@ -627,8 +635,8 @@ class _SyllabusPageState extends State<SyllabusPage> {
               existingSyllabus: syllabus,
             ),
             onDelete: () => _confirmDelete(
-              title: 'Syllabus',
-              subject: 'syllabus',
+              title: context.l10n.syllabus,
+              subject: context.l10n.syllabus,
               onDelete: () =>
                   context.read<SubjectCubit>().deleteSyllabus(syllabus.id),
             ),
@@ -650,26 +658,26 @@ class _SyllabusPageState extends State<SyllabusPage> {
     return AppTable<Subject>(
       data: rows,
       pageable: _pageableFor(rows.length),
-      emptyMessage: 'No subjects found',
+      emptyMessage: context.l10n.noSubjectsFound,
       onRowTap: (subject) => _showSubjectForm(existingSubject: subject),
       columns: [
         AppTableColumn(
-          title: 'Subject',
+          title: context.l10n.subject,
           flex: 2,
           cell: (subject) =>
               _titleCell(subject.name, subtitle: subject.description),
         ),
         AppTableColumn(
-          title: 'Status',
+          title: context.l10n.status,
           cell: (subject) => _StatusChip(label: subject.status),
         ),
         AppTableColumn(
-          title: 'Actions',
+          title: context.l10n.actions,
           cell: (subject) => _actionCell(
             onEdit: () => _showSubjectForm(existingSubject: subject),
             onDelete: () => _confirmDelete(
-              title: 'Subject',
-              subject: 'subject',
+              title: context.l10n.subject,
+              subject: context.l10n.subject,
               impactLoader: () => context
                   .read<SubjectCubit>()
                   .getSubjectDeleteImpact(subject.id),
@@ -696,33 +704,33 @@ class _SyllabusPageState extends State<SyllabusPage> {
     return AppTable<Unit>(
       data: rows,
       pageable: _pageableFor(rows.length),
-      emptyMessage: 'No units found',
+      emptyMessage: context.l10n.noUnitsFound,
       onRowTap: (unit) => _showUnitForm(state.subjects, existingUnit: unit),
       columns: [
         AppTableColumn(
-          title: 'Sequence',
+          title: context.l10n.sequence,
           sortValue: (unit) => unit.sequenceNo,
           cell: (unit) => _textCell(unit.sequenceNo?.toString() ?? '-'),
         ),
         AppTableColumn(
-          title: 'Unit',
+          title: context.l10n.unit,
           flex: 2,
           cell: (unit) => _titleCell(unit.name, subtitle: unit.description),
         ),
         AppTableColumn(
-          title: 'Subject',
+          title: context.l10n.subject,
           flex: 2,
           cell: (unit) => _textCell(
             _findSubject(state.subjects, unit.subjectId)?.name ?? '-',
           ),
         ),
         AppTableColumn(
-          title: 'Actions',
+          title: context.l10n.actions,
           cell: (unit) => _actionCell(
             onEdit: () => _showUnitForm(state.subjects, existingUnit: unit),
             onDelete: () => _confirmDelete(
-              title: 'Unit',
-              subject: 'unit',
+              title: context.l10n.unit,
+              subject: context.l10n.unit,
               impactLoader: () =>
                   context.read<SubjectCubit>().getUnitDeleteImpact(unit.id),
               onDelete: () => context.read<SubjectCubit>().deleteUnit(unit.id),
@@ -747,39 +755,39 @@ class _SyllabusPageState extends State<SyllabusPage> {
     return AppTable<Competency>(
       data: rows,
       pageable: _pageableFor(rows.length),
-      emptyMessage: 'No competencies found',
+      emptyMessage: context.l10n.noCompetenciesFound,
       onRowTap: (competency) =>
           _showCompetencyForm(state.units, existingCompetency: competency),
       columns: [
         AppTableColumn(
-          title: 'Code',
+          title: context.l10n.code,
           cell: (competency) => _textCell(_dash(competency.code)),
         ),
         AppTableColumn(
-          title: 'Competency',
+          title: context.l10n.competency,
           flex: 3,
           cell: (competency) => _textCell(competency.description, maxLines: 2),
         ),
         AppTableColumn(
-          title: 'Unit',
+          title: context.l10n.unit,
           flex: 2,
           cell: (competency) =>
               _textCell(_findUnit(state.units, competency.unitId)?.name ?? '-'),
         ),
         AppTableColumn(
-          title: 'Level',
+          title: context.l10n.level,
           cell: (competency) => _textCell(_dash(competency.level)),
         ),
         AppTableColumn(
-          title: 'Actions',
+          title: context.l10n.actions,
           cell: (competency) => _actionCell(
             onEdit: () => _showCompetencyForm(
               state.units,
               existingCompetency: competency,
             ),
             onDelete: () => _confirmDelete(
-              title: 'Competency',
-              subject: 'competency',
+              title: context.l10n.competency,
+              subject: context.l10n.competency,
               onDelete: () =>
                   context.read<SubjectCubit>().deleteCompetency(competency.id),
             ),
@@ -803,31 +811,31 @@ class _SyllabusPageState extends State<SyllabusPage> {
     return AppTable<Strategy>(
       data: rows,
       pageable: _pageableFor(rows.length),
-      emptyMessage: 'No strategies found',
+      emptyMessage: context.l10n.noStrategiesFound,
       onRowTap: (strategy) => _showStrategyForm(existingStrategy: strategy),
       columns: [
         AppTableColumn(
-          title: 'Code',
+          title: context.l10n.code,
           cell: (strategy) => _textCell(_dash(strategy.code)),
         ),
         AppTableColumn(
-          title: 'Strategy',
+          title: context.l10n.strategy,
           flex: 2,
           cell: (strategy) =>
               _titleCell(strategy.name, subtitle: strategy.description),
         ),
         AppTableColumn(
-          title: 'Rule',
+          title: context.l10n.rule,
           flex: 3,
           cell: (strategy) => _textCell(_dash(strategy.rule), maxLines: 2),
         ),
         AppTableColumn(
-          title: 'Sample',
+          title: context.l10n.sample,
           flex: 2,
           cell: (strategy) => _textCell(_dash(strategy.sampleFileName)),
         ),
         AppTableColumn(
-          title: 'Actions',
+          title: context.l10n.actions,
           flex: 2,
           cell: (strategy) => _actionCell(
             onDownload: strategy.sampleFilePath?.trim().isNotEmpty == true
@@ -835,8 +843,8 @@ class _SyllabusPageState extends State<SyllabusPage> {
                 : null,
             onEdit: () => _showStrategyForm(existingStrategy: strategy),
             onDelete: () => _confirmDelete(
-              title: 'Strategy',
-              subject: 'strategy',
+              title: context.l10n.strategy,
+              subject: context.l10n.strategy,
               onDelete: () =>
                   context.read<StrategyCubit>().deleteStrategy(strategy.id),
             ),
@@ -929,21 +937,21 @@ class _SyllabusPageState extends State<SyllabusPage> {
         children: [
           if (onDownload != null)
             IconButton(
-              tooltip: 'Download sample',
+              tooltip: context.l10n.downloadSample,
               onPressed: onDownload,
               constraints: const BoxConstraints.tightFor(width: 30, height: 30),
               padding: EdgeInsets.zero,
               icon: const Icon(Icons.download_outlined, size: 17),
             ),
           IconButton(
-            tooltip: 'Edit',
+              tooltip: context.l10n.edit,
             onPressed: onEdit,
             constraints: const BoxConstraints.tightFor(width: 30, height: 30),
             padding: EdgeInsets.zero,
             icon: const Icon(Icons.edit_outlined, size: 17),
           ),
           IconButton(
-            tooltip: 'Delete',
+            tooltip: context.l10n.delete,
             onPressed: onDelete,
             constraints: const BoxConstraints.tightFor(width: 30, height: 30),
             padding: EdgeInsets.zero,
@@ -1007,14 +1015,14 @@ class _DeleteImpactContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final lines = _impactLines(impact);
     if (lines.isEmpty) {
-      return Text('Delete this $subject?');
+      return Text(context.l10n.deleteItemConfirm(subject));
     }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Delete this $subject? This record is connected to other data.'),
+        Text(context.l10n.deleteConnectedItemConfirm(subject)),
         const SizedBox(height: 12),
         Container(
           width: double.infinity,
@@ -1178,7 +1186,7 @@ class _CurriculumNavigator extends StatelessWidget {
                     child: ListView(
                       children: [
                         _CurriculumNavGroup(
-                          title: 'Structure',
+                          title: context.l10n.structure,
                           views: const [
                             _CurriculumView.curriculums,
                             _CurriculumView.subjects,
@@ -1192,7 +1200,7 @@ class _CurriculumNavigator extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         _CurriculumNavGroup(
-                          title: 'Teaching',
+                          title: context.l10n.teachingParameters,
                           views: const [_CurriculumView.strategies],
                           selectedView: selectedView,
                           countForView: countForView,

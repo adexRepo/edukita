@@ -1,4 +1,5 @@
 import 'package:edukita/core/router/service_locator.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/features/teachers/data/teacher_model.dart';
@@ -76,11 +77,11 @@ class _TeachersPageState extends State<TeachersPage> {
 
   Future<void> _showTeacherFormDialog({Teacher? existingTeacher}) async {
     if (existingTeacher == null && !_canCreateTeachers) {
-      AppToast.showFailed('You do not have permission to create teachers.');
+      AppToast.showFailed(context.l10n.teacherCreateDenied);
       return;
     }
     if (existingTeacher != null && !_canUpdateTeachers) {
-      AppToast.showFailed('You do not have permission to update teachers.');
+      AppToast.showFailed(context.l10n.teacherUpdateDenied);
       return;
     }
     final cubit = context.read<TeacherCubit>();
@@ -103,7 +104,7 @@ class _TeachersPageState extends State<TeachersPage> {
 
   Future<void> _confirmDelete(Teacher teacher) async {
     if (!_canDeleteTeachers) {
-      AppToast.showFailed('You do not have permission to delete teachers.');
+      AppToast.showFailed(context.l10n.teacherDeleteDenied);
       return;
     }
     final cubit = context.read<TeacherCubit>();
@@ -112,16 +113,16 @@ class _TeachersPageState extends State<TeachersPage> {
       guardKey: 'delete_teacher_${teacher.id}',
       builder: (context) {
         return AlertDialog(
-          title: const AppDialogTitle('Delete Teacher'),
-          content: Text('Delete ${teacher.fullName}?'),
+          title: AppDialogTitle(context.l10n.deleteTeacher),
+          content: Text(context.l10n.deleteTeacherConfirm(teacher.fullName)),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.buttonCancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
+              child: Text(context.l10n.buttonDelete),
             ),
           ],
         );
@@ -153,11 +154,11 @@ class _TeachersPageState extends State<TeachersPage> {
     }
 
     if (!_canViewTeachers) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
           child: Text(
-            'You do not have permission to view teachers.',
-            style: TextStyle(
+            context.l10n.teacherAccessDenied,
+            style: const TextStyle(
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w700,
             ),
@@ -189,13 +190,13 @@ class _TeachersPageState extends State<TeachersPage> {
   Widget _buildTopBar() {
     return Padding(
       padding: AppPageHeaderStyle.pagePadding,
-      child: const AppPageHeader(title: 'Teachers'),
+      child: AppPageHeader(title: context.l10n.menuTeachers),
     );
   }
 
   Widget _buildContent(TeacherState state) {
     if (state.error != null) {
-      return Center(child: Text('Error: ${state.error}'));
+      return Center(child: Text(context.l10n.errorWithDetails(state.error!)));
     }
 
     final normalizedQuery = _searchQuery.trim().toLowerCase();
@@ -217,8 +218,8 @@ class _TeachersPageState extends State<TeachersPage> {
               ? Center(
                   child: Text(
                     state.teachers.isEmpty
-                        ? 'No teachers yet. Add a teacher.'
-                        : 'No teachers match your search.',
+                        ? context.l10n.noTeachersYet
+                        : context.l10n.noTeachersMatch,
                   ),
                 )
               : _buildTeacherTable(teachers),
@@ -237,16 +238,16 @@ class _TeachersPageState extends State<TeachersPage> {
               _searchQuery = value;
             });
           },
-          decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.search),
-            hintText: 'Search teacher name',
+          decoration: InputDecoration(
+            prefixIcon: const Icon(Icons.search),
+            hintText: context.l10n.searchTeacherName,
           ),
         );
         final addButton = _canCreateTeachers
             ? FilledButton.icon(
                 onPressed: () => _showTeacherFormDialog(),
                 icon: const Icon(Icons.add),
-                label: const Text('Add Teacher'),
+                label: Text(context.l10n.addTeacher),
               )
             : const SizedBox.shrink();
 
@@ -286,7 +287,7 @@ class _TeachersPageState extends State<TeachersPage> {
       },
       columns: [
         AppTableColumn(
-          title: 'Teacher',
+          title: context.l10n.teacher,
           flex: 4,
           sortValue: (teacher) =>
               teacher.fullName.isEmpty ? 0 : teacher.fullName.codeUnitAt(0),
@@ -300,7 +301,7 @@ class _TeachersPageState extends State<TeachersPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Education',
+          title: context.l10n.education,
           flex: 2,
           sortValue: (teacher) => teacher.lastEducationType?.codeUnitAt(0) ?? 0,
           cell: (teacher) => Text(
@@ -310,7 +311,7 @@ class _TeachersPageState extends State<TeachersPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Gender',
+          title: context.l10n.gender,
           flex: 2,
           sortValue: (teacher) => teacher.gender?.codeUnitAt(0) ?? 0,
           cell: (teacher) => Text(
@@ -320,7 +321,7 @@ class _TeachersPageState extends State<TeachersPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Contact',
+          title: context.l10n.contact,
           flex: 4,
           sortValue: (teacher) {
             final contact = teacher.email ?? teacher.mobileNo ?? '';
@@ -334,7 +335,7 @@ class _TeachersPageState extends State<TeachersPage> {
           ),
         ),
         AppTableColumn(
-          title: 'App User',
+          title: context.l10n.appUser,
           flex: 2,
           minWidth: 120,
           cell: (teacher) {
@@ -350,7 +351,7 @@ class _TeachersPageState extends State<TeachersPage> {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  hasUser ? 'Linked' : 'No user',
+                  hasUser ? context.l10n.linked : context.l10n.noUser,
                   style: TextStyle(
                     color: hasUser
                         ? AppColors.primaryDark
@@ -364,7 +365,7 @@ class _TeachersPageState extends State<TeachersPage> {
           },
         ),
         AppTableColumn(
-          title: 'Actions',
+          title: context.l10n.actions,
           flex: 3,
           minWidth: 140,
           cell: (teacher) => Align(
@@ -373,7 +374,7 @@ class _TeachersPageState extends State<TeachersPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  tooltip: 'Edit teacher',
+                  tooltip: context.l10n.editTeacherTooltip,
                   onPressed: _canUpdateTeachers
                       ? () => _showTeacherFormDialog(existingTeacher: teacher)
                       : null,
@@ -386,8 +387,8 @@ class _TeachersPageState extends State<TeachersPage> {
                 ),
                 IconButton(
                   tooltip: teacher.appUserId == null
-                      ? 'Create app user'
-                      : 'Teacher already has app user',
+                      ? context.l10n.createAppUser
+                      : context.l10n.teacherAlreadyHasAppUser,
                   onPressed: teacher.appUserId == null && _canCreateUsers
                       ? () => context.push('/users', extra: teacher)
                       : null,
@@ -399,7 +400,7 @@ class _TeachersPageState extends State<TeachersPage> {
                   icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
                 ),
                 IconButton(
-                  tooltip: 'Delete teacher',
+                  tooltip: context.l10n.deleteTeacherTooltip,
                   onPressed: _canDeleteTeachers
                       ? () => _confirmDelete(teacher)
                       : null,
@@ -424,8 +425,8 @@ class _TeachersPageState extends State<TeachersPage> {
   }
 
   String _genderLabel(String? value) {
-    if (value == 'M') return 'Male';
-    if (value == 'F') return 'Female';
+    if (value == 'M') return context.l10n.genderMale;
+    if (value == 'F') return context.l10n.genderFemale;
     return '-';
   }
 }

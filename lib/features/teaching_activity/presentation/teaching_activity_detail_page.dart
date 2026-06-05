@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/teaching_activity/data/teaching_activity_data.dart';
@@ -58,9 +59,9 @@ class _TeachingActivityDetailPageState
     }
     if (!mounted) return;
     if (scope.canView(AppMenuAccessRegistry.teachingActivities.code)) {
-      await context
-          .read<TeachingActivityDetailCubit>()
-          .loadDetail(widget.activityId);
+      await context.read<TeachingActivityDetailCubit>().loadDetail(
+        widget.activityId,
+      );
     }
     if (!mounted) return;
     setState(() {
@@ -87,7 +88,7 @@ class _TeachingActivityDetailPageState
         if (state.error != null) {
           showErrorToastWithDetails(
             context,
-            title: 'Teaching Activity Error',
+            title: context.l10n.teachingActivityError,
             error: state.error!,
             message: state.error!.replaceFirst('Exception: ', ''),
           );
@@ -100,14 +101,14 @@ class _TeachingActivityDetailPageState
           }
 
           if (!_canView) {
-            return const AccessDeniedPanel(
-              message: 'You do not have permission to view teaching reports.',
+            return AccessDeniedPanel(
+              message: context.l10n.teachingReportAccessDenied,
             );
           }
 
           final detail = state.detail;
           if (detail == null) {
-            return const Center(child: Text('Teaching activity not found.'));
+            return Center(child: Text(context.l10n.teachingActivityNotFound));
           }
 
           if (!_authScope.ownsTeacherData(detail.activity.teacherId)) {
@@ -121,11 +122,11 @@ class _TeachingActivityDetailPageState
                     color: AppColors.textSecondary,
                   ),
                   const SizedBox(height: 12),
-                  const Text('You do not have access to this teaching report.'),
+                  Text(context.l10n.teachingReportNoAccess),
                   const SizedBox(height: 12),
                   OutlinedButton(
                     onPressed: () => context.go('/teaching-activities'),
-                    child: const Text('Back to Teaching Activity'),
+                    child: Text(context.l10n.backToTeachingActivity),
                   ),
                 ],
               ),
@@ -145,7 +146,7 @@ class _TeachingActivityDetailPageState
               guardKey:
                   'session_notes_${detail.activity.activityId ?? detail.activity.scheduleId}',
               builder: (dialogContext) => AlertDialog(
-                title: const Text('Session Notes'),
+                title: Text(context.l10n.sessionNotes),
                 content: SizedBox(
                   width: 760,
                   child: SingleChildScrollView(
@@ -160,7 +161,7 @@ class _TeachingActivityDetailPageState
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(dialogContext).pop(),
-                    child: const Text('Close'),
+                    child: Text(context.l10n.buttonClose),
                   ),
                 ],
               ),
@@ -170,7 +171,7 @@ class _TeachingActivityDetailPageState
           final header = Row(
             children: [
               IconButton(
-                tooltip: 'Back',
+                tooltip: context.l10n.buttonBack,
                 onPressed: () => context.go('/teaching-activities'),
                 icon: const Icon(Icons.arrow_back),
               ),
@@ -180,7 +181,7 @@ class _TeachingActivityDetailPageState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Teaching Session Report',
+                      context.l10n.teachingSessionReport,
                       style: AppPageHeaderStyle.titleStyle(context),
                     ),
                     const SizedBox(height: 2),
@@ -210,28 +211,31 @@ class _TeachingActivityDetailPageState
                                 .read<TeachingActivityDetailCubit>()
                                 .completeActivity();
                             if (!context.mounted) return;
-                            AppToast.showSuccess('Teaching report completed.');
+                            AppToast.showSuccess(
+                              context.l10n.teachingReportCompleted,
+                            );
                           } catch (_) {}
                         },
                   icon: const Icon(Icons.check_circle_outline, size: 18),
-                  label: const Text('Complete Report'),
+                  label: Text(context.l10n.completeReport),
                 ),
               const SizedBox(width: 8),
               OutlinedButton.icon(
                 onPressed: state.isSaving || isCancelled || !_canManageReports
                     ? null
                     : () async {
+                        final cubit = context
+                            .read<TeachingActivityDetailCubit>();
+                        final successMessage = context.l10n.teachingReportReset;
                         final confirmed = await _confirmResetReport(context);
                         if (!confirmed || !context.mounted) return;
                         try {
-                          await context
-                              .read<TeachingActivityDetailCubit>()
-                              .resetReport();
-                          AppToast.showSuccess('Teaching report reset.');
+                          await cubit.resetReport();
+                          AppToast.showSuccess(successMessage);
                         } catch (_) {}
                       },
                 icon: const Icon(Icons.restart_alt_outlined, size: 18),
-                label: const Text('Reset Report'),
+                label: Text(context.l10n.resetReport),
               ),
             ],
           );
@@ -309,16 +313,16 @@ class _SessionOverview extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: _SectionHeader(
-                  title: 'Session Overview',
-                  subtitle: 'Teaching session details and completion summary.',
+                  title: context.l10n.sessionOverview,
+                  subtitle: context.l10n.sessionOverviewSubtitle,
                 ),
               ),
               OutlinedButton.icon(
                 onPressed: readOnly ? null : onEditSessionNotes,
                 icon: const Icon(Icons.edit_note_outlined, size: 18),
-                label: const Text('Session Note'),
+                label: Text(context.l10n.sessionNote),
               ),
               const SizedBox(width: 8),
               _StatusBadge(status: activity.status),
@@ -329,20 +333,33 @@ class _SessionOverview extends StatelessWidget {
             spacing: 12,
             runSpacing: 10,
             children: [
-              _InfoTile(label: 'Date', value: activity.activityDate),
-              _InfoTile(label: 'Time', value: activity.displayTime),
-              _InfoTile(label: 'Level', value: activity.className ?? '-'),
-              _InfoTile(label: 'Teacher', value: activity.teacherName ?? '-'),
-              _InfoTile(label: 'Subject', value: activity.subjectName ?? '-'),
+              _InfoTile(label: context.l10n.date, value: activity.activityDate),
+              _InfoTile(label: context.l10n.time, value: activity.displayTime),
               _InfoTile(
-                label: 'Unit / Material',
+                label: context.l10n.dashboardLevel,
+                value: activity.className ?? '-',
+              ),
+              _InfoTile(
+                label: context.l10n.teacher,
+                value: activity.teacherName ?? '-',
+              ),
+              _InfoTile(
+                label: context.l10n.subject,
+                value: activity.subjectName ?? '-',
+              ),
+              _InfoTile(
+                label: context.l10n.unitMaterial,
                 value: activity.unitName ?? activity.title ?? '-',
                 width: 220,
               ),
-              _InfoTile(label: 'Strategy', value: activity.strategyName ?? '-'),
               _InfoTile(
-                label: 'Assessment',
-                value: _label(
+                label: context.l10n.strategy,
+                value: activity.strategyName ?? '-',
+              ),
+              _InfoTile(
+                label: context.l10n.assessment,
+                value: _teachingAssessmentTypeLabel(
+                  context,
                   activity.assessmentType ??
                       (detail.assessments.isEmpty
                           ? TeachingAssessmentType.values.first
@@ -359,38 +376,38 @@ class _SessionOverview extends StatelessWidget {
             runSpacing: 10,
             children: [
               _SummaryMetric(
-                label: 'Students',
+                label: context.l10n.students,
                 value: '$totalStudents',
                 icon: Icons.groups_2_outlined,
               ),
               _SummaryMetric(
-                label: 'Attendance',
+                label: context.l10n.attendance,
                 value: '$attendanceCount/$totalStudents',
                 icon: Icons.fact_check_outlined,
               ),
               _SummaryMetric(
-                label: 'Present',
+                label: context.l10n.attendancePresent,
                 value: '$presentCount',
                 icon: Icons.check_circle_outline,
               ),
               _SummaryMetric(
-                label: 'Assessments',
+                label: context.l10n.assessments,
                 value: '${detail.assessments.length}',
                 icon: Icons.assignment_outlined,
               ),
               _SummaryMetric(
-                label: 'Student Notes',
+                label: context.l10n.studentNotes,
                 value: '${detail.studentNotes.length}',
                 icon: Icons.sticky_note_2_outlined,
               ),
               _SummaryMetric(
-                label: 'Completion',
+                label: context.l10n.completion,
                 value: activity.lessonCompletionPercent == null
                     ? '-'
                     : '${activity.lessonCompletionPercent}%',
                 icon: Icons.donut_large_outlined,
                 trailing: IconButton(
-                  tooltip: 'Edit session note',
+                  tooltip: context.l10n.editSessionNote,
                   onPressed: readOnly ? null : onEditSessionNotes,
                   icon: const Icon(Icons.edit_note_outlined, size: 16),
                   padding: EdgeInsets.zero,
@@ -698,9 +715,9 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _SectionHeader(
-                  title: 'Students & Attendance',
-                  subtitle: 'Select a student and mark attendance.',
+                _SectionHeader(
+                  title: context.l10n.studentsAttendance,
+                  subtitle: context.l10n.studentsAttendanceSubtitle,
                 ),
                 const SizedBox(height: 10),
                 Row(
@@ -708,17 +725,17 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
                     Expanded(
                       child: TextField(
                         controller: _searchController,
-                        decoration: const InputDecoration(
-                          labelText: 'Search student',
-                          hintText: 'Name or student no',
-                          prefixIcon: Icon(Icons.search, size: 18),
+                        decoration: InputDecoration(
+                          labelText: context.l10n.searchStudent,
+                          hintText: context.l10n.studentSearchHint,
+                          prefixIcon: const Icon(Icons.search, size: 18),
                         ),
                         onChanged: (_) => setState(() {}),
                       ),
                     ),
                     const SizedBox(width: 8),
                     IconButton.filledTonal(
-                      tooltip: 'Save attendance',
+                      tooltip: context.l10n.saveAttendance,
                       onPressed: _disabled
                           ? null
                           : () => saveAttendanceFromUi(),
@@ -741,11 +758,11 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
                               });
                             },
                       icon: const Icon(Icons.done_all, size: 16),
-                      label: const Text('All Present'),
+                      label: Text(context.l10n.allPresent),
                     ),
                     const Spacer(),
                     Text(
-                      '${students.length} shown',
+                      '${students.length} ${context.l10n.shown}',
                       style: AppTypography.secondaryStyle,
                     ),
                   ],
@@ -757,20 +774,23 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
           Container(
             color: AppColors.surface,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            child: const Row(
+            child: Row(
               children: [
-                Expanded(child: _TableHeaderText('Student')),
-                SizedBox(width: 144, child: _TableHeaderText('Attendance')),
+                Expanded(child: _TableHeaderText(context.l10n.student)),
+                SizedBox(
+                  width: 144,
+                  child: _TableHeaderText(context.l10n.attendance),
+                ),
               ],
             ),
           ),
           const Divider(height: 1),
           Expanded(
             child: students.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
-                      'No students match the current search.',
-                      style: TextStyle(color: AppColors.textSecondary),
+                      context.l10n.noStudentsMatchSearch,
+                      style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   )
                 : ListView.separated(
@@ -835,7 +855,7 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Reporting',
+                        context.l10n.reporting,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
                               fontWeight: FontWeight.w800,
@@ -846,7 +866,7 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
                     OutlinedButton.icon(
                       onPressed: () => _showNoteHistory(student),
                       icon: const Icon(Icons.history_outlined, size: 18),
-                      label: const Text('Note History'),
+                      label: Text(context.l10n.noteHistory),
                     ),
                     const SizedBox(width: 8),
                     FilledButton.icon(
@@ -854,7 +874,7 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
                           ? null
                           : () => _saveReporting(student),
                       icon: const Icon(Icons.save_outlined, size: 18),
-                      label: const Text('Save Reporting'),
+                      label: Text(context.l10n.saveReporting),
                     ),
                   ],
                 ),
@@ -883,30 +903,32 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
 
   Widget _buildCompetencyScoreBox(ClassStudentOption student) {
     return _SubPanel(
-      title: 'Competency Scores',
+      title: context.l10n.competencyScores,
       subtitle: _usesNumericScore
-          ? 'Quiz scores use numeric value 0-100.'
-          : 'Session assessment uses star rating.',
+          ? context.l10n.quizNumericScoreSubtitle
+          : context.l10n.starAssessmentSubtitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _FieldCaption('Assessment type'),
+              _FieldCaption(context.l10n.assessmentType),
               const SizedBox(height: 6),
               AppDropdownButtonFormField<String>(
                 initialValue: _assessmentType,
                 key: ValueKey('competency-assessment-type-$_assessmentType'),
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  hintText: 'Select assessment type',
+                decoration: InputDecoration(
+                  hintText: context.l10n.selectAssessmentType,
                 ),
                 items: TeachingAssessmentType.values
                     .map(
                       (type) => DropdownMenuItem(
                         value: type,
-                        child: Text(_label(type)),
+                        child: Text(
+                          _teachingAssessmentTypeLabel(context, type),
+                        ),
                       ),
                     )
                     .toList(),
@@ -916,14 +938,17 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
           ),
           const SizedBox(height: 10),
           _AssessmentModeBanner(
-            label: _label(_assessmentType),
+            label: _teachingAssessmentTypeLabel(context, _assessmentType),
             usesNumericScore: _usesNumericScore,
           ),
           const SizedBox(height: 12),
           if (widget.detail.competencies.isEmpty)
-            const Text(
-              'No competencies registered for this unit.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            Text(
+              context.l10n.noCompetenciesRegistered,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
             )
           else
             Column(
@@ -957,14 +982,14 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
 
   Widget _buildObservationBox(ClassStudentOption student) {
     return _SubPanel(
-      title: 'Student Notes',
-      subtitle: 'Add social observation notes directly by type.',
+      title: context.l10n.studentNotes,
+      subtitle: context.l10n.studentNotesSubtitle,
       initiallyExpanded: false,
       child: Column(
         children: [
           for (final noteType in StudentSessionNoteType.values) ...[
             _ObservationNoteRow(
-              label: _label(noteType),
+              label: _studentNoteTypeLabel(context, noteType),
               rating: _noteRatings[student.id]?[noteType] ?? 3,
               controller: _noteController(student.id, noteType),
               enabled: !_disabled,
@@ -986,14 +1011,16 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
         _attendanceStatus[student.id] ?? TeachingAttendanceStatus.present;
     final required = status == TeachingAttendanceStatus.permission;
     return _SubPanel(
-      title: 'Attendance Note',
+      title: context.l10n.attendanceNote,
       subtitle: required
-          ? 'Required because attendance is Permission.'
-          : 'Optional attendance note for this student.',
+          ? context.l10n.attendanceNoteRequiredSubtitle
+          : context.l10n.attendanceNoteOptionalSubtitle,
       initiallyExpanded: true,
       child: _NoteField(
         controller: _attendanceNoteController(student.id),
-        label: required ? 'Attendance note *' : 'Attendance note',
+        label: required
+            ? context.l10n.attendanceNoteRequired
+            : context.l10n.attendanceNote,
         enabled: !_disabled,
         showLabel: false,
       ),
@@ -1010,7 +1037,7 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
       if (status == TeachingAttendanceStatus.permission &&
           attendanceNote.isEmpty) {
         AppToast.showFailed(
-          'Attendance note is required for ${student.displayName}.',
+          context.l10n.attendanceNoteRequiredForStudent(student.displayName),
         );
         return false;
       }
@@ -1209,7 +1236,7 @@ class _CompactAttendanceMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
       enabled: enabled,
-      tooltip: 'Attendance',
+      tooltip: context.l10n.attendance,
       onSelected: onChanged,
       itemBuilder: (context) => TeachingAttendanceStatus.values
           .map(
@@ -1225,7 +1252,7 @@ class _CompactAttendanceMenu extends StatelessWidget {
                         : AppColors.textHint,
                   ),
                   const SizedBox(width: 8),
-                  Text(_label(status)),
+                  Text(_attendanceStatusLabel(context, status)),
                 ],
               ),
             ),
@@ -1244,7 +1271,7 @@ class _CompactAttendanceMenu extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                _label(value),
+                _attendanceStatusLabel(context, value),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -1328,9 +1355,9 @@ class _CompetencyScoreRow extends StatelessWidget {
           minLines: 1,
           maxLines: 2,
           style: const TextStyle(fontSize: 12),
-          decoration: const InputDecoration(
-            labelText: 'Assessment note',
-            hintText: 'Optional',
+          decoration: InputDecoration(
+            labelText: context.l10n.assessmentNote,
+            hintText: context.l10n.optional,
           ),
         );
 
@@ -1400,9 +1427,9 @@ class _ObservationNoteRow extends StatelessWidget {
           minLines: 1,
           maxLines: 2,
           style: const TextStyle(fontSize: 12),
-          decoration: const InputDecoration(
-            labelText: 'Note',
-            hintText: 'Optional',
+          decoration: InputDecoration(
+            labelText: context.l10n.notes,
+            hintText: context.l10n.optional,
           ),
         );
 
@@ -1456,7 +1483,7 @@ class _StudentNoteHistoryDialog extends StatelessWidget {
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Teacher Notes History'),
+          Text(context.l10n.teacherNotesHistory),
           const SizedBox(height: 4),
           Text(
             student.fullName,
@@ -1518,7 +1545,7 @@ class _StudentNoteHistoryDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          child: Text(context.l10n.buttonClose),
         ),
       ],
     );
@@ -1658,7 +1685,7 @@ class _StudentNoteCommentBlock extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip: 'Edit',
+                tooltip: context.l10n.edit,
                 onPressed: disabled ? null : onEdit,
                 visualDensity: VisualDensity.compact,
                 icon: const Icon(Icons.edit_outlined, size: 18),
@@ -1774,20 +1801,20 @@ class _AttendanceTabState extends State<_AttendanceTab> {
           runSpacing: 10,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            const SizedBox(
+            SizedBox(
               width: 260,
               child: _SectionHeader(
-                title: 'Attendance',
-                subtitle: 'Search and mark attendance in the table.',
+                title: context.l10n.attendance,
+                subtitle: context.l10n.attendanceSectionSubtitle,
               ),
             ),
             SizedBox(
               width: 260,
               child: TextField(
                 controller: _searchController,
-                decoration: const InputDecoration(
-                  labelText: 'Search student',
-                  hintText: 'Name or student no',
+                decoration: InputDecoration(
+                  labelText: context.l10n.searchStudent,
+                  hintText: context.l10n.studentSearchHint,
                   prefixIcon: Icon(Icons.search, size: 18),
                 ),
                 onChanged: (_) => setState(() {}),
@@ -1805,12 +1832,12 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                       });
                     },
               icon: const Icon(Icons.done_all, size: 18),
-              label: const Text('All Present'),
+              label: Text(context.l10n.allPresent),
             ),
             OutlinedButton.icon(
               onPressed: disabled ? null : _save,
               icon: const Icon(Icons.save_outlined, size: 18),
-              label: const Text('Save'),
+              label: Text(context.l10n.buttonSave),
             ),
             Text(
               '${_filteredStudents.length} shown',
@@ -1945,11 +1972,14 @@ class _AttendanceTableHeader extends StatelessWidget {
       width: width,
       color: AppColors.surface,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: const Row(
+      child: Row(
         children: [
-          SizedBox(width: 220, child: _TableHeaderText('Student')),
-          SizedBox(width: 380, child: _TableHeaderText('Attendance')),
-          Expanded(child: _TableHeaderText('Notes')),
+          SizedBox(width: 220, child: _TableHeaderText(context.l10n.student)),
+          SizedBox(
+            width: 380,
+            child: _TableHeaderText(context.l10n.attendance),
+          ),
+          Expanded(child: _TableHeaderText(context.l10n.notes)),
         ],
       ),
     );
@@ -1994,8 +2024,8 @@ class _AttendanceTableRow extends StatelessWidget {
               initialValue: notes,
               enabled: !disabled,
               style: const TextStyle(fontSize: 12),
-              decoration: const InputDecoration(
-                hintText: 'Notes',
+              decoration: InputDecoration(
+                hintText: context.l10n.notes,
                 hintStyle: TextStyle(fontSize: 12),
               ),
               onChanged: onNotesChanged,
@@ -2143,10 +2173,9 @@ class _AssessmentTabState extends State<_AssessmentTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _SectionHeader(
-                  title: 'Assessment',
-                  subtitle:
-                      'Fill scores for the session assessment type selected in Overall Session.',
+                _SectionHeader(
+                  title: context.l10n.assessment,
+                  subtitle: context.l10n.assessmentSectionSubtitle,
                 ),
                 const SizedBox(height: 8),
                 _AssessmentModeBanner(
@@ -2164,8 +2193,8 @@ class _AssessmentTabState extends State<_AssessmentTab> {
                       width: 220,
                       child: TextField(
                         controller: _searchController,
-                        decoration: const InputDecoration(
-                          labelText: 'Search student',
+                        decoration: InputDecoration(
+                          labelText: context.l10n.searchStudent,
                           prefixIcon: Icon(Icons.search, size: 18),
                         ),
                         onChanged: (_) => setState(() {}),
@@ -2179,14 +2208,14 @@ class _AssessmentTabState extends State<_AssessmentTab> {
                         ),
                         initialValue: _competencyId,
                         isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Competency',
+                        decoration: InputDecoration(
+                          labelText: context.l10n.competency,
                         ),
-                        hint: const Text('Optional'),
+                        hint: Text(context.l10n.optional),
                         items: [
-                          const DropdownMenuItem<String>(
+                          DropdownMenuItem<String>(
                             value: '',
-                            child: Text('Optional'),
+                            child: Text(context.l10n.optional),
                           ),
                           ...widget.detail.competencies.map(
                             (competency) => DropdownMenuItem(
@@ -2233,28 +2262,32 @@ class _AssessmentTabState extends State<_AssessmentTab> {
                     OutlinedButton.icon(
                       onPressed: disabled ? null : _selectVisibleStudents,
                       icon: const Icon(Icons.checklist_outlined, size: 18),
-                      label: const Text('Select Visible'),
+                      label: Text(context.l10n.selectVisible),
                     ),
                     OutlinedButton.icon(
                       onPressed: disabled || _selectedStudentIds.isEmpty
                           ? null
                           : _clearSelection,
                       icon: const Icon(Icons.clear_all_outlined, size: 18),
-                      label: const Text('Clear'),
+                      label: Text(context.l10n.clear),
                     ),
                     FilledButton.icon(
                       onPressed: disabled || _selectedStudentIds.isEmpty
                           ? null
                           : _applyDefaultToSelected,
                       icon: const Icon(Icons.playlist_add_check, size: 18),
-                      label: Text('Apply (${_selectedStudentIds.length})'),
+                      label: Text(
+                        context.l10n.applySelectedCount(
+                          _selectedStudentIds.length,
+                        ),
+                      ),
                     ),
                     FilledButton.icon(
                       onPressed: disabled || _selectedStudentIds.isEmpty
                           ? null
                           : () => _save(selectedOnly: true),
                       icon: const Icon(Icons.save_outlined, size: 18),
-                      label: const Text('Save Selected'),
+                      label: Text(context.l10n.saveSelected),
                     ),
                     OutlinedButton.icon(
                       onPressed: disabled
@@ -2524,7 +2557,11 @@ class _AssessmentStudentRow extends StatelessWidget {
           final noteButton = OutlinedButton.icon(
             onPressed: disabled ? null : onOpenNote,
             icon: const Icon(Icons.sticky_note_2_outlined, size: 17),
-            label: Text(noteCount == 0 ? 'Note' : 'Note ($noteCount)'),
+            label: Text(
+              noteCount == 0
+                  ? context.l10n.note
+                  : '${context.l10n.note} ($noteCount)',
+            ),
           );
           final deleteButton = IconButton(
             tooltip: hasRecord ? 'Delete saved assessment' : 'No saved record',
@@ -2735,10 +2772,10 @@ class _SessionNotesFields extends StatelessWidget {
                     initialValue: completion,
                     key: ValueKey('completion-${completion ?? ''}'),
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Lesson completion',
+                    decoration: InputDecoration(
+                      labelText: context.l10n.lessonCompletion,
                     ),
-                    hint: const Text('Select completion'),
+                    hint: Text(context.l10n.selectCompletion),
                     items: const [25, 50, 75, 100]
                         .map(
                           (value) => DropdownMenuItem(
@@ -2754,7 +2791,7 @@ class _SessionNotesFields extends StatelessWidget {
                   width: fieldWidth,
                   child: _NoteField(
                     controller: materialController,
-                    label: 'Material covered',
+                    label: context.l10n.materialCovered,
                     enabled: !disabled,
                   ),
                 ),
@@ -2762,7 +2799,7 @@ class _SessionNotesFields extends StatelessWidget {
                   width: fieldWidth,
                   child: _NoteField(
                     controller: conditionController,
-                    label: 'Class condition',
+                    label: context.l10n.classCondition,
                     enabled: !disabled,
                   ),
                 ),
@@ -2770,7 +2807,7 @@ class _SessionNotesFields extends StatelessWidget {
                   width: fieldWidth,
                   child: _NoteField(
                     controller: challengesController,
-                    label: 'Teaching challenges',
+                    label: context.l10n.teachingChallenges,
                     enabled: !disabled,
                   ),
                 ),
@@ -2778,7 +2815,7 @@ class _SessionNotesFields extends StatelessWidget {
                   width: fieldWidth,
                   child: _NoteField(
                     controller: followUpController,
-                    label: 'Follow up plan',
+                    label: context.l10n.followUpPlan,
                     enabled: !disabled,
                   ),
                 ),
@@ -2786,7 +2823,7 @@ class _SessionNotesFields extends StatelessWidget {
                   width: fieldWidth,
                   child: _NoteField(
                     controller: notesController,
-                    label: 'Session notes',
+                    label: context.l10n.sessionNotes,
                     enabled: !disabled,
                   ),
                 ),
@@ -2800,7 +2837,7 @@ class _SessionNotesFields extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: disabled ? null : onSave,
             icon: const Icon(Icons.save_outlined, size: 18),
-            label: const Text('Save Notes'),
+            label: Text(context.l10n.saveNotes),
           ),
         ),
       ],
@@ -2828,16 +2865,15 @@ class _StudentNotesPanelState extends State<_StudentNotesPanel> {
       children: [
         _Panel(
           padding: const EdgeInsets.all(14),
-          child: const _SectionHeader(
-            title: 'Student Notes',
-            subtitle:
-                'Review social observations added from student rows in Assessment.',
+          child: _SectionHeader(
+            title: context.l10n.studentNotes,
+            subtitle: context.l10n.studentNotesReviewSubtitle,
           ),
         ),
         const SizedBox(height: 12),
         Expanded(
           child: _RecordList(
-            emptyMessage: 'No student notes yet.',
+            emptyMessage: context.l10n.noStudentNotesYet,
             children: widget.detail.studentNotes.map((note) {
               return _RecordTile(
                 title:
@@ -2849,12 +2885,12 @@ class _StudentNotesPanelState extends State<_StudentNotesPanel> {
                   spacing: 2,
                   children: [
                     IconButton(
-                      tooltip: 'Edit',
+                      tooltip: context.l10n.edit,
                       onPressed: disabled ? null : () => _edit(note),
                       icon: const Icon(Icons.edit_outlined, size: 18),
                     ),
                     IconButton(
-                      tooltip: 'Delete',
+                      tooltip: context.l10n.delete,
                       onPressed: disabled
                           ? null
                           : () async {
@@ -3299,7 +3335,7 @@ class _StudentNoteDialogState extends State<_StudentNoteDialog> {
                 key: ValueKey('dialog-note-type-$_noteType'),
                 initialValue: _noteType,
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Type'),
+                decoration: InputDecoration(labelText: context.l10n.type),
                 items: StudentSessionNoteType.values
                     .map(
                       (type) => DropdownMenuItem(
@@ -3317,12 +3353,12 @@ class _StudentNoteDialogState extends State<_StudentNoteDialog> {
                 value: _rating,
                 enabled: !widget.disabled,
                 onChanged: (value) => setState(() => _rating = value),
-                label: 'Social / behavior rating',
+                label: context.l10n.socialBehaviorRating,
               ),
               const SizedBox(height: 10),
               _NoteField(
                 controller: _commentController,
-                label: 'Comment',
+                label: context.l10n.comment,
                 enabled: !widget.disabled,
               ),
               SwitchListTile(
@@ -3330,12 +3366,12 @@ class _StudentNoteDialogState extends State<_StudentNoteDialog> {
                 onChanged: widget.disabled
                     ? null
                     : (value) => setState(() => _followUpNeeded = value),
-                title: const Text('Follow up needed'),
+                title: Text(context.l10n.followUpNeeded),
                 contentPadding: EdgeInsets.zero,
               ),
               _NoteField(
                 controller: _followUpController,
-                label: 'Follow up notes',
+                label: context.l10n.followUpNotes,
                 enabled: !widget.disabled,
               ),
             ],
@@ -3345,7 +3381,7 @@ class _StudentNoteDialogState extends State<_StudentNoteDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         FilledButton.icon(
           onPressed: widget.disabled ? null : _save,
@@ -3570,7 +3606,7 @@ class _StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        _label(status),
+        _teachingStatusLabel(context, status),
         style: TextStyle(
           color: color,
           fontSize: 11,
@@ -3579,6 +3615,57 @@ class _StatusBadge extends StatelessWidget {
       ),
     );
   }
+}
+
+String _teachingStatusLabel(BuildContext context, String status) {
+  return switch (status) {
+    TeachingActivityStatus.scheduled => context.l10n.statusScheduled,
+    TeachingActivityStatus.inProgress => context.l10n.statusInProgress,
+    TeachingActivityStatus.completed => context.l10n.statusCompleted,
+    TeachingActivityStatus.cancelled => context.l10n.statusCancelled,
+    _ => _label(status),
+  };
+}
+
+String _attendanceStatusLabel(BuildContext context, String status) {
+  return switch (status) {
+    TeachingAttendanceStatus.present => context.l10n.attendancePresent,
+    TeachingAttendanceStatus.absent => context.l10n.attendanceAbsent,
+    TeachingAttendanceStatus.sick => context.l10n.attendanceSick,
+    TeachingAttendanceStatus.permission => context.l10n.attendancePermission,
+    TeachingAttendanceStatus.late => context.l10n.attendanceLate,
+    _ => _label(status),
+  };
+}
+
+String _teachingAssessmentTypeLabel(BuildContext context, String type) {
+  return switch (type) {
+    TeachingAssessmentType.observation => context.l10n.assessmentObservation,
+    TeachingAssessmentType.exercise => context.l10n.assessmentExercise,
+    TeachingAssessmentType.quiz => context.l10n.assessmentQuiz,
+    TeachingAssessmentType.oral => context.l10n.assessmentOral,
+    TeachingAssessmentType.practical => context.l10n.assessmentPractical,
+    TeachingAssessmentType.assignment => context.l10n.assessmentAssignment,
+    TeachingAssessmentType.participation =>
+      context.l10n.assessmentParticipation,
+    TeachingAssessmentType.memorization => context.l10n.assessmentMemorization,
+    TeachingAssessmentType.reading => context.l10n.assessmentReading,
+    TeachingAssessmentType.other => context.l10n.other,
+    _ => _label(type),
+  };
+}
+
+String _studentNoteTypeLabel(BuildContext context, String type) {
+  return switch (type) {
+    'learning_progress' => context.l10n.noteLearningProgress,
+    'behavior' => context.l10n.noteBehavior,
+    'attendance_concern' => context.l10n.noteAttendanceConcern,
+    'needs_support' => context.l10n.noteNeedsSupport,
+    'achievement' => context.l10n.noteAchievement,
+    'parent_follow_up' => context.l10n.noteParentFollowUp,
+    'other' => context.l10n.other,
+    _ => _label(type),
+  };
 }
 
 Color _attendanceColor(String status) {
@@ -3609,12 +3696,12 @@ Future<bool> _confirmDelete(BuildContext context, String message) async {
     guardKey: 'teaching_confirm_delete_${message.hashCode}',
     builder: (context) {
       return AlertDialog(
-        title: const Text('Confirm Delete'),
+        title: Text(context.l10n.confirmDelete),
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -3622,7 +3709,7 @@ Future<bool> _confirmDelete(BuildContext context, String message) async {
               backgroundColor: AppColors.error,
               foregroundColor: AppColors.white,
             ),
-            child: const Text('Delete'),
+            child: Text(context.l10n.buttonDelete),
           ),
         ],
       );
@@ -3637,14 +3724,12 @@ Future<bool> _confirmResetReport(BuildContext context) async {
     guardKey: 'teaching_reset_report',
     builder: (context) {
       return AlertDialog(
-        title: const Text('Reset Teaching Report?'),
-        content: const Text(
-          'This will remove all attendance, competency scores, student notes, and session notes for this report.',
-        ),
+        title: Text(context.l10n.resetTeachingReport),
+        content: Text(context.l10n.resetTeachingReportMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -3652,7 +3737,7 @@ Future<bool> _confirmResetReport(BuildContext context) async {
               backgroundColor: AppColors.error,
               foregroundColor: AppColors.white,
             ),
-            child: const Text('Reset All'),
+            child: Text(context.l10n.resetAll),
           ),
         ],
       );
@@ -3667,18 +3752,16 @@ Future<bool> _confirmAssessmentTypeChange(BuildContext context) async {
     guardKey: 'teaching_assessment_type_change',
     builder: (context) {
       return AlertDialog(
-        title: const Text('Change Assessment Type?'),
-        content: const Text(
-          'This session already has assessment rows. Changing the type will make the Assessment tab use a different score mode for future entries.',
-        ),
+        title: Text(context.l10n.changeAssessmentType),
+        content: Text(context.l10n.changeAssessmentTypeMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Change Type'),
+            child: Text(context.l10n.changeType),
           ),
         ],
       );

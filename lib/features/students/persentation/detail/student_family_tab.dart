@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/students/data/student_advanced_form_data.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
@@ -38,19 +39,19 @@ class _RelationsTable extends StatelessWidget {
         final relations = snapshot.data ?? const <StudentRelationFormData>[];
 
         return DetailSectionCard(
-          title: 'Student Relations',
+          title: context.l10n.studentRelations,
           icon: Icons.account_tree_outlined,
           wrapChildren: false,
           children: [
             if (snapshot.connectionState == ConnectionState.waiting)
-              const DetailEmptySectionText('Loading student relations...')
+              DetailEmptySectionText(context.l10n.loadingStudentRelations)
             else
               DetailDataTable(
-                columns: const [
-                  'Student No',
-                  'Name',
-                  'Relation',
-                  'Age Position',
+                columns: [
+                  context.l10n.studentNo,
+                  context.l10n.name,
+                  context.l10n.relation,
+                  context.l10n.agePosition,
                 ],
                 rows: relations
                     .where((relation) => relation.hasData)
@@ -63,7 +64,7 @@ class _RelationsTable extends StatelessWidget {
                       ],
                     )
                     .toList(),
-                emptyText: 'No sibling or student relation has been added yet.',
+                emptyText: context.l10n.noStudentRelations,
               ),
           ],
         );
@@ -90,22 +91,22 @@ class _GuardianTable extends StatelessWidget {
         final guardians = snapshot.data ?? const <StudentGuardianFormData>[];
 
         return DetailSectionCard(
-          title: 'Parents / Guardians',
+          title: context.l10n.parentsGuardians,
           icon: Icons.family_restroom_outlined,
           wrapChildren: false,
           children: [
             if (snapshot.connectionState == ConnectionState.waiting)
-              const DetailEmptySectionText('Loading guardian information...')
+              DetailEmptySectionText(context.l10n.loadingGuardianInformation)
             else
               DetailDataTable(
-                columns: const [
-                  'Relationship',
-                  'Primary',
-                  'Name',
-                  'Mobile',
-                  'Email',
-                  'Occupation',
-                  'Address',
+                columns: [
+                  context.l10n.relationship,
+                  context.l10n.primary,
+                  context.l10n.name,
+                  context.l10n.mobile,
+                  context.l10n.email,
+                  context.l10n.occupation,
+                  context.l10n.address,
                 ],
                 rows: guardians
                     .where((item) => item.hasData)
@@ -121,8 +122,7 @@ class _GuardianTable extends StatelessWidget {
                       ],
                     )
                     .toList(),
-                emptyText:
-                    'No parent or guardian information has been added yet.',
+                emptyText: context.l10n.noGuardianInformation,
               ),
           ],
         );

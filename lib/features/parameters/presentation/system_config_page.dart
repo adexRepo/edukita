@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/parameters/domain/system_config_repository.dart';
 import 'package:edukita/theme/app_theme.dart';
@@ -116,7 +117,7 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
   Future<void> _save() async {
     if (_saving) return;
     if (!widget.canUpdate) {
-      AppToast.showFailed('You do not have permission to update parameters.');
+      AppToast.showFailed(context.l10n.noPermissionUpdateParameters);
       return;
     }
     final examNames = _config.examTypes
@@ -124,7 +125,7 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
         .where((name) => name.isNotEmpty)
         .toList();
     if (examNames.length != examNames.toSet().length) {
-      AppToast.showFailed('Exam type names must be unique.');
+      AppToast.showFailed(context.l10n.examTypeNamesUnique);
       return;
     }
 
@@ -179,11 +180,12 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
       examTypes: _config.examTypes,
     );
 
+    final successMessage = context.l10n.systemConfigSaved;
     setState(() => _saving = true);
     try {
       await _repository.save(nextConfig);
       if (mounted) setState(() => _config = nextConfig);
-      AppToast.showSuccess('System config saved.');
+      AppToast.showSuccess(successMessage);
     } catch (error) {
       AppToast.showFailed(error.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -210,9 +212,8 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AppPageHeader(
-              title: 'System Config',
-              subtitle:
-                  'Maintain operational defaults used by attendance, assistance, reports, and numbering.',
+              title: context.l10n.systemConfig,
+              subtitle: context.l10n.configDescription,
               trailing: FilledButton.icon(
                 onPressed: _loading || _saving || !widget.canUpdate
                     ? null
@@ -224,7 +225,7 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.save_outlined),
-                label: Text(_saving ? 'Saving' : 'Save'),
+                label: Text(_saving ? context.l10n.saving : context.l10n.save),
               ),
             ),
             const SizedBox(height: AppPageHeaderStyle.bottomGap),
@@ -254,21 +255,20 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
 
   Widget _numberingPanel() {
     return _ConfigPanel(
-      title: 'Numbering',
-      description:
-          'Default prefixes for generated codes. Existing records are not changed.',
+      title: context.l10n.numbering,
+      description: context.l10n.numberingDescription,
       child: _responsiveGrid([
         _compactTextField(
           controller: _studentPrefixController,
-          label: 'Student Prefix',
+          label: context.l10n.studentPrefix,
         ),
         _compactTextField(
           controller: _teacherPrefixController,
-          label: 'Teacher Prefix',
+          label: context.l10n.teacherPrefix,
         ),
         _compactTextField(
           controller: _reportPrefixController,
-          label: 'Report Prefix',
+          label: context.l10n.reportPrefix,
         ),
       ]),
     );
@@ -276,9 +276,8 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
 
   Widget _attendancePanel() {
     return _ConfigPanel(
-      title: 'Attendance Statuses',
-      description:
-          'Operational attendance statuses available for teaching reports and dashboard summaries.',
+      title: context.l10n.attendanceStatuses,
+      description: context.l10n.attendanceStatusesDescription,
       child: Wrap(
         spacing: 10,
         runSpacing: 10,
@@ -307,53 +306,52 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
 
   Widget _approvalPanel() {
     return _ConfigPanel(
-      title: 'Approval & Export Labels',
-      description:
-          'Labels used in assistance approval documents and report signature areas.',
+      title: context.l10n.approvalExportLabels,
+      description: context.l10n.approvalExportLabelsDescription,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Assistance Approval',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          Text(
+            context.l10n.assistanceApproval,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           _responsiveGrid([
             _compactTextField(
               controller: _approvalPreparedController,
-              label: 'Prepared Label',
+              label: context.l10n.preparedLabel,
             ),
             _compactTextField(
               controller: _approvalReviewedController,
-              label: 'Reviewed Label',
+              label: context.l10n.reviewedLabel,
             ),
             _compactTextField(
               controller: _approvalApprovedController,
-              label: 'Approved Label',
+              label: context.l10n.approvedLabel,
             ),
           ]),
           const SizedBox(height: 14),
-          const Text(
-            'Report Signatures',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          Text(
+            context.l10n.reportSignatures,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           _responsiveGrid([
             _compactTextField(
               controller: _signaturePreparedController,
-              label: 'Prepared Label',
+              label: context.l10n.preparedLabel,
             ),
             _compactTextField(
               controller: _signatureReviewedController,
-              label: 'Reviewed Label',
+              label: context.l10n.reviewedLabel,
             ),
             _compactTextField(
               controller: _signatureApprovedController,
-              label: 'Approved Label',
+              label: context.l10n.approvedLabel,
             ),
             _compactTextField(
               controller: _signatureDateController,
-              label: 'Date Label',
+              label: context.l10n.dateLabel,
             ),
           ]),
         ],
@@ -363,9 +361,8 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
 
   Widget _examTypePanel() {
     return _ConfigPanel(
-      title: 'Exam Types',
-      description:
-          'External school score types. Evidence can be required for important formal exams.',
+      title: context.l10n.examTypes,
+      description: context.l10n.examTypesDescription,
       child: Column(
         children: [
           for (var i = 0; i < _config.examTypes.length; i++) ...[
@@ -527,13 +524,13 @@ class _ExamTypeRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Tooltip(
-            message: 'Require uploaded evidence when adding this score type',
+            message: context.l10n.evidenceRequiredTooltip,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Evidence',
-                  style: TextStyle(
+                Text(
+                  context.l10n.evidence,
+                  style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,
@@ -549,13 +546,13 @@ class _ExamTypeRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Tooltip(
-            message: 'Show this exam type in score input options',
+            message: context.l10n.examTypeActiveTooltip,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Active',
-                  style: TextStyle(
+                Text(
+                  context.l10n.statusActive,
+                  style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,

@@ -10,8 +10,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   flutter_bloc: ^9.1.1
+  intl: any
+  shared_preferences: any
   sqflite: ^2.4.0
   sqflite_common_ffi: ^2.3.3
   sqflite_common_ffi_web: ^0.4.0
@@ -37,6 +41,7 @@ dev_dependencies:
   freezed: ^3.2.5
   json_serializable: ^6.13.1
 flutter:
+  generate: true
   uses-material-design: true
   assets:
     - .env

@@ -1,4 +1,5 @@
-import 'package:edukita/core/utils/text_case.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
+import 'package:edukita/core/localization/localized_display.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/persentation/detail/student_info_item.dart';
 import 'package:edukita/theme/app_theme.dart';
@@ -16,13 +17,13 @@ class StudentInformationSection extends StatelessWidget {
       border: Border.all(color: AppColors.border),
     );
     final items = [
-      MapEntry('Full Name', student.fullName),
-      MapEntry('Nick Name', student.nickName),
-      MapEntry('NIS', _textOrDash(student.nis)),
-      MapEntry('Birth Date', student.birthDate),
-      MapEntry('Gender', student.gender.name.titleWords),
-      MapEntry('Mobile No', _textOrDash(student.mobileNo)),
-      MapEntry('Email', _textOrDash(student.emailAddr)),
+      MapEntry(context.l10n.fullName, student.fullName),
+      MapEntry(context.l10n.nickName, student.nickName),
+      MapEntry(context.l10n.nis, _textOrDash(student.nis)),
+      MapEntry(context.l10n.birthDate, student.birthDate),
+      MapEntry(context.l10n.gender, translateGender(context, student.gender.name)),
+      MapEntry(context.l10n.mobileNo, _textOrDash(student.mobileNo)),
+      MapEntry(context.l10n.email, _textOrDash(student.emailAddr)),
     ];
 
     return Container(
@@ -47,9 +48,9 @@ class StudentInformationSection extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Personal Profile',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              Text(
+                context.l10n.personalProfile,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 10),
               Wrap(

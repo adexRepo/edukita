@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/common/feature_state.dart';
@@ -82,12 +83,12 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
           builder: (context, state) {
             return DetailBreadcrumbs(
               items: [
-                const DetailBreadcrumbItem(
-                  label: 'Students',
+                DetailBreadcrumbItem(
+                  label: context.l10n.menuStudents,
                   route: '/students',
                 ),
                 DetailBreadcrumbItem(
-                  label: state.data?.fullName ?? 'Student Detail',
+                  label: state.data?.fullName ?? context.l10n.studentDetail,
                 ),
               ],
             );
@@ -101,10 +102,10 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
           }
 
           if (!_canViewStudents) {
-            return const Center(
+            return Center(
               child: Text(
-                'You do not have permission to view students.',
-                style: TextStyle(
+                context.l10n.studentAccessDenied,
+                style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w700,
                 ),
@@ -117,7 +118,7 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
           }
 
           if (!state.loading && state.data == null) {
-            return Center(child: Text(state.message ?? "Failed"));
+            return Center(child: Text(state.message ?? context.l10n.failed));
           }
 
           return _buildContent(state.data!);
@@ -135,16 +136,16 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
         child: Column(
           children: <Widget>[
             const SizedBox(height: 8),
-            const DetailTabBar(
+            DetailTabBar(
               tabs: [
-                "Overview",
-                "Personal",
-                "Family",
-                "Academic",
-                "Exam Scores",
-                "Behavior",
-                "Activities",
-                "More",
+                context.l10n.overview,
+                context.l10n.personal,
+                context.l10n.family,
+                context.l10n.academic,
+                context.l10n.examScores,
+                context.l10n.behavior,
+                context.l10n.activities,
+                context.l10n.more,
               ],
             ),
             Expanded(

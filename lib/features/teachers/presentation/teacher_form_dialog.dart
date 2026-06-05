@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/teachers/data/teacher_model.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
@@ -50,7 +51,9 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: AppDialogTitle(
-        widget.teacher == null ? 'Add Teacher' : 'Edit Teacher',
+        widget.teacher == null
+            ? context.l10n.addTeacher
+            : context.l10n.editTeacher,
       ),
       content: SizedBox(
         width: 380,
@@ -61,7 +64,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _textField(
-                  label: 'Nick Name',
+                  label: context.l10n.nickName,
                   value: nickName,
                   onSaved: (value) => nickName = value?.trim(),
                   validator: (value) => AppFormValidation.requiredText(
@@ -74,7 +77,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                 ),
                 const SizedBox(height: 12),
                 _textField(
-                  label: 'Full Name',
+                  label: context.l10n.fullName,
                   value: fullName,
                   onSaved: (value) => fullName = value?.trim() ?? '',
                   validator: (value) => AppFormValidation.requiredText(
@@ -90,7 +93,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   initialValue: lastEducationType ?? _educationLevels.first,
                   isExpanded: false,
                   decoration: InputDecoration(
-                    label: _requiredLabel(context, 'Education Level'),
+                    label: _requiredLabel(context, context.l10n.educationLevel),
                   ),
                   items: _educationLevels
                       .map(
@@ -118,29 +121,41 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   },
                   onSaved: (value) => lastEducationType = value,
                   validator: (value) =>
-                      AppFormValidation.requiredText(value, 'Education level'),
+                      AppFormValidation.requiredText(
+                        value,
+                        context.l10n.educationLevel,
+                      ),
                 ),
                 const SizedBox(height: 12),
                 FormField<String>(
                   initialValue: gender,
                   validator: (value) =>
-                      AppFormValidation.requiredText(value, 'Gender'),
+                      AppFormValidation.requiredText(
+                        value,
+                        context.l10n.gender,
+                      ),
                   builder: (field) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
                           padding: const EdgeInsets.only(left: 4, bottom: 8),
-                          child: _requiredLabel(context, 'Gender'),
+                          child: _requiredLabel(context, context.l10n.gender),
                         ),
                         SizedBox(
                           width: double.infinity,
                           child: SegmentedButton<String>(
                             expandedInsets: EdgeInsets.zero,
                             emptySelectionAllowed: true,
-                            segments: const [
-                              ButtonSegment(value: 'M', label: Text('Male')),
-                              ButtonSegment(value: 'F', label: Text('Female')),
+                            segments: [
+                              ButtonSegment(
+                                value: 'M',
+                                label: Text(context.l10n.genderMale),
+                              ),
+                              ButtonSegment(
+                                value: 'F',
+                                label: Text(context.l10n.genderFemale),
+                              ),
                             ],
                             selected: gender == null
                                 ? const <String>{}
@@ -173,7 +188,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                 ),
                 const SizedBox(height: 12),
                 _textField(
-                  label: 'Email',
+                  label: context.l10n.email,
                   value: email,
                   onSaved: (value) => email = value?.trim(),
                   keyboardType: TextInputType.emailAddress,
@@ -182,7 +197,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                 ),
                 const SizedBox(height: 12),
                 _textField(
-                  label: 'Mobile No',
+                  label: context.l10n.mobileNo,
                   value: mobileNo,
                   onSaved: (value) => mobileNo = value?.trim(),
                   keyboardType: TextInputType.phone,
@@ -198,7 +213,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         ElevatedButton(
           onPressed: _isSaving ? null : _submit,
@@ -208,7 +223,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );

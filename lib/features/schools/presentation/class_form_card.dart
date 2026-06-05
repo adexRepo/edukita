@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/widgets/app_toast.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 
 typedef ClassFormSubmit = FutureOr<void> Function(SchoolClass schoolClass);
 
@@ -184,8 +185,8 @@ class _ClassFormCardState extends State<ClassFormCard> {
               const SizedBox(height: 14),
               TextFormField(
                 controller: _sectionController,
-                decoration: const InputDecoration(
-                  labelText: 'Section',
+                decoration: InputDecoration(
+                  labelText: context.l10n.section,
                   hintText: 'A',
                 ),
                 textCapitalization: TextCapitalization.characters,
@@ -200,7 +201,7 @@ class _ClassFormCardState extends State<ClassFormCard> {
                   final text = value?.trim() ?? '';
                   if (text.isNotEmpty &&
                       !RegExp(r'^[A-Z]$').hasMatch(text.toUpperCase())) {
-                    return 'Section must be one letter';
+                    return context.l10n.sectionOneLetter;
                   }
                   return null;
                 },
@@ -211,9 +212,9 @@ class _ClassFormCardState extends State<ClassFormCard> {
                 readOnly: true,
                 decoration: InputDecoration(
                   label: CommonFormWidgets.requiredLabel(
-                    'Class Name (Auto-generated)',
+                    context.l10n.generatedClassName,
                   ),
-                  hintText: 'Generated from level, section, and year',
+                  hintText: context.l10n.generatedClassHint,
                   suffixIcon: const Icon(Icons.lock),
                 ),
               ),
@@ -221,7 +222,7 @@ class _ClassFormCardState extends State<ClassFormCard> {
               TextFormField(
                 controller: _yearController,
                 decoration: InputDecoration(
-                  label: CommonFormWidgets.requiredLabel('Year'),
+                  label: CommonFormWidgets.requiredLabel(context.l10n.year),
                   hintText: AppFormFieldStyle.yearFormat,
                 ),
                 keyboardType: TextInputType.number,
@@ -231,10 +232,10 @@ class _ClassFormCardState extends State<ClassFormCard> {
                 ],
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Year is required';
+                    return context.l10n.yearRequired;
                   }
                   if (!RegExp(r'^\d{4}$').hasMatch(value.trim())) {
-                    return 'Year must be 4 digits';
+                    return context.l10n.yearFourDigits;
                   }
                   return null;
                 },
@@ -247,7 +248,7 @@ class _ClassFormCardState extends State<ClassFormCard> {
                     onPressed: _isSaving
                         ? null
                         : () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
+                    child: Text(context.l10n.buttonCancel),
                   ),
                   const SizedBox(width: 12),
                   FilledButton(
@@ -258,7 +259,11 @@ class _ClassFormCardState extends State<ClassFormCard> {
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Text(isEditing ? 'Update Class' : 'Create Class'),
+                        : Text(
+                            isEditing
+                                ? context.l10n.updateClass
+                                : context.l10n.createClass,
+                          ),
                   ),
                 ],
               ),

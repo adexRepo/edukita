@@ -19,6 +19,7 @@ The current implementation targets Windows desktop with a local SQLite database.
 - [Development Workflow](#development-workflow)
 - [Windows Build](#windows-build)
 - [Release And Installation Notes](#release-and-installation-notes)
+- [Windows Offline Update Release](#windows-offline-update-release)
 - [Security Notes](#security-notes)
 - [Troubleshooting](#troubleshooting)
 
@@ -275,6 +276,47 @@ Future release improvements:
 - Structured backup and restore UI
 - Per-branch configuration
 - User and role management hardening
+
+## Windows Offline Update Release
+
+Edukita is distributed as a Windows installer. GitHub Actions generates release
+files automatically when a Git tag matching `vX.Y.Z` is pushed.
+
+Release output includes:
+
+```text
+EdukitaSetup_vX.Y.Z.exe
+EdukitaUpdate_vX.Y.Z.zip
+```
+
+`EdukitaUpdate_vX.Y.Z.zip` is prepared for flashdisk/offline update
+distribution. An admin downloads the zip from the GitHub Release, extracts it to
+a flashdisk, and gives the flashdisk to the user site.
+
+The extracted flashdisk folder should contain:
+
+```text
+EdukitaUpdate/update.json
+EdukitaUpdate/EdukitaSetup_vX.Y.Z.exe
+```
+
+Later, the user opens Edukita and checks for an update from a local folder. If
+the update version is newer, Edukita runs the installer from the flashdisk.
+
+The installer updates only application files under:
+
+```text
+C:\Program Files\Edukita
+```
+
+Local user data remains safe under:
+
+```text
+C:\ProgramData\Edukita
+```
+
+User data such as SQLite database, backups, exports, logs, attachments, student
+photos, and documents must not be deleted during install, update, or uninstall.
 
 ## Security Notes
 

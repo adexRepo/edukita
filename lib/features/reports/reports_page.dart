@@ -1,6 +1,7 @@
 import 'dart:io' as io;
 
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/utils/generated_file_name.dart';
 import 'package:edukita/features/report_definitions/data/report_definition_model.dart';
 import 'package:edukita/features/report_definitions/domain/report_definition_cubit.dart';
@@ -66,8 +67,8 @@ class _ReportsPageState extends State<ReportsPage> {
     }
 
     if (!_canViewReports) {
-      return const AccessDeniedPanel(
-        message: 'You do not have permission to view reports.',
+      return AccessDeniedPanel(
+        message: context.l10n.noPermissionViewReports,
       );
     }
 
@@ -87,10 +88,13 @@ class _ReportsPageState extends State<ReportsPage> {
             builder: (context, state) {
               final selected = state.selectedDefinition;
               return AppPageHeader(
-                title: 'Reports',
+                title: context.l10n.menuReports,
                 subtitle: selected == null
-                    ? 'Choose a report definition to preview and export data.'
-                    : '${selected.name} | ${state.resultRows.length} rows loaded',
+                    ? context.l10n.reportsChooseDefinition
+                    : context.l10n.reportRowsLoaded(
+                        selected.name,
+                        state.resultRows.length,
+                      ),
                 trailing: _buildHeaderActions(context, state),
               );
             },
@@ -158,7 +162,7 @@ class _ReportsPageState extends State<ReportsPage> {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         IconButton(
-          tooltip: 'Refresh reports',
+          tooltip: context.l10n.refreshReports,
           onPressed: state.isLoading
               ? null
               : () => context.read<ReportDefinitionCubit>().loadDefinitions(
@@ -171,14 +175,14 @@ class _ReportsPageState extends State<ReportsPage> {
               ? null
               : () => _runReport(context),
           icon: const Icon(Icons.play_arrow_outlined, size: 17),
-          label: const Text('Run'),
+          label: Text(context.l10n.run),
         ),
         OutlinedButton.icon(
           onPressed: state.resultRows.isEmpty || !_canExportReports
               ? null
               : () => _exportExcel(context, state),
           icon: const Icon(Icons.download_outlined, size: 17),
-          label: const Text('Export Excel'),
+          label: Text(context.l10n.exportExcel),
         ),
       ],
     );
@@ -198,22 +202,22 @@ class _ReportsPageState extends State<ReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(14, 12, 14, 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
             child: Text(
-              'Available Reports',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              context.l10n.availableReports,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
             child: TextField(
               onChanged: (value) => setState(() => _reportSearchQuery = value),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 isDense: true,
-                prefixIcon: Icon(Icons.search, size: 18),
-                hintText: 'Search code or name',
-                contentPadding: EdgeInsets.symmetric(
+                prefixIcon: const Icon(Icons.search, size: 18),
+                hintText: context.l10n.searchCodeOrName,
+                contentPadding: const EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 10,
                 ),
@@ -223,11 +227,11 @@ class _ReportsPageState extends State<ReportsPage> {
           const Divider(height: 1),
           Expanded(
             child: activeDefinitions.isEmpty
-                ? const Center(
+                ? Center(
                     child: Padding(
-                      padding: EdgeInsets.all(18),
+                      padding: const EdgeInsets.all(18),
                       child: Text(
-                        'No active report settings. Add reports from Parameter > System > Reports.',
+                        context.l10n.noActiveReportSettings,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: AppColors.textSecondary,
@@ -238,11 +242,11 @@ class _ReportsPageState extends State<ReportsPage> {
                     ),
                   )
                 : definitions.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Padding(
-                          padding: EdgeInsets.all(18),
+                          padding: const EdgeInsets.all(18),
                           child: Text(
-                            'No reports match your search.',
+                            context.l10n.noReportsMatchSearch,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: AppColors.textSecondary,
@@ -296,8 +300,8 @@ class _ReportsPageState extends State<ReportsPage> {
     final selected = state.selectedDefinition;
     if (selected == null) {
       return _EmptyReportPanel(
-        title: 'Select Report',
-        message: 'Choose a report from the left panel to preview its data.',
+        title: context.l10n.selectReport,
+        message: context.l10n.selectReportMessage,
       );
     }
 
@@ -352,9 +356,9 @@ class _ReportsPageState extends State<ReportsPage> {
                   child: TextField(
                     onChanged: (value) =>
                         setState(() => _rowSearchQuery = value),
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search, size: 18),
-                      hintText: 'Search loaded rows',
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search, size: 18),
+                      hintText: context.l10n.searchLoadedRows,
                     ),
                   ),
                 ),
@@ -371,15 +375,14 @@ class _ReportsPageState extends State<ReportsPage> {
                   Positioned.fill(
                     child: state.resultRows.isEmpty
                         ? _EmptyReportPanel(
-                            title: 'No Data Loaded',
-                            message:
-                                'Click Run to execute this report and show the preview.',
+                            title: context.l10n.noDataLoaded,
+                            message: context.l10n.clickRunReportPreview,
                             compact: true,
                           )
                         : AppTable<Map<String, Object?>>(
                             data: rows,
                             columns: columns,
-                            emptyMessage: 'No rows match the current search',
+                            emptyMessage: context.l10n.noRowsMatchSearch,
                             pageable: Pageable(
                               page: 0,
                               size: rows.length,
@@ -405,13 +408,15 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   Future<void> _runReport(BuildContext context) async {
+    final cubit = context.read<ReportDefinitionCubit>();
+    final failedTitle = context.l10n.failedRunReport;
     try {
-      await context.read<ReportDefinitionCubit>().runSelectedReport();
+      await cubit.runSelectedReport();
     } catch (e) {
       if (!context.mounted) return;
       showErrorToastWithDetails(
         context,
-        title: 'Failed to run report',
+        title: failedTitle,
         error: e,
       );
     }
@@ -422,7 +427,7 @@ class _ReportsPageState extends State<ReportsPage> {
     ReportDefinitionState state,
   ) async {
     if (!_canExportReports) {
-      AppToast.showFailed('You do not have permission to export reports.');
+      AppToast.showFailed(context.l10n.noPermissionExportReports);
       return;
     }
     final selected = state.selectedDefinition;
@@ -431,6 +436,17 @@ class _ReportsPageState extends State<ReportsPage> {
     final columns = _exportColumns(selected, state.resultRows);
     final rows = _filteredRows(state.resultRows);
     final suggestedName = _safeFileName(selected.fileNamePattern);
+    final successMessage = context.l10n.reportExported;
+    final failedTitle = context.l10n.failedExportReport;
+    final excelHtml = _excelHtml(
+      selected,
+      columns,
+      rows,
+      reportCodeLabel: context.l10n.reportCode,
+      descriptionLabel: context.l10n.description,
+      exportedAtLabel: context.l10n.exportedAt,
+      totalRowsLabel: context.l10n.totalRows,
+    );
     final location = await getSaveLocation(
       suggestedName: generatedFileName('$suggestedName.xls'),
       acceptedTypeGroups: const [
@@ -441,15 +457,15 @@ class _ReportsPageState extends State<ReportsPage> {
 
     try {
       await io.File(location.path).writeAsString(
-        _excelHtml(selected, columns, rows),
+        excelHtml,
         flush: true,
       );
-      AppToast.showSuccess('Report exported.');
+      AppToast.showSuccess(successMessage);
     } catch (e) {
       if (!context.mounted) return;
       showErrorToastWithDetails(
         context,
-        title: 'Failed to export report',
+        title: failedTitle,
         error: e,
       );
     }
@@ -539,7 +555,12 @@ class _ReportsPageState extends State<ReportsPage> {
     ReportDefinition definition,
     List<ReportColumnDefinition> columns,
     List<Map<String, Object?>> rows,
-  ) {
+    {
+    required String reportCodeLabel,
+    required String descriptionLabel,
+    required String exportedAtLabel,
+    required String totalRowsLabel,
+  }) {
     final exportedAt = _formatDateTime(DateTime.now());
     final description = definition.description?.trim();
     final buffer = StringBuffer()
@@ -571,21 +592,21 @@ class _ReportsPageState extends State<ReportsPage> {
         '<tr><td class="title" colspan="${columns.length.clamp(1, 99)}">${_html(definition.name)}</td></tr>',
       )
       ..writeln(
-        '<tr><td class="meta-label">Report Code</td><td class="meta-value" colspan="${(columns.length - 1).clamp(1, 98)}">${_html(definition.code)}</td></tr>',
+        '<tr><td class="meta-label">${_html(reportCodeLabel)}</td><td class="meta-value" colspan="${(columns.length - 1).clamp(1, 98)}">${_html(definition.code)}</td></tr>',
       );
 
     if (description != null && description.isNotEmpty) {
       buffer.writeln(
-        '<tr><td class="meta-label">Description</td><td class="meta-value" colspan="${(columns.length - 1).clamp(1, 98)}">${_html(description)}</td></tr>',
+        '<tr><td class="meta-label">${_html(descriptionLabel)}</td><td class="meta-value" colspan="${(columns.length - 1).clamp(1, 98)}">${_html(description)}</td></tr>',
       );
     }
 
     buffer
       ..writeln(
-        '<tr><td class="meta-label">Exported At</td><td class="meta-value" colspan="${(columns.length - 1).clamp(1, 98)}">${_html(exportedAt)}</td></tr>',
+        '<tr><td class="meta-label">${_html(exportedAtLabel)}</td><td class="meta-value" colspan="${(columns.length - 1).clamp(1, 98)}">${_html(exportedAt)}</td></tr>',
       )
       ..writeln(
-        '<tr><td class="meta-label">Total Rows</td><td class="meta-value" colspan="${(columns.length - 1).clamp(1, 98)}">${rows.length}</td></tr>',
+        '<tr><td class="meta-label">${_html(totalRowsLabel)}</td><td class="meta-value" colspan="${(columns.length - 1).clamp(1, 98)}">${rows.length}</td></tr>',
       )
       ..writeln('<tr></tr>')
       ..writeln('<tr>');

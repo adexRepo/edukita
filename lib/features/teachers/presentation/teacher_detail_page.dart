@@ -1,4 +1,5 @@
 import 'package:edukita/core/router/service_locator.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/students/persentation/detail/detail_data_table.dart';
 import 'package:edukita/features/students/persentation/detail/detail_empty_section_text.dart';
@@ -72,8 +73,8 @@ class _TeacherDetailPageState extends State<TeacherDetailPage> {
       leading: const DetailAppBarBackButton(fallbackRoute: '/teachers'),
       title: DetailBreadcrumbs(
         items: [
-          const DetailBreadcrumbItem(
-            label: 'Teachers',
+          DetailBreadcrumbItem(
+            label: context.l10n.menuTeachers,
             route: '/teachers',
           ),
           DetailBreadcrumbItem(label: label),
@@ -94,10 +95,10 @@ class _TeacherDetailPageState extends State<TeacherDetailPage> {
     if (!_canViewTeachers) {
       return Scaffold(
         appBar: _appBar(widget.teacher.fullName),
-        body: const Center(
+        body: Center(
           child: Text(
-            'You do not have permission to view teachers.',
-            style: TextStyle(
+            context.l10n.teacherAccessDenied,
+            style: const TextStyle(
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w700,
             ),
@@ -128,7 +129,9 @@ class _TeacherDetailPageState extends State<TeacherDetailPage> {
           return Scaffold(
             appBar: _appBar(widget.teacher.fullName),
             body: Center(
-              child: Text(snapshot.error?.toString() ?? 'Teacher not found'),
+              child: Text(
+                snapshot.error?.toString() ?? context.l10n.teacherNotFound,
+              ),
             ),
           );
         }
@@ -143,12 +146,12 @@ class _TeacherDetailPageState extends State<TeacherDetailPage> {
               child: Column(
                 children: [
                   const SizedBox(height: 8),
-                  const DetailTabBar(
+                  DetailTabBar(
                     tabs: [
-                      'Overview',
-                      'Impact',
-                      'Classes',
-                      'Notes',
+                      context.l10n.overview,
+                      context.l10n.impact,
+                      context.l10n.classes,
+                      context.l10n.notes,
                     ],
                   ),
                   Expanded(
@@ -179,7 +182,7 @@ class _TeacherHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DetailSectionCard(
-      title: 'Teacher Profile',
+      title: context.l10n.teacherProfile,
       icon: Icons.badge_outlined,
       wrapChildren: false,
       children: [
@@ -212,7 +215,7 @@ class _TeacherHeader extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     data.subjects.isEmpty
-                        ? 'No subjects assigned'
+                        ? context.l10n.noSubjectsAssigned
                         : data.subjects.join(', '),
                     style: const TextStyle(
                       color: AppColors.textSecondary,
@@ -238,17 +241,23 @@ class _TeacherHeader extends StatelessWidget {
           runSpacing: 8,
           children: [
             _MetricTile(
-              label: 'Students',
+              label: context.l10n.students,
               value: data.totalStudents.toString(),
             ),
-            _MetricTile(label: 'Classes', value: data.classCount.toString()),
-            _MetricTile(label: 'Notes', value: data.notesWritten.toString()),
             _MetricTile(
-              label: 'Follow-up',
+              label: context.l10n.classes,
+              value: data.classCount.toString(),
+            ),
+            _MetricTile(
+              label: context.l10n.notes,
+              value: data.notesWritten.toString(),
+            ),
+            _MetricTile(
+              label: context.l10n.followUp,
               value: data.followUpNotes.toString(),
             ),
             _MetricTile(
-              label: 'Need Care',
+              label: context.l10n.needCare,
               value: data.atRiskStudents.toString(),
             ),
           ],
@@ -276,39 +285,46 @@ class _OverviewTab extends StatelessWidget {
       children: [
         _TeacherHeader(data: data),
         DetailSectionCard(
-          title: 'Teaching Load',
+          title: context.l10n.teachingLoad,
           icon: Icons.work_outline,
           children: [
-            _MetricTile(label: 'Classes', value: data.classCount.toString()),
             _MetricTile(
-              label: 'Students',
+              label: context.l10n.classes,
+              value: data.classCount.toString(),
+            ),
+            _MetricTile(
+              label: context.l10n.students,
               value: data.totalStudents.toString(),
             ),
             _MetricTile(
-              label: 'Subjects',
+              label: context.l10n.subjects,
               value: data.subjects.length.toString(),
             ),
             _MetricTile(
-              label: 'Teaching Hours',
+              label: context.l10n.teachingHours,
               value: _formatHours(data.teachingHours),
             ),
           ],
         ),
         DetailSectionCard(
-          title: 'Summary Insight',
+          title: context.l10n.summaryInsight,
           icon: Icons.auto_awesome_outlined,
           wrapChildren: false,
           children: [DetailEmptySectionText(data.summary)],
         ),
         DetailSectionCard(
-          title: 'Alerts',
+          title: context.l10n.alerts,
           icon: Icons.warning_amber_outlined,
           wrapChildren: false,
           children: [
             DetailDataTable(
-              columns: const ['Signal', 'Detail', 'Level'],
+              columns: [
+                context.l10n.signal,
+                context.l10n.detail,
+                context.l10n.level,
+              ],
               rows: data.alertRows,
-              emptyText: 'No management alerts detected for this teacher.',
+              emptyText: context.l10n.noManagementAlerts,
             ),
           ],
         ),
@@ -327,34 +343,41 @@ class _ImpactTab extends StatelessWidget {
     return DetailTabScroll(
       children: [
         DetailSectionCard(
-          title: 'Student Impact Snapshot',
+          title: context.l10n.studentImpactSnapshot,
           icon: Icons.trending_up_outlined,
           children: [
             _MetricTile(
-              label: 'Improved',
-              value: '${data.improvedStudents} up',
-            ),
-            _MetricTile(label: 'Stable', value: '${data.stableStudents} same'),
-            _MetricTile(
-              label: 'Declined',
-              value: '${data.declinedStudents} down',
+              label: context.l10n.improved,
+              value: '${data.improvedStudents} ${context.l10n.up}',
             ),
             _MetricTile(
-              label: 'Need Care',
+              label: context.l10n.stable,
+              value: '${data.stableStudents} ${context.l10n.same}',
+            ),
+            _MetricTile(
+              label: context.l10n.declined,
+              value: '${data.declinedStudents} ${context.l10n.down}',
+            ),
+            _MetricTile(
+              label: context.l10n.needCare,
               value: data.atRiskStudents.toString(),
             ),
           ],
         ),
         DetailSectionCard(
-          title: 'Students Under Care',
+          title: context.l10n.studentsUnderCare,
           icon: Icons.groups_outlined,
           wrapChildren: false,
           children: [
             DetailDataTable(
-              columns: const ['Student', 'Class', 'Score Trend', 'Follow-up'],
+              columns: [
+                context.l10n.studentName,
+                context.l10n.className,
+                context.l10n.scoreTrend,
+                context.l10n.followUp,
+              ],
               rows: data.studentImpactRows,
-              emptyText:
-                  'Student impact rows will appear after teaching assessment scores are recorded.',
+              emptyText: context.l10n.noStudentImpactRows,
             ),
           ],
         ),
@@ -373,15 +396,19 @@ class _ClassesTab extends StatelessWidget {
     return DetailTabScroll(
       children: [
         DetailSectionCard(
-          title: 'Assigned Classes & Students',
+          title: context.l10n.assignedClassesStudents,
           icon: Icons.class_outlined,
           wrapChildren: false,
           children: [
             DetailDataTable(
-              columns: const ['Class', 'School', 'Students', 'Subjects'],
+              columns: [
+                context.l10n.className,
+                context.l10n.school,
+                context.l10n.students,
+                context.l10n.subjects,
+              ],
               rows: data.classRows,
-              emptyText:
-                  'Assigned classes will appear here after schedules are linked to this teacher.',
+              emptyText: context.l10n.assignedClassesEmpty,
             ),
           ],
         ),
@@ -400,33 +427,38 @@ class _NotesTab extends StatelessWidget {
     return DetailTabScroll(
       children: [
         DetailSectionCard(
-          title: 'Notes Activity',
+          title: context.l10n.notesActivity,
           icon: Icons.note_alt_outlined,
           children: [
             _MetricTile(
-              label: 'Total Notes',
+              label: context.l10n.totalNotes,
               value: data.notesWritten.toString(),
             ),
             _MetricTile(
-              label: 'Follow-up',
+              label: context.l10n.followUp,
               value: data.followUpNotes.toString(),
             ),
             _MetricTile(
-              label: 'Need Care',
+              label: context.l10n.needCare,
               value: data.atRiskStudents.toString(),
             ),
           ],
         ),
         DetailSectionCard(
-          title: 'Recent Teacher Notes',
+          title: context.l10n.recentTeacherNotes,
           icon: Icons.history_edu_outlined,
           wrapChildren: false,
           children: [
             DetailDataTable(
-              columns: const ['Date', 'Student', 'Class', 'Type', 'Note'],
+              columns: [
+                context.l10n.date,
+                context.l10n.studentName,
+                context.l10n.className,
+                context.l10n.type,
+                context.l10n.note,
+              ],
               rows: data.noteRows,
-              emptyText:
-                  'No student session notes have been recorded by this teacher.',
+              emptyText: context.l10n.noStudentSessionNotes,
             ),
           ],
         ),

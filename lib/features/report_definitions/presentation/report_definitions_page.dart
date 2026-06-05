@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/features/report_definitions/data/report_definition_model.dart';
 import 'package:edukita/features/report_definitions/domain/report_definition_cubit.dart';
@@ -73,7 +74,9 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
     final content = BlocBuilder<ReportDefinitionCubit, ReportDefinitionState>(
       builder: (context, state) {
         if (state.error != null && state.definitions.isEmpty) {
-          return Center(child: Text('Error: ${state.error}'));
+          return Center(
+            child: Text(context.l10n.errorWithDetails(state.error!)),
+          );
         }
 
         final pageContent = Column(
@@ -102,7 +105,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
     if (widget.embedded) return content;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Report Settings')),
+      appBar: AppBar(title: Text(context.l10n.reportSettings)),
       body: Padding(padding: const EdgeInsets.all(16), child: content),
     );
   }
@@ -113,16 +116,15 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AppPageHeader(
-          title: 'Report Settings',
-          subtitle:
-              'Maintain dynamic report definitions, file names, SQL queries, and column display settings.',
+          title: context.l10n.reportSettings,
+          subtitle: context.l10n.reportSettingsSubtitle,
           trailing: ElevatedButton.icon(
             onPressed:
                 _authorizationLoaded && _canUpdateParameters
                     ? () => _openForm(context)
                     : null,
             icon: const Icon(Icons.add, size: 17),
-            label: const Text('Add Report'),
+            label: Text(context.l10n.addReport),
           ),
         ),
         const SizedBox(height: 12),
@@ -140,8 +142,8 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
                   prefixIcon: const Icon(Icons.search, size: 18),
                   suffixIcon: state.query.trim().isEmpty
                       ? null
-                      : IconButton(
-                          tooltip: 'Clear search',
+                        : IconButton(
+                          tooltip: context.l10n.clearSearch,
                           onPressed: () {
                             _searchController.clear();
                             _searchDebounce?.cancel();
@@ -149,16 +151,18 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
                           },
                           icon: const Icon(Icons.close, size: 18),
                         ),
-                  hintText: 'Search report name, code, description',
+                  hintText: context.l10n.searchReportNameCodeDescription,
                 ),
               ),
             ),
             SizedBox(
               width: 145,
               child: CommonFormWidgets.dropdownFieldTyped<_StatusFilter>(
-                label: 'Status',
+                label: context.l10n.status,
                 items: _StatusFilter.values,
-                labelBuilder: (item) => item.label,
+                labelBuilder: (item) => item.isActive == true
+                    ? context.l10n.statusActive
+                    : context.l10n.statusInactive,
                 valueBuilder: (item) => item.value,
                 value: _StatusFilter.fromActive(state.isActive),
                 isRequired: false,
@@ -174,7 +178,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
                   cubit.clearFilters();
                 },
                 icon: const Icon(Icons.filter_alt_off_outlined, size: 17),
-                label: const Text('Clear'),
+                label: Text(context.l10n.clearSearch),
               ),
           ],
         ),
@@ -186,7 +190,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
     final definitions = state.definitions;
     return AppTable<ReportDefinition>(
       data: definitions,
-      emptyMessage: 'No report settings found',
+      emptyMessage: context.l10n.noReportSettings,
       deferRowTap: false,
       pageable: Pageable(
         page: 0,
@@ -197,7 +201,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
       onRowTap: (definition) => _openForm(context, definition: definition),
       columns: [
         AppTableColumn(
-          title: 'Code\nReport Name',
+          title: context.l10n.codeReportName,
           flex: 2,
           minWidth: 230,
           sortValue: (definition) => _sortValue(definition.code),
@@ -223,7 +227,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
           ),
         ),
         AppTableColumn(
-          title: 'File Name',
+          title: context.l10n.fileName,
           flex: 3,
           minWidth: 300,
           sortValue: (definition) => _sortValue(definition.fileNamePattern),
@@ -235,7 +239,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
           ),
         ),
         AppTableColumn(
-          title: 'Columns',
+          title: context.l10n.columns,
           flex: 2,
           minWidth: 120,
           sortValue: (definition) => definition.columns.length,
@@ -245,8 +249,11 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
                 .length;
             return Text(
               missing == 0
-                  ? '${definition.columns.length} columns'
-                  : '${definition.columns.length} columns, $missing missing',
+                  ? context.l10n.columnsCount(definition.columns.length)
+                  : context.l10n.columnsMissingCount(
+                      definition.columns.length,
+                      missing,
+                    ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -258,23 +265,25 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
           },
         ),
         AppTableColumn(
-          title: 'Status',
+          title: context.l10n.status,
           flex: 1,
           minWidth: 110,
           sortValue: (definition) => definition.isActive ? 1 : 0,
           cell: (definition) => _pill(
-            definition.isActive ? 'Active' : 'Inactive',
+            definition.isActive
+                ? context.l10n.statusActive
+                : context.l10n.statusInactive,
             muted: !definition.isActive,
           ),
         ),
         AppTableColumn(
-          title: 'Actions',
+          title: context.l10n.actions,
           flex: 2,
           cell: (definition) => Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
-                tooltip: 'Edit report',
+                tooltip: context.l10n.editReport,
                 onPressed: _authorizationLoaded && _canUpdateParameters
                     ? () => _openForm(context, definition: definition)
                     : null,
@@ -286,7 +295,9 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
                 icon: const Icon(Icons.edit, size: 16),
               ),
               IconButton(
-                tooltip: definition.isActive ? 'Deactivate' : 'Activate',
+                tooltip: definition.isActive
+                    ? context.l10n.deactivate
+                    : context.l10n.activate,
                 onPressed: _authorizationLoaded && _canUpdateParameters
                     ? () => _toggleActive(context, definition)
                     : null,
@@ -307,7 +318,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
               ),
               if (!definition.isDefaultSeed)
                 IconButton(
-                  tooltip: 'Delete report setting',
+                  tooltip: context.l10n.deleteReportSetting,
                   onPressed: _authorizationLoaded && _canUpdateParameters
                       ? () => _confirmDelete(context, definition)
                       : null,
@@ -367,7 +378,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
     ReportDefinition? definition,
   }) async {
     if (!_canUpdateParameters) {
-      AppToast.showFailed('You do not have permission to update report settings.');
+      AppToast.showFailed(context.l10n.noPermissionUpdateReportSettings);
       return;
     }
     _searchDebounce?.cancel();
@@ -390,26 +401,25 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
     ReportDefinition definition,
   ) async {
     if (!_canUpdateParameters) {
-      AppToast.showFailed('You do not have permission to update report settings.');
+      AppToast.showFailed(context.l10n.noPermissionUpdateReportSettings);
       return;
     }
     final cubit = context.read<ReportDefinitionCubit>();
+    final successMessage = definition.isActive
+        ? context.l10n.reportSettingDeactivated
+        : context.l10n.reportSettingActivated;
+    final failedTitle = context.l10n.failedUpdateReport;
     try {
       await cubit.setActive(
         definition,
         !definition.isActive,
       );
-      if (!context.mounted) return;
-      AppToast.showSuccess(
-        definition.isActive
-            ? 'Report setting deactivated.'
-            : 'Report setting activated.',
-      );
+      AppToast.showSuccess(successMessage);
     } catch (e) {
       if (!context.mounted) return;
       showErrorToastWithDetails(
         context,
-        title: 'Failed to update report',
+        title: failedTitle,
         error: e,
       );
     }
@@ -420,26 +430,26 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
     ReportDefinition definition,
   ) async {
     if (!_canUpdateParameters) {
-      AppToast.showFailed('You do not have permission to delete report settings.');
+      AppToast.showFailed(context.l10n.noPermissionDeleteReportSettings);
       return;
     }
     final cubit = context.read<ReportDefinitionCubit>();
+    final failedTitle = context.l10n.failedDeleteReport;
+    final subject = context.l10n.reportSettingSubject;
     final confirmed = await showGuardedDialog<bool>(
       context: context,
       guardKey: 'delete_report_definition_${definition.id}',
       builder: (context) => AlertDialog(
-        title: const AppDialogTitle('Delete Report Setting'),
-        content: Text(
-          'Delete ${definition.name}? This removes the report from Parameter and the Reports menu.',
-        ),
+        title: AppDialogTitle(context.l10n.deleteReportSettingTitle),
+        content: Text(context.l10n.deleteReportSettingMessage(definition.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: Text(context.l10n.buttonDelete),
           ),
         ],
       ),
@@ -451,13 +461,13 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
       if (!context.mounted) return;
       AppToast.showSubmissionSuccess(
         action: SubmissionAction.delete,
-        subject: 'report setting',
+        subject: subject,
       );
     } catch (e) {
       if (!context.mounted) return;
       showErrorToastWithDetails(
         context,
-        title: 'Failed to delete report',
+        title: failedTitle,
         error: e,
       );
     }

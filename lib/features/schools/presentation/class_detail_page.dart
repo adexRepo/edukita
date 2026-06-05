@@ -1,4 +1,5 @@
 import 'package:edukita/features/schools/data/class_model.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/widgets/detail_breadcrumbs.dart';
 import 'package:flutter/material.dart';
 
@@ -15,7 +16,10 @@ class ClassDetailPage extends StatelessWidget {
         leading: const DetailAppBarBackButton(fallbackRoute: '/school'),
         title: DetailBreadcrumbs(
           items: [
-            const DetailBreadcrumbItem(label: 'Schools', route: '/school'),
+            DetailBreadcrumbItem(
+              label: context.l10n.school,
+              route: '/school',
+            ),
             DetailBreadcrumbItem(label: schoolClass.className),
           ],
         ),
@@ -26,14 +30,14 @@ class ClassDetailPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Class Details',
+              context.l10n.classDetails,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 16),
-            Text('Class Name: ${schoolClass.className}'),
-            Text('Level: ${schoolClass.level}'),
-            Text('Section: ${schoolClass.section ?? 'N/A'}'),
-            Text('Year: ${schoolClass.year}'),
+            Text('${context.l10n.className}: ${schoolClass.className}'),
+            Text('${context.l10n.level}: ${schoolClass.level}'),
+            Text('${context.l10n.section}: ${schoolClass.section ?? '-'}'),
+            Text('${context.l10n.year}: ${schoolClass.year}'),
           ],
         ),
       ),

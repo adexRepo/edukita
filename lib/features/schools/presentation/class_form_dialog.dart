@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
@@ -86,7 +87,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               CommonFormWidgets.textField(
-                label: 'Class Name - Autos',
+                label: context.l10n.generatedClassName,
                 value: className,
                 controller: _classNameController,
                 readOnly: true,
@@ -99,7 +100,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.dropdownField(
-                label: 'Level',
+                label: context.l10n.level,
                 items: _schoolType.allowedLevels
                     .map((level) => level.toString())
                     .toList(),
@@ -116,7 +117,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.dropdownField(
-                label: 'Section',
+                label: context.l10n.section,
                 items: ['A', 'B', 'C', 'D'],
                 value: widget.schoolClass != null ? (section ?? '') : null,
                 hint: AppFormFieldStyle.select('section'),
@@ -130,7 +131,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
-                label: 'Year',
+                label: context.l10n.year,
                 value: year,
                 hint: AppFormFieldStyle.yearFormat,
                 keyboardType: TextInputType.number,
@@ -158,7 +159,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.buttonCancel),
         ),
         ElevatedButton(
           onPressed: _isSaving ? null : _submit,
@@ -168,7 +169,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : Text(context.l10n.buttonSave),
         ),
       ],
     );

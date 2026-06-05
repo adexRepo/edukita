@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/utils/text_case.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/data/student_detail_insight_data.dart';
@@ -23,20 +24,20 @@ class StudentBehaviorTab extends StatelessWidget {
         return DetailTabScroll(
           children: [
             DetailSectionCard(
-              title: 'Teacher Notes',
+              title: context.l10n.teacherNotes,
               icon: Icons.record_voice_over_outlined,
               wrapChildren: false,
               children: [
                 if (snapshot.connectionState == ConnectionState.waiting)
-                  const DetailEmptySectionText('Loading teacher notes...')
+                  DetailEmptySectionText(context.l10n.loadingTeacherNotes)
                 else
                   DetailDataTable(
-                    columns: const [
-                      'Date',
-                      'Type',
-                      'Rating',
-                      'Teacher',
-                      'Comment',
+                    columns: [
+                      context.l10n.date,
+                      context.l10n.type,
+                      context.l10n.rating,
+                      context.l10n.teacher,
+                      context.l10n.comment,
                     ],
                     rows: (insights?.recentTeacherNotes ?? const [])
                         .map(
@@ -51,25 +52,29 @@ class StudentBehaviorTab extends StatelessWidget {
                           ],
                         )
                         .toList(),
-                    emptyText:
-                        'No teacher notes have been saved from teaching sessions.',
+                    emptyText: context.l10n.noTeacherNotes,
                   ),
               ],
             ),
             DetailSectionCard(
-              title: 'Note Type Distribution',
+              title: context.l10n.noteTypeDistribution,
               icon: Icons.pie_chart_outline,
               wrapChildren: false,
               children: [
                 if (snapshot.connectionState == ConnectionState.waiting)
-                  const DetailEmptySectionText('Loading note distribution...')
+                  DetailEmptySectionText(context.l10n.loadingNoteDistribution)
                 else
                   DetailDataTable(
-                    columns: const ['Type', 'Count'],
+                    columns: [context.l10n.type, context.l10n.count],
                     rows: (insights?.noteTypeCounts ?? const [])
-                        .map((item) => [item.type.titleWords, item.count.toString()])
+                        .map(
+                          (item) => [
+                            item.type.titleWords,
+                            item.count.toString(),
+                          ],
+                        )
                         .toList(),
-                    emptyText: 'No teacher note distribution is available.',
+                    emptyText: context.l10n.noTeacherNoteDistribution,
                   ),
               ],
             ),

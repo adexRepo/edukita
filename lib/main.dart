@@ -1,10 +1,15 @@
 import 'dart:async';
 
+import 'package:edukita/core/localization/app_language_cubit.dart';
+import 'package:edukita/core/localization/app_language_state.dart';
+import 'package:edukita/core/localization/locale_storage.dart';
 import 'package:edukita/core/router/app_router.dart';
 import 'package:edukita/core/router/service_locator.dart';
+import 'package:edukita/l10n/app_localizations.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -53,20 +58,30 @@ class _EdukitaAppState extends State<EdukitaApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      scrollBehavior: ScrollBehavior(),
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.theme,
-      routerConfig: appRouter,
-      builder: (context, child) {
-        final mediaQuery = MediaQuery.of(context);
-        return MediaQuery(
-          data: mediaQuery.copyWith(
-            textScaler: TextScaler.linear(AppTypography.appTextScale),
-          ),
-          child: AppToastHost(child: child ?? const SizedBox.shrink()),
-        );
-      },
+    return BlocProvider(
+      create: (_) => AppLanguageCubit(LocaleStorage())..loadSavedLanguage(),
+      child: BlocBuilder<AppLanguageCubit, AppLanguageState>(
+        builder: (context, languageState) {
+          return MaterialApp.router(
+            scrollBehavior: ScrollBehavior(),
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.theme,
+            locale: languageState.locale,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            routerConfig: appRouter,
+            builder: (context, child) {
+              final mediaQuery = MediaQuery.of(context);
+              return MediaQuery(
+                data: mediaQuery.copyWith(
+                  textScaler: TextScaler.linear(AppTypography.appTextScale),
+                ),
+                child: AppToastHost(child: child ?? const SizedBox.shrink()),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
