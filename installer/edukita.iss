@@ -3,7 +3,7 @@
 #endif
 
 #define MyAppName "Edukita"
-#define MyAppPublisher "Yayasan Alkahfi"
+#define MyAppPublisher "Ecnics"
 #define MyAppExeName "edukita.exe"
 
 [Setup]

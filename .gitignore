@@ -6,6 +6,9 @@
 *.swp
 .buildlog/
 .history
+linux/flutter
+macos/flutter
+windows/flutter
 
 
 

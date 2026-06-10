@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "edukita" "\0"
+            VALUE "CompanyName", "Ecnics" "\0"
+            VALUE "FileDescription", "Edukita" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "edukita" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Ecnics. All rights reserved." "\0"
             VALUE "OriginalFilename", "edukita.exe" "\0"
-            VALUE "ProductName", "edukita" "\0"
+            VALUE "ProductName", "Edukita" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
