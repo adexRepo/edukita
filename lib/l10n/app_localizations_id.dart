@@ -3726,6 +3726,119 @@ class AppLocalizationsId extends AppLocalizations {
       'Periode bantuan berhasil dibatalkan.';
 
   @override
+  String get startupPreparingWorkspace => 'Menyiapkan ruang kerja Anda...';
+
+  @override
+  String get startupFailed => 'Edukita tidak dapat menyelesaikan proses awal.';
+
+  @override
+  String get retry => 'Coba Lagi';
+
+  @override
+  String get accountSecurity => 'Keamanan Akun';
+
+  @override
+  String get accountSecurityDescription =>
+      'Jaga kerahasiaan dan perbarui kata sandi akun Edukita Anda.';
+
+  @override
+  String get changePassword => 'Ubah Kata Sandi';
+
+  @override
+  String get createNewPassword => 'Buat Kata Sandi Baru';
+
+  @override
+  String get temporaryPasswordMustBeReplaced =>
+      'Kata sandi sementara harus diganti sebelum melanjutkan.';
+
+  @override
+  String get strongPasswordDescription =>
+      'Gunakan kata sandi kuat yang tidak Anda gunakan di tempat lain.';
+
+  @override
+  String get currentPassword => 'Kata Sandi Saat Ini';
+
+  @override
+  String get confirmNewPassword => 'Konfirmasi Kata Sandi Baru';
+
+  @override
+  String get passwordChangedLoginAgain =>
+      'Kata sandi berhasil diubah. Silakan masuk kembali.';
+
+  @override
+  String get currentPasswordIncorrect => 'Kata sandi saat ini salah.';
+
+  @override
+  String get passwordMinimumEight =>
+      'Kata sandi harus berisi minimal 8 karakter.';
+
+  @override
+  String get newPasswordMustDiffer => 'Kata sandi baru harus berbeda.';
+
+  @override
+  String get passwordsDoNotMatch => 'Kata sandi tidak cocok.';
+
+  @override
+  String fieldRequiredMessage(Object field) {
+    return '$field wajib diisi.';
+  }
+
+  @override
+  String get aboutEdukita => 'Tentang Edukita';
+
+  @override
+  String get aboutEdukitaDescription =>
+      'Identitas aplikasi dan informasi versi yang terpasang.';
+
+  @override
+  String get product => 'Produk';
+
+  @override
+  String get publisher => 'Penerbit';
+
+  @override
+  String get databaseSchema => 'Skema Database';
+
+  @override
+  String get loadingValue => 'Memuat...';
+
+  @override
+  String get temporaryPassword => 'Kata Sandi Sementara';
+
+  @override
+  String get generateTemporaryPassword => 'Buat dan salin kata sandi sementara';
+
+  @override
+  String get temporaryPasswordGeneratedCopied =>
+      'Kata sandi sementara berhasil dibuat dan disalin.';
+
+  @override
+  String get registrationFormUnavailable =>
+      'Formulir pendaftaran tidak tersedia.';
+
+  @override
+  String get registrationFormNotFound =>
+      'Formulir pendaftaran tidak ditemukan di penyimpanan.';
+
+  @override
+  String get registrationFormDownloaded =>
+      'Formulir pendaftaran berhasil diunduh.';
+
+  @override
+  String get registrationFormDownloadFailed =>
+      'Gagal mengunduh formulir pendaftaran.';
+
+  @override
+  String get loadingRegistrationForm => 'Memuat formulir pendaftaran...';
+
+  @override
+  String get noRegistrationFormUploaded =>
+      'Belum ada formulir pendaftaran yang diunggah.';
+
+  @override
+  String get download => 'Unduh';
+
+  @override
   String errorWithDetails(Object details) {
     return 'Kesalahan: $details';
   }

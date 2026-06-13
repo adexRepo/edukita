@@ -1,4 +1,5 @@
 import 'package:edukita/core/database/database_provider.dart';
+import 'package:edukita/core/storage/uploaded_file_repository.dart';
 import 'package:edukita/features/strategy/data/strategy_model.dart';
 
 class StrategyRepository {
@@ -36,21 +37,69 @@ class StrategyRepository {
 
   Future<int> insertStrategy(Strategy strategy) async {
     final db = await _dbProvider.database;
-    return db.insert('strategies', strategy.toMap());
+    return db.transaction((txn) async {
+      final result = await txn.insert('strategies', strategy.toMap());
+      final path = strategy.sampleFilePath?.trim();
+      if (path?.isNotEmpty == true) {
+        await UploadedFileRepository.register(
+          txn,
+          entityType: 'strategy',
+          entityId: strategy.id,
+          documentType: 'strategy_sample',
+          filePath: path!,
+          originalFileName: strategy.sampleFileName,
+        );
+      }
+      return result;
+    });
   }
 
   Future<int> updateStrategy(Strategy strategy) async {
     final db = await _dbProvider.database;
-    return db.update(
-      'strategies',
-      strategy.toMap(),
-      where: 'id = ?',
-      whereArgs: [strategy.id],
-    );
+    return db.transaction((txn) async {
+      final result = await txn.update(
+        'strategies',
+        strategy.toMap(),
+        where: 'id = ?',
+        whereArgs: [strategy.id],
+      );
+      final path = strategy.sampleFilePath?.trim();
+      if (path?.isNotEmpty == true) {
+        await UploadedFileRepository.register(
+          txn,
+          entityType: 'strategy',
+          entityId: strategy.id,
+          documentType: 'strategy_sample',
+          filePath: path!,
+          originalFileName: strategy.sampleFileName,
+        );
+      } else {
+        await UploadedFileRepository.deactivate(
+          txn,
+          entityType: 'strategy',
+          entityId: strategy.id,
+          documentType: 'strategy_sample',
+        );
+      }
+      return result;
+    });
   }
 
   Future<int> deleteStrategy(String id) async {
     final db = await _dbProvider.database;
-    return db.delete('strategies', where: 'id = ?', whereArgs: [id]);
+    return db.transaction((txn) async {
+      final result = await txn.delete(
+        'strategies',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      await UploadedFileRepository.deactivate(
+        txn,
+        entityType: 'strategy',
+        entityId: id,
+        documentType: 'strategy_sample',
+      );
+      return result;
+    });
   }
 }

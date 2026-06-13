@@ -4,6 +4,8 @@ import 'package:edukita/core/database/database_migrations.dart';
 import 'package:edukita/core/database/database_seed.dart';
 import 'package:edukita/core/database/database_tables.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
+import 'package:edukita/core/storage/uploaded_file_repository.dart';
+import 'package:edukita/features/auth/domain/password_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -13,6 +15,7 @@ import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 class DatabaseProvider {
   DatabaseProvider._();
   static final instance = DatabaseProvider._();
+  static const schemaVersion = 26;
 
   Database? _db;
 
@@ -28,7 +31,7 @@ class DatabaseProvider {
 
     final db = await openDatabase(
       path,
-      version: 26,
+      version: schemaVersion,
       onConfigure: (db) async => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, version) async {
         await DatabaseTables.createAll(db);
@@ -38,6 +41,7 @@ class DatabaseProvider {
       onOpen: (db) async {
         await DatabaseMigrations.ensureCriticalSchema(db);
         await DatabaseSeed.seed(db);
+        await UploadedFileRepository.backfill(db);
       },
     );
 
@@ -122,11 +126,48 @@ class DatabaseProvider {
     await DatabaseSeed.ensureAdmin(db);
     final result = await db.query(
       'users',
-      where: 'username = ? AND password = ? AND COALESCE(is_active, 1) = 1',
-      whereArgs: [username.trim(), password.trim()],
+      where: 'username = ? AND COALESCE(is_active, 1) = 1',
+      whereArgs: [username.trim()],
       limit: 1,
     );
-    return result.isEmpty ? null : result.first;
+    if (result.isEmpty) return null;
+    final user = result.first;
+    final storedPassword = user['password']?.toString() ?? '';
+    if (!PasswordService.verify(password, storedPassword)) return null;
+    if (!PasswordService.isHashed(storedPassword)) {
+      await db.update(
+        'users',
+        {'password': PasswordService.hash(password)},
+        where: 'id = ?',
+        whereArgs: [user['id']],
+      );
+    }
+    return user;
+  }
+
+  Future<void> changePassword({
+    required String userId,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final db = await database;
+    final rows = await db.query('users', where: 'id = ?', whereArgs: [userId], limit: 1);
+    if (rows.isEmpty) throw StateError('User not found.');
+    final storedPassword = rows.first['password']?.toString() ?? '';
+    if (!PasswordService.verify(currentPassword, storedPassword)) {
+      throw StateError('Current password is incorrect.');
+    }
+    await db.update(
+      'users',
+      {
+        'password': PasswordService.hash(newPassword),
+        'must_change_password': 0,
+        'password_changed_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
   }
 
   Future<Map<String, Object?>?> getUserById(String id) async {

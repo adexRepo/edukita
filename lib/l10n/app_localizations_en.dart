@@ -3718,6 +3718,118 @@ class AppLocalizationsEn extends AppLocalizations {
   String get assistancePeriodCancelledSuccess => 'Assistance period cancelled.';
 
   @override
+  String get startupPreparingWorkspace => 'Preparing your workspace...';
+
+  @override
+  String get startupFailed => 'Edukita could not finish starting.';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
+  String get accountSecurity => 'Account Security';
+
+  @override
+  String get accountSecurityDescription =>
+      'Keep your Edukita account password private and up to date.';
+
+  @override
+  String get changePassword => 'Change Password';
+
+  @override
+  String get createNewPassword => 'Create Your New Password';
+
+  @override
+  String get temporaryPasswordMustBeReplaced =>
+      'Your temporary password must be replaced before continuing.';
+
+  @override
+  String get strongPasswordDescription =>
+      'Use a strong password that you do not use elsewhere.';
+
+  @override
+  String get currentPassword => 'Current Password';
+
+  @override
+  String get confirmNewPassword => 'Confirm New Password';
+
+  @override
+  String get passwordChangedLoginAgain =>
+      'Password changed. Please sign in again.';
+
+  @override
+  String get currentPasswordIncorrect => 'Current password is incorrect.';
+
+  @override
+  String get passwordMinimumEight =>
+      'Password must contain at least 8 characters.';
+
+  @override
+  String get newPasswordMustDiffer => 'New password must be different.';
+
+  @override
+  String get passwordsDoNotMatch => 'Passwords do not match.';
+
+  @override
+  String fieldRequiredMessage(Object field) {
+    return '$field is required.';
+  }
+
+  @override
+  String get aboutEdukita => 'About Edukita';
+
+  @override
+  String get aboutEdukitaDescription =>
+      'Application identity and installed release information.';
+
+  @override
+  String get product => 'Product';
+
+  @override
+  String get publisher => 'Publisher';
+
+  @override
+  String get databaseSchema => 'Database Schema';
+
+  @override
+  String get loadingValue => 'Loading...';
+
+  @override
+  String get temporaryPassword => 'Temporary Password';
+
+  @override
+  String get generateTemporaryPassword =>
+      'Generate and copy temporary password';
+
+  @override
+  String get temporaryPasswordGeneratedCopied =>
+      'Temporary password generated and copied.';
+
+  @override
+  String get registrationFormUnavailable =>
+      'Registration form is not available.';
+
+  @override
+  String get registrationFormNotFound =>
+      'Registration form was not found in storage.';
+
+  @override
+  String get registrationFormDownloaded => 'Registration form downloaded.';
+
+  @override
+  String get registrationFormDownloadFailed =>
+      'Failed to download registration form.';
+
+  @override
+  String get loadingRegistrationForm => 'Loading registration form...';
+
+  @override
+  String get noRegistrationFormUploaded => 'No registration form uploaded.';
+
+  @override
+  String get download => 'Download';
+
+  @override
   String errorWithDetails(Object details) {
     return 'Error: $details';
   }

@@ -142,8 +142,8 @@ class _UserFormCardState extends State<UserFormCard> {
                         return context.l10n.passwordRequired;
                       }
                       if ((value?.isNotEmpty ?? false) &&
-                          value!.trim().length < 6) {
-                        return context.l10n.passwordMinLengthSix;
+                          value!.trim().length < 8) {
+                        return context.l10n.passwordMinimumEight;
                       }
                       if ((value?.length ?? 0) > 64) {
                         return context.l10n.passwordMaxLength;

@@ -36,6 +36,7 @@ class AuthSessionCache {
     String? fullName,
     String? nickName,
     String? teacherId,
+    bool mustChangePassword = false,
   }) async {
     final file = await _sessionFile();
     await file.parent.create(recursive: true);
@@ -46,6 +47,7 @@ class AuthSessionCache {
       fullName: fullName,
       nickName: nickName,
       teacherId: teacherId,
+      mustChangePassword: mustChangePassword,
       expiresAt: DateTime.now().add(sessionTtl),
     );
     await file.writeAsString(jsonEncode(session.toJson()), flush: true);
@@ -73,6 +75,7 @@ class AuthSession {
     this.fullName,
     this.nickName,
     this.teacherId,
+    this.mustChangePassword = false,
   });
 
   final String userId;
@@ -81,6 +84,7 @@ class AuthSession {
   final String? fullName;
   final String? nickName;
   final String? teacherId;
+  final bool mustChangePassword;
   final DateTime expiresAt;
 
   bool get isAdmin => role.toUpperCase() == 'ADMIN' || username == 'admin';
@@ -95,6 +99,7 @@ class AuthSession {
       fullName: json['full_name']?.toString(),
       nickName: json['nick_name']?.toString(),
       teacherId: json['teacher_id']?.toString(),
+      mustChangePassword: json['must_change_password'] == true,
       expiresAt:
           DateTime.tryParse(json['expires_at']?.toString() ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
@@ -109,6 +114,7 @@ class AuthSession {
       'full_name': fullName,
       'nick_name': nickName,
       'teacher_id': teacherId,
+      'must_change_password': mustChangePassword,
       'expires_at': expiresAt.toIso8601String(),
     };
   }

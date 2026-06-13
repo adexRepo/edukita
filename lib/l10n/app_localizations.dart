@@ -7056,6 +7056,204 @@ abstract class AppLocalizations {
   /// **'Assistance period cancelled.'**
   String get assistancePeriodCancelledSuccess;
 
+  /// No description provided for @startupPreparingWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing your workspace...'**
+  String get startupPreparingWorkspace;
+
+  /// No description provided for @startupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Edukita could not finish starting.'**
+  String get startupFailed;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @accountSecurity.
+  ///
+  /// In en, this message translates to:
+  /// **'Account Security'**
+  String get accountSecurity;
+
+  /// No description provided for @accountSecurityDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep your Edukita account password private and up to date.'**
+  String get accountSecurityDescription;
+
+  /// No description provided for @changePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Password'**
+  String get changePassword;
+
+  /// No description provided for @createNewPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Your New Password'**
+  String get createNewPassword;
+
+  /// No description provided for @temporaryPasswordMustBeReplaced.
+  ///
+  /// In en, this message translates to:
+  /// **'Your temporary password must be replaced before continuing.'**
+  String get temporaryPasswordMustBeReplaced;
+
+  /// No description provided for @strongPasswordDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a strong password that you do not use elsewhere.'**
+  String get strongPasswordDescription;
+
+  /// No description provided for @currentPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Password'**
+  String get currentPassword;
+
+  /// No description provided for @confirmNewPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm New Password'**
+  String get confirmNewPassword;
+
+  /// No description provided for @passwordChangedLoginAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Password changed. Please sign in again.'**
+  String get passwordChangedLoginAgain;
+
+  /// No description provided for @currentPasswordIncorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password is incorrect.'**
+  String get currentPasswordIncorrect;
+
+  /// No description provided for @passwordMinimumEight.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must contain at least 8 characters.'**
+  String get passwordMinimumEight;
+
+  /// No description provided for @newPasswordMustDiffer.
+  ///
+  /// In en, this message translates to:
+  /// **'New password must be different.'**
+  String get newPasswordMustDiffer;
+
+  /// No description provided for @passwordsDoNotMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match.'**
+  String get passwordsDoNotMatch;
+
+  /// No description provided for @fieldRequiredMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'{field} is required.'**
+  String fieldRequiredMessage(Object field);
+
+  /// No description provided for @aboutEdukita.
+  ///
+  /// In en, this message translates to:
+  /// **'About Edukita'**
+  String get aboutEdukita;
+
+  /// No description provided for @aboutEdukitaDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Application identity and installed release information.'**
+  String get aboutEdukitaDescription;
+
+  /// No description provided for @product.
+  ///
+  /// In en, this message translates to:
+  /// **'Product'**
+  String get product;
+
+  /// No description provided for @publisher.
+  ///
+  /// In en, this message translates to:
+  /// **'Publisher'**
+  String get publisher;
+
+  /// No description provided for @databaseSchema.
+  ///
+  /// In en, this message translates to:
+  /// **'Database Schema'**
+  String get databaseSchema;
+
+  /// No description provided for @loadingValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading...'**
+  String get loadingValue;
+
+  /// No description provided for @temporaryPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary Password'**
+  String get temporaryPassword;
+
+  /// No description provided for @generateTemporaryPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate and copy temporary password'**
+  String get generateTemporaryPassword;
+
+  /// No description provided for @temporaryPasswordGeneratedCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary password generated and copied.'**
+  String get temporaryPasswordGeneratedCopied;
+
+  /// No description provided for @registrationFormUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration form is not available.'**
+  String get registrationFormUnavailable;
+
+  /// No description provided for @registrationFormNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration form was not found in storage.'**
+  String get registrationFormNotFound;
+
+  /// No description provided for @registrationFormDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration form downloaded.'**
+  String get registrationFormDownloaded;
+
+  /// No description provided for @registrationFormDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to download registration form.'**
+  String get registrationFormDownloadFailed;
+
+  /// No description provided for @loadingRegistrationForm.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading registration form...'**
+  String get loadingRegistrationForm;
+
+  /// No description provided for @noRegistrationFormUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'No registration form uploaded.'**
+  String get noRegistrationFormUploaded;
+
+  /// No description provided for @download.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get download;
+
   /// No description provided for @errorWithDetails.
   ///
   /// In en, this message translates to:

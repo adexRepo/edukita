@@ -2,7 +2,7 @@ name: edukita
 description: "A new Flutter project."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 1.0.0+1
+version: 1.0.1
 
 environment:
   sdk: ^3.11.4
@@ -32,6 +32,8 @@ dependencies:
   carousel_slider: ^5.1.2
   fl_chart: ^1.2.0
   file_selector: ^1.0.4
+  crypto: ^3.0.6
+  package_info_plus: ^8.3.1
 
 dev_dependencies:
   flutter_test:

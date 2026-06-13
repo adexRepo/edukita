@@ -2,6 +2,7 @@ import 'dart:io' as io;
 
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
+import 'package:edukita/core/storage/uploaded_file_repository.dart';
 import 'package:edukita/features/reports/assessment_model.dart';
 import 'package:path/path.dart' as p;
 
@@ -51,6 +52,22 @@ class AssessmentRepository {
     final db = await _dbProvider.database;
     await _ensureAssessmentEvidenceSchema();
     return db.transaction((txn) async {
+      final resultRows = await txn.query(
+        'student_assessments',
+        columns: const ['id'],
+        where: 'assessment_id = ?',
+        whereArgs: [id],
+      );
+      for (final row in resultRows) {
+        final resultId = row['id']?.toString();
+        if (resultId == null || resultId.isEmpty) continue;
+        await UploadedFileRepository.deactivate(
+          txn,
+          entityType: 'student_assessment',
+          entityId: resultId,
+          documentType: 'assessment_evidence',
+        );
+      }
       await txn.delete(
         'assessment_evidences',
         where: 'assessment_id = ?',
@@ -164,6 +181,12 @@ class AssessmentRepository {
     final db = await _dbProvider.database;
     await _ensureAssessmentEvidenceSchema();
     return db.transaction((txn) async {
+      await UploadedFileRepository.deactivate(
+        txn,
+        entityType: 'student_assessment',
+        entityId: id,
+        documentType: 'assessment_evidence',
+      );
       await txn.delete(
         'assessment_evidences',
         where: 'student_assessment_id = ?',
@@ -288,6 +311,16 @@ class AssessmentRepository {
           remarks: evidenceRemarks,
         );
         await txn.insert('assessment_evidences', evidence.toMap());
+        await UploadedFileRepository.register(
+          txn,
+          entityType: 'student_assessment',
+          entityId: resultId,
+          documentType: 'assessment_evidence',
+          filePath: evidence.filePath,
+          originalFileName: evidence.fileName,
+          remarks: evidence.remarks,
+          replaceExisting: false,
+        );
       }
     });
   }

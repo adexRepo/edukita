@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:edukita/features/auth/domain/password_service.dart';
 import 'package:sqflite_common/sqlite_api.dart';
 import 'package:sqflite_common/utils/utils.dart' as utils_sqlite;
 import 'package:uuid/uuid.dart';
@@ -21,7 +22,8 @@ class DatabaseSeed {
       await db.insert('users', {
         'id': const Uuid().v4(),
         'username': 'admin',
-        'password': 'admin',
+        'password': PasswordService.hash('admin'),
+        'must_change_password': 1,
         'nick_name': 'Admin',
         'full_name': 'Administrator',
         'role': 'ADMIN',
@@ -31,7 +33,6 @@ class DatabaseSeed {
       await db.update(
         'users',
         {
-          'password': 'admin',
           'nick_name': 'Admin',
           'full_name': 'Administrator',
           'role': 'ADMIN',
@@ -50,7 +51,8 @@ class DatabaseSeed {
       await db.insert('users', {
         'id': const Uuid().v4(),
         'username': 'user',
-        'password': 'user',
+        'password': PasswordService.hash('user'),
+        'must_change_password': 1,
         'nick_name': 'User',
         'full_name': 'Standard User',
         'role': 'STAFF',
@@ -60,7 +62,6 @@ class DatabaseSeed {
       await db.update(
         'users',
         {
-          'password': 'user',
           'nick_name': 'User',
           'full_name': 'Standard User',
           'role': 'STAFF',

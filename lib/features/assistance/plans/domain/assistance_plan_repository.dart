@@ -4,6 +4,7 @@ import 'dart:io' as io;
 
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
+import 'package:edukita/core/storage/uploaded_file_repository.dart';
 import 'package:edukita/features/assistance/plans/data/assistance_plan_models.dart';
 import 'package:edukita/features/assistance/programs/data/assistance_program_model.dart';
 import 'package:path/path.dart' as p;
@@ -760,6 +761,11 @@ class AssistancePlanRepository {
 
     final db = await _dbProvider.database;
     await db.transaction((txn) async {
+      await UploadedFileRepository.deactivate(
+        txn,
+        entityType: 'assistance_period',
+        entityId: id,
+      );
       await txn.delete(
         'student_assistance_assessments',
         where: 'assistance_period_id = ?',
@@ -1439,6 +1445,16 @@ class AssistancePlanRepository {
         _approvalDocumentMapForColumns(document, approvalDocumentColumns),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
+      await UploadedFileRepository.register(
+        txn,
+        entityType: 'assistance_period',
+        entityId: assistancePeriodId,
+        documentType: 'approval_document',
+        filePath: storedPath,
+        originalFileName: fileName,
+        remarks: remarks,
+        uploadedBy: uploadedBy,
+      );
 
       final recipientColumns = await _executorTableColumns(
         txn,
@@ -1607,14 +1623,27 @@ class AssistancePlanRepository {
       db,
       'assistance_distribution_documents',
     );
-    await db.insert(
-      'assistance_distribution_documents',
-      _distributionDocumentMapForColumns(
-        document,
-        distributionDocumentColumns,
-      ),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.transaction((txn) async {
+      await txn.insert(
+        'assistance_distribution_documents',
+        _distributionDocumentMapForColumns(
+          document,
+          distributionDocumentColumns,
+        ),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      await UploadedFileRepository.register(
+        txn,
+        entityType: 'assistance_period',
+        entityId: assistancePeriodId,
+        documentType: 'distribution_evidence',
+        filePath: storedPath,
+        originalFileName: fileName,
+        remarks: remarks,
+        uploadedBy: uploadedBy,
+        replaceExisting: false,
+      );
+    });
   }
 
   Future<void> deleteDistributionDocument({
@@ -1639,6 +1668,13 @@ class AssistancePlanRepository {
       'assistance_distribution_documents',
       where: 'id = ? AND assistance_period_id = ?',
       whereArgs: [documentId, assistancePeriodId],
+    );
+    await UploadedFileRepository.deactivate(
+      db,
+      entityType: 'assistance_period',
+      entityId: assistancePeriodId,
+      documentType: 'distribution_evidence',
+      filePath: document.filePath,
     );
     final file = io.File(document.filePath);
     if (await file.exists()) await file.delete();

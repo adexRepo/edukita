@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
@@ -677,6 +679,25 @@ class _UserDialogState extends State<_UserDialog> {
 
   bool get _editing => widget.user != null;
 
+  void _generateTemporaryPassword() {
+    const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    const numbers = '23456789';
+    const symbols = '!@#%';
+    final random = Random.secure();
+    String pick(String source) => source[random.nextInt(source.length)];
+    final characters = <String>[
+      pick(letters),
+      pick(letters),
+      pick(numbers),
+      pick(symbols),
+      ...List.generate(8, (_) => pick('$letters$numbers$symbols')),
+    ]..shuffle(random);
+    final password = characters.join();
+    _passwordController.text = password;
+    Clipboard.setData(ClipboardData(text: password));
+    AppToast.showSuccess(context.l10n.temporaryPasswordGeneratedCopied);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -788,8 +809,17 @@ class _UserDialogState extends State<_UserDialog> {
                         obscureText: true,
                         decoration: InputDecoration(
                           labelText:
-                              _editing ? context.l10n.newPassword : context.l10n.password,
+                              _editing
+                                  ? context.l10n.newPassword
+                                  : context.l10n.temporaryPassword,
                           hintText: _editing ? context.l10n.leaveEmptyToKeep : null,
+                          suffixIcon: Tooltip(
+                            message: context.l10n.generateTemporaryPassword,
+                            child: IconButton(
+                              onPressed: _generateTemporaryPassword,
+                              icon: const Icon(Icons.password_outlined),
+                            ),
+                          ),
                         ),
                         validator: (value) {
                           if (!_editing &&
@@ -797,8 +827,8 @@ class _UserDialogState extends State<_UserDialog> {
                             return context.l10n.passwordRequired;
                           }
                           if ((value?.trim().isNotEmpty ?? false) &&
-                              value!.trim().length < 4) {
-                            return context.l10n.passwordMinLength;
+                              value!.trim().length < 8) {
+                            return context.l10n.passwordMinimumEight;
                           }
                           return null;
                         },

@@ -2,6 +2,7 @@ import 'package:edukita/core/localization/app_language_cubit.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
+import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/assistance/programs/domain/assistance_program_cubit.dart';
 import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
@@ -23,6 +24,8 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -53,6 +56,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isStaff = false;
   bool _saving = false;
   bool _backingUp = false;
+  PackageInfo? _packageInfo;
 
   @override
   void initState() {
@@ -76,6 +80,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
     _checkAuthorization();
     _load();
+    _loadPackageInfo();
   }
 
   @override
@@ -127,6 +132,12 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() => _loading = false);
       AppToast.showFailed(error.toString().replaceFirst('Exception: ', ''));
     }
+  }
+
+  Future<void> _loadPackageInfo() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    setState(() => _packageInfo = packageInfo);
   }
 
   Future<void> _save({bool applyLanguage = false}) async {
@@ -276,13 +287,17 @@ class _SettingsPageState extends State<SettingsPage> {
                         ],
                         _personalizationPanel(),
                         const SizedBox(height: 14),
+                        _accountPanel(),
+                        const SizedBox(height: 14),
                         if (_isAdmin) ...[
                           _technicalNoticePanel(),
                           const SizedBox(height: 14),
                           _pathsPanel(),
                           const SizedBox(height: 14),
                           _toolsPanel(),
+                          const SizedBox(height: 14),
                         ],
+                        _aboutPanel(),
                       ],
                     ),
                   ),
@@ -550,6 +565,50 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Widget _accountPanel() {
+    return _SettingsPanel(
+      title: context.l10n.accountSecurity,
+      description: context.l10n.accountSecurityDescription,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: OutlinedButton.icon(
+          onPressed: () => context.go('/change-password?forced=false'),
+          icon: const Icon(Icons.lock_reset_outlined),
+          label: Text(context.l10n.changePassword),
+        ),
+      ),
+    );
+  }
+
+  Widget _aboutPanel() {
+    final packageInfo = _packageInfo;
+    return _SettingsPanel(
+      title: context.l10n.aboutEdukita,
+      description: context.l10n.aboutEdukitaDescription,
+      child: Wrap(
+        spacing: 28,
+        runSpacing: 12,
+        children: [
+          _AboutValue(
+            label: context.l10n.product,
+            value: packageInfo?.appName ?? 'Edukita',
+          ),
+          _AboutValue(
+            label: context.l10n.version,
+            value: packageInfo == null
+                ? context.l10n.loadingValue
+                : '${packageInfo.version}+${packageInfo.buildNumber}',
+          ),
+          _AboutValue(label: context.l10n.publisher, value: 'Ecnics'),
+          _AboutValue(
+            label: context.l10n.databaseSchema,
+            value: DatabaseProvider.schemaVersion.toString(),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _responsiveGrid(List<Widget> children) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -716,6 +775,42 @@ class _SettingsPanel extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           child,
+        ],
+      ),
+    );
+  }
+}
+
+class _AboutValue extends StatelessWidget {
+  const _AboutValue({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 190,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );

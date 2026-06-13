@@ -28,12 +28,6 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build Windows Release
-        run: flutter build windows --release
-
-      - name: Install Inno Setup
-        run: choco install innosetup -y
-
       - name: Prepare Version Variables
         shell: pwsh
         run: |
@@ -46,6 +40,13 @@ jobs:
           "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "INSTALLER_FILE=EdukitaSetup_v$version.exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "UPDATE_ZIP=EdukitaUpdate_v$version.zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build Windows Release
+        shell: pwsh
+        run: flutter build windows --release --build-name=$env:APP_VERSION --build-number=$env:GITHUB_RUN_NUMBER
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
 
       - name: Build Installer
         shell: pwsh

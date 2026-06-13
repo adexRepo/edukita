@@ -3,6 +3,7 @@ import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:edukita/core/database/database_provider.dart';
 
 class LoginPage extends StatefulWidget {
@@ -61,8 +62,14 @@ class _LoginPageState extends State<LoginPage> {
           fullName: user['full_name']?.toString(),
           nickName: user['nick_name']?.toString(),
           teacherId: user['teacher_id']?.toString(),
+          mustChangePassword:
+              (user['must_change_password'] as num?)?.toInt() != 0,
         );
-        widget.onAuthenticated();
+        if ((user['must_change_password'] as num?)?.toInt() != 0) {
+          if (mounted) context.go('/change-password');
+        } else {
+          widget.onAuthenticated();
+        }
         return;
       }
 
@@ -93,8 +100,14 @@ class _LoginPageState extends State<LoginPage> {
           fullName: user['full_name']?.toString(),
           nickName: user['nick_name']?.toString(),
           teacherId: user['teacher_id']?.toString(),
+          mustChangePassword:
+              (user['must_change_password'] as num?)?.toInt() != 0,
         );
-        widget.onAuthenticated();
+        if ((user['must_change_password'] as num?)?.toInt() != 0) {
+          if (mounted) context.go('/change-password');
+        } else {
+          widget.onAuthenticated();
+        }
       } else {
         if (!mounted) return;
         setState(() {

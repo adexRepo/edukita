@@ -60,6 +60,7 @@ class DatabaseTables {
     await studentLearningProfiles(db);
     await studentWellbeing(db);
     await studentWellBeing(db);
+    await uploadedFiles(db);
 
     await reportDefinitions(db);
     await reports(db);
@@ -79,6 +80,29 @@ class DatabaseTables {
     await indexes(db);
   }
 
+  static Future<void> uploadedFiles(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS uploaded_files(
+        id TEXT PRIMARY KEY NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        document_type TEXT NOT NULL,
+        original_file_name TEXT NOT NULL,
+        stored_file_name TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        file_type TEXT,
+        file_size INTEGER NOT NULL DEFAULT 0,
+        checksum TEXT,
+        uploaded_by TEXT,
+        uploaded_at TEXT NOT NULL,
+        remarks TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+  }
+
   static Future<void> users(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS users(
@@ -90,6 +114,8 @@ class DatabaseTables {
         role TEXT NOT NULL DEFAULT 'STAFF',
         teacher_id TEXT,
         is_active INTEGER NOT NULL DEFAULT 1,
+        must_change_password INTEGER NOT NULL DEFAULT 1,
+        password_changed_at TEXT,
         created_by TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1911,6 +1937,27 @@ class DatabaseTables {
       columns: const ['student_id', 'document_type'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_student_documents_student_type ON student_documents(student_id, document_type)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'uploaded_files',
+      columns: const ['entity_type', 'entity_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_uploaded_files_entity ON uploaded_files(entity_type, entity_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'uploaded_files',
+      columns: const ['entity_type', 'entity_id', 'document_type', 'is_active'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_uploaded_files_entity_document_active ON uploaded_files(entity_type, entity_id, document_type, is_active)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'uploaded_files',
+      columns: const ['checksum'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_uploaded_files_checksum ON uploaded_files(checksum)',
     );
     await _createIndexIfColumnsExist(
       db,

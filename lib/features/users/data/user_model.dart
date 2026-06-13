@@ -12,6 +12,8 @@ class User {
     this.teacherId,
     this.teacherName,
     this.isActive = true,
+    this.mustChangePassword = true,
+    this.passwordChangedAt,
     this.createdBy,
   }) : id = id ?? const Uuid().v4();
 
@@ -24,6 +26,8 @@ class User {
   final String? teacherId;
   final String? teacherName;
   final bool isActive;
+  final bool mustChangePassword;
+  final String? passwordChangedAt;
   final String? createdBy;
 
   User copyWith({
@@ -36,6 +40,8 @@ class User {
     String? teacherId,
     String? teacherName,
     bool? isActive,
+    bool? mustChangePassword,
+    String? passwordChangedAt,
     String? createdBy,
   }) {
     return User(
@@ -48,6 +54,8 @@ class User {
       teacherId: teacherId ?? this.teacherId,
       teacherName: teacherName ?? this.teacherName,
       isActive: isActive ?? this.isActive,
+      mustChangePassword: mustChangePassword ?? this.mustChangePassword,
+      passwordChangedAt: passwordChangedAt ?? this.passwordChangedAt,
       createdBy: createdBy ?? this.createdBy,
     );
   }
@@ -63,6 +71,9 @@ class User {
       teacherId: map['teacher_id'] as String?,
       teacherName: map['teacher_name'] as String?,
       isActive: (map['is_active'] as num?)?.toInt() != 0,
+      mustChangePassword:
+          (map['must_change_password'] as num?)?.toInt() != 0,
+      passwordChangedAt: map['password_changed_at'] as String?,
       createdBy: map['created_by'] as String?,
     );
   }
@@ -77,6 +88,8 @@ class User {
       'role': role.value,
       'teacher_id': teacherId,
       'is_active': isActive ? 1 : 0,
+      'must_change_password': mustChangePassword ? 1 : 0,
+      'password_changed_at': passwordChangedAt,
       'created_by': createdBy,
     };
   }

@@ -145,6 +145,18 @@ class DatabaseMigrations {
     await _addColumnIfMissing(
       db,
       table: 'users',
+      column: 'must_change_password',
+      definition: 'INTEGER NOT NULL DEFAULT 0',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'users',
+      column: 'password_changed_at',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'users',
       column: 'created_at',
       definition: 'TEXT',
     );

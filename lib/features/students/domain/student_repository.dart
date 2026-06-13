@@ -4,6 +4,7 @@ import 'package:edukita/core/database/base_repository.dart';
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
+import 'package:edukita/core/storage/uploaded_file_repository.dart';
 import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
@@ -412,6 +413,16 @@ class StudentRepository extends BaseRepository<Student> {
         savedGuardians,
         advanced,
       );
+      final photoPath = student.photoPath?.trim();
+      if (photoPath != null && photoPath.isNotEmpty) {
+        await UploadedFileRepository.register(
+          txn,
+          entityType: 'student',
+          entityId: student.id,
+          documentType: 'student_photo',
+          filePath: photoPath,
+        );
+      }
     });
   }
 
@@ -448,6 +459,23 @@ class StudentRepository extends BaseRepository<Student> {
         savedGuardians,
         advanced,
       );
+      final photoPath = student.photoPath?.trim();
+      if (photoPath == null || photoPath.isEmpty) {
+        await UploadedFileRepository.deactivate(
+          txn,
+          entityType: 'student',
+          entityId: student.id,
+          documentType: 'student_photo',
+        );
+      } else {
+        await UploadedFileRepository.register(
+          txn,
+          entityType: 'student',
+          entityId: student.id,
+          documentType: 'student_photo',
+          filePath: photoPath,
+        );
+      }
     });
   }
 
@@ -1144,6 +1172,14 @@ class StudentRepository extends BaseRepository<Student> {
           _nullIfBlank(document.uploadedAt) ??
           DateTime.now().toIso8601String(),
     });
+    await UploadedFileRepository.register(
+      txn,
+      entityType: 'student',
+      entityId: studentId,
+      documentType: 'registration_form',
+      filePath: filePath,
+      originalFileName: document.fileName,
+    );
   }
 
   Future<String> _copyStudentRegistrationForm({
@@ -1202,6 +1238,57 @@ class StudentRepository extends BaseRepository<Student> {
   Future<void> deleteStudent(String studentId) async {
     final db = await _dbProvider.database;
     await db.transaction((txn) async {
+      final examGroupRows = await txn.query(
+        'student_exam_score_groups',
+        columns: const ['id'],
+        where: 'student_id = ?',
+        whereArgs: [studentId],
+      );
+      final legacyExamRows = await txn.query(
+        'student_exam_scores',
+        columns: const ['id'],
+        where: 'student_id = ?',
+        whereArgs: [studentId],
+      );
+      final assessmentRows = await txn.query(
+        'student_assessments',
+        columns: const ['id'],
+        where: 'student_id = ?',
+        whereArgs: [studentId],
+      );
+
+      await UploadedFileRepository.deactivate(
+        txn,
+        entityType: 'student',
+        entityId: studentId,
+      );
+      for (final row in examGroupRows) {
+        final id = row['id']?.toString();
+        if (id == null || id.isEmpty) continue;
+        await UploadedFileRepository.deactivate(
+          txn,
+          entityType: 'student_exam_score_group',
+          entityId: id,
+        );
+      }
+      for (final row in legacyExamRows) {
+        final id = row['id']?.toString();
+        if (id == null || id.isEmpty) continue;
+        await UploadedFileRepository.deactivate(
+          txn,
+          entityType: 'student_exam_score',
+          entityId: id,
+        );
+      }
+      for (final row in assessmentRows) {
+        final id = row['id']?.toString();
+        if (id == null || id.isEmpty) continue;
+        await UploadedFileRepository.deactivate(
+          txn,
+          entityType: 'student_assessment',
+          entityId: id,
+        );
+      }
       await txn.delete(
         'student_schools',
         where: 'student_id = ?',
@@ -1515,6 +1602,17 @@ class StudentRepository extends BaseRepository<Student> {
       for (final item in group.items) {
         await txn.insert('student_exam_score_items', item.toMap());
       }
+      final evidencePath = values['evidence_file_path']?.toString();
+      if (evidencePath?.isNotEmpty == true) {
+        await UploadedFileRepository.register(
+          txn,
+          entityType: 'student_exam_score_group',
+          entityId: group.id,
+          documentType: 'exam_evidence',
+          filePath: evidencePath!,
+          originalFileName: values['evidence_file_name']?.toString(),
+        );
+      }
     });
   }
 
@@ -1530,6 +1628,12 @@ class StudentRepository extends BaseRepository<Student> {
           where: 'id = ?',
           whereArgs: [legacyId],
         );
+        await UploadedFileRepository.deactivate(
+          txn,
+          entityType: 'student_exam_score',
+          entityId: legacyId,
+          documentType: 'exam_evidence',
+        );
         return;
       }
 
@@ -1542,6 +1646,12 @@ class StudentRepository extends BaseRepository<Student> {
         'student_exam_score_groups',
         where: 'id = ?',
         whereArgs: [group.id],
+      );
+      await UploadedFileRepository.deactivate(
+        txn,
+        entityType: 'student_exam_score_group',
+        entityId: group.id,
+        documentType: 'exam_evidence',
       );
     });
   }
@@ -1598,6 +1708,24 @@ class StudentRepository extends BaseRepository<Student> {
           where: 'id = ?',
           whereArgs: [legacyId],
         );
+        final evidencePath = values['evidence_file_path']?.toString();
+        if (evidencePath?.isNotEmpty == true) {
+          await UploadedFileRepository.register(
+            txn,
+            entityType: 'student_exam_score',
+            entityId: legacyId,
+            documentType: 'exam_evidence',
+            filePath: evidencePath!,
+            originalFileName: values['evidence_file_name']?.toString(),
+          );
+        } else {
+          await UploadedFileRepository.deactivate(
+            txn,
+            entityType: 'student_exam_score',
+            entityId: legacyId,
+            documentType: 'exam_evidence',
+          );
+        }
         return;
       }
 
@@ -1607,6 +1735,24 @@ class StudentRepository extends BaseRepository<Student> {
         where: 'id = ?',
         whereArgs: [group.id],
       );
+      final evidencePath = values['evidence_file_path']?.toString();
+      if (evidencePath?.isNotEmpty == true) {
+        await UploadedFileRepository.register(
+          txn,
+          entityType: 'student_exam_score_group',
+          entityId: group.id,
+          documentType: 'exam_evidence',
+          filePath: evidencePath!,
+          originalFileName: values['evidence_file_name']?.toString(),
+        );
+      } else {
+        await UploadedFileRepository.deactivate(
+          txn,
+          entityType: 'student_exam_score_group',
+          entityId: group.id,
+          documentType: 'exam_evidence',
+        );
+      }
       await txn.delete(
         'student_exam_score_items',
         where: 'group_id = ?',

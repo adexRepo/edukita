@@ -1,5 +1,6 @@
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/features/teachers/data/teacher_model.dart';
+import 'package:edukita/features/auth/domain/password_service.dart';
 import 'package:edukita/features/users/data/user_model.dart';
 import 'package:edukita/features/users/domain/user_authorization.dart';
 import 'package:sqflite_common/sqlite_api.dart';
@@ -193,7 +194,11 @@ class UserManagementRepository {
     final db = await _db();
     return db.transaction((txn) async {
       await _validateUser(txn, user);
-      final record = user.copyWith(createdBy: createdBy);
+      final record = user.copyWith(
+        createdBy: createdBy,
+        password: PasswordService.hash(user.password),
+        mustChangePassword: true,
+      );
       await txn.insert('users', record.toMap());
       await _replaceUserExtraMenus(txn, record.id, extraMenuCodes, createdBy);
       return record;
@@ -208,9 +213,30 @@ class UserManagementRepository {
     final db = await _db();
     await db.transaction((txn) async {
       await _validateUser(txn, user, editingUserId: user.id);
+      final existing = await txn.query(
+        'users',
+        columns: const ['password', 'must_change_password', 'password_changed_at'],
+        where: 'id = ?',
+        whereArgs: [user.id],
+        limit: 1,
+      );
+      if (existing.isEmpty) {
+        throw StateError('User not found.');
+      }
+      final current = existing.first;
+      final passwordChanged = user.password != current['password'];
+      final record = user.copyWith(
+        password: passwordChanged
+            ? PasswordService.hash(user.password)
+            : current['password']?.toString(),
+        mustChangePassword: passwordChanged
+            ? true
+            : (current['must_change_password'] as num?)?.toInt() != 0,
+        passwordChangedAt: current['password_changed_at']?.toString(),
+      );
       await txn.update(
         'users',
-        user.toMap(),
+        record.toMap(),
         where: 'id = ?',
         whereArgs: [user.id],
       );

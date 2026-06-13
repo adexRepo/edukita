@@ -5,6 +5,7 @@ import 'package:edukita/features/assistance/periods/presentation/assistance_peri
 import 'package:edukita/features/assistance/programs/domain/assistance_program_cubit.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/auth/presentation/login_page.dart';
+import 'package:edukita/features/auth/presentation/change_password_page.dart';
 import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
 import 'package:edukita/features/dashboard/presentation/dashboard_page.dart';
 import 'package:edukita/features/parameters/presentation/parameter_page.dart';
@@ -42,6 +43,14 @@ import 'package:go_router/go_router.dart';
 final GoRouter appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: '/login',
+  redirect: (context, state) async {
+    final session = await AuthSessionCache.instance.read();
+    if (session?.mustChangePassword == true &&
+        state.matchedLocation != '/change-password') {
+      return '/change-password';
+    }
+    return null;
+  },
   routes: [
     GoRoute(
       path: '/login',
@@ -51,6 +60,15 @@ final GoRouter appRouter = GoRouter(
           onAuthenticated: () {
             context.go('/dashboard');
           },
+        ),
+      ),
+    ),
+    GoRoute(
+      path: '/change-password',
+      pageBuilder: (context, state) => _noTransitionPage(
+        state: state,
+        child: ChangePasswordPage(
+          forced: state.uri.queryParameters['forced'] != 'false',
         ),
       ),
     ),
