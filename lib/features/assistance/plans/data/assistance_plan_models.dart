@@ -300,8 +300,6 @@ class AssistancePeriod {
     required this.periodMonth,
     required this.periodYear,
     required this.targetQuota,
-    this.fixedQuota = 0,
-    this.rollingQuota = 0,
     this.calculationWindowMonths = 3,
     this.minimumAttendancePercentage = 75,
     this.allowManualOverrideBelowAttendance = true,
@@ -329,8 +327,6 @@ class AssistancePeriod {
   final int periodMonth;
   final int periodYear;
   final int targetQuota;
-  final int fixedQuota;
-  final int rollingQuota;
   final int calculationWindowMonths;
   final double minimumAttendancePercentage;
   final bool allowManualOverrideBelowAttendance;
@@ -344,10 +340,6 @@ class AssistancePeriod {
   final String? rejectionReason;
   final String createdAt;
   final String updatedAt;
-
-  static String periodId(int year, int month) {
-    return 'asst-$year-${month.toString().padLeft(2, '0')}';
-  }
 
   String get label {
     final name = periodName?.trim();
@@ -385,8 +377,6 @@ class AssistancePeriod {
     int? periodMonth,
     int? periodYear,
     int? targetQuota,
-    int? fixedQuota,
-    int? rollingQuota,
     int? calculationWindowMonths,
     double? minimumAttendancePercentage,
     bool? allowManualOverrideBelowAttendance,
@@ -413,8 +403,6 @@ class AssistancePeriod {
       periodMonth: periodMonth ?? this.periodMonth,
       periodYear: periodYear ?? this.periodYear,
       targetQuota: targetQuota ?? this.targetQuota,
-      fixedQuota: fixedQuota ?? this.fixedQuota,
-      rollingQuota: rollingQuota ?? this.rollingQuota,
       calculationWindowMonths:
           calculationWindowMonths ?? this.calculationWindowMonths,
       minimumAttendancePercentage:
@@ -455,8 +443,7 @@ class AssistancePeriod {
               1) ==
           1,
       status: AssistancePeriodStatus.fromValue(map['status']?.toString()),
-      targetedAt:
-          (map['targeted_at'] as String?) ?? (map['generated_at'] as String?),
+      targetedAt: map['targeted_at'] as String?,
       submittedAt: map['submitted_at'] as String?,
       approvedAt: map['approved_at'] as String?,
       approvedBy: map['approved_by'] as String?,
@@ -1356,8 +1343,6 @@ class AssistanceStudentOption {
 class AssistanceSummary {
   const AssistanceSummary({
     this.targetQuota = 0,
-    this.fixedQuota = 0,
-    this.rollingQuota = 0,
     this.allocatedQuota = 0,
     this.approvedCount = 0,
     this.waitlistCount = 0,
@@ -1367,8 +1352,6 @@ class AssistanceSummary {
   });
 
   final int targetQuota;
-  final int fixedQuota;
-  final int rollingQuota;
   final int allocatedQuota;
   final int approvedCount;
   final int waitlistCount;

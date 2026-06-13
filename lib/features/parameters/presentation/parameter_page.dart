@@ -162,7 +162,7 @@ class _ParameterPageState extends State<ParameterPage> {
     }
 
     if (_selectedTitle == 'Rules') {
-      return const AssistanceRulesPage(embedded: true, initialSection: 'rules');
+      return const AssistanceRulesPage(embedded: true);
     }
 
     if (_selectedTitle == 'Reports') {

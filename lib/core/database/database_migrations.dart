@@ -104,6 +104,7 @@ class DatabaseMigrations {
 
   static Future<void> ensureCriticalSchema(Database db) async {
     await DatabaseTables.createAll(db);
+    await _removeLegacyAssistanceWorkflowSchema(db);
     await _ensureStrategySampleFileSchema(db);
     await _ensureAssistancePlanSchema(db);
     await _ensureAssistanceProgramSchema(db);
@@ -115,6 +116,87 @@ class DatabaseMigrations {
     await _normalizeAcademicRelationFlow(db);
     await _ensureSubjectTimestampSchema(db);
     await _ensureUserAuthorizationSchema(db);
+  }
+
+  static Future<void> _removeLegacyAssistanceWorkflowSchema(Database db) async {
+    const legacyColumns = {
+      'scholarship_period_id',
+      'scholarship_period_rule_id',
+      'scholarship_rule_id',
+      'scholarship_rule_target_id',
+      'scholarship_type',
+      'fixed_quota',
+      'rolling_quota',
+      'generated_at',
+    };
+    const workflowTables = [
+      'assistance_periods',
+      'assistance_period_rules',
+      'student_assistance_rule_candidates',
+      'student_assistance_assessments',
+      'assistance_rule_targets',
+      'assistance_approval_documents',
+      'assistance_distribution_documents',
+      'assistance_recipients',
+    ];
+
+    var hasLegacySchema = false;
+    for (final table in workflowTables) {
+      if (!await _tableExists(db, table)) continue;
+      final columns = await _tableColumnNames(db, table);
+      if (columns.any(legacyColumns.contains)) {
+        hasLegacySchema = true;
+        break;
+      }
+      if (table == 'assistance_periods') {
+        final rows = await db.rawQuery(
+          "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+          [table],
+        );
+        final createSql = rows.isEmpty
+            ? ''
+            : rows.first['sql']?.toString() ?? '';
+        if (createSql.contains("'generated'") ||
+            createSql.contains("'pending_review'")) {
+          hasLegacySchema = true;
+          break;
+        }
+      }
+    }
+    if (!hasLegacySchema) return;
+
+    await db.execute(
+      "UPDATE uploaded_files SET is_active = 0, updated_at = CURRENT_TIMESTAMP "
+      "WHERE entity_type = 'assistance_period' AND is_active = 1",
+    );
+
+    await db.execute('PRAGMA foreign_keys = OFF');
+    try {
+      for (final table in const [
+        'assistance_distribution_documents',
+        'assistance_approval_documents',
+        'assistance_recipients',
+        'assistance_rule_targets',
+        'student_assistance_assessments',
+        'student_assistance_rule_candidates',
+        'assistance_period_rules',
+        'assistance_periods',
+      ]) {
+        await db.execute('DROP TABLE IF EXISTS $table');
+      }
+
+      await DatabaseTables.assistancePeriods(db);
+      await DatabaseTables.assistancePeriodRules(db);
+      await DatabaseTables.studentAssistanceRuleCandidates(db);
+      await DatabaseTables.studentAssistanceAssessments(db);
+      await DatabaseTables.assistanceRuleTargets(db);
+      await DatabaseTables.assistanceApprovalDocuments(db);
+      await DatabaseTables.assistanceDistributionDocuments(db);
+      await DatabaseTables.assistanceRecipients(db);
+      await DatabaseTables.indexes(db);
+    } finally {
+      await db.execute('PRAGMA foreign_keys = ON');
+    }
   }
 
   static Future<void> _ensureUserAuthorizationSchema(Database db) async {
@@ -721,96 +803,9 @@ class DatabaseMigrations {
       column: 'benefit_item_description',
       definition: 'TEXT',
     );
-    await _rebuildAssistancePeriodsForStatusFlow(db);
     await _rebuildAssistanceRecipientsForDistributionStatus(db);
     await db.execute('DROP INDEX IF EXISTS idx_assistance_periods_month_year');
     await DatabaseTables.indexes(db);
-  }
-
-  static Future<void> _rebuildAssistancePeriodsForStatusFlow(Database db) async {
-    if (!await _tableExists(db, 'assistance_periods')) return;
-
-    final sql = await db.rawQuery(
-      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'assistance_periods'",
-    );
-    final createSql = sql.isEmpty ? '' : sql.first['sql']?.toString() ?? '';
-    final hasOldPeriodShape =
-        createSql.contains("'generated'") ||
-        createSql.contains("'pending_review'") ||
-        createSql.contains('fixed_quota') ||
-        createSql.contains('rolling_quota') ||
-        createSql.contains('generated_at') ||
-        !createSql.contains("'rejected'") ||
-        !createSql.contains("'distributed'");
-    if (!hasOldPeriodShape) return;
-
-    await db.execute('DROP INDEX IF EXISTS idx_assistance_periods_month_year');
-    await db.execute('DROP INDEX IF EXISTS idx_assistance_periods_program_id');
-
-    await db.execute('PRAGMA foreign_keys = OFF');
-    try {
-      final oldColumns = await _tableColumnNames(db, 'assistance_periods');
-      await db.execute('DROP TABLE IF EXISTS assistance_periods_new');
-      await db.execute('''
-        CREATE TABLE assistance_periods_new(
-          id TEXT PRIMARY KEY NOT NULL,
-          assistance_program_id TEXT,
-          period_name TEXT,
-          start_date TEXT,
-          end_date TEXT,
-          benefit_amount REAL,
-          benefit_item_description TEXT,
-          period_month INTEGER NOT NULL,
-          period_year INTEGER NOT NULL,
-          target_quota INTEGER NOT NULL,
-          calculation_window_months INTEGER NOT NULL DEFAULT 3,
-          minimum_attendance_percentage REAL NOT NULL DEFAULT 75,
-          allow_manual_override_below_attendance INTEGER NOT NULL DEFAULT 1,
-          status TEXT NOT NULL DEFAULT 'draft'
-            CHECK(status IN ('draft', 'targeted', 'submitted', 'approved', 'rejected', 'distributed', 'cancelled')),
-          targeted_at TEXT,
-          submitted_at TEXT,
-          approved_at TEXT,
-          approved_by TEXT,
-          rejected_at TEXT,
-          rejected_by TEXT,
-          rejection_reason TEXT,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL,
-          FOREIGN KEY(assistance_program_id) REFERENCES assistance_programs(id) ON DELETE SET NULL
-        )
-      ''');
-      final newColumns = await _tableColumnNames(db, 'assistance_periods_new');
-      final commonColumns = [
-        for (final column in oldColumns)
-          if (newColumns.contains(column)) column,
-      ];
-      if (commonColumns.isNotEmpty) {
-        final columns = commonColumns.join(', ');
-        final values = commonColumns.map((column) {
-          if (column == 'status') {
-            return '''
-              CASE status
-                WHEN 'generated' THEN 'targeted'
-                WHEN 'pending_review' THEN 'submitted'
-                ELSE status
-              END
-            ''';
-          }
-          return column;
-        }).join(', ');
-        await db.execute('''
-          INSERT OR IGNORE INTO assistance_periods_new($columns)
-          SELECT $values FROM assistance_periods
-        ''');
-      }
-      await db.execute('DROP TABLE assistance_periods');
-      await db.execute(
-        'ALTER TABLE assistance_periods_new RENAME TO assistance_periods',
-      );
-    } finally {
-      await db.execute('PRAGMA foreign_keys = ON');
-    }
   }
 
   static Future<void> _rebuildAssistanceRecipientsForDistributionStatus(

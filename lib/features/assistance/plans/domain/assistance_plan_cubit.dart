@@ -167,29 +167,6 @@ class AssistancePlanCubit extends Cubit<AssistancePlanState> {
     }
   }
 
-  Future<void> createPeriod({
-    required int month,
-    required int year,
-    required int targetQuota,
-    int calculationWindowMonths = 3,
-    double minimumAttendancePercentage = 75,
-    bool allowManualOverrideBelowAttendance = true,
-  }) async {
-    await _repository.createPeriod(
-      month: month,
-      year: year,
-      targetQuota: targetQuota,
-      calculationWindowMonths: calculationWindowMonths,
-      minimumAttendancePercentage: minimumAttendancePercentage,
-      allowManualOverrideBelowAttendance: allowManualOverrideBelowAttendance,
-    );
-    _cacheService.clear();
-    await loadModule(
-      selectedPeriodId: AssistancePeriod.periodId(year, month),
-      forceRefresh: true,
-    );
-  }
-
   Future<AssistancePeriod> createAssistancePeriod({
     required String assistanceProgramId,
     required String periodName,
@@ -655,16 +632,8 @@ AssistanceSummary _summaryForAssessments(
     0,
     (sum, rule) => sum + rule.quota,
   );
-  final fixedQuota = activeRules
-      .where((rule) => rule.ruleType == AssistanceRuleType.fixedPriority)
-      .fold<int>(0, (sum, rule) => sum + rule.quota);
-  final rollingQuota = activeRules
-      .where((rule) => rule.ruleType == AssistanceRuleType.rollingAttendance)
-      .fold<int>(0, (sum, rule) => sum + rule.quota);
   return AssistanceSummary(
     targetQuota: period.targetQuota,
-    fixedQuota: fixedQuota,
-    rollingQuota: rollingQuota,
     allocatedQuota: allocatedQuota,
     approvedCount: approved,
     waitlistCount: waitlist,
