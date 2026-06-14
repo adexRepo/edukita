@@ -11,6 +11,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 class StudentDetailCubit extends Cubit<FeatureState<StudentDetailData>> {
   final StudentRepository _repo;
   final StudentCacheService _cacheService;
+  Future<StudentAdvancedFormData>? _advancedDataFuture;
+  Future<List<StudentGuardianFormData>>? _guardiansFuture;
+  Future<List<StudentRelationFormData>>? _relationsFuture;
+  Future<List<StudentActivityFormData>>? _activitiesFuture;
+  Future<StudentDetailInsights>? _insightsFuture;
 
   StudentDetailCubit(this._repo, this._cacheService)
     : super(const FeatureState());
@@ -27,24 +32,69 @@ class StudentDetailCubit extends Cubit<FeatureState<StudentDetailData>> {
     return _repo.loadPrimaryGuardian(studentId);
   }
 
-  Future<List<StudentGuardianFormData>> loadGuardians(String studentId) {
-    return _repo.loadGuardians(studentId);
+  Future<List<StudentGuardianFormData>> loadGuardians(String studentId) async {
+    final existing = _guardiansFuture;
+    if (existing != null) return existing;
+    final request = _repo.loadGuardians(studentId);
+    _guardiansFuture = request;
+    try {
+      return await request;
+    } catch (_) {
+      _guardiansFuture = null;
+      rethrow;
+    }
   }
 
-  Future<StudentAdvancedFormData> loadAdvancedFormData(String studentId) {
-    return _repo.loadAdvancedFormData(studentId);
+  Future<StudentAdvancedFormData> loadAdvancedFormData(String studentId) async {
+    final existing = _advancedDataFuture;
+    if (existing != null) return existing;
+    final request = _repo.loadAdvancedFormData(studentId);
+    _advancedDataFuture = request;
+    try {
+      return await request;
+    } catch (_) {
+      _advancedDataFuture = null;
+      rethrow;
+    }
   }
 
-  Future<List<StudentRelationFormData>> loadRelations(String studentId) {
-    return _repo.loadRelations(studentId);
+  Future<List<StudentRelationFormData>> loadRelations(String studentId) async {
+    final existing = _relationsFuture;
+    if (existing != null) return existing;
+    final request = _repo.loadRelations(studentId);
+    _relationsFuture = request;
+    try {
+      return await request;
+    } catch (_) {
+      _relationsFuture = null;
+      rethrow;
+    }
   }
 
-  Future<List<StudentActivityFormData>> loadActivities(String studentId) {
-    return _repo.loadActivities(studentId);
+  Future<List<StudentActivityFormData>> loadActivities(String studentId) async {
+    final existing = _activitiesFuture;
+    if (existing != null) return existing;
+    final request = _repo.loadActivities(studentId);
+    _activitiesFuture = request;
+    try {
+      return await request;
+    } catch (_) {
+      _activitiesFuture = null;
+      rethrow;
+    }
   }
 
-  Future<StudentDetailInsights> loadDetailInsights(String studentId) {
-    return _repo.loadDetailInsights(studentId);
+  Future<StudentDetailInsights> loadDetailInsights(String studentId) async {
+    final existing = _insightsFuture;
+    if (existing != null) return existing;
+    final request = _repo.loadDetailInsights(studentId);
+    _insightsFuture = request;
+    try {
+      return await request;
+    } catch (_) {
+      _insightsFuture = null;
+      rethrow;
+    }
   }
 
   Future<StudentExamScoreOptions> loadExamScoreOptions(String studentId) {
@@ -65,11 +115,13 @@ class StudentDetailCubit extends Cubit<FeatureState<StudentDetailData>> {
       evidenceSourcePath: evidenceSourcePath,
       evidenceFileName: evidenceFileName,
     );
+    _insightsFuture = null;
     _cacheService.clear();
   }
 
   Future<void> deleteStudentExamScoreGroup(StudentExamScoreGroup group) async {
     await _repo.deleteStudentExamScoreGroup(group);
+    _insightsFuture = null;
     _cacheService.clear();
   }
 
@@ -83,6 +135,7 @@ class StudentDetailCubit extends Cubit<FeatureState<StudentDetailData>> {
       evidenceSourcePath: evidenceSourcePath,
       evidenceFileName: evidenceFileName,
     );
+    _insightsFuture = null;
     _cacheService.clear();
   }
 

@@ -81,6 +81,14 @@ class _StudentFormCardState extends State<StudentFormCard> {
   late final TextEditingController _disabilitiesController;
   late final TextEditingController _hobbyController;
   late final TextEditingController _aspirationController;
+  late final TextEditingController _homeAddressController;
+  late final TextEditingController _dailyTransportCostController;
+  late final TextEditingController _fatherIncomeController;
+  late final TextEditingController _motherIncomeController;
+  late final TextEditingController _householdMemberCountController;
+  late final TextEditingController _educationArrearsController;
+  late final TextEditingController _academicAchievementController;
+  late final TextEditingController _nonAcademicAchievementController;
   final List<_GuardianDraft> _guardianDrafts = [];
   final List<_SiblingRelationDraft> _relationDrafts = [];
   final List<_ActivityDraft> _activityDrafts = [];
@@ -88,13 +96,14 @@ class _StudentFormCardState extends State<StudentFormCard> {
   String? _selectedClassId;
   String? _selectedPhotoSourcePath;
   String? _selectedPhotoFileName;
+  bool _photoChanged = false;
   String? _registrationFormId;
   String? _registrationFormSourcePath;
   String? _registrationFormStoredPath;
   String? _registrationFormFileName;
   String? _registrationFormUploadedAt;
+  String? _selectedHousingStatus;
   late Gender _selectedGender;
-  late bool _showAdvancedDetail;
   bool _isSaving = false;
 
   @override
@@ -150,6 +159,32 @@ class _StudentFormCardState extends State<StudentFormCard> {
     _aspirationController = TextEditingController(
       text: widget.initialAdvancedData.aspiration ?? '',
     );
+    final household = widget.initialAdvancedData.householdProfile;
+    _homeAddressController = TextEditingController(
+      text: household.homeAddress ?? '',
+    );
+    _dailyTransportCostController = TextEditingController(
+      text: _plainNumber(household.dailySchoolTransportCost),
+    );
+    _fatherIncomeController = TextEditingController(
+      text: _plainNumber(household.fatherIncome),
+    );
+    _motherIncomeController = TextEditingController(
+      text: _plainNumber(household.motherIncome),
+    );
+    _householdMemberCountController = TextEditingController(
+      text: household.householdMemberCount?.toString() ?? '',
+    );
+    _educationArrearsController = TextEditingController(
+      text: _plainNumber(household.educationArrears),
+    );
+    _academicAchievementController = TextEditingController(
+      text: household.academicAchievement ?? '',
+    );
+    _nonAcademicAchievementController = TextEditingController(
+      text: household.nonAcademicAchievement ?? '',
+    );
+    _selectedHousingStatus = household.housingStatus;
     if (widget.initialGuardians.isEmpty) {
       _guardianDrafts.addAll([
         _GuardianDraft(relationship: 'FATHER', isPrimary: true),
@@ -193,12 +228,6 @@ class _StudentFormCardState extends State<StudentFormCard> {
     _selectedClassId = student?.classId;
     _selectedSchoolId = _schoolIdForClass(_selectedClassId);
     _selectedGender = student?.gender ?? Gender.male;
-    _showAdvancedDetail =
-        widget.initialAdvancedData.activities.any(
-          (activity) => activity.hasData,
-        ) ||
-        (widget.initialAdvancedData.hobby?.trim().isNotEmpty ?? false) ||
-        (widget.initialAdvancedData.aspiration?.trim().isNotEmpty ?? false);
   }
 
   @override
@@ -222,6 +251,14 @@ class _StudentFormCardState extends State<StudentFormCard> {
     _disabilitiesController.dispose();
     _hobbyController.dispose();
     _aspirationController.dispose();
+    _homeAddressController.dispose();
+    _dailyTransportCostController.dispose();
+    _fatherIncomeController.dispose();
+    _motherIncomeController.dispose();
+    _householdMemberCountController.dispose();
+    _educationArrearsController.dispose();
+    _academicAchievementController.dispose();
+    _nonAcademicAchievementController.dispose();
     for (final draft in _guardianDrafts) {
       draft.dispose();
     }
@@ -261,12 +298,14 @@ class _StudentFormCardState extends State<StudentFormCard> {
     setState(() {
       _selectedPhotoSourcePath = file.path;
       _selectedPhotoFileName = file.name;
+      _photoChanged = true;
     });
   }
 
   Future<String?> _saveSelectedPhoto() async {
     final sourcePath = _selectedPhotoSourcePath;
     if (sourcePath == null || sourcePath.isEmpty) return null;
+    if (!_photoChanged) return sourcePath;
 
     final sourceFile = File(sourcePath);
     if (!await sourceFile.exists()) return sourcePath;
@@ -368,8 +407,15 @@ class _StudentFormCardState extends State<StudentFormCard> {
       _isSaving = true;
     });
 
+    String? copiedPhotoPath;
     try {
       final photoPath = await _saveSelectedPhoto();
+      if (_photoChanged &&
+          photoPath != null &&
+          p.normalize(photoPath) !=
+              p.normalize(_selectedPhotoSourcePath ?? '')) {
+        copiedPhotoPath = photoPath;
+      }
       final student =
           (widget.initialStudent ??
                   Student(
@@ -384,7 +430,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
                 studentId: _studentNoController.text.trim(),
                 classId: _selectedClassId!,
                 gender: _selectedGender,
-                status: StudentStatus.active,
+                status: widget.initialStudent?.status ?? StudentStatus.active,
                 fullName: _fullNameController.text.trim(),
                 nickName: nullIfEmpty(_nickNameController.text),
                 joinAt: _joinAtController.text.trim(),
@@ -409,6 +455,16 @@ class _StudentFormCardState extends State<StudentFormCard> {
       AppToast.showSubmissionSuccess(action: action, subject: 'student');
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
+      if (copiedPhotoPath != null) {
+        try {
+          final copiedPhoto = File(copiedPhotoPath);
+          if (await copiedPhoto.exists()) {
+            await copiedPhoto.delete();
+          }
+        } catch (_) {
+          // Cleanup must not hide the original save failure.
+        }
+      }
       AppToast.showFailed(error.toString().replaceFirst('Exception: ', ''));
       if (mounted) {
         setState(() {
@@ -449,6 +505,24 @@ class _StudentFormCardState extends State<StudentFormCard> {
         filePath: _nullIfEmptyNullable(_registrationFormStoredPath),
         sourcePath: _nullIfEmptyNullable(_registrationFormSourcePath),
         uploadedAt: _registrationFormUploadedAt,
+      ),
+      householdProfile: StudentHouseholdProfileFormData(
+        id: widget.initialAdvancedData.householdProfile.id,
+        homeAddress: nullIfEmpty(_homeAddressController.text),
+        dailySchoolTransportCost: double.tryParse(
+          _dailyTransportCostController.text,
+        ),
+        fatherIncome: double.tryParse(_fatherIncomeController.text),
+        motherIncome: double.tryParse(_motherIncomeController.text),
+        housingStatus: _selectedHousingStatus,
+        householdMemberCount: int.tryParse(
+          _householdMemberCountController.text,
+        ),
+        educationArrears: double.tryParse(_educationArrearsController.text),
+        academicAchievement: nullIfEmpty(_academicAchievementController.text),
+        nonAcademicAchievement: nullIfEmpty(
+          _nonAcademicAchievementController.text,
+        ),
       ),
       hobby: nullIfEmpty(_hobbyController.text),
       aspiration: nullIfEmpty(_aspirationController.text),
@@ -740,6 +814,11 @@ class _StudentFormCardState extends State<StudentFormCard> {
     return text;
   }
 
+  String _plainNumber(num? value) {
+    if (value == null) return '';
+    return value % 1 == 0 ? value.toInt().toString() : value.toString();
+  }
+
   String? _schoolIdForClass(String? classId) {
     if (classId == null) return null;
     for (final schoolClass in widget.availableClasses) {
@@ -767,6 +846,8 @@ class _StudentFormCardState extends State<StudentFormCard> {
           children: [
             _FormSection(
               title: context.l10n.basicInfo,
+              isRequired: true,
+              initiallyExpanded: true,
               children: [
                 _fieldGrid([
                   _generatedStudentNoDisplay(),
@@ -835,6 +916,8 @@ class _StudentFormCardState extends State<StudentFormCard> {
             const SizedBox(height: 18),
             _FormSection(
               title: context.l10n.school,
+              isRequired: true,
+              initiallyExpanded: true,
               children: [
                 _fieldGrid([
                   AppDropdownButtonFormField<String>(
@@ -934,6 +1017,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
             const SizedBox(height: 18),
             _FormSection(
               title: context.l10n.contact,
+              initiallyExpanded: false,
               children: [
                 _fieldGrid([
                   TextFormField(
@@ -958,8 +1042,11 @@ class _StudentFormCardState extends State<StudentFormCard> {
             const SizedBox(height: 18),
             _familySection(),
             const SizedBox(height: 18),
+            _householdProfileSection(),
+            const SizedBox(height: 18),
             _FormSection(
               title: context.l10n.physical,
+              initiallyExpanded: false,
               children: [
                 _fieldGrid([
                   _shoeSizeField(),
@@ -971,15 +1058,15 @@ class _StudentFormCardState extends State<StudentFormCard> {
               ],
             ),
             const SizedBox(height: 18),
-            _FormSection(title: context.l10n.photo, children: [_photoPicker()]),
+            _FormSection(
+              title: context.l10n.photo,
+              initiallyExpanded: false,
+              children: [_photoPicker()],
+            ),
             const SizedBox(height: 18),
-            _advancedDetailButton(),
-            if (_showAdvancedDetail) ...[
-              const SizedBox(height: 12),
-              _activitySection(),
-              const SizedBox(height: 18),
-              _goalsSection(),
-            ],
+            _activitySection(),
+            const SizedBox(height: 18),
+            _goalsSection(),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -1039,25 +1126,11 @@ class _StudentFormCardState extends State<StudentFormCard> {
     );
   }
 
-  Widget _advancedDetailButton() {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: OutlinedButton.icon(
-        onPressed: () =>
-            setState(() => _showAdvancedDetail = !_showAdvancedDetail),
-        icon: Icon(_showAdvancedDetail ? Icons.expand_less : Icons.expand_more),
-        label: Text(
-          _showAdvancedDetail
-              ? context.l10n.hideAdvancedDetail
-              : context.l10n.advancedDetail,
-        ),
-      ),
-    );
-  }
-
   Widget _familySection() {
     return _FormSection(
       title: context.l10n.family,
+      isRequired: true,
+      initiallyExpanded: true,
       children: [
         _InlineSectionTitle(context.l10n.siblingRelation),
         const SizedBox(height: 10),
@@ -1106,6 +1179,10 @@ class _StudentFormCardState extends State<StudentFormCard> {
   Widget _activitySection() {
     return _FormSection(
       title: context.l10n.extracurricularActivity,
+      initiallyExpanded:
+          widget.initialAdvancedData.activities.any(
+            (activity) => activity.hasData,
+          ),
       children: [
         _DraftTableToolbar(
           title:
@@ -1125,9 +1202,175 @@ class _StudentFormCardState extends State<StudentFormCard> {
     );
   }
 
+  Widget _householdProfileSection() {
+    return _FormSection(
+      title: 'Household & Education Profile',
+      isRequired: true,
+      initiallyExpanded: true,
+      children: [
+        TextFormField(
+          controller: _homeAddressController,
+          minLines: 2,
+          maxLines: 3,
+          decoration: InputDecoration(
+            label: _requiredLabel('Home Address'),
+            hintText: 'Street, RT/RW, house number, village, and district',
+          ),
+          inputFormatters: [LengthLimitingTextInputFormatter(240)],
+          validator: (value) => AppFormValidation.requiredText(
+            value,
+            'Home address',
+            minLength: 5,
+            maxLength: 240,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _fieldGrid([
+          _requiredMoneyField(
+            controller: _dailyTransportCostController,
+            label: 'Daily School Transport Cost',
+          ),
+          AppDropdownButtonFormField<String>(
+            initialValue: _selectedHousingStatus,
+            isExpanded: false,
+            items: StudentHousingStatusOptions.values
+                .map(
+                  (status) => DropdownMenuItem<String>(
+                    value: status,
+                    child: AppDropdownStyle.menuItemLabel(
+                      label: StudentHousingStatusOptions.label(status),
+                      selected: status == _selectedHousingStatus,
+                    ),
+                  ),
+                )
+                .toList(),
+            selectedItemBuilder: (context) => AppDropdownStyle.selectedLabels(
+              StudentHousingStatusOptions.values.map(
+                StudentHousingStatusOptions.label,
+              ),
+            ),
+            decoration: InputDecoration(
+              label: _requiredLabel('Housing Status'),
+              hintText: 'Select housing status',
+            ),
+            dropdownColor: AppColors.white,
+            focusColor: AppColors.transparent,
+            iconEnabledColor: AppColors.primary,
+            borderRadius: AppDropdownStyle.menuBorderRadius,
+            menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+            style: AppDropdownStyle.textStyle,
+            onChanged: (value) =>
+                setState(() => _selectedHousingStatus = value),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Housing status is required';
+              }
+              return null;
+            },
+          ),
+          TextFormField(
+            controller: _householdMemberCountController,
+            decoration: InputDecoration(
+              label: _requiredLabel('Household Member Count'),
+            ),
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(2),
+            ],
+            validator: (value) => _requiredPositiveInteger(
+              value,
+              'Household member count',
+            ),
+          ),
+          _requiredMoneyField(
+            controller: _fatherIncomeController,
+            label: 'Father Income',
+          ),
+          _requiredMoneyField(
+            controller: _motherIncomeController,
+            label: 'Mother Income',
+          ),
+          _requiredMoneyField(
+            controller: _educationArrearsController,
+            label: 'Education Arrears',
+          ),
+        ], maxColumns: 3),
+        const SizedBox(height: 12),
+        _fieldGrid([
+          TextFormField(
+            controller: _academicAchievementController,
+            minLines: 2,
+            maxLines: 4,
+            decoration: InputDecoration(
+              label: _requiredLabel('Academic Achievement'),
+              hintText: 'Ranking, academic competition, or write None',
+            ),
+            inputFormatters: [LengthLimitingTextInputFormatter(300)],
+            validator: (value) => AppFormValidation.requiredText(
+              value,
+              'Academic achievement',
+              maxLength: 300,
+            ),
+          ),
+          TextFormField(
+            controller: _nonAcademicAchievementController,
+            minLines: 2,
+            maxLines: 4,
+            decoration: InputDecoration(
+              label: _requiredLabel('Non-Academic Achievement'),
+              hintText: 'Sports, arts, or write None',
+            ),
+            inputFormatters: [LengthLimitingTextInputFormatter(300)],
+            validator: (value) => AppFormValidation.requiredText(
+              value,
+              'Non-academic achievement',
+              maxLength: 300,
+            ),
+          ),
+        ], maxColumns: 2),
+      ],
+    );
+  }
+
+  TextFormField _requiredMoneyField({
+    required TextEditingController controller,
+    required String label,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        label: _requiredLabel(label),
+        prefixText: 'Rp ',
+      ),
+      keyboardType: TextInputType.number,
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(15),
+      ],
+      validator: (value) {
+        final text = value?.trim() ?? '';
+        if (text.isEmpty) return '$label is required';
+        if (double.tryParse(text) == null) return '$label must be a number';
+        return null;
+      },
+    );
+  }
+
+  String? _requiredPositiveInteger(String? value, String label) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return '$label is required';
+    final number = int.tryParse(text);
+    if (number == null || number < 1) return '$label must be at least 1';
+    return null;
+  }
+
   Widget _goalsSection() {
     return _FormSection(
       title: context.l10n.hobbyAspiration,
+      initiallyExpanded:
+          (widget.initialAdvancedData.hobby?.trim().isNotEmpty ?? false) ||
+          (widget.initialAdvancedData.aspiration?.trim().isNotEmpty ?? false),
       children: [
         _fieldGrid([
           TextFormField(
@@ -1393,25 +1636,75 @@ class _StudentFormCardState extends State<StudentFormCard> {
 }
 
 class _FormSection extends StatelessWidget {
-  const _FormSection({required this.title, required this.children});
+  const _FormSection({
+    required this.title,
+    required this.children,
+    this.isRequired = false,
+    this.initiallyExpanded = false,
+  });
 
   final String title;
   final List<Widget> children;
+  final bool isRequired;
+  final bool initiallyExpanded;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+    final borderRadius = BorderRadius.circular(8);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: borderRadius,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: ClipRRect(
+        borderRadius: borderRadius,
+        child: ExpansionTile(
+          initiallyExpanded: initiallyExpanded || isRequired,
+          maintainState: true,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(14, 4, 14, 16),
+          backgroundColor: AppColors.white,
+          collapsedBackgroundColor: AppColors.white,
+          shape: const Border(),
+          collapsedShape: const Border(),
+          iconColor: AppColors.primary,
+          collapsedIconColor: AppColors.textSecondary,
+          title: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  title,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (isRequired) ...[
+                const SizedBox(width: 5),
+                const Text(
+                  '*',
+                  style: TextStyle(
+                    color: AppColors.errorDark,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: children,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
-        ...children,
-      ],
+      ),
     );
   }
 }

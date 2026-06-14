@@ -47,6 +47,16 @@ class StudentActivitiesTab extends StatelessWidget {
                 ],
               );
             }
+            if (snapshot.hasError) {
+              return DetailSectionCard(
+                title: context.l10n.extracurricular,
+                icon: Icons.emoji_events_outlined,
+                wrapChildren: false,
+                children: [
+                  DetailEmptySectionText(context.l10n.errorSomethingWentWrong),
+                ],
+              );
+            }
 
             return Column(
               children: [

@@ -16,8 +16,6 @@ class AssessmentCubit extends Cubit<AssessmentState> {
       final studentAssessments = await _repository.getAllStudentAssessments();
       final students = await _repository.getStudentOptions();
       final gradingScales = await _repository.getAllGradingScales();
-      final evidenceCountsByResult =
-          await _repository.getEvidenceCountsByResult();
       emit(
         state.copyWith(
           isLoading: false,
@@ -25,7 +23,6 @@ class AssessmentCubit extends Cubit<AssessmentState> {
           studentAssessments: studentAssessments,
           students: students,
           gradingScales: gradingScales,
-          evidenceCountsByResult: evidenceCountsByResult,
           error: null,
         ),
       );
@@ -109,18 +106,10 @@ class AssessmentCubit extends Cubit<AssessmentState> {
   }
 
   Future<void> recordStudentAssessment(
-    StudentAssessment studentAssessment, {
-    String? evidenceSourcePath,
-    String? evidenceFileName,
-    String? evidenceRemarks,
-  }) async {
+    StudentAssessment studentAssessment,
+  ) async {
     try {
-      await _repository.recordStudentAssessment(
-        studentAssessment,
-        evidenceSourcePath: evidenceSourcePath,
-        evidenceFileName: evidenceFileName,
-        evidenceRemarks: evidenceRemarks,
-      );
+      await _repository.recordStudentAssessment(studentAssessment);
       await loadAssessmentModule();
     } catch (e) {
       emit(state.copyWith(error: e.toString()));

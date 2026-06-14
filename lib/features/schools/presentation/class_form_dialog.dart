@@ -58,13 +58,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
   }
 
   String _generateClassName() {
-    final sectionPart = section?.trim() ?? '';
-    final prefix = sectionPart.isNotEmpty ? '$level$sectionPart' : '$level';
-    final trimmedYear = year.trim();
-    if (trimmedYear.isEmpty) {
-      return prefix;
-    }
-    return '$prefix-$trimmedYear';
+    return SchoolClass.generatedName(level: level, section: section);
   }
 
   void _refreshClassName() {
@@ -91,7 +85,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
                 value: className,
                 controller: _classNameController,
                 readOnly: true,
-                hint: 'Generated from level, section, and year',
+                hint: 'Generated from level and optional section',
                 onSaved: (value) => className = value ?? '',
                 validator: (value) {
                   if (value?.isEmpty ?? true) return 'Class name is required';
@@ -119,14 +113,14 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
               CommonFormWidgets.dropdownField(
                 label: context.l10n.section,
                 items: ['A', 'B', 'C', 'D'],
-                value: widget.schoolClass != null ? (section ?? '') : null,
+                value: SchoolClass.normalizeSection(section),
                 hint: AppFormFieldStyle.select('section'),
                 onChanged: (value) {
-                  section = value?.isEmpty ?? true ? '' : value;
+                  section = SchoolClass.normalizeSection(value);
                   _refreshClassName();
                 },
                 onSaved: (value) =>
-                    section = value?.isEmpty ?? true ? '' : value,
+                    section = SchoolClass.normalizeSection(value),
                 isRequired: false,
               ),
               const SizedBox(height: 16),
@@ -185,8 +179,9 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
     final schoolClass = SchoolClass(
       id: widget.schoolClass?.id,
       name: className,
+      schoolId: widget.schoolClass?.schoolId,
       level: level,
-      section: section,
+      section: SchoolClass.normalizeSection(section),
       year: year,
     );
 

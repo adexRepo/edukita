@@ -218,7 +218,9 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                if (snapshot.connectionState == ConnectionState.waiting)
+                if (snapshot.hasError)
+                  DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
+                else if (snapshot.connectionState == ConnectionState.waiting)
                   DetailEmptySectionText(context.l10n.loadingExamScores)
                 else if (groups.isEmpty)
                   DetailEmptySectionText(context.l10n.noExamScores)
@@ -892,6 +894,11 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
       AppToast.showFailed('Only PDF, JPG, and PNG files are allowed.');
       return;
     }
+    const maxEvidenceSize = 20 * 1024 * 1024;
+    if (await io.File(file.path).length() > maxEvidenceSize) {
+      AppToast.showFailed('Evidence file must be 20 MB or smaller.');
+      return;
+    }
     setState(() {
       _evidenceSourcePath = file.path;
       _evidenceFileName = file.name;
@@ -1113,7 +1120,7 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
       if (score == null) continue;
       items.add(
         _PendingScoreItem(
-          subjectId: _isSchool ? row.targetId : null,
+          subjectId: _isSchool ? row.targetId : row.subjectId,
           unitId: _isSchool ? null : row.targetId,
           score: score,
           maxScore: _parseNumber(row.maxScoreController.text),

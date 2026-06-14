@@ -58,7 +58,9 @@ class StudentOverviewTab extends StatelessWidget {
               title: context.l10n.aggregatedSnapshot,
               icon: Icons.insights_outlined,
               children: [
-                if (snapshot.connectionState == ConnectionState.waiting)
+                if (snapshot.hasError)
+                  DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
+                else if (snapshot.connectionState == ConnectionState.waiting)
                   DetailEmptySectionText(context.l10n.loadingStudentSnapshot)
                 else if (insights == null)
                   DetailEmptySectionText(context.l10n.noStudentSnapshot)

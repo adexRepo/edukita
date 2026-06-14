@@ -43,7 +43,9 @@ class _RelationsTable extends StatelessWidget {
           icon: Icons.account_tree_outlined,
           wrapChildren: false,
           children: [
-            if (snapshot.connectionState == ConnectionState.waiting)
+            if (snapshot.hasError)
+              DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
+            else if (snapshot.connectionState == ConnectionState.waiting)
               DetailEmptySectionText(context.l10n.loadingStudentRelations)
             else
               DetailDataTable(
@@ -95,7 +97,9 @@ class _GuardianTable extends StatelessWidget {
           icon: Icons.family_restroom_outlined,
           wrapChildren: false,
           children: [
-            if (snapshot.connectionState == ConnectionState.waiting)
+            if (snapshot.hasError)
+              DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
+            else if (snapshot.connectionState == ConnectionState.waiting)
               DetailEmptySectionText(context.l10n.loadingGuardianInformation)
             else
               DetailDataTable(

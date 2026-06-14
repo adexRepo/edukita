@@ -55,10 +55,9 @@ class _ClassFormCardState extends State<ClassFormCard> {
       text: _generateClassName(),
     );
 
-    // Listen to changes in level, section, and year to update generated class name
+    // Listen to changes that affect the generated class name.
     _levelController.addListener(_updateGeneratedClassName);
     _sectionController.addListener(_updateGeneratedClassName);
-    _yearController.addListener(_updateGeneratedClassName);
   }
 
   void _updateGeneratedClassName() {
@@ -68,21 +67,12 @@ class _ClassFormCardState extends State<ClassFormCard> {
   }
 
   String _generateClassName() {
-    final level = _levelController.text.trim();
-    final section = _sectionController.text.trim();
-    final year = _yearController.text.trim();
-
-    if (level.isEmpty) return '';
-
-    String className = level;
-    if (section.isNotEmpty) {
-      className = '$className$section';
-    }
-    if (year.isNotEmpty) {
-      className = '$className $year';
-    }
-
-    return className;
+    final level = int.tryParse(_levelController.text.trim());
+    if (level == null) return '';
+    return SchoolClass.generatedName(
+      level: level,
+      section: _sectionController.text,
+    );
   }
 
   @override
@@ -102,25 +92,23 @@ class _ClassFormCardState extends State<ClassFormCard> {
 
     final className = _generateClassName();
     if (className.isEmpty) {
-      AppToast.showFailed('Please enter level and section.');
+      AppToast.showFailed('Please enter level.');
       return;
     }
 
+    final section = SchoolClass.normalizeSection(_sectionController.text);
     final schoolClass = widget.initialClass != null
         ? widget.initialClass!.copyWith(
             name: className,
             level: int.parse(_levelController.text.trim()),
-            section: _sectionController.text.trim().isEmpty
-                ? null
-                : _sectionController.text.trim(),
+            section: section,
+            clearSection: section == null,
             year: _yearController.text.trim(),
           )
         : SchoolClass(
             name: className,
             level: int.parse(_levelController.text.trim()),
-            section: _sectionController.text.trim().isEmpty
-                ? null
-                : _sectionController.text.trim(),
+            section: section,
             year: _yearController.text.trim(),
           );
 

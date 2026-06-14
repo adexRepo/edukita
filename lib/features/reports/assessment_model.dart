@@ -10,8 +10,6 @@ class Assessment {
     this.assessmentType,
     this.assessmentSource,
     this.scoreType,
-    this.isEvidenceRequired = false,
-    this.evidenceLabel,
     this.maxScore,
     this.description,
   }) : id = id ?? const Uuid().v4();
@@ -24,8 +22,6 @@ class Assessment {
   final String? assessmentType;
   final String? assessmentSource;
   final String? scoreType;
-  final bool isEvidenceRequired;
-  final String? evidenceLabel;
   final double? maxScore;
   final String? description;
 
@@ -40,8 +36,6 @@ class Assessment {
     String? assessmentType,
     String? assessmentSource,
     String? scoreType,
-    bool? isEvidenceRequired,
-    String? evidenceLabel,
     double? maxScore,
     String? description,
   }) {
@@ -54,8 +48,6 @@ class Assessment {
       assessmentType: assessmentType ?? this.assessmentType,
       assessmentSource: assessmentSource ?? this.assessmentSource,
       scoreType: scoreType ?? this.scoreType,
-      isEvidenceRequired: isEvidenceRequired ?? this.isEvidenceRequired,
-      evidenceLabel: evidenceLabel ?? this.evidenceLabel,
       maxScore: maxScore ?? this.maxScore,
       description: description ?? this.description,
     );
@@ -71,9 +63,6 @@ class Assessment {
       assessmentType: map['assessment_type']?.toString(),
       assessmentSource: map['assessment_source']?.toString(),
       scoreType: map['score_type']?.toString(),
-      isEvidenceRequired:
-          ((map['is_evidence_required'] as num?)?.toInt() ?? 0) == 1,
-      evidenceLabel: map['evidence_label']?.toString(),
       maxScore: map['max_score'] == null
           ? null
           : (map['max_score'] as num).toDouble(),
@@ -91,8 +80,6 @@ class Assessment {
       'assessment_type': assessmentType,
       'assessment_source': assessmentSource,
       'score_type': scoreType,
-      'is_evidence_required': isEvidenceRequired ? 1 : 0,
-      'evidence_label': evidenceLabel,
       'max_score': maxScore,
       'description': description,
     };
@@ -115,8 +102,6 @@ class Assessment {
           assessmentType == other.assessmentType &&
           assessmentSource == other.assessmentSource &&
           scoreType == other.scoreType &&
-          isEvidenceRequired == other.isEvidenceRequired &&
-          evidenceLabel == other.evidenceLabel &&
           maxScore == other.maxScore &&
           description == other.description;
 
@@ -130,8 +115,6 @@ class Assessment {
       assessmentType.hashCode ^
       assessmentSource.hashCode ^
       scoreType.hashCode ^
-      isEvidenceRequired.hashCode ^
-      evidenceLabel.hashCode ^
       maxScore.hashCode ^
       description.hashCode;
 }
@@ -281,72 +264,6 @@ class GradingScale {
   @override
   int get hashCode =>
       id.hashCode ^ minPercent.hashCode ^ maxPercent.hashCode ^ grade.hashCode;
-}
-
-class AssessmentEvidence {
-  AssessmentEvidence({
-    String? id,
-    required this.assessmentId,
-    required this.studentAssessmentId,
-    required this.studentId,
-    required this.fileName,
-    required this.filePath,
-    this.fileType,
-    this.uploadedBy,
-    required this.uploadedAt,
-    this.remarks,
-    String? createdAt,
-    String? updatedAt,
-  })  : id = id ?? const Uuid().v4(),
-        createdAt = createdAt ?? DateTime.now().toIso8601String(),
-        updatedAt = updatedAt ?? DateTime.now().toIso8601String();
-
-  final String id;
-  final String assessmentId;
-  final String studentAssessmentId;
-  final String studentId;
-  final String fileName;
-  final String filePath;
-  final String? fileType;
-  final String? uploadedBy;
-  final String uploadedAt;
-  final String? remarks;
-  final String createdAt;
-  final String updatedAt;
-
-  factory AssessmentEvidence.fromMap(Map<String, Object?> map) {
-    return AssessmentEvidence(
-      id: map['id']?.toString(),
-      assessmentId: map['assessment_id']?.toString() ?? '',
-      studentAssessmentId: map['student_assessment_id']?.toString() ?? '',
-      studentId: map['student_id']?.toString() ?? '',
-      fileName: map['file_name']?.toString() ?? '',
-      filePath: map['file_path']?.toString() ?? '',
-      fileType: map['file_type']?.toString(),
-      uploadedBy: map['uploaded_by']?.toString(),
-      uploadedAt: map['uploaded_at']?.toString() ?? '',
-      remarks: map['remarks']?.toString(),
-      createdAt: map['created_at']?.toString(),
-      updatedAt: map['updated_at']?.toString(),
-    );
-  }
-
-  Map<String, Object?> toMap() {
-    return {
-      'id': id,
-      'assessment_id': assessmentId,
-      'student_assessment_id': studentAssessmentId,
-      'student_id': studentId,
-      'file_name': fileName,
-      'file_path': filePath,
-      'file_type': fileType,
-      'uploaded_by': uploadedBy,
-      'uploaded_at': uploadedAt,
-      'remarks': remarks,
-      'created_at': createdAt,
-      'updated_at': updatedAt,
-    };
-  }
 }
 
 class AssessmentStudentOption {

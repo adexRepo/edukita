@@ -6,9 +6,10 @@ class SchoolClass {
     required this.name,
     this.schoolId,
     required this.level,
-    this.section,
+    String? section,
     required this.year,
-  }) : id = id ?? const Uuid().v4();
+  }) : id = id ?? const Uuid().v4(),
+       section = normalizeSection(section);
 
   final String id;
   final String name;
@@ -19,12 +20,25 @@ class SchoolClass {
 
   String get className => name;
 
+  static String? normalizeSection(String? value) {
+    final normalized = value?.trim().toUpperCase() ?? '';
+    return normalized.isEmpty || normalized == 'NULL' || normalized == '-'
+        ? null
+        : normalized;
+  }
+
+  static String generatedName({required int level, String? section}) {
+    final normalizedSection = normalizeSection(section);
+    return normalizedSection == null ? '$level' : '$level$normalizedSection';
+  }
+
   SchoolClass copyWith({
     String? id,
     String? name,
     String? schoolId,
     int? level,
     String? section,
+    bool clearSection = false,
     String? year,
   }) {
     return SchoolClass(
@@ -32,7 +46,7 @@ class SchoolClass {
       name: name ?? this.name,
       schoolId: schoolId ?? this.schoolId,
       level: level ?? this.level,
-      section: section ?? this.section,
+      section: clearSection ? null : section ?? this.section,
       year: year ?? this.year,
     );
   }

@@ -86,7 +86,9 @@ class _RegistrationFormSection extends StatelessWidget {
           icon: Icons.assignment_outlined,
           wrapChildren: false,
           children: [
-            if (snapshot.connectionState == ConnectionState.waiting)
+            if (snapshot.hasError)
+              DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
+            else if (snapshot.connectionState == ConnectionState.waiting)
               DetailEmptySectionText(context.l10n.loadingRegistrationForm)
             else if (document == null || !document.hasFile)
               DetailEmptySectionText(context.l10n.noRegistrationFormUploaded)
@@ -134,7 +136,9 @@ class _AssistanceHistoryTable extends StatelessWidget {
           icon: Icons.volunteer_activism_outlined,
           wrapChildren: false,
           children: [
-            if (snapshot.connectionState == ConnectionState.waiting)
+            if (snapshot.hasError)
+              DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
+            else if (snapshot.connectionState == ConnectionState.waiting)
               DetailEmptySectionText(context.l10n.loadingAssistanceHistory)
             else
               DetailDataTable(
@@ -191,7 +195,9 @@ class _GoalsTable extends StatelessWidget {
           icon: Icons.flag_outlined,
           wrapChildren: false,
           children: [
-            if (snapshot.connectionState == ConnectionState.waiting)
+            if (snapshot.hasError)
+              DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
+            else if (snapshot.connectionState == ConnectionState.waiting)
               DetailEmptySectionText(context.l10n.loadingGoals)
             else
               DetailDataTable(

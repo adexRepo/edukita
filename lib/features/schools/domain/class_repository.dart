@@ -1,5 +1,6 @@
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
+import 'package:edukita/features/schools/data/school_model.dart';
 
 class ClassRepository {
   final DatabaseProvider _dbProvider;
@@ -47,11 +48,13 @@ class ClassRepository {
 
   Future<int> insertClass(SchoolClass schoolClass) async {
     final db = await _dbProvider.database;
+    await _ensureClassIsUnique(schoolClass);
     return db.insert('classes', await _classMapForDb(schoolClass));
   }
 
   Future<int> updateClass(SchoolClass schoolClass) async {
     final db = await _dbProvider.database;
+    await _ensureClassIsUnique(schoolClass, excludingId: schoolClass.id);
     return db.update(
       'classes',
       await _classMapForDb(schoolClass),
@@ -98,5 +101,66 @@ class ClassRepository {
     }
     map.removeWhere((key, value) => !names.contains(key));
     return map;
+  }
+
+  Future<void> _ensureClassIsUnique(
+    SchoolClass schoolClass, {
+    String? excludingId,
+  }) async {
+    final db = await _dbProvider.database;
+    SchoolType schoolType;
+    if (schoolClass.schoolId == null) {
+      schoolType = SchoolType.fromLevel(schoolClass.level);
+    } else {
+      final schoolRows = await db.query(
+        'schools',
+        columns: ['type'],
+        where: 'id = ?',
+        whereArgs: [schoolClass.schoolId],
+        limit: 1,
+      );
+      final rawType = schoolRows.isEmpty
+          ? null
+          : schoolRows.first['type']?.toString().toLowerCase();
+      schoolType = SchoolType.values.firstWhere(
+        (type) => type.name == rawType,
+        orElse: () => SchoolType.fromLevel(schoolClass.level),
+      );
+    }
+
+    final normalizedSection =
+        SchoolClass.normalizeSection(schoolClass.section) ?? '';
+    final identityCondition = schoolType.usesAutoClassName
+        ? '''
+        level = ?
+        AND COALESCE(UPPER(TRIM(section)), '') = ?
+        '''
+        : "UPPER(TRIM(name)) = ?";
+    final rows = await db.rawQuery(
+      '''
+      SELECT id
+      FROM classes
+      WHERE school_id IS ?
+        AND year = ?
+        AND $identityCondition
+        ${excludingId == null ? '' : 'AND id <> ?'}
+      LIMIT 1
+      ''',
+      [
+        schoolClass.schoolId,
+        schoolClass.year,
+        if (schoolType.usesAutoClassName) ...[
+          schoolClass.level,
+          normalizedSection,
+        ] else
+          schoolClass.name.trim().toUpperCase(),
+        ?excludingId,
+      ],
+    );
+    if (rows.isNotEmpty) {
+      throw StateError(
+        'A class with the same school, level, section, and year already exists.',
+      );
+    }
   }
 }

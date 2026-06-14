@@ -28,7 +28,9 @@ class StudentBehaviorTab extends StatelessWidget {
               icon: Icons.record_voice_over_outlined,
               wrapChildren: false,
               children: [
-                if (snapshot.connectionState == ConnectionState.waiting)
+                if (snapshot.hasError)
+                  DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
+                else if (snapshot.connectionState == ConnectionState.waiting)
                   DetailEmptySectionText(context.l10n.loadingTeacherNotes)
                 else
                   DetailDataTable(
@@ -61,7 +63,9 @@ class StudentBehaviorTab extends StatelessWidget {
               icon: Icons.pie_chart_outline,
               wrapChildren: false,
               children: [
-                if (snapshot.connectionState == ConnectionState.waiting)
+                if (snapshot.hasError)
+                  DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
+                else if (snapshot.connectionState == ConnectionState.waiting)
                   DetailEmptySectionText(context.l10n.loadingNoteDistribution)
                 else
                   DetailDataTable(

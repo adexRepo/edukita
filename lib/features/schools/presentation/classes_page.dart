@@ -117,10 +117,17 @@ class _ClassesPageState extends State<ClassesPage> {
                     itemCount: classes.length,
                     itemBuilder: (context, index) {
                       final schoolClass = classes[index];
+                      final section = SchoolClass.normalizeSection(
+                        schoolClass.section,
+                      );
                       return ListTile(
                         title: Text(schoolClass.className),
                         subtitle: Text(
-                          'Level ${schoolClass.level} • Section ${schoolClass.section ?? '-'} • Year ${schoolClass.year}',
+                          [
+                            'Level ${schoolClass.level}',
+                            if (section != null) 'Section $section',
+                            'Year ${schoolClass.year}',
+                          ].join(' | '),
                         ),
                         onTap: () => {},
                         trailing: Row(

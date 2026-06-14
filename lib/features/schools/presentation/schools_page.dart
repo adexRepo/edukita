@@ -579,9 +579,15 @@ class _SchoolClassesDialog extends StatelessWidget {
                           title: context.l10n.section,
                           flex: 2,
                           sortValue: (schoolClass) =>
-                              schoolClass.section?.codeUnitAt(0) ?? 0,
+                              SchoolClass.normalizeSection(
+                                schoolClass.section,
+                              )?.codeUnitAt(0) ??
+                              0,
                           cell: (schoolClass) => Text(
-                            schoolClass.section ?? '-',
+                            SchoolClass.normalizeSection(
+                                  schoolClass.section,
+                                ) ??
+                                '',
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(fontSize: 12),
                           ),

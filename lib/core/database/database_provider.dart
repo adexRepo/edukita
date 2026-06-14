@@ -15,7 +15,7 @@ import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 class DatabaseProvider {
   DatabaseProvider._();
   static final instance = DatabaseProvider._();
-  static const schemaVersion = 27;
+  static const schemaVersion = 28;
 
   Database? _db;
 
@@ -67,26 +67,7 @@ class DatabaseProvider {
     }
 
     final databasePath = join(dir.path, 'edukita.db');
-    await _copyLegacyDatabaseIfNeeded(databasePath);
     return databasePath;
-  }
-
-  Future<void> _copyLegacyDatabaseIfNeeded(String databasePath) async {
-    final target = io.File(databasePath);
-    if (await target.exists()) return;
-
-    final legacyCandidates = [
-      join(io.Directory.current.path, 'edukita', 'database', 'edukita.db'),
-      join(io.Directory.current.path, 'data', 'edukita.db'),
-    ];
-
-    for (final legacyPath in legacyCandidates) {
-      final legacy = io.File(legacyPath);
-      if (!await legacy.exists()) continue;
-      await target.parent.create(recursive: true);
-      await legacy.copy(databasePath);
-      return;
-    }
   }
 
   Future<int> insert(String table, Map<String, Object?> values) async {

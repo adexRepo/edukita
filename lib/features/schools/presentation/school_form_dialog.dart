@@ -603,7 +603,12 @@ class _ClassDraft {
 
   String classNameFor(SchoolType type) {
     if (!type.usesAutoClassName) return nameController.text.trim();
-    return '${levelController.text.trim()}${sectionController.text.trim()}';
+    final level = int.tryParse(levelController.text.trim());
+    if (level == null) return '';
+    return SchoolClass.generatedName(
+      level: level,
+      section: sectionController.text,
+    );
   }
 
   void syncGeneratedClassName(SchoolType type) {
@@ -620,9 +625,9 @@ class _ClassDraft {
   String? slotKeyFor(SchoolType type) {
     if (!type.usesAutoClassName) return null;
     final level = levelController.text.trim();
-    final section = sectionController.text.trim().toUpperCase();
-    if (level.isEmpty || section.isEmpty) return null;
-    return '$level-$section';
+    if (level.isEmpty) return null;
+    final section = SchoolClass.normalizeSection(sectionController.text);
+    return '$level-${section ?? '<none>'}';
   }
 
   bool hasClassInput(SchoolType type) {
@@ -644,9 +649,7 @@ class _ClassDraft {
       schoolId: schoolId,
       name: classNameFor(type),
       level: int.tryParse(levelController.text) ?? 0,
-      section: sectionController.text.trim().isEmpty
-          ? null
-          : sectionController.text.trim(),
+      section: SchoolClass.normalizeSection(sectionController.text),
       year: yearController.text.trim(),
     );
   }
@@ -848,9 +851,11 @@ class _ClassTableRow extends StatelessWidget {
                   Expanded(
                     flex: 2,
                     child: _ClassCellText(
-                      draft.sectionController.text.trim().isEmpty
-                          ? '-'
-                          : draft.sectionController.text,
+                      SchoolClass.normalizeSection(
+                            draft.sectionController.text,
+                          ) ??
+                          '',
+                      showPlaceholder: false,
                     ),
                   ),
                   Expanded(
@@ -913,14 +918,15 @@ class _ClassTableRow extends StatelessWidget {
 }
 
 class _ClassCellText extends StatelessWidget {
-  const _ClassCellText(this.text);
+  const _ClassCellText(this.text, {this.showPlaceholder = true});
 
   final String text;
+  final bool showPlaceholder;
 
   @override
   Widget build(BuildContext context) {
     return Text(
-      text.trim().isEmpty ? '-' : text,
+      text.trim().isEmpty && showPlaceholder ? '-' : text,
       overflow: TextOverflow.ellipsis,
       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
     );
@@ -987,9 +993,13 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
       return;
     }
 
-    final level = _level?.toString() ?? '';
-    final section = _sectionController.text.trim().toUpperCase();
-    _nameController.text = '$level$section';
+    final level = _level;
+    _nameController.text = level == null
+        ? ''
+        : SchoolClass.generatedName(
+            level: level,
+            section: _sectionController.text,
+          );
   }
 
   @override
@@ -1080,9 +1090,7 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
               TextFormField(
                 controller: _sectionController,
                 decoration: InputDecoration(
-                  label: widget.autoName
-                      ? requiredLabel(context, context.l10n.section)
-                      : Text(context.l10n.section),
+                  label: Text(context.l10n.section),
                 ),
                 textCapitalization: TextCapitalization.characters,
                 inputFormatters: [
@@ -1095,8 +1103,7 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
                 onChanged: (_) => setState(_syncName),
                 validator: (value) {
                   final text = value?.trim() ?? '';
-                  if (!widget.autoName && text.isEmpty) return null;
-                  if (text.isEmpty) return context.l10n.sectionRequired;
+                  if (text.isEmpty) return null;
                   if (!RegExp(r'^[A-Z]$').hasMatch(text.toUpperCase())) {
                     return 'Alphabet only';
                   }
@@ -1143,8 +1150,14 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
     final level = _level?.toString() ?? '';
     final section = _sectionController.text.trim().toUpperCase();
     final year = _yearController.text.trim();
+    final parsedLevel = int.tryParse(level);
     final name = widget.autoName
-        ? '$level$section'
+        ? parsedLevel == null
+              ? ''
+              : SchoolClass.generatedName(
+                  level: parsedLevel,
+                  section: section,
+                )
         : _nameController.text.trim();
     if (level.isEmpty || year.isEmpty || name.isEmpty) return false;
 

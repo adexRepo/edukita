@@ -10,6 +10,7 @@ class ClassDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final section = SchoolClass.normalizeSection(schoolClass.section);
     return Scaffold(
       appBar: AppBar(
         leadingWidth: 40,
@@ -36,7 +37,7 @@ class ClassDetailPage extends StatelessWidget {
             const SizedBox(height: 16),
             Text('${context.l10n.className}: ${schoolClass.className}'),
             Text('${context.l10n.level}: ${schoolClass.level}'),
-            Text('${context.l10n.section}: ${schoolClass.section ?? '-'}'),
+            if (section != null) Text('${context.l10n.section}: $section'),
             Text('${context.l10n.year}: ${schoolClass.year}'),
           ],
         ),

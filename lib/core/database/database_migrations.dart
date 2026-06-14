@@ -111,11 +111,12 @@ class DatabaseMigrations {
     await _ensureAssistancePeriodProgramSchema(db);
     await _ensureScheduleLevelSchema(db);
     await _ensureTeachingActivitySchema(db);
-    await _ensureAssessmentEvidenceSchema(db);
+    await _removeLegacyAssessmentEvidenceSchema(db);
     await _ensureStudentExamScoreSchema(db);
     await _normalizeAcademicRelationFlow(db);
     await _ensureSubjectTimestampSchema(db);
     await _ensureUserAuthorizationSchema(db);
+    await _ensureSchoolClassSchema(db);
   }
 
   static Future<void> _removeLegacyAssistanceWorkflowSchema(Database db) async {
@@ -487,6 +488,29 @@ class DatabaseMigrations {
         "UPDATE classes SET name = class_name WHERE name IS NULL OR name = ''",
       );
     }
+
+    await db.execute(
+      "UPDATE classes SET section = NULL "
+      "WHERE UPPER(TRIM(COALESCE(section, ''))) IN ('', 'NULL', '-')",
+    );
+    await db.execute(
+      'UPDATE classes SET section = UPPER(TRIM(section)) '
+      'WHERE section IS NOT NULL',
+    );
+    await db.execute(
+      '''
+      UPDATE classes
+      SET name = CAST(level AS TEXT) || COALESCE(section, '')
+      WHERE (
+        school_id IN (
+          SELECT id
+          FROM schools
+          WHERE UPPER(COALESCE(type, '')) IN ('SD', 'SMP', 'SMA', 'SMK')
+        )
+        OR (school_id IS NULL AND level BETWEEN 1 AND 12)
+      )
+      ''',
+    );
   }
 
   static Future<void> _ensureTeacherManagementSchema(Database db) async {
@@ -519,10 +543,9 @@ class DatabaseMigrations {
     );
   }
 
-  static Future<void> _ensureAssessmentEvidenceSchema(Database db) async {
+  static Future<void> _removeLegacyAssessmentEvidenceSchema(Database db) async {
     await DatabaseTables.assessments(db);
     await DatabaseTables.studentAssessments(db);
-    await DatabaseTables.assessmentEvidences(db);
     await _addColumnIfMissing(
       db,
       table: 'assessments',
@@ -541,24 +564,12 @@ class DatabaseMigrations {
       column: 'score_type',
       definition: 'TEXT',
     );
-    await _addColumnIfMissing(
-      db,
-      table: 'assessments',
-      column: 'is_evidence_required',
-      definition: 'INTEGER NOT NULL DEFAULT 0',
-    );
-    await _addColumnIfMissing(
-      db,
-      table: 'assessments',
-      column: 'evidence_label',
-      definition: 'TEXT',
-    );
     await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_assessment_evidences_result ON assessment_evidences(student_assessment_id)',
+      "UPDATE uploaded_files SET is_active = 0, updated_at = CURRENT_TIMESTAMP "
+      "WHERE entity_type = 'student_assessment' "
+      "AND document_type = 'assessment_evidence' AND is_active = 1",
     );
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_assessment_evidences_assessment ON assessment_evidences(assessment_id)',
-    );
+    await db.execute('DROP TABLE IF EXISTS assessment_evidences');
   }
 
   static Future<void> _ensureStudentExamScoreSchema(Database db) async {

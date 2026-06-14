@@ -8,6 +8,7 @@ class StudentAdvancedFormData {
     this.registrationForm = const StudentDocumentFormData(
       documentType: StudentDocumentTypeOptions.registrationForm,
     ),
+    this.householdProfile = const StudentHouseholdProfileFormData(),
     this.hobby,
     this.aspiration,
   });
@@ -16,6 +17,7 @@ class StudentAdvancedFormData {
   final List<StudentRelationFormData> relations;
   final List<StudentActivityFormData> activities;
   final StudentDocumentFormData registrationForm;
+  final StudentHouseholdProfileFormData householdProfile;
   final String? hobby;
   final String? aspiration;
 
@@ -24,8 +26,29 @@ class StudentAdvancedFormData {
         relations.any((relation) => relation.hasData) ||
         activities.any((activity) => activity.hasData) ||
         registrationForm.hasFile ||
+        householdProfile.hasData ||
         _hasText(hobby) ||
         _hasText(aspiration);
+  }
+
+  StudentAdvancedFormData copyWith({
+    StudentHealthFormData? health,
+    List<StudentRelationFormData>? relations,
+    List<StudentActivityFormData>? activities,
+    StudentDocumentFormData? registrationForm,
+    StudentHouseholdProfileFormData? householdProfile,
+    String? hobby,
+    String? aspiration,
+  }) {
+    return StudentAdvancedFormData(
+      health: health ?? this.health,
+      relations: relations ?? this.relations,
+      activities: activities ?? this.activities,
+      registrationForm: registrationForm ?? this.registrationForm,
+      householdProfile: householdProfile ?? this.householdProfile,
+      hobby: hobby ?? this.hobby,
+      aspiration: aspiration ?? this.aspiration,
+    );
   }
 }
 
@@ -48,6 +71,83 @@ class StudentDocumentFormData {
 
   bool get hasFile {
     return _hasText(sourcePath) || _hasText(filePath);
+  }
+
+  StudentDocumentFormData copyWith({
+    String? id,
+    String? documentType,
+    String? fileName,
+    String? filePath,
+    String? sourcePath,
+    String? uploadedAt,
+    bool clearSourcePath = false,
+  }) {
+    return StudentDocumentFormData(
+      id: id ?? this.id,
+      documentType: documentType ?? this.documentType,
+      fileName: fileName ?? this.fileName,
+      filePath: filePath ?? this.filePath,
+      sourcePath: clearSourcePath ? null : sourcePath ?? this.sourcePath,
+      uploadedAt: uploadedAt ?? this.uploadedAt,
+    );
+  }
+}
+
+class StudentHouseholdProfileFormData {
+  const StudentHouseholdProfileFormData({
+    this.id,
+    this.homeAddress,
+    this.dailySchoolTransportCost,
+    this.fatherIncome,
+    this.motherIncome,
+    this.housingStatus,
+    this.householdMemberCount,
+    this.educationArrears,
+    this.academicAchievement,
+    this.nonAcademicAchievement,
+  });
+
+  final String? id;
+  final String? homeAddress;
+  final double? dailySchoolTransportCost;
+  final double? fatherIncome;
+  final double? motherIncome;
+  final String? housingStatus;
+  final int? householdMemberCount;
+  final double? educationArrears;
+  final String? academicAchievement;
+  final String? nonAcademicAchievement;
+
+  bool get hasData {
+    return _hasText(homeAddress) ||
+        dailySchoolTransportCost != null ||
+        fatherIncome != null ||
+        motherIncome != null ||
+        _hasText(housingStatus) ||
+        householdMemberCount != null ||
+        educationArrears != null ||
+        _hasText(academicAchievement) ||
+        _hasText(nonAcademicAchievement);
+  }
+}
+
+class StudentHousingStatusOptions {
+  StudentHousingStatusOptions._();
+
+  static const owned = 'OWNED';
+  static const rented = 'RENTED';
+  static const stayingWithFamily = 'STAYING_WITH_FAMILY';
+  static const other = 'OTHER';
+
+  static const values = [owned, rented, stayingWithFamily, other];
+
+  static String label(String value) {
+    return switch (value) {
+      owned => 'Owned',
+      rented => 'Rented',
+      stayingWithFamily => 'Staying with family',
+      _ => 'Other',
+    };
   }
 }
 

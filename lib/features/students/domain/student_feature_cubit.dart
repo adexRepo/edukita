@@ -19,6 +19,7 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
 
   StudentFilter _filter = const StudentFilter();
   Pageable _pageable = const Pageable(page: 0, size: 20);
+  int _requestRevision = 0;
 
   StudentPageCubit(this._repo, this._cacheService)
     : super(const FeatureState());
@@ -33,10 +34,14 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
   }
 
   Future<void> _fetch({bool forceRefresh = false}) async {
-    final cacheKey = _cacheKey(_filter, _pageable);
+    final requestRevision = ++_requestRevision;
+    final filter = _filter;
+    final pageable = _pageable;
+    final cacheKey = _cacheKey(filter, pageable);
     if (!forceRefresh) {
       final cachedData = _cacheService.getPage(cacheKey);
       if (cachedData != null) {
+        if (requestRevision != _requestRevision) return;
         _safeEmit(FeatureState<StudentPageData>(
           data: cachedData,
           loading: false,
@@ -48,11 +53,13 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
     _safeEmit(state.copyWith(loading: true, data: null));
 
     try {
-      final result = await _repo.loadItems(_filter, _pageable);
+      final result = await _repo.loadItems(filter, pageable);
       _cacheService.putPage(cacheKey, result);
+      if (requestRevision != _requestRevision) return;
 
       _safeEmit(state.copyWith(data: result, loading: false));
     } catch (e) {
+      if (requestRevision != _requestRevision) return;
       _safeEmit(
         state.copyWith(loading: false, message: e.toString(), data: null),
       );
@@ -128,8 +135,8 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
     await _fetch(forceRefresh: true);
   }
 
-  Future<void> deleteStudent(String id) async {
-    await _repo.deleteStudent(id);
+  Future<void> setStudentActiveStatus(String id, bool active) async {
+    await _repo.setStudentActiveStatus(id, active);
     _cacheService.clear();
     await _fetch(forceRefresh: true);
   }
@@ -156,8 +163,12 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
 
   String _cacheKey(StudentFilter filter, Pageable pageable) {
     return [
-      _listKey(filter.keyword),
-      _listKey(filter.keywordNot),
+      _listKey(filter.namesEqual),
+      _listKey(filter.namesContains),
+      _listKey(filter.namesNot),
+      _listKey(filter.studentIdsEqual),
+      _listKey(filter.studentIdsContains),
+      _listKey(filter.studentIdsNot),
       _listKey(filter.status),
       _listKey(filter.statusNot),
       _listKey(filter.classNames),

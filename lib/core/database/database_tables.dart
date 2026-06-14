@@ -30,7 +30,6 @@ class DatabaseTables {
 
     await assessments(db);
     await studentAssessments(db);
-    await assessmentEvidences(db);
     await studentExamScores(db);
     await studentExamScoreGroups(db);
     await studentExamScoreItems(db);
@@ -47,6 +46,7 @@ class DatabaseTables {
     await studentSessionNotes(db);
 
     await studentHealth(db);
+    await studentHouseholdProfiles(db);
     await studentBehavior(db);
     await studentSocialNotes(db);
     await activities(db);
@@ -544,8 +544,6 @@ class DatabaseTables {
         assessment_type TEXT,
         assessment_source TEXT,
         score_type TEXT,
-        is_evidence_required INTEGER NOT NULL DEFAULT 0,
-        evidence_label TEXT,
         max_score REAL,
         description TEXT,
         FOREIGN KEY(unit_id) REFERENCES units(id) ON DELETE CASCADE,
@@ -565,28 +563,6 @@ class DatabaseTables {
         assessed_at TEXT,
         FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
         FOREIGN KEY(assessment_id) REFERENCES assessments(id) ON DELETE CASCADE
-      )
-    ''');
-  }
-
-  static Future<void> assessmentEvidences(Database db) async {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS assessment_evidences(
-        id TEXT PRIMARY KEY NOT NULL,
-        assessment_id TEXT NOT NULL,
-        student_assessment_id TEXT NOT NULL,
-        student_id TEXT NOT NULL,
-        file_name TEXT NOT NULL,
-        file_path TEXT NOT NULL,
-        file_type TEXT,
-        uploaded_by TEXT,
-        uploaded_at TEXT NOT NULL,
-        remarks TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY(assessment_id) REFERENCES assessments(id) ON DELETE CASCADE,
-        FOREIGN KEY(student_assessment_id) REFERENCES student_assessments(id) ON DELETE CASCADE,
-        FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
       )
     ''');
   }
@@ -866,6 +842,27 @@ class DatabaseTables {
         medical_notes TEXT,
         disabilities TEXT,
         updated_at TEXT,
+        FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
+      )
+    ''');
+  }
+
+  static Future<void> studentHouseholdProfiles(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS student_household_profiles(
+        id TEXT PRIMARY KEY NOT NULL,
+        student_id TEXT NOT NULL UNIQUE,
+        home_address TEXT NOT NULL,
+        daily_school_transport_cost REAL NOT NULL DEFAULT 0,
+        father_income REAL NOT NULL DEFAULT 0,
+        mother_income REAL NOT NULL DEFAULT 0,
+        housing_status TEXT NOT NULL,
+        household_member_count INTEGER NOT NULL DEFAULT 0,
+        education_arrears REAL NOT NULL DEFAULT 0,
+        academic_achievement TEXT NOT NULL,
+        non_academic_achievement TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
         FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
       )
     ''');

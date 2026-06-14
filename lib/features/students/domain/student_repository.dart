@@ -3,6 +3,7 @@ import 'dart:io' as io;
 import 'package:edukita/core/database/base_repository.dart';
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/helper/com_enum.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
 import 'package:edukita/core/storage/uploaded_file_repository.dart';
 import 'package:edukita/features/management/data/guardian_model.dart';
@@ -29,6 +30,58 @@ class StudentRepository extends BaseRepository<Student> {
   StudentRepository(this._dbProvider)
     : super(table: 'students', mapper: StudentMapper());
 
+  void _appendStudentIdentityFilters(
+    List<String> where,
+    List<dynamic> args,
+    StudentFilter filter,
+  ) {
+    if (filter.namesEqual.isNotEmpty) {
+      where.add(
+        's.full_name COLLATE NOCASE IN (${placeholders(filter.namesEqual.length)})',
+      );
+      args.addAll(filter.namesEqual);
+    }
+    if (filter.namesContains.isNotEmpty) {
+      where.add(
+        '(${List.filled(filter.namesContains.length, 's.full_name LIKE ?').join(' OR ')})',
+      );
+      args.addAll(filter.namesContains.map((value) => '%$value%'));
+    }
+    if (filter.namesNot.isNotEmpty) {
+      where.add(
+        's.full_name COLLATE NOCASE NOT IN (${placeholders(filter.namesNot.length)})',
+      );
+      args.addAll(filter.namesNot);
+    }
+    if (filter.studentIdsEqual.isNotEmpty) {
+      final slots = placeholders(filter.studentIdsEqual.length);
+      where.add(
+        '(s.student_no IN ($slots) OR COALESCE(s.nis, \'\') IN ($slots))',
+      );
+      args
+        ..addAll(filter.studentIdsEqual)
+        ..addAll(filter.studentIdsEqual);
+    }
+    if (filter.studentIdsContains.isNotEmpty) {
+      where.add(
+        '(${List.filled(filter.studentIdsContains.length, '(s.student_no LIKE ? OR COALESCE(s.nis, \'\') LIKE ?)').join(' OR ')})',
+      );
+      for (final value in filter.studentIdsContains) {
+        final pattern = '%$value%';
+        args.addAll([pattern, pattern]);
+      }
+    }
+    if (filter.studentIdsNot.isNotEmpty) {
+      final slots = placeholders(filter.studentIdsNot.length);
+      where.add(
+        'NOT (s.student_no IN ($slots) OR COALESCE(s.nis, \'\') IN ($slots))',
+      );
+      args
+        ..addAll(filter.studentIdsNot)
+        ..addAll(filter.studentIdsNot);
+    }
+  }
+
   Future<List<StudentTable>> getStudents(
     StudentFilter filter,
     Pageable pageable,
@@ -39,30 +92,7 @@ class StudentRepository extends BaseRepository<Student> {
     final args = <dynamic>[];
 
     // 🔍 keyword (search multiple fields)
-    if (filter.keyword.isNotEmpty) {
-      where.add('''
-      (s.student_no IN (${placeholders(filter.keyword.length)}) 
-      OR s.nis IN (${placeholders(filter.keyword.length)}) 
-      OR s.full_name LIKE ?)
-    ''');
-
-      args.addAll(filter.keyword);
-      args.addAll(filter.keyword);
-      args.add('%${filter.keyword.first}%');
-    }
-
-    if (filter.keywordNot.isNotEmpty) {
-      where.add('''
-      NOT (
-        s.student_no IN (${placeholders(filter.keywordNot.length)})
-        OR s.nis IN (${placeholders(filter.keywordNot.length)})
-        OR ${List.filled(filter.keywordNot.length, 's.full_name LIKE ?').join(' OR ')}
-      )
-    ''');
-      args.addAll(filter.keywordNot);
-      args.addAll(filter.keywordNot);
-      args.addAll(filter.keywordNot.map((value) => '%$value%'));
-    }
+    _appendStudentIdentityFilters(where, args, filter);
 
     // 📌 status
     if (filter.status.isNotEmpty) {
@@ -116,26 +146,28 @@ class StudentRepository extends BaseRepository<Student> {
 
     if (filter.scores.isNotEmpty) {
       where.add('''
-      EXISTS (
-        SELECT 1
+      ROUND((
+        SELECT AVG(COALESCE(ta.normalized_score, ta.score, ta.raw_score))
         FROM teaching_assessments ta
+        INNER JOIN teaching_activities act ON act.id = ta.teaching_activity_id
         WHERE ta.student_id = s.id
-        AND COALESCE(ta.normalized_score, ta.score, ta.raw_score)
-          IN (${placeholders(filter.scores.length)})
-      )
+          AND act.status <> 'cancelled'
+          AND COALESCE(ta.normalized_score, ta.score, ta.raw_score) IS NOT NULL
+      )) IN (${placeholders(filter.scores.length)})
     ''');
       args.addAll(filter.scores);
     }
 
     if (filter.scoresNot.isNotEmpty) {
       where.add('''
-      NOT EXISTS (
-        SELECT 1
+      COALESCE(ROUND((
+        SELECT AVG(COALESCE(ta.normalized_score, ta.score, ta.raw_score))
         FROM teaching_assessments ta
+        INNER JOIN teaching_activities act ON act.id = ta.teaching_activity_id
         WHERE ta.student_id = s.id
-        AND COALESCE(ta.normalized_score, ta.score, ta.raw_score)
-          IN (${placeholders(filter.scoresNot.length)})
-      )
+          AND act.status <> 'cancelled'
+          AND COALESCE(ta.normalized_score, ta.score, ta.raw_score) IS NOT NULL
+      )), -1) NOT IN (${placeholders(filter.scoresNot.length)})
     ''');
       args.addAll(filter.scoresNot);
     }
@@ -181,6 +213,14 @@ class StudentRepository extends BaseRepository<Student> {
       s.gender,
       s.status,
       s.join_at,
+      (
+        SELECT AVG(COALESCE(ta.normalized_score, ta.score, ta.raw_score))
+        FROM teaching_assessments ta
+        INNER JOIN teaching_activities act ON act.id = ta.teaching_activity_id
+        WHERE ta.student_id = s.id
+          AND act.status <> 'cancelled'
+          AND COALESCE(ta.normalized_score, ta.score, ta.raw_score) IS NOT NULL
+      ) AS average_score,
       COALESCE(
         (strftime('%Y', 'now') - strftime('%Y', s.birth_date)) -
         (strftime('%m-%d', 'now') < strftime('%m-%d', s.birth_date)),
@@ -188,7 +228,13 @@ class StudentRepository extends BaseRepository<Student> {
       ) AS age
     FROM students s
     LEFT JOIN classes c ON c.id = s.class_id
-    LEFT JOIN student_schools ss ON ss.student_id = s.id AND ss.status = 1
+    LEFT JOIN student_schools ss ON ss.id = (
+      SELECT active_school.id
+      FROM student_schools active_school
+      WHERE active_school.student_id = s.id AND active_school.status = 1
+      ORDER BY active_school.rowid DESC
+      LIMIT 1
+    )
     LEFT JOIN schools sc ON sc.id = ss.school_id
     $whereClause
     ${pageable.buildOrderBy()}
@@ -207,30 +253,7 @@ class StudentRepository extends BaseRepository<Student> {
     final where = <String>[];
     final args = <dynamic>[];
 
-    if (filter.keyword.isNotEmpty) {
-      where.add('''
-      (s.student_no IN (${placeholders(filter.keyword.length)}) 
-      OR s.nis IN (${placeholders(filter.keyword.length)}) 
-      OR s.full_name LIKE ?)
-    ''');
-
-      args.addAll(filter.keyword);
-      args.addAll(filter.keyword);
-      args.add('%${filter.keyword.first}%');
-    }
-
-    if (filter.keywordNot.isNotEmpty) {
-      where.add('''
-      NOT (
-        s.student_no IN (${placeholders(filter.keywordNot.length)})
-        OR s.nis IN (${placeholders(filter.keywordNot.length)})
-        OR ${List.filled(filter.keywordNot.length, 's.full_name LIKE ?').join(' OR ')}
-      )
-    ''');
-      args.addAll(filter.keywordNot);
-      args.addAll(filter.keywordNot);
-      args.addAll(filter.keywordNot.map((value) => '%$value%'));
-    }
+    _appendStudentIdentityFilters(where, args, filter);
 
     if (filter.status.isNotEmpty) {
       where.add('s.status IN (${placeholders(filter.status.length)})');
@@ -282,26 +305,28 @@ class StudentRepository extends BaseRepository<Student> {
 
     if (filter.scores.isNotEmpty) {
       where.add('''
-      EXISTS (
-        SELECT 1
+      ROUND((
+        SELECT AVG(COALESCE(ta.normalized_score, ta.score, ta.raw_score))
         FROM teaching_assessments ta
+        INNER JOIN teaching_activities act ON act.id = ta.teaching_activity_id
         WHERE ta.student_id = s.id
-        AND COALESCE(ta.normalized_score, ta.score, ta.raw_score)
-          IN (${placeholders(filter.scores.length)})
-      )
+          AND act.status <> 'cancelled'
+          AND COALESCE(ta.normalized_score, ta.score, ta.raw_score) IS NOT NULL
+      )) IN (${placeholders(filter.scores.length)})
     ''');
       args.addAll(filter.scores);
     }
 
     if (filter.scoresNot.isNotEmpty) {
       where.add('''
-      NOT EXISTS (
-        SELECT 1
+      COALESCE(ROUND((
+        SELECT AVG(COALESCE(ta.normalized_score, ta.score, ta.raw_score))
         FROM teaching_assessments ta
+        INNER JOIN teaching_activities act ON act.id = ta.teaching_activity_id
         WHERE ta.student_id = s.id
-        AND COALESCE(ta.normalized_score, ta.score, ta.raw_score)
-          IN (${placeholders(filter.scoresNot.length)})
-      )
+          AND act.status <> 'cancelled'
+          AND COALESCE(ta.normalized_score, ta.score, ta.raw_score) IS NOT NULL
+      )), -1) NOT IN (${placeholders(filter.scoresNot.length)})
     ''');
       args.addAll(filter.scoresNot);
     }
@@ -340,7 +365,13 @@ class StudentRepository extends BaseRepository<Student> {
           COALESCE(COUNT(DISTINCT CASE WHEN s.status = 'active' THEN s.id END),0) AS active_students
         FROM students s
         LEFT JOIN classes c ON c.id = s.class_id
-        LEFT JOIN student_schools ss ON ss.student_id = s.id
+        LEFT JOIN student_schools ss ON ss.id = (
+          SELECT active_school.id
+          FROM student_schools active_school
+          WHERE active_school.student_id = s.id AND active_school.status = 1
+          ORDER BY active_school.rowid DESC
+          LIMIT 1
+        )
         LEFT JOIN schools sc ON sc.id = ss.school_id
         $whereClause;
       ''', args);
@@ -397,33 +428,39 @@ class StudentRepository extends BaseRepository<Student> {
     StudentAdvancedFormData advanced = const StudentAdvancedFormData(),
   ]) async {
     final db = await _dbProvider.database;
-    await db.transaction((txn) async {
-      await txn.insert(table, mapper.toMap(student));
-      await txn.insert('student_schools', {
-        'id': const Uuid().v4(),
-        'student_id': student.id,
-        'school_id': schoolId,
-        'status': 1,
-      });
-      final savedGuardians = await _saveGuardians(txn, student.id, guardians);
-      await _saveAdvancedData(
-        txn,
-        student,
-        guardians,
-        savedGuardians,
-        advanced,
-      );
-      final photoPath = student.photoPath?.trim();
-      if (photoPath != null && photoPath.isNotEmpty) {
-        await UploadedFileRepository.register(
+    final prepared = await _prepareRegistrationForm(student.id, advanced);
+    try {
+      await db.transaction((txn) async {
+        await txn.insert(table, mapper.toMap(student));
+        await txn.insert('student_schools', {
+          'id': const Uuid().v4(),
+          'student_id': student.id,
+          'school_id': schoolId,
+          'status': 1,
+        });
+        final savedGuardians = await _saveGuardians(txn, student.id, guardians);
+        await _saveAdvancedData(
           txn,
-          entityType: 'student',
-          entityId: student.id,
-          documentType: 'student_photo',
-          filePath: photoPath,
+          student,
+          guardians,
+          savedGuardians,
+          prepared.$1,
         );
-      }
-    });
+        final photoPath = student.photoPath?.trim();
+        if (photoPath != null && photoPath.isNotEmpty) {
+          await UploadedFileRepository.register(
+            txn,
+            entityType: 'student',
+            entityId: student.id,
+            documentType: 'student_photo',
+            filePath: photoPath,
+          );
+        }
+      });
+    } catch (_) {
+      await _deleteFileQuietly(prepared.$2);
+      rethrow;
+    }
   }
 
   Future<void> updateStudentWithSchool(
@@ -433,50 +470,56 @@ class StudentRepository extends BaseRepository<Student> {
     StudentAdvancedFormData advanced = const StudentAdvancedFormData(),
   ]) async {
     final db = await _dbProvider.database;
-    await db.transaction((txn) async {
-      await txn.update(
-        table,
-        mapper.toMap(student),
-        where: 'id = ?',
-        whereArgs: [student.id],
-      );
-      await txn.delete(
-        'student_schools',
-        where: 'student_id = ?',
-        whereArgs: [student.id],
-      );
-      await txn.insert('student_schools', {
-        'id': const Uuid().v4(),
-        'student_id': student.id,
-        'school_id': schoolId,
-        'status': 1,
+    final prepared = await _prepareRegistrationForm(student.id, advanced);
+    try {
+      await db.transaction((txn) async {
+        await txn.update(
+          table,
+          mapper.toMap(student),
+          where: 'id = ?',
+          whereArgs: [student.id],
+        );
+        await txn.delete(
+          'student_schools',
+          where: 'student_id = ?',
+          whereArgs: [student.id],
+        );
+        await txn.insert('student_schools', {
+          'id': const Uuid().v4(),
+          'student_id': student.id,
+          'school_id': schoolId,
+          'status': 1,
+        });
+        final savedGuardians = await _saveGuardians(txn, student.id, guardians);
+        await _saveAdvancedData(
+          txn,
+          student,
+          guardians,
+          savedGuardians,
+          prepared.$1,
+        );
+        final photoPath = student.photoPath?.trim();
+        if (photoPath == null || photoPath.isEmpty) {
+          await UploadedFileRepository.deactivate(
+            txn,
+            entityType: 'student',
+            entityId: student.id,
+            documentType: 'student_photo',
+          );
+        } else {
+          await UploadedFileRepository.register(
+            txn,
+            entityType: 'student',
+            entityId: student.id,
+            documentType: 'student_photo',
+            filePath: photoPath,
+          );
+        }
       });
-      final savedGuardians = await _saveGuardians(txn, student.id, guardians);
-      await _saveAdvancedData(
-        txn,
-        student,
-        guardians,
-        savedGuardians,
-        advanced,
-      );
-      final photoPath = student.photoPath?.trim();
-      if (photoPath == null || photoPath.isEmpty) {
-        await UploadedFileRepository.deactivate(
-          txn,
-          entityType: 'student',
-          entityId: student.id,
-          documentType: 'student_photo',
-        );
-      } else {
-        await UploadedFileRepository.register(
-          txn,
-          entityType: 'student',
-          entityId: student.id,
-          documentType: 'student_photo',
-          filePath: photoPath,
-        );
-      }
-    });
+    } catch (_) {
+      await _deleteFileQuietly(prepared.$2);
+      rethrow;
+    }
   }
 
   Future<StudentAdvancedFormData> loadAdvancedFormData(String studentId) async {
@@ -486,12 +529,14 @@ class StudentRepository extends BaseRepository<Student> {
     final activities = await loadActivities(studentId);
     final goals = await _loadGoalInputs(db, studentId);
     final registrationForm = await _loadRegistrationForm(db, studentId);
+    final householdProfile = await _loadHouseholdProfile(db, studentId);
 
     return StudentAdvancedFormData(
       health: health,
       relations: relations,
       activities: activities,
       registrationForm: registrationForm,
+      householdProfile: householdProfile,
       hobby: goals.$1,
       aspiration: goals.$2,
     );
@@ -635,20 +680,6 @@ class StudentRepository extends BaseRepository<Student> {
     String studentId,
     List<StudentGuardianFormData> guardians,
   ) async {
-    final existing = await txn.rawQuery(
-      '''
-        SELECT guardian_id
-        FROM student_guardians
-        WHERE student_id = ?
-        ORDER BY is_primary DESC
-        LIMIT 1
-      ''',
-      [studentId],
-    );
-    final existingGuardianId = existing.isEmpty
-        ? null
-        : existing.first['guardian_id'] as String?;
-
     await txn.delete(
       'student_guardians',
       where: 'student_id = ?',
@@ -658,12 +689,8 @@ class StudentRepository extends BaseRepository<Student> {
     final validGuardians = guardians.where((guardian) => guardian.hasData);
     final savedGuardians = <_SavedStudentGuardian>[];
 
-    var index = 0;
     for (final guardian in validGuardians) {
-      final guardianId =
-          guardian.guardianId ??
-          (index == 0 ? existingGuardianId : null) ??
-          const Uuid().v4();
+      final guardianId = guardian.guardianId ?? const Uuid().v4();
       final guardianMap = Guardian(
         id: guardianId,
         fullName: guardian.fullName?.trim().isNotEmpty == true
@@ -698,7 +725,6 @@ class StudentRepository extends BaseRepository<Student> {
           isPrimary: guardian.isPrimary,
         ),
       );
-      index++;
     }
 
     return savedGuardians;
@@ -728,7 +754,81 @@ class StudentRepository extends BaseRepository<Student> {
     }
     await _saveActivities(txn, student.id, advanced.activities);
     await _saveRegistrationForm(txn, student.id, advanced.registrationForm);
+    await _saveHouseholdProfile(txn, student.id, advanced.householdProfile);
     await _saveGoals(txn, student.id, advanced);
+  }
+
+  Future<StudentHouseholdProfileFormData> _loadHouseholdProfile(
+    DatabaseExecutor db,
+    String studentId,
+  ) async {
+    final result = await db.query(
+      'student_household_profiles',
+      where: 'student_id = ?',
+      whereArgs: [studentId],
+      limit: 1,
+    );
+    if (result.isEmpty) return const StudentHouseholdProfileFormData();
+
+    final row = result.first;
+    return StudentHouseholdProfileFormData(
+      id: row['id']?.toString(),
+      homeAddress: row['home_address']?.toString(),
+      dailySchoolTransportCost:
+          (row['daily_school_transport_cost'] as num?)?.toDouble(),
+      fatherIncome: (row['father_income'] as num?)?.toDouble(),
+      motherIncome: (row['mother_income'] as num?)?.toDouble(),
+      housingStatus: row['housing_status']?.toString(),
+      householdMemberCount:
+          (row['household_member_count'] as num?)?.toInt(),
+      educationArrears: (row['education_arrears'] as num?)?.toDouble(),
+      academicAchievement: row['academic_achievement']?.toString(),
+      nonAcademicAchievement: row['non_academic_achievement']?.toString(),
+    );
+  }
+
+  Future<void> _saveHouseholdProfile(
+    Transaction txn,
+    String studentId,
+    StudentHouseholdProfileFormData profile,
+  ) async {
+    if (!profile.hasData) {
+      await txn.delete(
+        'student_household_profiles',
+        where: 'student_id = ?',
+        whereArgs: [studentId],
+      );
+      return;
+    }
+
+    final now = DateTime.now().toIso8601String();
+    final values = <String, Object?>{
+      'home_address': _nullIfBlank(profile.homeAddress) ?? '',
+      'daily_school_transport_cost': profile.dailySchoolTransportCost ?? 0,
+      'father_income': profile.fatherIncome ?? 0,
+      'mother_income': profile.motherIncome ?? 0,
+      'housing_status': _nullIfBlank(profile.housingStatus) ?? '',
+      'household_member_count': profile.householdMemberCount ?? 0,
+      'education_arrears': profile.educationArrears ?? 0,
+      'academic_achievement': _nullIfBlank(profile.academicAchievement) ?? '',
+      'non_academic_achievement':
+          _nullIfBlank(profile.nonAcademicAchievement) ?? '',
+      'updated_at': now,
+    };
+    final updated = await txn.update(
+      'student_household_profiles',
+      values,
+      where: 'student_id = ?',
+      whereArgs: [studentId],
+    );
+    if (updated > 0) return;
+
+    await txn.insert('student_household_profiles', {
+      'id': profile.id ?? const Uuid().v4(),
+      'student_id': studentId,
+      ...values,
+      'created_at': now,
+    });
   }
 
   Future<StudentHealthFormData> _loadHealth(
@@ -1182,6 +1282,41 @@ class StudentRepository extends BaseRepository<Student> {
     );
   }
 
+  Future<(StudentAdvancedFormData, String?)> _prepareRegistrationForm(
+    String studentId,
+    StudentAdvancedFormData advanced,
+  ) async {
+    final document = advanced.registrationForm;
+    final sourcePath = _nullIfBlank(document.sourcePath);
+    final currentPath = _nullIfBlank(document.filePath);
+    if (sourcePath == null) return (advanced, null);
+
+    if (currentPath != null &&
+        p.normalize(sourcePath) == p.normalize(currentPath)) {
+      return (
+        advanced.copyWith(
+          registrationForm: document.copyWith(clearSourcePath: true),
+        ),
+        null,
+      );
+    }
+
+    final copiedPath = await _copyStudentRegistrationForm(
+      studentId: studentId,
+      sourcePath: sourcePath,
+      originalFileName: document.fileName,
+    );
+    return (
+      advanced.copyWith(
+        registrationForm: document.copyWith(
+          filePath: copiedPath,
+          clearSourcePath: true,
+        ),
+      ),
+      copiedPath,
+    );
+  }
+
   Future<String> _copyStudentRegistrationForm({
     required String studentId,
     required String sourcePath,
@@ -1191,6 +1326,13 @@ class StudentRepository extends BaseRepository<Student> {
     if (!await sourceFile.exists()) {
       throw StateError('Registration form file not found.');
     }
+    if (await sourceFile.length() > 20 * 1024 * 1024) {
+      throw StateError('Registration form must be 20 MB or smaller.');
+    }
+    final extension = p.extension(sourceFile.path).toLowerCase();
+    if (!const ['.pdf', '.jpg', '.jpeg', '.png'].contains(extension)) {
+      throw StateError('Registration form must be PDF, JPG, or PNG.');
+    }
 
     final storagePath = await AppStoragePaths.storageDirectory();
     final directory = io.Directory(
@@ -1198,7 +1340,6 @@ class StudentRepository extends BaseRepository<Student> {
     );
     await directory.create(recursive: true);
 
-    final extension = p.extension(sourceFile.path).toLowerCase();
     final baseName = _safeFileName(
       originalFileName?.trim().isNotEmpty == true
           ? p.basenameWithoutExtension(originalFileName!.trim())
@@ -1235,67 +1376,19 @@ class StudentRepository extends BaseRepository<Student> {
     return trimmed;
   }
 
-  Future<void> deleteStudent(String studentId) async {
+  Future<void> setStudentActiveStatus(String studentId, bool active) async {
     final db = await _dbProvider.database;
-    await db.transaction((txn) async {
-      final examGroupRows = await txn.query(
-        'student_exam_score_groups',
-        columns: const ['id'],
-        where: 'student_id = ?',
-        whereArgs: [studentId],
-      );
-      final legacyExamRows = await txn.query(
-        'student_exam_scores',
-        columns: const ['id'],
-        where: 'student_id = ?',
-        whereArgs: [studentId],
-      );
-      final assessmentRows = await txn.query(
-        'student_assessments',
-        columns: const ['id'],
-        where: 'student_id = ?',
-        whereArgs: [studentId],
-      );
-
-      await UploadedFileRepository.deactivate(
-        txn,
-        entityType: 'student',
-        entityId: studentId,
-      );
-      for (final row in examGroupRows) {
-        final id = row['id']?.toString();
-        if (id == null || id.isEmpty) continue;
-        await UploadedFileRepository.deactivate(
-          txn,
-          entityType: 'student_exam_score_group',
-          entityId: id,
-        );
-      }
-      for (final row in legacyExamRows) {
-        final id = row['id']?.toString();
-        if (id == null || id.isEmpty) continue;
-        await UploadedFileRepository.deactivate(
-          txn,
-          entityType: 'student_exam_score',
-          entityId: id,
-        );
-      }
-      for (final row in assessmentRows) {
-        final id = row['id']?.toString();
-        if (id == null || id.isEmpty) continue;
-        await UploadedFileRepository.deactivate(
-          txn,
-          entityType: 'student_assessment',
-          entityId: id,
-        );
-      }
-      await txn.delete(
-        'student_schools',
-        where: 'student_id = ?',
-        whereArgs: [studentId],
-      );
-      await txn.delete(table, where: 'id = ?', whereArgs: [studentId]);
-    });
+    await db.update(
+      table,
+      {
+        'status': active
+            ? StudentStatus.active.name
+            : StudentStatus.inactive.name,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [studentId],
+    );
   }
 
   Future<String> generateStudentNumber() async {
@@ -1338,15 +1431,19 @@ class StudentRepository extends BaseRepository<Student> {
     final query = '''
           select
             s.id,
-            s.nick_name,
+            COALESCE(NULLIF(s.nick_name, ''), s.full_name) AS nick_name,
             s.student_no,
             s.class_id ,
-            c.name as class_name ,
+            COALESCE(c.name, '-') as class_name ,
             s.full_name ,
             s.join_at ,
             s.nis ,
-            s.birth_date ,
-            s.gender ,
+            COALESCE(s.birth_date, '') AS birth_date,
+            CASE
+              WHEN LOWER(COALESCE(s.gender, '')) IN ('male', 'female')
+                THEN LOWER(s.gender)
+              ELSE 'male'
+            END AS gender,
             s.mobile_no ,
             s.email_addr ,
             s.shoes_size ,
@@ -1355,7 +1452,11 @@ class StudentRepository extends BaseRepository<Student> {
             s.height ,
             s.weight ,
             s.photo_path ,
-            s.status ,
+            CASE
+              WHEN LOWER(COALESCE(s.status, '')) IN ('active', 'warning', 'inactive')
+                THEN LOWER(s.status)
+              ELSE 'inactive'
+            END AS status,
             COALESCE(sc.name, '-') as school_name,
             COALESCE(
               (strftime('%Y', 'now') - strftime('%Y', s.birth_date)) -
@@ -1365,7 +1466,13 @@ class StudentRepository extends BaseRepository<Student> {
           from
             students as s
             LEFT JOIN classes c ON c.id = s.class_id
-            LEFT JOIN student_schools ss ON ss.student_id = s.id AND ss.status = 1
+            LEFT JOIN student_schools ss ON ss.id = (
+              SELECT active_school.id
+              FROM student_schools active_school
+              WHERE active_school.student_id = s.id AND active_school.status = 1
+              ORDER BY active_school.rowid DESC
+              LIMIT 1
+            )
             LEFT JOIN schools sc ON sc.id = ss.school_id
           where 
             s.id = ?
@@ -1421,7 +1528,7 @@ class StudentRepository extends BaseRepository<Student> {
       where: "LOWER(COALESCE(status, 'active')) <> 'inactive'",
       orderBy: 'name COLLATE NOCASE',
     );
-    var unitRows = studentLevel == null
+    final unitRows = studentLevel == null
         ? await db.query('units', orderBy: 'sequence_no ASC, name COLLATE NOCASE')
         : await db.rawQuery(
             '''
@@ -1436,12 +1543,6 @@ class StudentRepository extends BaseRepository<Student> {
             ''',
             [studentLevel.toString()],
           );
-    if (unitRows.isEmpty) {
-      unitRows = await db.query(
-        'units',
-        orderBy: 'sequence_no ASC, name COLLATE NOCASE',
-      );
-    }
     return StudentExamScoreOptions(
       subjects: subjectRows.map((row) => Subject.fromMap(row)).toList(),
       units: unitRows.map((row) => Unit.fromMap(row)).toList(),
@@ -1580,8 +1681,13 @@ class StudentRepository extends BaseRepository<Student> {
   }) async {
     final db = await _dbProvider.database;
     await _ensureStudentExamScoreSchema(db);
+    _validateStudentExamScoreGroup(
+      group,
+      hasNewEvidence: evidenceSourcePath?.trim().isNotEmpty == true,
+    );
 
     var values = group.toMap();
+    String? copiedEvidencePath;
     if (evidenceSourcePath?.trim().isNotEmpty == true) {
       final evidence = await _copyExamScoreEvidence(
         scoreId: group.id,
@@ -1595,25 +1701,31 @@ class StudentRepository extends BaseRepository<Student> {
         'evidence_file_path': evidence.filePath,
         'evidence_file_type': evidence.fileType,
       };
+      copiedEvidencePath = evidence.filePath;
     }
 
-    await db.transaction((txn) async {
-      await txn.insert('student_exam_score_groups', values);
-      for (final item in group.items) {
-        await txn.insert('student_exam_score_items', item.toMap());
-      }
-      final evidencePath = values['evidence_file_path']?.toString();
-      if (evidencePath?.isNotEmpty == true) {
-        await UploadedFileRepository.register(
-          txn,
-          entityType: 'student_exam_score_group',
-          entityId: group.id,
-          documentType: 'exam_evidence',
-          filePath: evidencePath!,
-          originalFileName: values['evidence_file_name']?.toString(),
-        );
-      }
-    });
+    try {
+      await db.transaction((txn) async {
+        await txn.insert('student_exam_score_groups', values);
+        for (final item in group.items) {
+          await txn.insert('student_exam_score_items', item.toMap());
+        }
+        final evidencePath = values['evidence_file_path']?.toString();
+        if (evidencePath?.isNotEmpty == true) {
+          await UploadedFileRepository.register(
+            txn,
+            entityType: 'student_exam_score_group',
+            entityId: group.id,
+            documentType: 'exam_evidence',
+            filePath: evidencePath!,
+            originalFileName: values['evidence_file_name']?.toString(),
+          );
+        }
+      });
+    } catch (_) {
+      await _deleteFileQuietly(copiedEvidencePath);
+      rethrow;
+    }
   }
 
   Future<void> deleteStudentExamScoreGroup(StudentExamScoreGroup group) async {
@@ -1663,9 +1775,14 @@ class StudentRepository extends BaseRepository<Student> {
   }) async {
     final db = await _dbProvider.database;
     await _ensureStudentExamScoreSchema(db);
+    _validateStudentExamScoreGroup(
+      group,
+      hasNewEvidence: evidenceSourcePath?.trim().isNotEmpty == true,
+    );
 
     var values = group.toMap()
       ..['updated_at'] = DateTime.now().toIso8601String();
+    String? copiedEvidencePath;
     if (evidenceSourcePath?.trim().isNotEmpty == true) {
       final evidence = await _copyExamScoreEvidence(
         scoreId: group.id,
@@ -1679,41 +1796,59 @@ class StudentRepository extends BaseRepository<Student> {
         'evidence_file_path': evidence.filePath,
         'evidence_file_type': evidence.fileType,
       };
+      copiedEvidencePath = evidence.filePath;
     }
 
-    await db.transaction((txn) async {
-      if (group.id.startsWith('legacy_')) {
-        final legacyId = group.id.replaceFirst('legacy_', '');
-        final item = group.items.isEmpty ? null : group.items.first;
+    try {
+      await db.transaction((txn) async {
+        if (group.id.startsWith('legacy_')) {
+          final legacyId = group.id.replaceFirst('legacy_', '');
+          final migratedGroupId = const Uuid().v4();
+          final migratedValues = {...values, 'id': migratedGroupId};
+          await txn.delete(
+            'student_exam_scores',
+            where: 'id = ?',
+            whereArgs: [legacyId],
+          );
+          await UploadedFileRepository.deactivate(
+            txn,
+            entityType: 'student_exam_score',
+            entityId: legacyId,
+            documentType: 'exam_evidence',
+          );
+          await txn.insert('student_exam_score_groups', migratedValues);
+          for (final item in group.items) {
+            await txn.insert('student_exam_score_items', {
+              ...item.toMap(),
+              'group_id': migratedGroupId,
+            });
+          }
+          final evidencePath = migratedValues['evidence_file_path']?.toString();
+          if (evidencePath?.isNotEmpty == true) {
+            await UploadedFileRepository.register(
+              txn,
+              entityType: 'student_exam_score_group',
+              entityId: migratedGroupId,
+              documentType: 'exam_evidence',
+              filePath: evidencePath!,
+              originalFileName: migratedValues['evidence_file_name']?.toString(),
+            );
+          }
+          return;
+        }
+
         await txn.update(
-          'student_exam_scores',
-          {
-            'scope': group.scope,
-            'subject_id': item?.subjectId,
-            'unit_id': item?.unitId,
-            'exam_type': group.examType,
-            'source': group.source,
-            'academic_year': group.academicYear,
-            'semester': group.semester,
-            'exam_date': group.examDate,
-            'score': item?.score,
-            'max_score': item?.maxScore,
-            'evidence_required': group.evidenceRequired ? 1 : 0,
-            'evidence_file_name': values['evidence_file_name'],
-            'evidence_file_path': values['evidence_file_path'],
-            'evidence_file_type': values['evidence_file_type'],
-            'note': group.note,
-            'updated_at': values['updated_at'],
-          },
+          'student_exam_score_groups',
+          values,
           where: 'id = ?',
-          whereArgs: [legacyId],
+          whereArgs: [group.id],
         );
         final evidencePath = values['evidence_file_path']?.toString();
         if (evidencePath?.isNotEmpty == true) {
           await UploadedFileRepository.register(
             txn,
-            entityType: 'student_exam_score',
-            entityId: legacyId,
+            entityType: 'student_exam_score_group',
+            entityId: group.id,
             documentType: 'exam_evidence',
             filePath: evidencePath!,
             originalFileName: values['evidence_file_name']?.toString(),
@@ -1721,47 +1856,76 @@ class StudentRepository extends BaseRepository<Student> {
         } else {
           await UploadedFileRepository.deactivate(
             txn,
-            entityType: 'student_exam_score',
-            entityId: legacyId,
+            entityType: 'student_exam_score_group',
+            entityId: group.id,
             documentType: 'exam_evidence',
           );
         }
-        return;
+        await txn.delete(
+          'student_exam_score_items',
+          where: 'group_id = ?',
+          whereArgs: [group.id],
+        );
+        for (final item in group.items) {
+          await txn.insert('student_exam_score_items', item.toMap());
+        }
+      });
+    } catch (_) {
+      await _deleteFileQuietly(copiedEvidencePath);
+      rethrow;
+    }
+  }
+
+  Future<void> _deleteFileQuietly(String? filePath) async {
+    if (filePath == null || filePath.trim().isEmpty) return;
+    try {
+      final file = io.File(filePath);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {
+      // File cleanup must not hide the original database failure.
+    }
+  }
+
+  void _validateStudentExamScoreGroup(
+    StudentExamScoreGroup group, {
+    required bool hasNewEvidence,
+  }) {
+    if (group.items.isEmpty) {
+      throw Exception('At least one score item is required.');
+    }
+    if (group.evidenceRequired && !group.hasEvidence && !hasNewEvidence) {
+      throw Exception('Evidence file is required for this exam type.');
+    }
+
+    final itemKeys = <String>{};
+    for (final item in group.items) {
+      final subjectId = _nullIfBlank(item.subjectId);
+      final unitId = _nullIfBlank(item.unitId);
+      if (subjectId == null) {
+        throw Exception('Subject is required for every score item.');
+      }
+      if (!group.isSchool && unitId == null) {
+        throw Exception('Unit is required for every internal score item.');
+      }
+      final maxScore = item.maxScore;
+      if (maxScore == null || maxScore <= 0) {
+        throw Exception('Max score must be greater than zero.');
+      }
+      if (item.score < 0 || item.score > maxScore) {
+        throw Exception('Score must be between 0 and max score.');
       }
 
-      await txn.update(
-        'student_exam_score_groups',
-        values,
-        where: 'id = ?',
-        whereArgs: [group.id],
-      );
-      final evidencePath = values['evidence_file_path']?.toString();
-      if (evidencePath?.isNotEmpty == true) {
-        await UploadedFileRepository.register(
-          txn,
-          entityType: 'student_exam_score_group',
-          entityId: group.id,
-          documentType: 'exam_evidence',
-          filePath: evidencePath!,
-          originalFileName: values['evidence_file_name']?.toString(),
-        );
-      } else {
-        await UploadedFileRepository.deactivate(
-          txn,
-          entityType: 'student_exam_score_group',
-          entityId: group.id,
-          documentType: 'exam_evidence',
+      final key = group.isSchool ? subjectId : '$subjectId:$unitId';
+      if (!itemKeys.add(key)) {
+        throw Exception(
+          group.isSchool
+              ? 'Duplicate subject score is not allowed.'
+              : 'Duplicate subject and unit score is not allowed.',
         );
       }
-      await txn.delete(
-        'student_exam_score_items',
-        where: 'group_id = ?',
-        whereArgs: [group.id],
-      );
-      for (final item in group.items) {
-        await txn.insert('student_exam_score_items', item.toMap());
-      }
-    });
+    }
   }
 
   Future<_StoredExamEvidence> _copyExamScoreEvidence({
@@ -1774,6 +1938,13 @@ class StudentRepository extends BaseRepository<Student> {
     if (!await sourceFile.exists()) {
       throw StateError('Evidence file not found.');
     }
+    if (await sourceFile.length() > 20 * 1024 * 1024) {
+      throw StateError('Evidence file must be 20 MB or smaller.');
+    }
+    final extension = p.extension(sourceFile.path).toLowerCase();
+    if (!const ['.pdf', '.jpg', '.jpeg', '.png'].contains(extension)) {
+      throw StateError('Evidence file must be PDF, JPG, or PNG.');
+    }
 
     final storagePath = await AppStoragePaths.storageDirectory();
     final directory = io.Directory(
@@ -1781,7 +1952,6 @@ class StudentRepository extends BaseRepository<Student> {
     );
     await directory.create(recursive: true);
 
-    final extension = p.extension(sourceFile.path).toLowerCase();
     final fileName =
         '${scoreId}_${_compactDateTime(DateTime.now())}$extension';
     final destinationPath = p.join(directory.path, fileName);

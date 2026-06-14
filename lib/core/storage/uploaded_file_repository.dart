@@ -163,15 +163,6 @@ class UploadedFileRepository {
       ),
       _UploadBackfillSource(
         sql:
-            "SELECT student_assessment_id AS entity_id, file_path, file_name "
-            "AS original_file_name, uploaded_by, remarks "
-            "FROM assessment_evidences WHERE COALESCE(file_path, '') != ''",
-        entityType: 'student_assessment',
-        documentType: 'assessment_evidence',
-        replaceExisting: false,
-      ),
-      _UploadBackfillSource(
-        sql:
             "SELECT assistance_period_id AS entity_id, file_path, file_name "
             "AS original_file_name, uploaded_by, remarks "
             "FROM assistance_approval_documents "

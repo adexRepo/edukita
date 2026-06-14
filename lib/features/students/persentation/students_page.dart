@@ -1,5 +1,6 @@
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/localization/localized_display.dart';
+import 'package:edukita/core/helper/com_enum.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/common/feature_state.dart';
@@ -164,17 +165,21 @@ class _StudentsPageState extends State<StudentsPage> {
     });
   }
 
-  Future<void> _confirmDeleteStudent(StudentTable student) async {
+  Future<void> _confirmToggleStudentStatus(StudentTable student) async {
     if (!_canDeleteStudents) {
       AppToast.showFailed(context.l10n.studentDeleteDenied);
       return;
     }
+    final activate = student.status == StudentStatus.inactive;
+    final actionLabel = activate
+        ? context.l10n.activate
+        : context.l10n.deactivate;
     final confirmed = await showGuardedDialog<bool>(
       context: context,
-      guardKey: 'delete_student_${student.id}',
+      guardKey: 'toggle_student_status_${student.id}',
       builder: (dialogContext) => AlertDialog(
-        title: AppDialogTitle(context.l10n.deleteStudent),
-        content: Text(context.l10n.deleteStudentConfirm(student.fullName)),
+        title: AppDialogTitle(actionLabel),
+        content: Text('$actionLabel ${student.fullName}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -182,7 +187,7 @@ class _StudentsPageState extends State<StudentsPage> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(context.l10n.buttonDelete),
+            child: Text(actionLabel),
           ),
         ],
       ),
@@ -190,14 +195,17 @@ class _StudentsPageState extends State<StudentsPage> {
 
     if (confirmed == true && mounted) {
       try {
-        await context.read<StudentPageCubit>().deleteStudent(student.id);
+        await context.read<StudentPageCubit>().setStudentActiveStatus(
+          student.id,
+          activate,
+        );
         AppToast.showSubmissionSuccess(
-          action: SubmissionAction.delete,
+          action: SubmissionAction.update,
           subject: 'student',
         );
       } catch (_) {
         AppToast.showSubmissionFailed(
-          action: SubmissionAction.delete,
+          action: SubmissionAction.update,
           subject: 'student',
         );
       }
@@ -369,13 +377,15 @@ class _StudentsPageState extends State<StudentsPage> {
         AppTableColumn(
           title: context.l10n.studentProfile,
           flex: 4,
-          sortValue: (data) => data.fullName.codeUnitAt(0),
+          sortValue: (data) =>
+              data.fullName.isEmpty ? 0 : data.fullName.toLowerCase().codeUnitAt(0),
           cell: (s) => StudentProfileCell(student: s),
         ),
         AppTableColumn(
           title: context.l10n.classSchool,
           flex: 3,
-          sortValue: (data) => data.className.codeUnitAt(0),
+          sortValue: (data) =>
+              data.className.isEmpty ? 0 : data.className.toLowerCase().codeUnitAt(0),
           cell: (s) => Text(
             '${s.className}\n${s.schoolName}',
             style: const TextStyle(fontSize: 12, height: 1.2),
@@ -393,9 +403,9 @@ class _StudentsPageState extends State<StudentsPage> {
         AppTableColumn(
           title: context.l10n.scoreStatus,
           flex: 2,
-          sortValue: (data) => data.age,
+          sortValue: (data) => data.averageScore?.round() ?? -1,
           cell: (s) => Text(
-            '${s.age}/100\n${translateStudentStatus(context, s.status.name)}',
+            '${s.averageScore?.toStringAsFixed(0) ?? '-'}/100\n${translateStudentStatus(context, s.status.name)}',
             style: const TextStyle(fontSize: 12, height: 1.2),
           ),
         ),
@@ -403,7 +413,7 @@ class _StudentsPageState extends State<StudentsPage> {
           title: context.l10n.joinDate,
           flex: 2,
           sortValue: (data) =>
-              DateTime.parse(data.joinAt).millisecondsSinceEpoch,
+              DateTime.tryParse(data.joinAt)?.millisecondsSinceEpoch ?? 0,
           cell: (s) => Text(s.joinAt, style: const TextStyle(fontSize: 12)),
         ),
         AppTableColumn(
@@ -427,19 +437,25 @@ class _StudentsPageState extends State<StudentsPage> {
                   icon: const Icon(Icons.edit, size: 16),
                 ),
                 IconButton(
-                  tooltip: context.l10n.deleteStudentTooltip,
+                  tooltip: s.status == StudentStatus.inactive
+                      ? context.l10n.activate
+                      : context.l10n.deactivate,
                   onPressed: _canDeleteStudents
-                      ? () => _confirmDeleteStudent(s)
+                      ? () => _confirmToggleStudentStatus(s)
                       : null,
                   constraints: const BoxConstraints.tightFor(
                     width: 28,
                     height: 28,
                   ),
                   padding: EdgeInsets.zero,
-                  icon: const Icon(
-                    Icons.delete_outline,
+                  icon: Icon(
+                    s.status == StudentStatus.inactive
+                        ? Icons.person_add_alt_outlined
+                        : Icons.person_off_outlined,
                     size: 16,
-                    color: AppColors.error,
+                    color: s.status == StudentStatus.inactive
+                        ? AppColors.primary
+                        : AppColors.error,
                   ),
                 ),
               ],

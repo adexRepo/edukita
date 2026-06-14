@@ -30,7 +30,9 @@ class StudentAcademicTab extends StatelessWidget {
               title: context.l10n.learningSummary,
               icon: Icons.assignment_outlined,
               children: [
-                if (snapshot.connectionState == ConnectionState.waiting)
+                if (snapshot.hasError)
+                  DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
+                else if (snapshot.connectionState == ConnectionState.waiting)
                   DetailEmptySectionText(context.l10n.loadingLearningSummary)
                 else if (insights == null)
                   DetailEmptySectionText(context.l10n.noLearningSummary)
@@ -55,7 +57,9 @@ class StudentAcademicTab extends StatelessWidget {
               icon: Icons.stacked_bar_chart_outlined,
               wrapChildren: false,
               children: [
-                if (snapshot.connectionState == ConnectionState.waiting)
+                if (snapshot.hasError)
+                  DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
+                else if (snapshot.connectionState == ConnectionState.waiting)
                   DetailEmptySectionText(context.l10n.loadingCompetencyRecords)
                 else
                   DetailDataTable(
@@ -82,7 +86,9 @@ class StudentAcademicTab extends StatelessWidget {
               icon: Icons.fact_check_outlined,
               wrapChildren: false,
               children: [
-                if (snapshot.connectionState == ConnectionState.waiting)
+                if (snapshot.hasError)
+                  DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
+                else if (snapshot.connectionState == ConnectionState.waiting)
                   DetailEmptySectionText(context.l10n.loadingAttendanceRecords)
                 else
                   DetailDataTable(

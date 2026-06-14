@@ -12,31 +12,24 @@ class StudentProfileCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final photoPath = student.photoPath?.trim();
-    final hasPhoto = photoPath != null &&
-        photoPath.isNotEmpty &&
-        io.File(photoPath).existsSync();
 
     return Row(
       children: [
         CircleAvatar(
           radius: 15,
           backgroundColor: AppColors.primaryLight.withValues(alpha: 0.22),
-          backgroundImage: hasPhoto
-              ? ResizeImage(
-                  FileImage(io.File(photoPath)),
-                  width: 64,
-                  height: 64,
-                  policy: ResizeImagePolicy.fit,
-                )
-              : null,
-          child: hasPhoto
-              ? null
-              : Text(
-                  _initials(student.fullName),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryDark,
+          child: photoPath == null || photoPath.isEmpty
+              ? _initialsText()
+              : ClipOval(
+                  child: Image.file(
+                    io.File(photoPath),
+                    width: 30,
+                    height: 30,
+                    cacheWidth: 64,
+                    cacheHeight: 64,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _initialsText(),
                   ),
                 ),
         ),
@@ -69,6 +62,17 @@ class StudentProfileCell extends StatelessWidget {
 
   String _buildSubtitle(StudentTable s) {
     return s.studentNo;
+  }
+
+  Widget _initialsText() {
+    return Text(
+      _initials(student.fullName),
+      style: const TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        color: AppColors.primaryDark,
+      ),
+    );
   }
 
   String _initials(String name) {
