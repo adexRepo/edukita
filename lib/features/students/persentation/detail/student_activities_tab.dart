@@ -74,7 +74,9 @@ class StudentActivitiesTab extends StatelessWidget {
                         context.l10n.startDate,
                         context.l10n.endDate,
                       ],
-                      rows: extracurricular.map(_activityRow).toList(),
+                      rows: extracurricular
+                          .map((activity) => _activityRow(context, activity))
+                          .toList(),
                       emptyText: context.l10n.noExtracurricularActivity,
                     ),
                   ],
@@ -94,7 +96,9 @@ class StudentActivitiesTab extends StatelessWidget {
                         context.l10n.startDate,
                         context.l10n.endDate,
                       ],
-                      rows: otherActivities.map(_activityRow).toList(),
+                      rows: otherActivities
+                          .map((activity) => _activityRow(context, activity))
+                          .toList(),
                       emptyText: context.l10n.noExtraActivity,
                     ),
                   ],
@@ -107,15 +111,34 @@ class StudentActivitiesTab extends StatelessWidget {
     );
   }
 
-  List<String> _activityRow(StudentActivityFormData activity) {
+  List<String> _activityRow(
+    BuildContext context,
+    StudentActivityFormData activity,
+  ) {
     return [
-      StudentActivityTypeOptions.normalize(activity.type),
+      _activityTypeLabel(context, activity.type),
       _textOrDash(activity.name),
       _textOrDash(activity.role),
       _textOrDash(activity.achievement),
       _textOrDash(activity.startDate),
       _textOrDash(activity.endDate),
     ];
+  }
+
+  String _activityTypeLabel(BuildContext context, String? value) {
+    return switch (StudentActivityTypeOptions.normalize(value)) {
+      StudentActivityTypeOptions.schoolExtracurricular =>
+        context.l10n.activityTypeSchoolExtracurricular,
+      'Martial Arts' => context.l10n.activityTypeMartialArts,
+      'Arts' => context.l10n.activityTypeArts,
+      'Robotics Club' => context.l10n.activityTypeRoboticsClub,
+      'Language Club' => context.l10n.activityTypeLanguageClub,
+      'Community Service' => context.l10n.activityTypeCommunityService,
+      'Competition' => context.l10n.activityTypeCompetition,
+      StudentActivityTypeOptions.otherActivity =>
+        context.l10n.activityTypeOtherActivity,
+      final label => label,
+    };
   }
 
   String _textOrDash(String? value) {

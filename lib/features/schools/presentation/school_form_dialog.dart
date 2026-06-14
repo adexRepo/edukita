@@ -169,8 +169,10 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
       builder: (dialogContext) => AlertDialog(
         title: AppDialogTitle(context.l10n.changeSchoolType),
         content: Text(
-          'Changing the school type from ${_type.label} to ${newType.label} '
-          'will remove the classes already created for ${_type.label}.',
+          context.l10n.changeSchoolTypeRemovesClasses(
+            _type.label,
+            newType.label,
+          ),
         ),
         actions: [
           TextButton(
@@ -264,8 +266,8 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
       guardKey: 'school_form_clear_classes',
       builder: (dialogContext) => AlertDialog(
         title: AppDialogTitle(context.l10n.clearClasses),
-        content: const Text(
-          'Remove all registered classes from this school form?',
+        content: Text(
+          context.l10n.removeAllClassesConfirm,
         ),
         actions: [
           TextButton(
@@ -328,7 +330,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
     final entries = _visibleClassEntries();
     for (var i = 0; i < entries.length; i++) {
       if (_isDuplicateDraft(entries[i].value)) {
-        return 'Class #${i + 1}: duplicate class and year';
+        return context.l10n.classNumberDuplicateClassAndYear(i + 1);
       }
     }
     return null;
@@ -344,7 +346,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: AppDialogTitle(
-        widget.school == null ? 'Add School' : 'Edit School',
+        widget.school == null ? context.l10n.addSchool : context.l10n.editSchool,
       ),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 620),
@@ -395,7 +397,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'School Info',
+          context.l10n.schoolInfo,
           style: Theme.of(
             context,
           ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
@@ -405,7 +407,9 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
           key: ValueKey('school-type-$_type-$_typeDropdownVersion'),
           initialValue: _type,
           isExpanded: false,
-          decoration: InputDecoration(label: requiredLabel(context, 'Type')),
+          decoration: InputDecoration(
+            label: requiredLabel(context, context.l10n.type),
+          ),
           items: SchoolType.values
               .map(
                 (type) => DropdownMenuItem(
@@ -435,18 +439,18 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
         TextFormField(
           controller: _nameController,
           decoration: InputDecoration(
-            label: requiredLabel(context, 'School Name'),
+            label: requiredLabel(context, context.l10n.schoolName),
           ),
           onChanged: (_) => setState(() {}),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return 'School name is required';
+              return context.l10n.schoolNameRequired;
             }
             if (value.trim().length < 3) {
-              return 'School name must be at least 3 characters';
+              return context.l10n.schoolNameMinimumThree;
             }
             if (value.trim().length > 80) {
-              return 'School name must be at most 80 characters';
+              return context.l10n.schoolNameMaximumEighty;
             }
             return null;
           },
@@ -455,17 +459,19 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
         const SizedBox(height: 10),
         TextFormField(
           controller: _addressController,
-          decoration: InputDecoration(label: requiredLabel(context, 'Address')),
+          decoration: InputDecoration(
+            label: requiredLabel(context, context.l10n.address),
+          ),
           onChanged: (_) => setState(() {}),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return 'Address is required';
+              return context.l10n.addressRequired;
             }
             if (value.trim().length < 5) {
-              return 'Address must be at least 5 characters';
+              return context.l10n.addressMinimumFive;
             }
             if (value.trim().length > 160) {
-              return 'Address must be at most 160 characters';
+              return context.l10n.addressMaximumOneSixty;
             }
             return null;
           },
@@ -483,7 +489,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
           children: [
             Expanded(
               child: Text(
-                'Classes ($_classCount)',
+                context.l10n.classesCount(_classCount),
                 style: Theme.of(
                   context,
                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
@@ -699,12 +705,12 @@ class _ClassDraftTable extends StatelessWidget {
         _ClassTableHeader(type: type),
         const Divider(height: 1),
         if (entries.isEmpty)
-          const SizedBox(
+          SizedBox(
             height: 96,
             child: Center(
               child: Text(
-                'No classes yet',
-                style: TextStyle(
+                context.l10n.noClassesYet,
+                style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -801,7 +807,7 @@ class _ClassTableRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final error = showValidationMessages && duplicate
-        ? 'Class #$number: duplicate class and year'
+        ? context.l10n.duplicateClassEntry(number)
         : null;
 
     return Material(
@@ -1007,7 +1013,9 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
     final isEditing = widget.initialDraft != null;
 
     return AlertDialog(
-      title: AppDialogTitle(isEditing ? 'Edit Class' : 'Add Class'),
+      title: AppDialogTitle(
+        isEditing ? context.l10n.editClass : context.l10n.addClass,
+      ),
       content: SizedBox(
         width: 380,
         child: Form(
@@ -1105,9 +1113,9 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
                   final text = value?.trim() ?? '';
                   if (text.isEmpty) return null;
                   if (!RegExp(r'^[A-Z]$').hasMatch(text.toUpperCase())) {
-                    return 'Alphabet only';
+                    return context.l10n.alphabetOnly;
                   }
-                  if (_isDuplicate()) return 'Duplicate class and year';
+                  if (_isDuplicate()) return context.l10n.duplicateClassAndYear;
                   return null;
                 },
               ),
@@ -1115,7 +1123,7 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
               TextFormField(
                 controller: _yearController,
                 decoration: InputDecoration(
-                  label: requiredLabel(context, 'Year'),
+                  label: requiredLabel(context, context.l10n.year),
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [
@@ -1124,11 +1132,11 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
                 ],
                 validator: (value) {
                   final text = value?.trim() ?? '';
-                  if (text.isEmpty) return 'Year is required';
+                  if (text.isEmpty) return context.l10n.yearRequired;
                   if (!RegExp(r'^\d{4}$').hasMatch(text)) {
-                    return 'Year must be 4 digits';
+                    return context.l10n.yearMustFourDigits;
                   }
-                  if (_isDuplicate()) return 'Duplicate class and year';
+                  if (_isDuplicate()) return context.l10n.duplicateClassAndYear;
                   return null;
                 },
               ),

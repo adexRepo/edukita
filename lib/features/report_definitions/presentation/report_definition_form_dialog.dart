@@ -146,7 +146,7 @@ class _ReportDefinitionFormDialogState
                 },
                 decoration: _compactDecoration(
                   label: '${context.l10n.reportName} *',
-                  hint: 'Student Exam Score Report',
+                  hint: context.l10n.reportNameHint,
                 ),
               ),
             ),

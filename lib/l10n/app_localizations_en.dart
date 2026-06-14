@@ -298,6 +298,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teachingSchedule => 'Teaching schedule';
 
   @override
+  String get teachingScheduleRequiresUnit =>
+      'Create at least one syllabus unit in Parameter > Academic > Units before adding a teaching schedule.';
+
+  @override
+  String get teachingScheduleRequiresUnitShort =>
+      'Create a syllabus unit first';
+
+  @override
   String get schoolEvent => 'School event';
 
   @override
@@ -1297,6 +1305,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get siblingRelation => 'Sibling Relation';
 
   @override
+  String get siblingRelationHelp =>
+      'Enter the student number of an existing sibling when both students belong to the same family.';
+
+  @override
   String get addSiblingRelation => 'Add Sibling Relation';
 
   @override
@@ -1427,9 +1439,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get removeRow => 'Remove row';
-
-  @override
-  String get downloadEvidence => 'Download evidence';
 
   @override
   String get removeScoreRecord => 'Remove score record';
@@ -3061,6 +3070,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addSchool => 'Add School';
 
   @override
+  String get editSchool => 'Edit School';
+
+  @override
   String get addClass => 'Add Class';
 
   @override
@@ -3638,6 +3650,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'No distribution evidence document uploaded.';
 
   @override
+  String get downloadEvidence => 'Download evidence';
+
+  @override
   String get deleteEvidence => 'Delete evidence';
 
   @override
@@ -3776,6 +3791,571 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String fieldMinimumCharacters(Object field, int count) {
+    return '$field must be at least $count characters.';
+  }
+
+  @override
+  String fieldMaximumCharacters(Object field, int count) {
+    return '$field must be at most $count characters.';
+  }
+
+  @override
+  String get mobileNumberRequired => 'Mobile number is required.';
+
+  @override
+  String get mobileNumberLengthInvalid =>
+      'Mobile number must be 11 to 13 digits.';
+
+  @override
+  String get emailFormatInvalid => 'Email format is invalid.';
+
+  @override
+  String guardianNumberName(int number) {
+    return 'Guardian #$number name';
+  }
+
+  @override
+  String guardianNumberError(int number, Object error) {
+    return 'Guardian #$number: $error';
+  }
+
+  @override
+  String activityNumberType(int number) {
+    return 'Activity #$number type';
+  }
+
+  @override
+  String activityNumberName(int number) {
+    return 'Activity #$number name';
+  }
+
+  @override
+  String activityNumberStartDateError(int number, Object error) {
+    return 'Activity #$number start date: $error';
+  }
+
+  @override
+  String activityNumberEndDateError(int number, Object error) {
+    return 'Activity #$number end date: $error';
+  }
+
+  @override
+  String get useDateFormat => 'Use YYYY-MM-DD.';
+
+  @override
+  String get duplicateClassAndYear => 'Duplicate class and year.';
+
+  @override
+  String classNumberDuplicateClassAndYear(int number) {
+    return 'Class #$number: duplicate class and year.';
+  }
+
+  @override
+  String get alphabetOnly => 'Alphabet only.';
+
+  @override
+  String get failedToSaveSchedule => 'Failed to save the schedule.';
+
+  @override
+  String pleaseSelectField(Object field) {
+    return 'Please select $field.';
+  }
+
+  @override
+  String fieldCannotBeEmpty(Object field) {
+    return '$field cannot be empty.';
+  }
+
+  @override
+  String sortByDescending(Object column) {
+    return 'Sort by $column descending.';
+  }
+
+  @override
+  String sortedByDescending(Object column) {
+    return 'Sorted by $column descending.';
+  }
+
+  @override
+  String sortedByAscending(Object column) {
+    return 'Sorted by $column ascending.';
+  }
+
+  @override
+  String get removeAllClassesConfirm =>
+      'Remove all registered classes from this school form?';
+
+  @override
+  String get schoolInfo => 'School Info';
+
+  @override
+  String get schoolName => 'School Name';
+
+  @override
+  String classesCount(int count) {
+    return 'Classes ($count)';
+  }
+
+  @override
+  String get editClass => 'Edit Class';
+
+  @override
+  String duplicateClassEntry(int number) {
+    return 'Class #$number: duplicate class and year.';
+  }
+
+  @override
+  String get addCurriculum => 'Add Curriculum';
+
+  @override
+  String get editCurriculum => 'Edit Curriculum';
+
+  @override
+  String get addSyllabus => 'Add Syllabus';
+
+  @override
+  String get editSyllabus => 'Edit Syllabus';
+
+  @override
+  String get editSubject => 'Edit Subject';
+
+  @override
+  String get editUnit => 'Edit Unit';
+
+  @override
+  String get addCompetency => 'Add Competency';
+
+  @override
+  String get editCompetency => 'Edit Competency';
+
+  @override
+  String get addStrategy => 'Add Strategy';
+
+  @override
+  String get editStrategy => 'Edit Strategy';
+
+  @override
+  String get noSampleFile => 'No sample file';
+
+  @override
+  String get reviewCannotUndo =>
+      'Please review before continuing. This action cannot be undone.';
+
+  @override
+  String cancelledWithReason(Object reason) {
+    return 'Cancelled: $reason';
+  }
+
+  @override
+  String get noStudentsAvailable => 'No students available.';
+
+  @override
+  String get noNoteHistoryForStudent => 'No note history for this student.';
+
+  @override
+  String addedByName(Object name) {
+    return 'Added by $name';
+  }
+
+  @override
+  String get noActiveStudentsInClass => 'No active students in this class.';
+
+  @override
+  String saveAllCount(int count) {
+    return 'Save All ($count)';
+  }
+
+  @override
+  String deleteAssessmentForStudent(Object student) {
+    return 'Delete assessment for $student?';
+  }
+
+  @override
+  String get deleteSavedAssessment => 'Delete saved assessment';
+
+  @override
+  String get noSavedRecord => 'No saved record';
+
+  @override
+  String get deleteStudentNoteConfirm => 'Delete this student note?';
+
+  @override
+  String get editStudentNote => 'Edit Student Note';
+
+  @override
+  String get addStudentNote => 'Add Student Note';
+
+  @override
+  String get updateNote => 'Update Note';
+
+  @override
+  String get addNote => 'Add Note';
+
+  @override
+  String get selectPrimaryGuardian => 'Select one primary guardian.';
+
+  @override
+  String get studentCannotRelateSelf =>
+      'Student cannot be related to themself.';
+
+  @override
+  String get noActivitiesYet => 'No activity yet';
+
+  @override
+  String get yes => 'Yes';
+
+  @override
+  String get no => 'No';
+
+  @override
+  String get scopeSchool => 'School';
+
+  @override
+  String get scopeInternal => 'Internal';
+
+  @override
+  String evidenceRequiredForType(Object type) {
+    return 'Required for $type. Allowed: PDF, JPG, PNG.';
+  }
+
+  @override
+  String get selectedFile => 'Selected file';
+
+  @override
+  String get noFile => 'No file';
+
+  @override
+  String get next => 'Next';
+
+  @override
+  String get update => 'Update';
+
+  @override
+  String get systemLabel => 'System';
+
+  @override
+  String get customLabel => 'Custom';
+
+  @override
+  String get systemRuleToggleOnly =>
+      'System rules can only be activated or deactivated';
+
+  @override
+  String get editCustomRule => 'Edit custom rule';
+
+  @override
+  String get editCustomRuleTitle => 'Edit Custom Rule';
+
+  @override
+  String removeTargetCandidateConfirm(Object student, Object rule) {
+    return 'Remove $student from $rule targets?';
+  }
+
+  @override
+  String removeAllTargetCandidatesConfirm(int count, Object rule) {
+    return 'Remove all $count selected candidates from $rule?';
+  }
+
+  @override
+  String get removedFromTargetPlan => 'Removed from target plan';
+
+  @override
+  String remainingCount(int count) {
+    return 'Remaining $count';
+  }
+
+  @override
+  String overAllocatedCount(int count) {
+    return 'Over $count';
+  }
+
+  @override
+  String get minimumAttendanceShort => 'Min Attendance';
+
+  @override
+  String get reportNameHint => 'Student Exam Score Report';
+
+  @override
+  String get success => 'Success';
+
+  @override
+  String get changesSavedSuccessfully => 'Changes saved successfully.';
+
+  @override
+  String get failedToSaveChanges => 'Failed to save changes.';
+
+  @override
+  String get noDataAvailable => 'No data available';
+
+  @override
+  String get unknownDate => 'Unknown date';
+
+  @override
+  String get assistancePlanTitle => 'Assistance Plan';
+
+  @override
+  String get assistanceCandidatePlanTitle => 'Assistance Candidate Plan';
+
+  @override
+  String get assistanceRecipientsTitle => 'Assistance Recipients';
+
+  @override
+  String get eligible => 'Eligible';
+
+  @override
+  String get preparedBy => 'Prepared by';
+
+  @override
+  String get reviewedBy => 'Reviewed by';
+
+  @override
+  String get totalRecipients => 'Total Recipients';
+
+  @override
+  String get nameDate => 'Name / Date';
+
+  @override
+  String get fixedPriority => 'Fixed Priority';
+
+  @override
+  String get needBased => 'Need-Based';
+
+  @override
+  String get meritBased => 'Merit-Based';
+
+  @override
+  String get growthBased => 'Growth-Based';
+
+  @override
+  String get specialCase => 'Special Case';
+
+  @override
+  String get teacherRecommendation => 'Teacher Recommendation';
+
+  @override
+  String get rollingAttendance => 'Rolling Attendance';
+
+  @override
+  String get manualPriority => 'Manual Priority';
+
+  @override
+  String get temporarySupport => 'Temporary Support';
+
+  @override
+  String get attendanceBased => 'Attendance Based';
+
+  @override
+  String changeSchoolTypeRemovesClasses(Object oldType, Object newType) {
+    return 'Changing the school type from $oldType to $newType will remove the classes already created for $oldType.';
+  }
+
+  @override
+  String get invalidUsernameOrPassword => 'Invalid username or password.';
+
+  @override
+  String get loginFailedTryAgain => 'Login failed. Please try again.';
+
+  @override
+  String get linkedTeacherProfile => 'Linked teacher profile';
+
+  @override
+  String scheduleCount(int count) {
+    return '$count schedules';
+  }
+
+  @override
+  String eventCount(int count) {
+    return '$count events';
+  }
+
+  @override
+  String get unnamedSchool => 'Unnamed School';
+
+  @override
+  String starsCount(Object score) {
+    return '$score stars';
+  }
+
+  @override
+  String followUpWithNotes(Object notes) {
+    return 'Follow up: $notes';
+  }
+
+  @override
+  String shownCount(int count) {
+    return '$count shown';
+  }
+
+  @override
+  String get defaultScore => 'Default score';
+
+  @override
+  String get defaultRating => 'Default rating';
+
+  @override
+  String shownSelectedCount(int shown, int selected) {
+    return '$shown shown | $selected selected';
+  }
+
+  @override
+  String get defaultScoreRangeError =>
+      'Default score must be between 0 and 100.';
+
+  @override
+  String get defaultRatingRangeError =>
+      'Default rating must be between 0.5 and 5.';
+
+  @override
+  String assessmentModeDescription(Object type, Object mode) {
+    return '$type uses $mode.';
+  }
+
+  @override
+  String get numericScoreRange => 'numeric score 0-100';
+
+  @override
+  String get starRatingRange => 'star rating 0.5-5';
+
+  @override
+  String get enterNote => 'Enter note';
+
+  @override
+  String enterField(Object field) {
+    return 'Enter $field';
+  }
+
+  @override
+  String get allowedSampleFileTypes =>
+      'Only Excel, Word, TXT, MD, and PDF files are allowed.';
+
+  @override
+  String get unsupportedSampleFileType => 'Unsupported sample file type.';
+
+  @override
+  String get assistanceRulesSubtitle =>
+      'Maintain assistance rule master data and custom manual rules.';
+
+  @override
+  String get thisWillAlsoAffect => 'This will also affect:';
+
+  @override
+  String get setupStructure => 'Setup structure';
+
+  @override
+  String get planMarkedSubmitted => 'Assistance plan marked as submitted.';
+
+  @override
+  String get approvalDocumentFileType => 'PDF, JPG, or PNG';
+
+  @override
+  String get dragRowsPriority => 'Drag rows to change priority.';
+
+  @override
+  String zeroQuotaRulesWarning(Object rules) {
+    return 'Some selected rules have quota 0: $rules.\n\nIf you continue, those rules will be removed from this assistance period setup.';
+  }
+
+  @override
+  String get approvalDocumentFileLabel => 'Approval document';
+
+  @override
+  String reviewExportSummary(
+    int target,
+    int selected,
+    int eligible,
+    int manual,
+    int auto,
+  ) {
+    return 'Review & Export\nTarget: $target | Selected: $selected | Eligible: $eligible | Manual: $manual | Auto: $auto';
+  }
+
+  @override
+  String candidateQuotaSummary(int quota, int selected, int remaining) {
+    return 'Quota: $quota | Selected: $selected | Remaining: $remaining | Minimum attendance applies during target generation';
+  }
+
+  @override
+  String impactUnitsDeleted(int count) {
+    return '$count unit(s) will be deleted';
+  }
+
+  @override
+  String impactSyllabiDetached(int count) {
+    return '$count syllabus reference(s) will be detached';
+  }
+
+  @override
+  String impactSchedulesDeleted(int count) {
+    return '$count teaching schedule(s) will be deleted';
+  }
+
+  @override
+  String impactAssessmentsDeleted(int count) {
+    return '$count assessment(s) will be deleted';
+  }
+
+  @override
+  String impactCompetenciesDeleted(int count) {
+    return '$count competency record(s) will be deleted';
+  }
+
+  @override
+  String impactStudentScoresDetached(int count) {
+    return '$count student score reference(s) will be detached';
+  }
+
+  @override
+  String selectField(Object field) {
+    return 'Select $field';
+  }
+
+  @override
+  String get orType => 'or type';
+
+  @override
+  String get eventTypeExam => 'Exam';
+
+  @override
+  String get eventTypeHoliday => 'Holiday';
+
+  @override
+  String get eventTypeReportCard => 'Report Card';
+
+  @override
+  String get curriculumSectionDescription =>
+      'Manage curriculum versions, effective years, and active learning frameworks.';
+
+  @override
+  String get subjectSectionDescription =>
+      'Maintain subject master data before it is used in syllabus and schedules.';
+
+  @override
+  String get syllabusSectionDescription =>
+      'Define learning plans by curriculum, school type, level, and semester.';
+
+  @override
+  String get unitSectionDescription =>
+      'Organize ordered learning units under each subject.';
+
+  @override
+  String get competencySectionDescription =>
+      'Maintain measurable competency targets for each learning unit.';
+
+  @override
+  String get strategySectionDescription =>
+      'Maintain teaching strategies used by schedule and lesson planning.';
+
+  @override
+  String get waitlist => 'Waitlist';
+
+  @override
+  String get pending => 'Pending';
+
+  @override
+  String get overridden => 'Overridden';
+
+  @override
   String get aboutEdukita => 'About Edukita';
 
   @override
@@ -3832,5 +4412,409 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String errorWithDetails(Object details) {
     return 'Error: $details';
+  }
+
+  @override
+  String get createSchoolBeforeAddingStudents =>
+      'Create a school before adding students.';
+
+  @override
+  String get createClassBeforeAddingStudents =>
+      'Create a class before adding students.';
+
+  @override
+  String activityEndBeforeStart(int number) {
+    return 'Activity #$number end date cannot be before its start date.';
+  }
+
+  @override
+  String get duplicateSibling =>
+      'The same sibling cannot be added more than once.';
+
+  @override
+  String get birthDateAfterJoinDate => 'Birth date cannot be after join date.';
+
+  @override
+  String get siblingGuardiansCopied =>
+      'Sibling guardians copied to family section.';
+
+  @override
+  String get nisMaxTenCharacters => 'NIS must be at most 10 characters.';
+
+  @override
+  String get fullNameMinimumThree => 'Full name must be at least 3 characters.';
+
+  @override
+  String get fullNameMaximumEighty =>
+      'Full name must be at most 80 characters.';
+
+  @override
+  String get selectSchoolRequired => 'Please select a school.';
+
+  @override
+  String get selectClassRequired => 'Please select a class.';
+
+  @override
+  String get householdEducationProfile => 'Household & Education Profile';
+
+  @override
+  String get homeAddress => 'Home Address';
+
+  @override
+  String get homeAddressHint =>
+      'Street, RT/RW, house number, village, and district';
+
+  @override
+  String get dailySchoolTransportCost => 'Daily School Transport Cost';
+
+  @override
+  String get housingStatus => 'Housing Status';
+
+  @override
+  String get selectHousingStatus => 'Select housing status';
+
+  @override
+  String get housingStatusOwned => 'Owned';
+
+  @override
+  String get housingStatusRented => 'Rented';
+
+  @override
+  String get housingStatusStayingWithFamily => 'Staying with family';
+
+  @override
+  String get housingStatusOther => 'Other';
+
+  @override
+  String get activityTypeSchoolExtracurricular => 'School Extracurricular';
+
+  @override
+  String get activityTypeMartialArts => 'Martial Arts';
+
+  @override
+  String get activityTypeArts => 'Arts';
+
+  @override
+  String get activityTypeRoboticsClub => 'Robotics Club';
+
+  @override
+  String get activityTypeLanguageClub => 'Language Club';
+
+  @override
+  String get activityTypeCommunityService => 'Community Service';
+
+  @override
+  String get activityTypeCompetition => 'Competition';
+
+  @override
+  String get activityTypeOtherActivity => 'Other Activity';
+
+  @override
+  String get familyRelationMother => 'Mother';
+
+  @override
+  String get familyRelationFather => 'Father';
+
+  @override
+  String get familyRelationBrother => 'Brother';
+
+  @override
+  String get familyRelationSister => 'Sister';
+
+  @override
+  String get familyRelationUncle => 'Uncle';
+
+  @override
+  String get familyRelationAunt => 'Aunt';
+
+  @override
+  String get familyRelationGrandfather => 'Grandfather';
+
+  @override
+  String get familyRelationGrandmother => 'Grandmother';
+
+  @override
+  String get agePositionOlder => 'Older';
+
+  @override
+  String get agePositionYounger => 'Younger';
+
+  @override
+  String get examSourceSchoolReport => 'School Report';
+
+  @override
+  String get examSourceTryout => 'Tryout';
+
+  @override
+  String get examSourceExternal => 'External';
+
+  @override
+  String get householdMemberCount => 'Household Member Count';
+
+  @override
+  String get fatherIncome => 'Father Income';
+
+  @override
+  String get motherIncome => 'Mother Income';
+
+  @override
+  String get educationArrears => 'Education Arrears';
+
+  @override
+  String get academicAchievement => 'Academic Achievement';
+
+  @override
+  String get academicAchievementHint => 'Ranking or academic competition';
+
+  @override
+  String get nonAcademicAchievement => 'Non-Academic Achievement';
+
+  @override
+  String get nonAcademicAchievementHint => 'Sports or arts achievement';
+
+  @override
+  String fieldMustBeNumber(Object field) {
+    return '$field must be a number.';
+  }
+
+  @override
+  String fieldMustBeAtLeastOne(Object field) {
+    return '$field must be at least 1.';
+  }
+
+  @override
+  String get mustBeNumber => 'Must be a number.';
+
+  @override
+  String get studentIdNoRequired => 'Student ID or No is required.';
+
+  @override
+  String get typeRequired => 'Type is required.';
+
+  @override
+  String get evidenceNotAttached => 'No evidence file is attached.';
+
+  @override
+  String get evidenceNotFound => 'Evidence file was not found in storage.';
+
+  @override
+  String get evidenceDownloaded => 'Evidence downloaded.';
+
+  @override
+  String get evidenceDownloadFailed => 'Failed to download evidence.';
+
+  @override
+  String evidenceRequiredForExamType(Object examType) {
+    return 'Evidence file is required for $examType.';
+  }
+
+  @override
+  String get examDateRequired => 'Exam date is required.';
+
+  @override
+  String get allowedPdfJpgPng => 'Only PDF, JPG, and PNG files are allowed.';
+
+  @override
+  String get evidenceMaxTwentyMb => 'Evidence file must be 20 MB or smaller.';
+
+  @override
+  String get inputAtLeastOneScore => 'Input at least one score item.';
+
+  @override
+  String fieldMustNotExceedMax(Object field) {
+    return '$field must be less than or equal to Max.';
+  }
+
+  @override
+  String get studentPhotoUnavailable => 'Student photo is not available.';
+
+  @override
+  String get studentPhotoNotFound => 'Student photo file was not found.';
+
+  @override
+  String get studentPhotoDownloaded => 'Student photo downloaded.';
+
+  @override
+  String get studentPhotoDownloadFailed => 'Failed to download student photo.';
+
+  @override
+  String get attendanceSaved => 'Attendance saved.';
+
+  @override
+  String scoreRequiredFor(Object item) {
+    return '$item score is required.';
+  }
+
+  @override
+  String scoreMustBeZeroToHundred(Object item) {
+    return '$item must be 0-100.';
+  }
+
+  @override
+  String scoreMustBeHalfToFiveStars(Object item) {
+    return '$item must be 0.5-5 stars.';
+  }
+
+  @override
+  String studentReportingSaved(Object student) {
+    return '$student reporting saved.';
+  }
+
+  @override
+  String get assessmentDeleted => 'Assessment deleted.';
+
+  @override
+  String get selectAtLeastOneStudent => 'Select at least one student first.';
+
+  @override
+  String assessmentRowsSaved(int count) {
+    return '$count assessment rows saved.';
+  }
+
+  @override
+  String get sessionNotesSaved => 'Session notes saved.';
+
+  @override
+  String get studentNoteDeleted => 'Student note deleted.';
+
+  @override
+  String get commentRequired => 'Comment is required.';
+
+  @override
+  String get studentNoteAdded => 'Student note added.';
+
+  @override
+  String get studentNoteUpdated => 'Student note updated.';
+
+  @override
+  String get enterLevel => 'Please enter level.';
+
+  @override
+  String levelMustMatch(Object hint) {
+    return 'Level must be $hint.';
+  }
+
+  @override
+  String get yearMustFourDigits => 'Year must be 4 digits.';
+
+  @override
+  String get schoolNameRequired => 'School name is required.';
+
+  @override
+  String get schoolNameMinimumThree =>
+      'School name must be at least 3 characters.';
+
+  @override
+  String get schoolNameMaximumEighty =>
+      'School name must be at most 80 characters.';
+
+  @override
+  String get addressRequired => 'Address is required.';
+
+  @override
+  String get addressMinimumFive => 'Address must be at least 5 characters.';
+
+  @override
+  String get addressMaximumOneSixty =>
+      'Address must be at most 160 characters.';
+
+  @override
+  String get curriculumNameRequired => 'Curriculum name is required.';
+
+  @override
+  String get syllabusTitleRequired => 'Syllabus title is required.';
+
+  @override
+  String get subjectNameRequired => 'Subject name is required.';
+
+  @override
+  String get unitNameRequired => 'Unit name is required.';
+
+  @override
+  String get competencyDescriptionRequired =>
+      'Competency description is required.';
+
+  @override
+  String get strategyNameRequired => 'Strategy name is required.';
+
+  @override
+  String get sampleFileNotAttached =>
+      'No sample file is attached to this strategy.';
+
+  @override
+  String get sampleFileNotFound => 'Sample file was not found in storage.';
+
+  @override
+  String get sampleFileDownloaded => 'Sample file downloaded.';
+
+  @override
+  String get sampleFileDownloadFailed => 'Failed to download sample file.';
+
+  @override
+  String get minimumAttendanceRangeError =>
+      'Minimum attendance must be between 0 and 100.';
+
+  @override
+  String databaseBackupCreated(Object path) {
+    return 'Database backup created: $path';
+  }
+
+  @override
+  String get applicationCacheCleared => 'Application cache cleared.';
+
+  @override
+  String get selectOption => 'Select option';
+
+  @override
+  String get periodCreateDenied =>
+      'You do not have permission to create periods.';
+
+  @override
+  String get targetCandidateRemoved => 'Target candidate removed.';
+
+  @override
+  String get targetCandidatesRemoved => 'Target candidates removed.';
+
+  @override
+  String get manualTargetsSaved => 'Manual targets saved.';
+
+  @override
+  String get allocatedQuotaMustEqualTargetQuota =>
+      'Allocated quota must equal target quota.';
+
+  @override
+  String get assistancePeriodCreated => 'Assistance period created.';
+
+  @override
+  String get approvalDocumentNotFound =>
+      'Approval document file was not found.';
+
+  @override
+  String get approvalDocumentDownloaded => 'Approval document downloaded.';
+
+  @override
+  String get planExportedSubmitted => 'Plan exported and marked as submitted.';
+
+  @override
+  String get planExported => 'Plan exported.';
+
+  @override
+  String get recipientListExported => 'Recipient list exported.';
+
+  @override
+  String get filter => 'Filter';
+
+  @override
+  String get value => 'Value';
+
+  @override
+  String get done => 'Done';
+
+  @override
+  String get teachers => 'Teachers';
+
+  @override
+  String confirmActionForSubject(Object action, Object subject) {
+    return '$action $subject?';
   }
 }

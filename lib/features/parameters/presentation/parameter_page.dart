@@ -3,7 +3,6 @@ import 'package:edukita/features/assistance/programs/presentation/assistance_pro
 import 'package:edukita/features/report_definitions/presentation/report_definitions_page.dart';
 import 'package:edukita/features/schools/presentation/schools_page.dart';
 import 'package:edukita/features/assistance/plans/presentation/assistance_rules_page.dart';
-import 'package:edukita/features/parameters/presentation/system_config_page.dart';
 import 'package:edukita/features/syllabus/presentation/syllabus_page.dart';
 import 'package:edukita/features/users/domain/user_authorization.dart';
 import 'package:edukita/features/users/presentation/authorization_helpers.dart';
@@ -26,8 +25,8 @@ class _ParameterPageState extends State<ParameterPage> {
       items: [
         _ParameterMenuItem('Schools', Icons.apartment_outlined),
         _ParameterMenuItem('Curriculum', Icons.account_tree_outlined),
-        _ParameterMenuItem('Syllabus', Icons.library_books_outlined),
         _ParameterMenuItem('Subjects', Icons.subject_outlined),
+        _ParameterMenuItem('Syllabus', Icons.library_books_outlined),
         _ParameterMenuItem('Units', Icons.view_module_outlined),
         _ParameterMenuItem('Competencies', Icons.fact_check_outlined),
       ],
@@ -51,7 +50,6 @@ class _ParameterPageState extends State<ParameterPage> {
       title: 'System',
       icon: Icons.settings_outlined,
       items: [
-        _ParameterMenuItem('Config', Icons.tune_outlined),
         _ParameterMenuItem('Reports', Icons.summarize_outlined),
       ],
     ),
@@ -68,9 +66,6 @@ class _ParameterPageState extends State<ParameterPage> {
 
   bool get _canViewParameters =>
       _authScope.canView(AppMenuAccessRegistry.parameters.code);
-  bool get _canUpdateParameters =>
-      _authScope.canUpdate(AppMenuAccessRegistry.parameters.code);
-
   @override
   void initState() {
     super.initState();
@@ -169,10 +164,6 @@ class _ParameterPageState extends State<ParameterPage> {
       return const ReportDefinitionsPage(embedded: true);
     }
 
-    if (_selectedTitle == 'Config') {
-      return SystemConfigPage(canUpdate: _canUpdateParameters);
-    }
-
     return DecoratedBox(
       decoration: BoxDecoration(
         color: AppColors.white,
@@ -214,7 +205,6 @@ class _ParameterPageState extends State<ParameterPage> {
 
   String _parameterDescription(BuildContext context, String title) {
     return switch (title) {
-      'Config' => context.l10n.configDescription,
       'Reports' => context.l10n.reportDefinitionsDescription,
       _ => context.l10n.parameterDefaultDescription,
     };
@@ -232,7 +222,6 @@ class _ParameterPageState extends State<ParameterPage> {
       'Programs' => context.l10n.programs,
       'Rules' => context.l10n.rules,
       'Reports' => context.l10n.reports,
-      'Config' => context.l10n.config,
       _ => title,
     };
   }
@@ -385,7 +374,6 @@ String _parameterMenuLabel(BuildContext context, String title) {
     'Programs' => context.l10n.programs,
     'Rules' => context.l10n.rules,
     'Reports' => context.l10n.reports,
-    'Config' => context.l10n.config,
     _ => title,
   };
 }

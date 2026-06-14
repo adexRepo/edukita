@@ -73,7 +73,9 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
     bool isAdd = widget.schoolClass == null;
 
     return AlertDialog(
-      title: AppDialogTitle(isAdd ? 'Add Class' : 'Edit Class'),
+      title: AppDialogTitle(
+        isAdd ? context.l10n.addClass : context.l10n.editClass,
+      ),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
@@ -85,10 +87,12 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
                 value: className,
                 controller: _classNameController,
                 readOnly: true,
-                hint: 'Generated from level and optional section',
+                hint: context.l10n.generatedClassHint,
                 onSaved: (value) => className = value ?? '',
                 validator: (value) {
-                  if (value?.isEmpty ?? true) return 'Class name is required';
+                  if (value?.isEmpty ?? true) {
+                    return context.l10n.classNameRequired;
+                  }
                   return null;
                 },
               ),
@@ -100,7 +104,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
                     .toList(),
                 value: widget.schoolClass != null ? level.toString() : null,
                 hint:
-                    '${AppFormFieldStyle.select('level')} '
+                    '${context.l10n.selectField(context.l10n.level)} '
                     '(${_schoolType.levelHint})',
                 onChanged: (value) {
                   level = int.parse(value ?? _schoolType.minLevel.toString());
@@ -114,7 +118,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
                 label: context.l10n.section,
                 items: ['A', 'B', 'C', 'D'],
                 value: SchoolClass.normalizeSection(section),
-                hint: AppFormFieldStyle.select('section'),
+                hint: context.l10n.selectField(context.l10n.section),
                 onChanged: (value) {
                   section = SchoolClass.normalizeSection(value);
                   _refreshClassName();
@@ -139,9 +143,9 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
                 },
                 onSaved: (value) => year = value ?? '',
                 validator: (value) {
-                  if (value?.isEmpty ?? true) return 'Year is required';
+                  if (value?.isEmpty ?? true) return context.l10n.yearRequired;
                   if (!RegExp(r'^\d{4}$').hasMatch(value!.trim())) {
-                    return 'Year must be 4 digits';
+                    return context.l10n.yearMustFourDigits;
                   }
                   return null;
                 },

@@ -59,9 +59,8 @@ class _TeachingActivityDetailPageState
     }
     if (!mounted) return;
     if (scope.canView(AppMenuAccessRegistry.teachingActivities.code)) {
-      await context.read<TeachingActivityDetailCubit>().loadDetail(
-        widget.activityId,
-      );
+      final cubit = context.read<TeachingActivityDetailCubit>();
+      await cubit.loadDetail(widget.activityId);
     }
     if (!mounted) return;
     setState(() {
@@ -424,8 +423,9 @@ class _SessionOverview extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Cancelled: ${_label(activity.cancellationReason ?? '-')}'
-                '${activity.cancellationNotes == null || activity.cancellationNotes!.isEmpty ? '' : ' - ${activity.cancellationNotes}'}',
+                '${context.l10n.cancelledWithReason(
+                  _label(activity.cancellationReason ?? '-'),
+                )}${activity.cancellationNotes == null || activity.cancellationNotes!.isEmpty ? '' : ' - ${activity.cancellationNotes}'}',
                 style: const TextStyle(
                   color: AppColors.error,
                   fontSize: 12,
@@ -673,10 +673,10 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
         final left = _buildStudentPanel();
         final right = selectedStudent == null
             ? _Panel(
-                child: const Center(
+                child: Center(
                   child: Text(
-                    'No students available.',
-                    style: TextStyle(color: AppColors.textSecondary),
+                    context.l10n.noStudentsAvailable,
+                    style: const TextStyle(color: AppColors.textSecondary),
                   ),
                 ),
               )
@@ -1053,9 +1053,11 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
       );
     }).toList();
 
+    final cubit = context.read<TeachingActivityDetailCubit>();
+    final successMessage = context.l10n.attendanceSaved;
     try {
-      await context.read<TeachingActivityDetailCubit>().saveAttendance(records);
-      if (showToast) AppToast.showSuccess('Attendance saved.');
+      await cubit.saveAttendance(records);
+      if (showToast) AppToast.showSuccess(successMessage);
       return true;
     } catch (_) {
       return false;
@@ -1073,17 +1075,26 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
       ).text.trim();
       double? rawScore;
       if (_usesNumericScore) {
-        if (scoreText.isEmpty && noteText.isEmpty) continue;
+        if (scoreText.isEmpty) {
+          AppToast.showFailed(
+            context.l10n.scoreRequiredFor(competency.label),
+          );
+          return;
+        }
         rawScore = _parseScore(scoreText);
         if (rawScore == null) {
-          AppToast.showFailed('${competency.label} must be 0-100.');
+          AppToast.showFailed(
+            context.l10n.scoreMustBeZeroToHundred(competency.label),
+          );
           return;
         }
       } else {
         if (scoreText.isEmpty && noteText.isEmpty) continue;
         rawScore = scoreText.isEmpty ? 3 : _parseScore(scoreText);
         if (rawScore == null) {
-          AppToast.showFailed('${competency.label} must be 0.5-5 stars.');
+          AppToast.showFailed(
+            context.l10n.scoreMustBeHalfToFiveStars(competency.label),
+          );
           return;
         }
       }
@@ -1120,15 +1131,17 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
       );
     }
 
+    final cubit = context.read<TeachingActivityDetailCubit>();
+    final successMessage = context.l10n.studentReportingSaved(
+      student.displayName,
+    );
     try {
-      await context
-          .read<TeachingActivityDetailCubit>()
-          .saveStudentReportingData(
+      await cubit.saveStudentReportingData(
             assessmentType: _assessmentType,
             assessments: assessments,
             notes: notes,
           );
-      AppToast.showSuccess('${student.displayName} reporting saved.');
+      AppToast.showSuccess(successMessage);
     } catch (_) {}
   }
 
@@ -1324,7 +1337,7 @@ class _CompetencyScoreRow extends StatelessWidget {
         ? SizedBox(
             width: 110,
             child: TextFormField(
-              key: ValueKey('competency-score-${competency.id}-$score'),
+              key: ValueKey('competency-score-${competency.id}'),
               initialValue: score,
               enabled: enabled,
               keyboardType: TextInputType.number,
@@ -1411,6 +1424,7 @@ class _ObservationNoteRow extends StatelessWidget {
         final compact = constraints.maxWidth < 720;
         final title = Text(
           label,
+          softWrap: true,
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
         );
         final stars = SizedBox(
@@ -1449,11 +1463,11 @@ class _ObservationNoteRow extends StatelessWidget {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(width: 210, child: title),
+            Expanded(flex: 2, child: title),
             const SizedBox(width: 10),
             stars,
             const SizedBox(width: 10),
-            Expanded(child: note),
+            Expanded(flex: 3, child: note),
           ],
         );
       },
@@ -1478,7 +1492,7 @@ class _StudentNoteHistoryDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final groups = _studentNoteHistoryGroups(notes, teacherName);
+    final groups = _studentNoteHistoryGroups(context, notes, teacherName);
     return AlertDialog(
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1499,10 +1513,10 @@ class _StudentNoteHistoryDialog extends StatelessWidget {
         width: 640,
         height: 460,
         child: notes.isEmpty
-            ? const Center(
+            ? Center(
                 child: Text(
-                  'No note history for this student.',
-                  style: TextStyle(color: AppColors.textSecondary),
+                  context.l10n.noNoteHistoryForStudent,
+                  style: const TextStyle(color: AppColors.textSecondary),
                 ),
               )
             : ListView.separated(
@@ -1620,7 +1634,7 @@ class _StudentNoteHistoryCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Added by ${group.teacherName}',
+                      context.l10n.addedByName(group.teacherName),
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 11,
@@ -1676,7 +1690,8 @@ class _StudentNoteCommentBlock extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '${_label(note.noteType)} (${_formatScore(note.rawScore ?? 3)} stars)',
+                  '${_label(note.noteType)} '
+                  '(${context.l10n.starsCount(_formatScore(note.rawScore ?? 3))})',
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 12,
@@ -1704,7 +1719,7 @@ class _StudentNoteCommentBlock extends StatelessWidget {
           if (note.followUpNeeded && followUpNotes != null) ...[
             const SizedBox(height: 8),
             Text(
-              'Follow up: $followUpNotes',
+              context.l10n.followUpWithNotes(followUpNotes),
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 11,
@@ -1840,7 +1855,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
               label: Text(context.l10n.buttonSave),
             ),
             Text(
-              '${_filteredStudents.length} shown',
+              context.l10n.shownCount(_filteredStudents.length),
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 11,
@@ -1881,17 +1896,17 @@ class _AttendanceTabState extends State<_AttendanceTab> {
     return _Panel(
       padding: EdgeInsets.zero,
       child: widget.detail.students.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
-                'No active students in this class.',
-                style: TextStyle(color: AppColors.textSecondary),
+                context.l10n.noActiveStudentsInClass,
+                style: const TextStyle(color: AppColors.textSecondary),
               ),
             )
           : students.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
-                'No students match the current search.',
-                style: TextStyle(color: AppColors.textSecondary),
+                context.l10n.noStudentsMatchSearch,
+                style: const TextStyle(color: AppColors.textSecondary),
               ),
             )
           : LayoutBuilder(
@@ -1954,9 +1969,11 @@ class _AttendanceTabState extends State<_AttendanceTab> {
       );
     }).toList();
 
+    final cubit = context.read<TeachingActivityDetailCubit>();
+    final successMessage = context.l10n.attendanceSaved;
     try {
-      await context.read<TeachingActivityDetailCubit>().saveAttendance(records);
-      AppToast.showSuccess('Attendance saved.');
+      await cubit.saveAttendance(records);
+      AppToast.showSuccess(successMessage);
     } catch (_) {}
   }
 }
@@ -2161,7 +2178,9 @@ class _AssessmentTabState extends State<_AssessmentTab> {
         widget.detail.activity.status == TeachingActivityStatus.completed;
     final filteredStudents = _filteredStudents;
     final typeLabel = _label(_assessmentType);
-    final scoreLabel = _usesNumericScore ? 'Default score' : 'Default rating';
+    final scoreLabel = _usesNumericScore
+        ? context.l10n.defaultScore
+        : context.l10n.defaultRating;
     final scoreHint = _usesNumericScore ? '0-100' : '0.5-5';
 
     return Column(
@@ -2295,11 +2314,14 @@ class _AssessmentTabState extends State<_AssessmentTab> {
                           : () => _save(selectedOnly: false),
                       icon: const Icon(Icons.save_as_outlined, size: 18),
                       label: Text(
-                        'Save All (${widget.detail.students.length})',
+                        context.l10n.saveAllCount(widget.detail.students.length),
                       ),
                     ),
                     Text(
-                      '${filteredStudents.length} shown | ${_selectedStudentIds.length} selected',
+                      context.l10n.shownSelectedCount(
+                        filteredStudents.length,
+                        _selectedStudentIds.length,
+                      ),
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 11,
@@ -2317,10 +2339,10 @@ class _AssessmentTabState extends State<_AssessmentTab> {
           child: _Panel(
             padding: EdgeInsets.zero,
             child: filteredStudents.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
-                      'No students match the current search.',
-                      style: TextStyle(color: AppColors.textSecondary),
+                      context.l10n.noStudentsMatchSearch,
+                      style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   )
                 : ListView.separated(
@@ -2360,16 +2382,20 @@ class _AssessmentTabState extends State<_AssessmentTab> {
                             : () async {
                                 final confirmed = await _confirmDelete(
                                   context,
-                                  'Delete assessment for ${student.displayName}?',
+                                  context.l10n.deleteAssessmentForStudent(
+                                    student.displayName,
+                                  ),
                                 );
                                 if (!confirmed || !context.mounted) return;
+                                final cubit = context
+                                    .read<TeachingActivityDetailCubit>();
+                                final successMessage =
+                                    context.l10n.assessmentDeleted;
                                 try {
-                                  await context
-                                      .read<TeachingActivityDetailCubit>()
-                                      .deleteAssessment(
-                                        _recordIds[student.id]!,
-                                      );
-                                  AppToast.showSuccess('Assessment deleted.');
+                                  await cubit.deleteAssessment(
+                                    _recordIds[student.id]!,
+                                  );
+                                  AppToast.showSuccess(successMessage);
                                 } catch (_) {}
                               },
                       );
@@ -2398,8 +2424,8 @@ class _AssessmentTabState extends State<_AssessmentTab> {
     if (scoreText.isNotEmpty && _parseScore(scoreText) == null) {
       AppToast.showFailed(
         _usesNumericScore
-            ? 'Default score must be between 0 and 100.'
-            : 'Default rating must be between 0.5 and 5.',
+            ? context.l10n.defaultScoreRangeError
+            : context.l10n.defaultRatingRangeError,
       );
       return;
     }
@@ -2416,7 +2442,7 @@ class _AssessmentTabState extends State<_AssessmentTab> {
         ? _selectedStudentIds.toList()
         : widget.detail.students.map((student) => student.id).toList();
     if (targetIds.isEmpty) {
-      AppToast.showFailed('Select at least one student first.');
+      AppToast.showFailed(context.l10n.selectAtLeastOneStudent);
       return;
     }
 
@@ -2435,8 +2461,8 @@ class _AssessmentTabState extends State<_AssessmentTab> {
         );
         AppToast.showFailed(
           _usesNumericScore
-              ? '${student.displayName} must have a score between 0 and 100.'
-              : '${student.displayName} must have a rating between 0.5 and 5.',
+              ? context.l10n.scoreMustBeZeroToHundred(student.displayName)
+              : context.l10n.scoreMustBeHalfToFiveStars(student.displayName),
         );
         return;
       }
@@ -2453,13 +2479,15 @@ class _AssessmentTabState extends State<_AssessmentTab> {
       );
     }
 
+    final cubit = context.read<TeachingActivityDetailCubit>();
+    final successMessage = context.l10n.assessmentRowsSaved(records.length);
     try {
-      await context.read<TeachingActivityDetailCubit>().saveBulkAssessments(
+      await cubit.saveBulkAssessments(
         competencyId: _competencyId,
         assessmentType: _assessmentType,
         records: records,
       );
-      AppToast.showSuccess('${records.length} assessment rows saved.');
+      AppToast.showSuccess(successMessage);
       if (mounted) setState(_selectedStudentIds.clear);
     } catch (_) {}
   }
@@ -2541,7 +2569,7 @@ class _AssessmentStudentRow extends StatelessWidget {
           final studentCell = _StudentIdentity(student: student);
           final scoreField = usesNumericScore
               ? TextFormField(
-                  key: ValueKey('bulk-score-${student.id}-$score'),
+                  key: ValueKey('bulk-score-${student.id}'),
                   initialValue: score,
                   enabled: !disabled,
                   keyboardType: TextInputType.number,
@@ -2564,7 +2592,9 @@ class _AssessmentStudentRow extends StatelessWidget {
             ),
           );
           final deleteButton = IconButton(
-            tooltip: hasRecord ? 'Delete saved assessment' : 'No saved record',
+            tooltip: hasRecord
+                ? context.l10n.deleteSavedAssessment
+                : context.l10n.noSavedRecord,
             onPressed: onDelete,
             icon: Icon(
               Icons.delete_outline,
@@ -2709,6 +2739,7 @@ class _SessionNotesFormState extends State<_SessionNotesForm> {
 
   Future<void> _save() async {
     final cubit = widget.cubit ?? context.read<TeachingActivityDetailCubit>();
+    final successMessage = context.l10n.sessionNotesSaved;
 
     try {
       await cubit.saveSessionNotes(
@@ -2720,7 +2751,7 @@ class _SessionNotesFormState extends State<_SessionNotesForm> {
         sessionNotes: _emptyToNull(_notesController.text),
         assessmentType: widget.detail.activity.assessmentType,
       );
-      AppToast.showSuccess('Session notes saved.');
+      AppToast.showSuccess(successMessage);
       if (mounted && !widget.framed) Navigator.of(context).maybePop();
     } catch (_) {}
   }
@@ -2878,9 +2909,9 @@ class _StudentNotesPanelState extends State<_StudentNotesPanel> {
               return _RecordTile(
                 title:
                     '${note.studentName ?? '-'} - ${_label(note.noteType)}'
-                    '${note.rawScore == null ? '' : ' (${_formatScore(note.rawScore!)} stars)'}',
+                    '${note.rawScore == null ? '' : ' (${context.l10n.starsCount(_formatScore(note.rawScore!))})'}',
                 subtitle:
-                    '${note.comment}${note.followUpNeeded ? '\nFollow up: ${note.followUpNotes ?? '-'}' : ''}',
+                    '${note.comment}${note.followUpNeeded ? '\n${context.l10n.followUpWithNotes(note.followUpNotes ?? '-')}' : ''}',
                 trailing: Wrap(
                   spacing: 2,
                   children: [
@@ -2896,14 +2927,16 @@ class _StudentNotesPanelState extends State<_StudentNotesPanel> {
                           : () async {
                               final confirmed = await _confirmDelete(
                                 context,
-                                'Delete this student note?',
+                                context.l10n.deleteStudentNoteConfirm,
                               );
                               if (!confirmed || !context.mounted) return;
+                              final cubit = context
+                                  .read<TeachingActivityDetailCubit>();
+                              final successMessage =
+                                  context.l10n.studentNoteDeleted;
                               try {
-                                await context
-                                    .read<TeachingActivityDetailCubit>()
-                                    .deleteStudentNote(note.id!);
-                                AppToast.showSuccess('Student note deleted.');
+                                await cubit.deleteStudentNote(note.id!);
+                                AppToast.showSuccess(successMessage);
                               } catch (_) {}
                             },
                       icon: const Icon(
@@ -3193,7 +3226,12 @@ class _AssessmentModeBanner extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '$label uses ${usesNumericScore ? 'numeric score 0-100' : 'star rating 0.5-5'}.',
+              context.l10n.assessmentModeDescription(
+                label,
+                usesNumericScore
+                    ? context.l10n.numericScoreRange
+                    : context.l10n.starRatingRange,
+              ),
               style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 12,
@@ -3321,7 +3359,9 @@ class _StudentNoteDialogState extends State<_StudentNoteDialog> {
   Widget build(BuildContext context) {
     final isEditing = widget.note != null;
     return AlertDialog(
-      title: Text(isEditing ? 'Edit Student Note' : 'Add Student Note'),
+      title: Text(
+        isEditing ? context.l10n.editStudentNote : context.l10n.addStudentNote,
+      ),
       content: SizedBox(
         width: 520,
         child: SingleChildScrollView(
@@ -3386,7 +3426,9 @@ class _StudentNoteDialogState extends State<_StudentNoteDialog> {
         FilledButton.icon(
           onPressed: widget.disabled ? null : _save,
           icon: Icon(isEditing ? Icons.save_outlined : Icons.add, size: 18),
-          label: Text(isEditing ? 'Update Note' : 'Add Note'),
+          label: Text(
+            isEditing ? context.l10n.updateNote : context.l10n.addNote,
+          ),
         ),
       ],
     );
@@ -3394,11 +3436,13 @@ class _StudentNoteDialogState extends State<_StudentNoteDialog> {
 
   Future<void> _save() async {
     if (_commentController.text.trim().isEmpty) {
-      AppToast.showFailed('Comment is required.');
+      AppToast.showFailed(context.l10n.commentRequired);
       return;
     }
 
     final normalizedScore = _rating * 20;
+    final addedMessage = context.l10n.studentNoteAdded;
+    final updatedMessage = context.l10n.studentNoteUpdated;
     try {
       if (widget.note == null) {
         await widget.cubit.addStudentNote(
@@ -3411,7 +3455,7 @@ class _StudentNoteDialogState extends State<_StudentNoteDialog> {
           followUpNeeded: _followUpNeeded,
           followUpNotes: _emptyToNull(_followUpController.text),
         );
-        AppToast.showSuccess('Student note added.');
+        AppToast.showSuccess(addedMessage);
       } else {
         await widget.cubit.updateStudentNote(
           id: widget.note!.id!,
@@ -3424,7 +3468,7 @@ class _StudentNoteDialogState extends State<_StudentNoteDialog> {
           followUpNeeded: _followUpNeeded,
           followUpNotes: _emptyToNull(_followUpController.text),
         );
-        AppToast.showSuccess('Student note updated.');
+        AppToast.showSuccess(updatedMessage);
       }
       if (mounted) Navigator.of(context).pop();
     } catch (_) {}
@@ -3521,7 +3565,9 @@ class _NoteField extends StatelessWidget {
           maxLines: 4,
           style: const TextStyle(fontSize: 12),
           decoration: InputDecoration(
-            hintText: cleanLabel.isEmpty ? 'Enter note' : 'Enter $cleanLabel',
+            hintText: cleanLabel.isEmpty
+                ? context.l10n.enterNote
+                : context.l10n.enterField(cleanLabel),
           ),
         ),
       ],
@@ -3776,6 +3822,7 @@ String _formatScore(double value) {
 }
 
 List<_StudentNoteHistoryGroup> _studentNoteHistoryGroups(
+  BuildContext context,
   List<StudentSessionNoteRecord> notes,
   String? teacherName,
 ) {
@@ -3783,7 +3830,11 @@ List<_StudentNoteHistoryGroup> _studentNoteHistoryGroups(
   final indexByKey = <String, int>{};
 
   for (final note in notes) {
-    final author = _historyAuthor(note.createdByTeacherName, teacherName);
+    final author = _historyAuthor(
+      context,
+      note.createdByTeacherName,
+      teacherName,
+    );
     final rawDate = note.createdAt ?? note.updatedAt;
     final date = _parseDateTime(rawDate);
     final key = '${_historyMinuteKey(date, rawDate)}|$author';
@@ -3793,7 +3844,7 @@ List<_StudentNoteHistoryGroup> _studentNoteHistoryGroups(
       indexByKey[key] = groups.length;
       groups.add(
         _StudentNoteHistoryGroup(
-          dateLabel: _formatHistoryDateTime(date, rawDate),
+          dateLabel: _formatHistoryDateTime(context, date, rawDate),
           teacherName: author,
           notes: [note],
         ),
@@ -3807,12 +3858,16 @@ List<_StudentNoteHistoryGroup> _studentNoteHistoryGroups(
   return groups;
 }
 
-String _historyAuthor(String? noteTeacherName, String? fallbackTeacherName) {
+String _historyAuthor(
+  BuildContext context,
+  String? noteTeacherName,
+  String? fallbackTeacherName,
+) {
   final noteTeacher = noteTeacherName?.trim();
   if (noteTeacher != null && noteTeacher.isNotEmpty) return noteTeacher;
   final fallback = fallbackTeacherName?.trim();
   if (fallback != null && fallback.isNotEmpty) return fallback;
-  return 'Teacher';
+  return context.l10n.teacher;
 }
 
 DateTime? _parseDateTime(String? value) {
@@ -3831,31 +3886,19 @@ String _historyMinuteKey(DateTime? value, String? fallback) {
   ].join('-');
 }
 
-String _formatHistoryDateTime(DateTime? value, String? fallback) {
+String _formatHistoryDateTime(
+  BuildContext context,
+  DateTime? value,
+  String? fallback,
+) {
   if (value == null) {
     final raw = fallback?.trim();
-    return raw == null || raw.isEmpty ? 'Unknown date' : raw;
+    return raw == null || raw.isEmpty ? context.l10n.unknownDate : raw;
   }
 
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  final day = value.day.toString().padLeft(2, '0');
-  final month = months[value.month - 1];
-  final hour = value.hour.toString().padLeft(2, '0');
-  final minute = value.minute.toString().padLeft(2, '0');
-  return '$day $month ${value.year}, $hour:$minute';
+  final localizations = MaterialLocalizations.of(context);
+  return '${localizations.formatMediumDate(value)}, '
+      '${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(value))}';
 }
 
 String _resultFromNormalizedScore(double? value) {

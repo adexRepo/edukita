@@ -8,7 +8,7 @@ class AuthSessionCache {
   AuthSessionCache._();
 
   static final AuthSessionCache instance = AuthSessionCache._();
-  static const Duration sessionTtl = Duration(hours: 6);
+  static const Duration sessionTtl = Duration(minutes: 2);
 
   Future<AuthSession?> read() async {
     final file = await _sessionFile();

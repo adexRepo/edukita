@@ -62,8 +62,9 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
                 value: fullName,
                 onSaved: (value) => fullName = value ?? '',
                 validator: (value) => AppFormValidation.requiredText(
+                  context,
                   value,
-                  'Full name',
+                  context.l10n.fullName,
                   minLength: 3,
                   maxLength: 80,
                 ),
@@ -77,7 +78,8 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
                 keyboardType: TextInputType.phone,
                 hint: AppFormValidation.mobilePlaceholder,
                 inputFormatters: AppFormValidation.mobileInputFormatters,
-                validator: AppFormValidation.requiredMobile,
+                validator: (value) =>
+                    AppFormValidation.requiredMobile(context, value),
               ),
               const SizedBox(height: 16),
               CommonFormWidgets.textField(
@@ -85,8 +87,9 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
                 value: occupation,
                 onSaved: (value) => occupation = value?.trim(),
                 validator: (value) => AppFormValidation.optionalText(
+                  context,
                   value,
-                  'Occupation',
+                  context.l10n.occupation,
                   maxLength: 60,
                 ),
                 inputFormatters: [LengthLimitingTextInputFormatter(60)],
@@ -99,8 +102,9 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
                 onSaved: (value) => address = value?.trim(),
                 maxLines: 3,
                 validator: (value) => AppFormValidation.requiredText(
+                  context,
                   value,
-                  'Address',
+                  context.l10n.address,
                   minLength: 5,
                   maxLength: 160,
                 ),

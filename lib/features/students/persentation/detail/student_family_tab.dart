@@ -116,8 +116,10 @@ class _GuardianTable extends StatelessWidget {
                     .where((item) => item.hasData)
                     .map(
                       (guardian) => [
-                        _textOrDash(guardian.relationship),
-                        guardian.isPrimary ? 'YES' : 'NO',
+                        _relationshipLabel(context, guardian.relationship),
+                        guardian.isPrimary
+                            ? context.l10n.yes
+                            : context.l10n.no,
                         _textOrDash(guardian.fullName),
                         _textOrDash(guardian.mobileNo),
                         _textOrDash(guardian.email),
@@ -137,5 +139,20 @@ class _GuardianTable extends StatelessWidget {
   String _textOrDash(String? value) {
     if (value == null || value.trim().isEmpty) return '-';
     return value;
+  }
+
+  String _relationshipLabel(BuildContext context, String? value) {
+    final raw = value?.trim() ?? '';
+    return switch (raw.toUpperCase()) {
+      'MOTHER' => context.l10n.familyRelationMother,
+      'FATHER' => context.l10n.familyRelationFather,
+      'BROTHER' => context.l10n.familyRelationBrother,
+      'SISTER' => context.l10n.familyRelationSister,
+      'UNCLE' => context.l10n.familyRelationUncle,
+      'AUNTY' => context.l10n.familyRelationAunt,
+      'GRANDPA' => context.l10n.familyRelationGrandfather,
+      'GRANDMA' => context.l10n.familyRelationGrandmother,
+      _ => _textOrDash(value),
+    };
   }
 }

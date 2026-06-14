@@ -96,9 +96,12 @@ class _ClassesPageState extends State<ClassesPage> {
           final classes = state.classes;
           return Scaffold(
             appBar: AppBar(
-              title: const Text(
-                'Classes',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              title: Text(
+                context.l10n.classes,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               actions: [
                 IconButton(
@@ -124,9 +127,10 @@ class _ClassesPageState extends State<ClassesPage> {
                         title: Text(schoolClass.className),
                         subtitle: Text(
                           [
-                            'Level ${schoolClass.level}',
-                            if (section != null) 'Section $section',
-                            'Year ${schoolClass.year}',
+                            '${context.l10n.level} ${schoolClass.level}',
+                            if (section != null)
+                              '${context.l10n.section} $section',
+                            '${context.l10n.year} ${schoolClass.year}',
                           ].join(' | '),
                         ),
                         onTap: () => {},

@@ -101,12 +101,12 @@ class _StudentsPageState extends State<StudentsPage> {
       if (!mounted) return;
 
       if (schools.isEmpty) {
-        AppToast.showFailed('Create a school before adding students.');
+        AppToast.showFailed(context.l10n.createSchoolBeforeAddingStudents);
         return;
       }
 
       if (classes.isEmpty) {
-        AppToast.showFailed('Create a class before adding students.');
+        AppToast.showFailed(context.l10n.createClassBeforeAddingStudents);
         return;
       }
 
@@ -179,7 +179,9 @@ class _StudentsPageState extends State<StudentsPage> {
       guardKey: 'toggle_student_status_${student.id}',
       builder: (dialogContext) => AlertDialog(
         title: AppDialogTitle(actionLabel),
-        content: Text('$actionLabel ${student.fullName}?'),
+        content: Text(
+          context.l10n.confirmActionForSubject(actionLabel, student.fullName),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),

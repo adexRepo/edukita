@@ -137,6 +137,11 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
             AppPageHeader(
               title: context.l10n.teachingActivityTitle,
               subtitle: context.l10n.teachingActivitySubtitle,
+              trailing: IconButton(
+                tooltip: context.l10n.refresh,
+                onPressed: () => _loadScopedActivities(forceRefresh: true),
+                icon: const Icon(Icons.refresh),
+              ),
             ),
             BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
               builder: (context, state) =>
@@ -572,7 +577,7 @@ class _TeachingActivityDatePanel extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                _monthTitle(focusedMonth),
+                _monthTitle(context, focusedMonth),
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
@@ -1039,22 +1044,8 @@ bool _isSameDate(DateTime first, DateTime second) {
       first.day == second.day;
 }
 
-String _monthTitle(DateTime date) {
-  const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-  return '${months[date.month - 1]} ${date.year}';
+String _monthTitle(BuildContext context, DateTime date) {
+  return MaterialLocalizations.of(context).formatMonthYear(date);
 }
 
 String _cleanError(String value) {

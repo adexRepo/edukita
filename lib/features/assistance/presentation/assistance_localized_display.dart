@@ -80,3 +80,61 @@ String translateAssistanceSelectionMode(
     AssistanceSelectionMode.auto => context.l10n.auto,
   };
 }
+
+String translateAssistanceRuleType(
+  BuildContext context,
+  AssistanceRuleType type,
+) {
+  return switch (type) {
+    AssistanceRuleType.fixedPriority => context.l10n.fixedPriority,
+    AssistanceRuleType.needBased => context.l10n.needBased,
+    AssistanceRuleType.meritBased => context.l10n.meritBased,
+    AssistanceRuleType.growthBased => context.l10n.growthBased,
+    AssistanceRuleType.specialCase => context.l10n.specialCase,
+    AssistanceRuleType.teacherRecommendation =>
+      context.l10n.teacherRecommendation,
+    AssistanceRuleType.rollingAttendance => context.l10n.rollingAttendance,
+    AssistanceRuleType.customRule => context.l10n.customRule,
+    AssistanceRuleType.manualOverride => context.l10n.manualOverride,
+    AssistanceRuleType.manualPriority => context.l10n.manualPriority,
+    AssistanceRuleType.temporarySupport => context.l10n.temporarySupport,
+    AssistanceRuleType.attendanceBased => context.l10n.attendanceBased,
+  };
+}
+
+String translateAssistanceDecisionStatus(
+  BuildContext context,
+  AssistanceDecisionStatus status,
+) {
+  return switch (status) {
+    AssistanceDecisionStatus.draft => context.l10n.draft,
+    AssistanceDecisionStatus.approved => context.l10n.selected,
+    AssistanceDecisionStatus.waitlist => context.l10n.waitlist,
+    AssistanceDecisionStatus.rejected => context.l10n.rejected,
+    AssistanceDecisionStatus.cancelled => context.l10n.cancelled,
+  };
+}
+
+String translateAssistanceEligibilityStatus(
+  BuildContext context,
+  AssistanceEligibilityStatus status,
+) {
+  return switch (status) {
+    AssistanceEligibilityStatus.pending => context.l10n.pending,
+    AssistanceEligibilityStatus.eligible => context.l10n.eligible,
+    AssistanceEligibilityStatus.ineligible => context.l10n.ineligible,
+    AssistanceEligibilityStatus.overridden => context.l10n.overridden,
+  };
+}
+
+String translateAssistanceRecipientStatus(
+  BuildContext context,
+  AssistanceRecipientStatus status,
+) {
+  return switch (status) {
+    AssistanceRecipientStatus.approved => context.l10n.approved,
+    AssistanceRecipientStatus.paid => context.l10n.statusPaid,
+    AssistanceRecipientStatus.distributed => context.l10n.distributed,
+    AssistanceRecipientStatus.cancelled => context.l10n.cancelled,
+  };
+}

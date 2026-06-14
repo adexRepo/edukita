@@ -92,7 +92,7 @@ class _ClassFormCardState extends State<ClassFormCard> {
 
     final className = _generateClassName();
     if (className.isEmpty) {
-      AppToast.showFailed('Please enter level.');
+      AppToast.showFailed(context.l10n.enterLevel);
       return;
     }
 
@@ -160,12 +160,12 @@ class _ClassFormCardState extends State<ClassFormCard> {
                 validator: (value) {
                   final text = value?.trim() ?? '';
                   if (text.isEmpty) {
-                    return 'Level is required';
+                    return context.l10n.levelRequired;
                   }
                   final number = int.tryParse(text);
                   if (number == null ||
                       !_schoolType.allowedLevels.contains(number)) {
-                    return 'Level must be ${_schoolType.levelHint}';
+                    return context.l10n.levelMustMatch(_schoolType.levelHint);
                   }
                   return null;
                 },

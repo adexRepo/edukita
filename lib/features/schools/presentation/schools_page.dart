@@ -305,16 +305,6 @@ class _SchoolsPageState extends State<SchoolsPage> {
             future: _classCountsFuture,
             builder: (context, snapshot) {
               final classCounts = snapshot.data ?? const <String, int>{};
-              if (schools.isEmpty) {
-                return Center(
-                  child: Text(
-                    state.schools.isEmpty
-                        ? context.l10n.noSchoolsYet
-                        : context.l10n.noSchoolsMatch,
-                  ),
-                );
-              }
-
               return AppTable<School>(
                 data: schools,
                 pageable: Pageable(
@@ -323,6 +313,9 @@ class _SchoolsPageState extends State<SchoolsPage> {
                   totalPages: 1,
                   totalItems: schools.length,
                 ),
+                emptyMessage: state.schools.isEmpty
+                    ? context.l10n.noSchoolsYet
+                    : context.l10n.noSchoolsMatch,
                 onRowTap: _showClassDialog,
                 columns: [
                   AppTableColumn(

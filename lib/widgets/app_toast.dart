@@ -1,11 +1,15 @@
 import 'dart:async';
 
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 enum AppToastType { success, failed }
 
 enum SubmissionAction { create, update, delete }
+
+const _submissionSuccessMessage = '__submission_success__';
+const _submissionFailedMessage = '__submission_failed__';
 
 class AppToastData {
   const AppToastData({
@@ -39,7 +43,7 @@ class AppToast extends ChangeNotifier {
 
   static void showSuccess(
     String message, {
-    String title = 'Success',
+    String title = '',
     ValueChanged<BuildContext>? onTap,
   }) {
     instance.show(
@@ -52,7 +56,7 @@ class AppToast extends ChangeNotifier {
 
   static void showFailed(
     String message, {
-    String title = 'Failed',
+    String title = '',
     ValueChanged<BuildContext>? onTap,
   }) {
     instance.show(
@@ -67,14 +71,14 @@ class AppToast extends ChangeNotifier {
     required SubmissionAction action,
     required String subject,
   }) {
-    showSuccess('The $subject has been ${action.pastTense}.');
+    showSuccess(_submissionSuccessMessage);
   }
 
   static void showSubmissionFailed({
     required SubmissionAction action,
     required String subject,
   }) {
-    showFailed('Failed to ${action.verb} the $subject.');
+    showFailed(_submissionFailedMessage);
   }
 
   void show({
@@ -223,6 +227,16 @@ class _AppToastState extends State<_AppToast>
   @override
   Widget build(BuildContext context) {
     final isSuccess = widget.data.type == AppToastType.success;
+    final title = widget.data.title.isNotEmpty
+        ? widget.data.title
+        : isSuccess
+        ? context.l10n.success
+        : context.l10n.failed;
+    final message = switch (widget.data.message) {
+      _submissionSuccessMessage => context.l10n.changesSavedSuccessfully,
+      _submissionFailedMessage => context.l10n.failedToSaveChanges,
+      final value => value,
+    };
     final accent = isSuccess ? AppColors.success : AppColors.error;
     final background = AppColors.white.withValues(alpha: 0.9);
     final icon = isSuccess ? Icons.check_rounded : Icons.close_rounded;
@@ -230,7 +244,7 @@ class _AppToastState extends State<_AppToast>
 
     return Semantics(
       liveRegion: true,
-      label: '${widget.data.title}: ${widget.data.message}',
+      label: '$title: $message',
       child: MouseRegion(
         cursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
         child: Material(
@@ -280,7 +294,7 @@ class _AppToastState extends State<_AppToast>
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  widget.data.title,
+                                  title,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -291,7 +305,7 @@ class _AppToastState extends State<_AppToast>
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
-                                  widget.data.message,
+                                  message,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -307,7 +321,9 @@ class _AppToastState extends State<_AppToast>
                           const SizedBox(width: 4),
                           Semantics(
                             button: true,
-                            label: 'Close notification',
+                            label: MaterialLocalizations.of(
+                              context,
+                            ).closeButtonLabel,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(14),
                               onTap: AppToast.instance.dismiss,

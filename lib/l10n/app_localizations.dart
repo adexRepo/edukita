@@ -650,6 +650,18 @@ abstract class AppLocalizations {
   /// **'Teaching schedule'**
   String get teachingSchedule;
 
+  /// No description provided for @teachingScheduleRequiresUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Create at least one syllabus unit in Parameter > Academic > Units before adding a teaching schedule.'**
+  String get teachingScheduleRequiresUnit;
+
+  /// No description provided for @teachingScheduleRequiresUnitShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a syllabus unit first'**
+  String get teachingScheduleRequiresUnitShort;
+
   /// No description provided for @schoolEvent.
   ///
   /// In en, this message translates to:
@@ -2538,6 +2550,12 @@ abstract class AppLocalizations {
   /// **'Sibling Relation'**
   String get siblingRelation;
 
+  /// No description provided for @siblingRelationHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the student number of an existing sibling when both students belong to the same family.'**
+  String get siblingRelationHelp;
+
   /// No description provided for @addSiblingRelation.
   ///
   /// In en, this message translates to:
@@ -2789,12 +2807,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Remove row'**
   String get removeRow;
-
-  /// No description provided for @downloadEvidence.
-  ///
-  /// In en, this message translates to:
-  /// **'Download evidence'**
-  String get downloadEvidence;
 
   /// No description provided for @removeScoreRecord.
   ///
@@ -5850,6 +5862,12 @@ abstract class AppLocalizations {
   /// **'Add School'**
   String get addSchool;
 
+  /// No description provided for @editSchool.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit School'**
+  String get editSchool;
+
   /// No description provided for @addClass.
   ///
   /// In en, this message translates to:
@@ -6912,6 +6930,12 @@ abstract class AppLocalizations {
   /// **'No distribution evidence document uploaded.'**
   String get noDistributionEvidence;
 
+  /// No description provided for @downloadEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Download evidence'**
+  String get downloadEvidence;
+
   /// No description provided for @deleteEvidence.
   ///
   /// In en, this message translates to:
@@ -7158,6 +7182,924 @@ abstract class AppLocalizations {
   /// **'{field} is required.'**
   String fieldRequiredMessage(Object field);
 
+  /// No description provided for @fieldMinimumCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'{field} must be at least {count} characters.'**
+  String fieldMinimumCharacters(Object field, int count);
+
+  /// No description provided for @fieldMaximumCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'{field} must be at most {count} characters.'**
+  String fieldMaximumCharacters(Object field, int count);
+
+  /// No description provided for @mobileNumberRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile number is required.'**
+  String get mobileNumberRequired;
+
+  /// No description provided for @mobileNumberLengthInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile number must be 11 to 13 digits.'**
+  String get mobileNumberLengthInvalid;
+
+  /// No description provided for @emailFormatInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Email format is invalid.'**
+  String get emailFormatInvalid;
+
+  /// No description provided for @guardianNumberName.
+  ///
+  /// In en, this message translates to:
+  /// **'Guardian #{number} name'**
+  String guardianNumberName(int number);
+
+  /// No description provided for @guardianNumberError.
+  ///
+  /// In en, this message translates to:
+  /// **'Guardian #{number}: {error}'**
+  String guardianNumberError(int number, Object error);
+
+  /// No description provided for @activityNumberType.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity #{number} type'**
+  String activityNumberType(int number);
+
+  /// No description provided for @activityNumberName.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity #{number} name'**
+  String activityNumberName(int number);
+
+  /// No description provided for @activityNumberStartDateError.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity #{number} start date: {error}'**
+  String activityNumberStartDateError(int number, Object error);
+
+  /// No description provided for @activityNumberEndDateError.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity #{number} end date: {error}'**
+  String activityNumberEndDateError(int number, Object error);
+
+  /// No description provided for @useDateFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Use YYYY-MM-DD.'**
+  String get useDateFormat;
+
+  /// No description provided for @duplicateClassAndYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate class and year.'**
+  String get duplicateClassAndYear;
+
+  /// No description provided for @classNumberDuplicateClassAndYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Class #{number}: duplicate class and year.'**
+  String classNumberDuplicateClassAndYear(int number);
+
+  /// No description provided for @alphabetOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Alphabet only.'**
+  String get alphabetOnly;
+
+  /// No description provided for @failedToSaveSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save the schedule.'**
+  String get failedToSaveSchedule;
+
+  /// No description provided for @pleaseSelectField.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select {field}.'**
+  String pleaseSelectField(Object field);
+
+  /// No description provided for @fieldCannotBeEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'{field} cannot be empty.'**
+  String fieldCannotBeEmpty(Object field);
+
+  /// No description provided for @sortByDescending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort by {column} descending.'**
+  String sortByDescending(Object column);
+
+  /// No description provided for @sortedByDescending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sorted by {column} descending.'**
+  String sortedByDescending(Object column);
+
+  /// No description provided for @sortedByAscending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sorted by {column} ascending.'**
+  String sortedByAscending(Object column);
+
+  /// No description provided for @removeAllClassesConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove all registered classes from this school form?'**
+  String get removeAllClassesConfirm;
+
+  /// No description provided for @schoolInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'School Info'**
+  String get schoolInfo;
+
+  /// No description provided for @schoolName.
+  ///
+  /// In en, this message translates to:
+  /// **'School Name'**
+  String get schoolName;
+
+  /// No description provided for @classesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Classes ({count})'**
+  String classesCount(int count);
+
+  /// No description provided for @editClass.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Class'**
+  String get editClass;
+
+  /// No description provided for @duplicateClassEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Class #{number}: duplicate class and year.'**
+  String duplicateClassEntry(int number);
+
+  /// No description provided for @addCurriculum.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Curriculum'**
+  String get addCurriculum;
+
+  /// No description provided for @editCurriculum.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Curriculum'**
+  String get editCurriculum;
+
+  /// No description provided for @addSyllabus.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Syllabus'**
+  String get addSyllabus;
+
+  /// No description provided for @editSyllabus.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Syllabus'**
+  String get editSyllabus;
+
+  /// No description provided for @editSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Subject'**
+  String get editSubject;
+
+  /// No description provided for @editUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Unit'**
+  String get editUnit;
+
+  /// No description provided for @addCompetency.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Competency'**
+  String get addCompetency;
+
+  /// No description provided for @editCompetency.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Competency'**
+  String get editCompetency;
+
+  /// No description provided for @addStrategy.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Strategy'**
+  String get addStrategy;
+
+  /// No description provided for @editStrategy.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Strategy'**
+  String get editStrategy;
+
+  /// No description provided for @noSampleFile.
+  ///
+  /// In en, this message translates to:
+  /// **'No sample file'**
+  String get noSampleFile;
+
+  /// No description provided for @reviewCannotUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Please review before continuing. This action cannot be undone.'**
+  String get reviewCannotUndo;
+
+  /// No description provided for @cancelledWithReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled: {reason}'**
+  String cancelledWithReason(Object reason);
+
+  /// No description provided for @noStudentsAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No students available.'**
+  String get noStudentsAvailable;
+
+  /// No description provided for @noNoteHistoryForStudent.
+  ///
+  /// In en, this message translates to:
+  /// **'No note history for this student.'**
+  String get noNoteHistoryForStudent;
+
+  /// No description provided for @addedByName.
+  ///
+  /// In en, this message translates to:
+  /// **'Added by {name}'**
+  String addedByName(Object name);
+
+  /// No description provided for @noActiveStudentsInClass.
+  ///
+  /// In en, this message translates to:
+  /// **'No active students in this class.'**
+  String get noActiveStudentsInClass;
+
+  /// No description provided for @saveAllCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Save All ({count})'**
+  String saveAllCount(int count);
+
+  /// No description provided for @deleteAssessmentForStudent.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete assessment for {student}?'**
+  String deleteAssessmentForStudent(Object student);
+
+  /// No description provided for @deleteSavedAssessment.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete saved assessment'**
+  String get deleteSavedAssessment;
+
+  /// No description provided for @noSavedRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved record'**
+  String get noSavedRecord;
+
+  /// No description provided for @deleteStudentNoteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this student note?'**
+  String get deleteStudentNoteConfirm;
+
+  /// No description provided for @editStudentNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Student Note'**
+  String get editStudentNote;
+
+  /// No description provided for @addStudentNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Student Note'**
+  String get addStudentNote;
+
+  /// No description provided for @updateNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Note'**
+  String get updateNote;
+
+  /// No description provided for @addNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Note'**
+  String get addNote;
+
+  /// No description provided for @selectPrimaryGuardian.
+  ///
+  /// In en, this message translates to:
+  /// **'Select one primary guardian.'**
+  String get selectPrimaryGuardian;
+
+  /// No description provided for @studentCannotRelateSelf.
+  ///
+  /// In en, this message translates to:
+  /// **'Student cannot be related to themself.'**
+  String get studentCannotRelateSelf;
+
+  /// No description provided for @noActivitiesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No activity yet'**
+  String get noActivitiesYet;
+
+  /// No description provided for @yes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get yes;
+
+  /// No description provided for @no.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get no;
+
+  /// No description provided for @scopeSchool.
+  ///
+  /// In en, this message translates to:
+  /// **'School'**
+  String get scopeSchool;
+
+  /// No description provided for @scopeInternal.
+  ///
+  /// In en, this message translates to:
+  /// **'Internal'**
+  String get scopeInternal;
+
+  /// No description provided for @evidenceRequiredForType.
+  ///
+  /// In en, this message translates to:
+  /// **'Required for {type}. Allowed: PDF, JPG, PNG.'**
+  String evidenceRequiredForType(Object type);
+
+  /// No description provided for @selectedFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected file'**
+  String get selectedFile;
+
+  /// No description provided for @noFile.
+  ///
+  /// In en, this message translates to:
+  /// **'No file'**
+  String get noFile;
+
+  /// No description provided for @next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get next;
+
+  /// No description provided for @update.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get update;
+
+  /// No description provided for @systemLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get systemLabel;
+
+  /// No description provided for @customLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get customLabel;
+
+  /// No description provided for @systemRuleToggleOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'System rules can only be activated or deactivated'**
+  String get systemRuleToggleOnly;
+
+  /// No description provided for @editCustomRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit custom rule'**
+  String get editCustomRule;
+
+  /// No description provided for @editCustomRuleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Custom Rule'**
+  String get editCustomRuleTitle;
+
+  /// No description provided for @removeTargetCandidateConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {student} from {rule} targets?'**
+  String removeTargetCandidateConfirm(Object student, Object rule);
+
+  /// No description provided for @removeAllTargetCandidatesConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove all {count} selected candidates from {rule}?'**
+  String removeAllTargetCandidatesConfirm(int count, Object rule);
+
+  /// No description provided for @removedFromTargetPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed from target plan'**
+  String get removedFromTargetPlan;
+
+  /// No description provided for @remainingCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining {count}'**
+  String remainingCount(int count);
+
+  /// No description provided for @overAllocatedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Over {count}'**
+  String overAllocatedCount(int count);
+
+  /// No description provided for @minimumAttendanceShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Min Attendance'**
+  String get minimumAttendanceShort;
+
+  /// No description provided for @reportNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Student Exam Score Report'**
+  String get reportNameHint;
+
+  /// No description provided for @success.
+  ///
+  /// In en, this message translates to:
+  /// **'Success'**
+  String get success;
+
+  /// No description provided for @changesSavedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes saved successfully.'**
+  String get changesSavedSuccessfully;
+
+  /// No description provided for @failedToSaveChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save changes.'**
+  String get failedToSaveChanges;
+
+  /// No description provided for @noDataAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No data available'**
+  String get noDataAvailable;
+
+  /// No description provided for @unknownDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown date'**
+  String get unknownDate;
+
+  /// No description provided for @assistancePlanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistance Plan'**
+  String get assistancePlanTitle;
+
+  /// No description provided for @assistanceCandidatePlanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistance Candidate Plan'**
+  String get assistanceCandidatePlanTitle;
+
+  /// No description provided for @assistanceRecipientsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistance Recipients'**
+  String get assistanceRecipientsTitle;
+
+  /// No description provided for @eligible.
+  ///
+  /// In en, this message translates to:
+  /// **'Eligible'**
+  String get eligible;
+
+  /// No description provided for @preparedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepared by'**
+  String get preparedBy;
+
+  /// No description provided for @reviewedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewed by'**
+  String get reviewedBy;
+
+  /// No description provided for @totalRecipients.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Recipients'**
+  String get totalRecipients;
+
+  /// No description provided for @nameDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Name / Date'**
+  String get nameDate;
+
+  /// No description provided for @fixedPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixed Priority'**
+  String get fixedPriority;
+
+  /// No description provided for @needBased.
+  ///
+  /// In en, this message translates to:
+  /// **'Need-Based'**
+  String get needBased;
+
+  /// No description provided for @meritBased.
+  ///
+  /// In en, this message translates to:
+  /// **'Merit-Based'**
+  String get meritBased;
+
+  /// No description provided for @growthBased.
+  ///
+  /// In en, this message translates to:
+  /// **'Growth-Based'**
+  String get growthBased;
+
+  /// No description provided for @specialCase.
+  ///
+  /// In en, this message translates to:
+  /// **'Special Case'**
+  String get specialCase;
+
+  /// No description provided for @teacherRecommendation.
+  ///
+  /// In en, this message translates to:
+  /// **'Teacher Recommendation'**
+  String get teacherRecommendation;
+
+  /// No description provided for @rollingAttendance.
+  ///
+  /// In en, this message translates to:
+  /// **'Rolling Attendance'**
+  String get rollingAttendance;
+
+  /// No description provided for @manualPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual Priority'**
+  String get manualPriority;
+
+  /// No description provided for @temporarySupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary Support'**
+  String get temporarySupport;
+
+  /// No description provided for @attendanceBased.
+  ///
+  /// In en, this message translates to:
+  /// **'Attendance Based'**
+  String get attendanceBased;
+
+  /// No description provided for @changeSchoolTypeRemovesClasses.
+  ///
+  /// In en, this message translates to:
+  /// **'Changing the school type from {oldType} to {newType} will remove the classes already created for {oldType}.'**
+  String changeSchoolTypeRemovesClasses(Object oldType, Object newType);
+
+  /// No description provided for @invalidUsernameOrPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid username or password.'**
+  String get invalidUsernameOrPassword;
+
+  /// No description provided for @loginFailedTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Login failed. Please try again.'**
+  String get loginFailedTryAgain;
+
+  /// No description provided for @linkedTeacherProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked teacher profile'**
+  String get linkedTeacherProfile;
+
+  /// No description provided for @scheduleCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} schedules'**
+  String scheduleCount(int count);
+
+  /// No description provided for @eventCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} events'**
+  String eventCount(int count);
+
+  /// No description provided for @unnamedSchool.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed School'**
+  String get unnamedSchool;
+
+  /// No description provided for @starsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{score} stars'**
+  String starsCount(Object score);
+
+  /// No description provided for @followUpWithNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow up: {notes}'**
+  String followUpWithNotes(Object notes);
+
+  /// No description provided for @shownCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} shown'**
+  String shownCount(int count);
+
+  /// No description provided for @defaultScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Default score'**
+  String get defaultScore;
+
+  /// No description provided for @defaultRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Default rating'**
+  String get defaultRating;
+
+  /// No description provided for @shownSelectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{shown} shown | {selected} selected'**
+  String shownSelectedCount(int shown, int selected);
+
+  /// No description provided for @defaultScoreRangeError.
+  ///
+  /// In en, this message translates to:
+  /// **'Default score must be between 0 and 100.'**
+  String get defaultScoreRangeError;
+
+  /// No description provided for @defaultRatingRangeError.
+  ///
+  /// In en, this message translates to:
+  /// **'Default rating must be between 0.5 and 5.'**
+  String get defaultRatingRangeError;
+
+  /// No description provided for @assessmentModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'{type} uses {mode}.'**
+  String assessmentModeDescription(Object type, Object mode);
+
+  /// No description provided for @numericScoreRange.
+  ///
+  /// In en, this message translates to:
+  /// **'numeric score 0-100'**
+  String get numericScoreRange;
+
+  /// No description provided for @starRatingRange.
+  ///
+  /// In en, this message translates to:
+  /// **'star rating 0.5-5'**
+  String get starRatingRange;
+
+  /// No description provided for @enterNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter note'**
+  String get enterNote;
+
+  /// No description provided for @enterField.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter {field}'**
+  String enterField(Object field);
+
+  /// No description provided for @allowedSampleFileTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'Only Excel, Word, TXT, MD, and PDF files are allowed.'**
+  String get allowedSampleFileTypes;
+
+  /// No description provided for @unsupportedSampleFileType.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsupported sample file type.'**
+  String get unsupportedSampleFileType;
+
+  /// No description provided for @assistanceRulesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintain assistance rule master data and custom manual rules.'**
+  String get assistanceRulesSubtitle;
+
+  /// No description provided for @thisWillAlsoAffect.
+  ///
+  /// In en, this message translates to:
+  /// **'This will also affect:'**
+  String get thisWillAlsoAffect;
+
+  /// No description provided for @setupStructure.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup structure'**
+  String get setupStructure;
+
+  /// No description provided for @planMarkedSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistance plan marked as submitted.'**
+  String get planMarkedSubmitted;
+
+  /// No description provided for @approvalDocumentFileType.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF, JPG, or PNG'**
+  String get approvalDocumentFileType;
+
+  /// No description provided for @dragRowsPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag rows to change priority.'**
+  String get dragRowsPriority;
+
+  /// No description provided for @zeroQuotaRulesWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Some selected rules have quota 0: {rules}.\n\nIf you continue, those rules will be removed from this assistance period setup.'**
+  String zeroQuotaRulesWarning(Object rules);
+
+  /// No description provided for @approvalDocumentFileLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Approval document'**
+  String get approvalDocumentFileLabel;
+
+  /// No description provided for @reviewExportSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Review & Export\nTarget: {target} | Selected: {selected} | Eligible: {eligible} | Manual: {manual} | Auto: {auto}'**
+  String reviewExportSummary(
+    int target,
+    int selected,
+    int eligible,
+    int manual,
+    int auto,
+  );
+
+  /// No description provided for @candidateQuotaSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Quota: {quota} | Selected: {selected} | Remaining: {remaining} | Minimum attendance applies during target generation'**
+  String candidateQuotaSummary(int quota, int selected, int remaining);
+
+  /// No description provided for @impactUnitsDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} unit(s) will be deleted'**
+  String impactUnitsDeleted(int count);
+
+  /// No description provided for @impactSyllabiDetached.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} syllabus reference(s) will be detached'**
+  String impactSyllabiDetached(int count);
+
+  /// No description provided for @impactSchedulesDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} teaching schedule(s) will be deleted'**
+  String impactSchedulesDeleted(int count);
+
+  /// No description provided for @impactAssessmentsDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} assessment(s) will be deleted'**
+  String impactAssessmentsDeleted(int count);
+
+  /// No description provided for @impactCompetenciesDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} competency record(s) will be deleted'**
+  String impactCompetenciesDeleted(int count);
+
+  /// No description provided for @impactStudentScoresDetached.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} student score reference(s) will be detached'**
+  String impactStudentScoresDetached(int count);
+
+  /// No description provided for @selectField.
+  ///
+  /// In en, this message translates to:
+  /// **'Select {field}'**
+  String selectField(Object field);
+
+  /// No description provided for @orType.
+  ///
+  /// In en, this message translates to:
+  /// **'or type'**
+  String get orType;
+
+  /// No description provided for @eventTypeExam.
+  ///
+  /// In en, this message translates to:
+  /// **'Exam'**
+  String get eventTypeExam;
+
+  /// No description provided for @eventTypeHoliday.
+  ///
+  /// In en, this message translates to:
+  /// **'Holiday'**
+  String get eventTypeHoliday;
+
+  /// No description provided for @eventTypeReportCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Report Card'**
+  String get eventTypeReportCard;
+
+  /// No description provided for @curriculumSectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage curriculum versions, effective years, and active learning frameworks.'**
+  String get curriculumSectionDescription;
+
+  /// No description provided for @subjectSectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintain subject master data before it is used in syllabus and schedules.'**
+  String get subjectSectionDescription;
+
+  /// No description provided for @syllabusSectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Define learning plans by curriculum, school type, level, and semester.'**
+  String get syllabusSectionDescription;
+
+  /// No description provided for @unitSectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Organize ordered learning units under each subject.'**
+  String get unitSectionDescription;
+
+  /// No description provided for @competencySectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintain measurable competency targets for each learning unit.'**
+  String get competencySectionDescription;
+
+  /// No description provided for @strategySectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintain teaching strategies used by schedule and lesson planning.'**
+  String get strategySectionDescription;
+
+  /// No description provided for @waitlist.
+  ///
+  /// In en, this message translates to:
+  /// **'Waitlist'**
+  String get waitlist;
+
+  /// No description provided for @pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get pending;
+
+  /// No description provided for @overridden.
+  ///
+  /// In en, this message translates to:
+  /// **'Overridden'**
+  String get overridden;
+
   /// No description provided for @aboutEdukita.
   ///
   /// In en, this message translates to:
@@ -7259,6 +8201,732 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Error: {details}'**
   String errorWithDetails(Object details);
+
+  /// No description provided for @createSchoolBeforeAddingStudents.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a school before adding students.'**
+  String get createSchoolBeforeAddingStudents;
+
+  /// No description provided for @createClassBeforeAddingStudents.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a class before adding students.'**
+  String get createClassBeforeAddingStudents;
+
+  /// No description provided for @activityEndBeforeStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity #{number} end date cannot be before its start date.'**
+  String activityEndBeforeStart(int number);
+
+  /// No description provided for @duplicateSibling.
+  ///
+  /// In en, this message translates to:
+  /// **'The same sibling cannot be added more than once.'**
+  String get duplicateSibling;
+
+  /// No description provided for @birthDateAfterJoinDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Birth date cannot be after join date.'**
+  String get birthDateAfterJoinDate;
+
+  /// No description provided for @siblingGuardiansCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Sibling guardians copied to family section.'**
+  String get siblingGuardiansCopied;
+
+  /// No description provided for @nisMaxTenCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'NIS must be at most 10 characters.'**
+  String get nisMaxTenCharacters;
+
+  /// No description provided for @fullNameMinimumThree.
+  ///
+  /// In en, this message translates to:
+  /// **'Full name must be at least 3 characters.'**
+  String get fullNameMinimumThree;
+
+  /// No description provided for @fullNameMaximumEighty.
+  ///
+  /// In en, this message translates to:
+  /// **'Full name must be at most 80 characters.'**
+  String get fullNameMaximumEighty;
+
+  /// No description provided for @selectSchoolRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a school.'**
+  String get selectSchoolRequired;
+
+  /// No description provided for @selectClassRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a class.'**
+  String get selectClassRequired;
+
+  /// No description provided for @householdEducationProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Household & Education Profile'**
+  String get householdEducationProfile;
+
+  /// No description provided for @homeAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Home Address'**
+  String get homeAddress;
+
+  /// No description provided for @homeAddressHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Street, RT/RW, house number, village, and district'**
+  String get homeAddressHint;
+
+  /// No description provided for @dailySchoolTransportCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily School Transport Cost'**
+  String get dailySchoolTransportCost;
+
+  /// No description provided for @housingStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Housing Status'**
+  String get housingStatus;
+
+  /// No description provided for @selectHousingStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Select housing status'**
+  String get selectHousingStatus;
+
+  /// No description provided for @housingStatusOwned.
+  ///
+  /// In en, this message translates to:
+  /// **'Owned'**
+  String get housingStatusOwned;
+
+  /// No description provided for @housingStatusRented.
+  ///
+  /// In en, this message translates to:
+  /// **'Rented'**
+  String get housingStatusRented;
+
+  /// No description provided for @housingStatusStayingWithFamily.
+  ///
+  /// In en, this message translates to:
+  /// **'Staying with family'**
+  String get housingStatusStayingWithFamily;
+
+  /// No description provided for @housingStatusOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get housingStatusOther;
+
+  /// No description provided for @activityTypeSchoolExtracurricular.
+  ///
+  /// In en, this message translates to:
+  /// **'School Extracurricular'**
+  String get activityTypeSchoolExtracurricular;
+
+  /// No description provided for @activityTypeMartialArts.
+  ///
+  /// In en, this message translates to:
+  /// **'Martial Arts'**
+  String get activityTypeMartialArts;
+
+  /// No description provided for @activityTypeArts.
+  ///
+  /// In en, this message translates to:
+  /// **'Arts'**
+  String get activityTypeArts;
+
+  /// No description provided for @activityTypeRoboticsClub.
+  ///
+  /// In en, this message translates to:
+  /// **'Robotics Club'**
+  String get activityTypeRoboticsClub;
+
+  /// No description provided for @activityTypeLanguageClub.
+  ///
+  /// In en, this message translates to:
+  /// **'Language Club'**
+  String get activityTypeLanguageClub;
+
+  /// No description provided for @activityTypeCommunityService.
+  ///
+  /// In en, this message translates to:
+  /// **'Community Service'**
+  String get activityTypeCommunityService;
+
+  /// No description provided for @activityTypeCompetition.
+  ///
+  /// In en, this message translates to:
+  /// **'Competition'**
+  String get activityTypeCompetition;
+
+  /// No description provided for @activityTypeOtherActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Other Activity'**
+  String get activityTypeOtherActivity;
+
+  /// No description provided for @familyRelationMother.
+  ///
+  /// In en, this message translates to:
+  /// **'Mother'**
+  String get familyRelationMother;
+
+  /// No description provided for @familyRelationFather.
+  ///
+  /// In en, this message translates to:
+  /// **'Father'**
+  String get familyRelationFather;
+
+  /// No description provided for @familyRelationBrother.
+  ///
+  /// In en, this message translates to:
+  /// **'Brother'**
+  String get familyRelationBrother;
+
+  /// No description provided for @familyRelationSister.
+  ///
+  /// In en, this message translates to:
+  /// **'Sister'**
+  String get familyRelationSister;
+
+  /// No description provided for @familyRelationUncle.
+  ///
+  /// In en, this message translates to:
+  /// **'Uncle'**
+  String get familyRelationUncle;
+
+  /// No description provided for @familyRelationAunt.
+  ///
+  /// In en, this message translates to:
+  /// **'Aunt'**
+  String get familyRelationAunt;
+
+  /// No description provided for @familyRelationGrandfather.
+  ///
+  /// In en, this message translates to:
+  /// **'Grandfather'**
+  String get familyRelationGrandfather;
+
+  /// No description provided for @familyRelationGrandmother.
+  ///
+  /// In en, this message translates to:
+  /// **'Grandmother'**
+  String get familyRelationGrandmother;
+
+  /// No description provided for @agePositionOlder.
+  ///
+  /// In en, this message translates to:
+  /// **'Older'**
+  String get agePositionOlder;
+
+  /// No description provided for @agePositionYounger.
+  ///
+  /// In en, this message translates to:
+  /// **'Younger'**
+  String get agePositionYounger;
+
+  /// No description provided for @examSourceSchoolReport.
+  ///
+  /// In en, this message translates to:
+  /// **'School Report'**
+  String get examSourceSchoolReport;
+
+  /// No description provided for @examSourceTryout.
+  ///
+  /// In en, this message translates to:
+  /// **'Tryout'**
+  String get examSourceTryout;
+
+  /// No description provided for @examSourceExternal.
+  ///
+  /// In en, this message translates to:
+  /// **'External'**
+  String get examSourceExternal;
+
+  /// No description provided for @householdMemberCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Household Member Count'**
+  String get householdMemberCount;
+
+  /// No description provided for @fatherIncome.
+  ///
+  /// In en, this message translates to:
+  /// **'Father Income'**
+  String get fatherIncome;
+
+  /// No description provided for @motherIncome.
+  ///
+  /// In en, this message translates to:
+  /// **'Mother Income'**
+  String get motherIncome;
+
+  /// No description provided for @educationArrears.
+  ///
+  /// In en, this message translates to:
+  /// **'Education Arrears'**
+  String get educationArrears;
+
+  /// No description provided for @academicAchievement.
+  ///
+  /// In en, this message translates to:
+  /// **'Academic Achievement'**
+  String get academicAchievement;
+
+  /// No description provided for @academicAchievementHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ranking or academic competition'**
+  String get academicAchievementHint;
+
+  /// No description provided for @nonAcademicAchievement.
+  ///
+  /// In en, this message translates to:
+  /// **'Non-Academic Achievement'**
+  String get nonAcademicAchievement;
+
+  /// No description provided for @nonAcademicAchievementHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sports or arts achievement'**
+  String get nonAcademicAchievementHint;
+
+  /// No description provided for @fieldMustBeNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'{field} must be a number.'**
+  String fieldMustBeNumber(Object field);
+
+  /// No description provided for @fieldMustBeAtLeastOne.
+  ///
+  /// In en, this message translates to:
+  /// **'{field} must be at least 1.'**
+  String fieldMustBeAtLeastOne(Object field);
+
+  /// No description provided for @mustBeNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Must be a number.'**
+  String get mustBeNumber;
+
+  /// No description provided for @studentIdNoRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Student ID or No is required.'**
+  String get studentIdNoRequired;
+
+  /// No description provided for @typeRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Type is required.'**
+  String get typeRequired;
+
+  /// No description provided for @evidenceNotAttached.
+  ///
+  /// In en, this message translates to:
+  /// **'No evidence file is attached.'**
+  String get evidenceNotAttached;
+
+  /// No description provided for @evidenceNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Evidence file was not found in storage.'**
+  String get evidenceNotFound;
+
+  /// No description provided for @evidenceDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Evidence downloaded.'**
+  String get evidenceDownloaded;
+
+  /// No description provided for @evidenceDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to download evidence.'**
+  String get evidenceDownloadFailed;
+
+  /// No description provided for @evidenceRequiredForExamType.
+  ///
+  /// In en, this message translates to:
+  /// **'Evidence file is required for {examType}.'**
+  String evidenceRequiredForExamType(Object examType);
+
+  /// No description provided for @examDateRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Exam date is required.'**
+  String get examDateRequired;
+
+  /// No description provided for @allowedPdfJpgPng.
+  ///
+  /// In en, this message translates to:
+  /// **'Only PDF, JPG, and PNG files are allowed.'**
+  String get allowedPdfJpgPng;
+
+  /// No description provided for @evidenceMaxTwentyMb.
+  ///
+  /// In en, this message translates to:
+  /// **'Evidence file must be 20 MB or smaller.'**
+  String get evidenceMaxTwentyMb;
+
+  /// No description provided for @inputAtLeastOneScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Input at least one score item.'**
+  String get inputAtLeastOneScore;
+
+  /// No description provided for @fieldMustNotExceedMax.
+  ///
+  /// In en, this message translates to:
+  /// **'{field} must be less than or equal to Max.'**
+  String fieldMustNotExceedMax(Object field);
+
+  /// No description provided for @studentPhotoUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Student photo is not available.'**
+  String get studentPhotoUnavailable;
+
+  /// No description provided for @studentPhotoNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Student photo file was not found.'**
+  String get studentPhotoNotFound;
+
+  /// No description provided for @studentPhotoDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Student photo downloaded.'**
+  String get studentPhotoDownloaded;
+
+  /// No description provided for @studentPhotoDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to download student photo.'**
+  String get studentPhotoDownloadFailed;
+
+  /// No description provided for @attendanceSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Attendance saved.'**
+  String get attendanceSaved;
+
+  /// No description provided for @scoreRequiredFor.
+  ///
+  /// In en, this message translates to:
+  /// **'{item} score is required.'**
+  String scoreRequiredFor(Object item);
+
+  /// No description provided for @scoreMustBeZeroToHundred.
+  ///
+  /// In en, this message translates to:
+  /// **'{item} must be 0-100.'**
+  String scoreMustBeZeroToHundred(Object item);
+
+  /// No description provided for @scoreMustBeHalfToFiveStars.
+  ///
+  /// In en, this message translates to:
+  /// **'{item} must be 0.5-5 stars.'**
+  String scoreMustBeHalfToFiveStars(Object item);
+
+  /// No description provided for @studentReportingSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'{student} reporting saved.'**
+  String studentReportingSaved(Object student);
+
+  /// No description provided for @assessmentDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Assessment deleted.'**
+  String get assessmentDeleted;
+
+  /// No description provided for @selectAtLeastOneStudent.
+  ///
+  /// In en, this message translates to:
+  /// **'Select at least one student first.'**
+  String get selectAtLeastOneStudent;
+
+  /// No description provided for @assessmentRowsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} assessment rows saved.'**
+  String assessmentRowsSaved(int count);
+
+  /// No description provided for @sessionNotesSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Session notes saved.'**
+  String get sessionNotesSaved;
+
+  /// No description provided for @studentNoteDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Student note deleted.'**
+  String get studentNoteDeleted;
+
+  /// No description provided for @commentRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment is required.'**
+  String get commentRequired;
+
+  /// No description provided for @studentNoteAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Student note added.'**
+  String get studentNoteAdded;
+
+  /// No description provided for @studentNoteUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Student note updated.'**
+  String get studentNoteUpdated;
+
+  /// No description provided for @enterLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter level.'**
+  String get enterLevel;
+
+  /// No description provided for @levelMustMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Level must be {hint}.'**
+  String levelMustMatch(Object hint);
+
+  /// No description provided for @yearMustFourDigits.
+  ///
+  /// In en, this message translates to:
+  /// **'Year must be 4 digits.'**
+  String get yearMustFourDigits;
+
+  /// No description provided for @schoolNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'School name is required.'**
+  String get schoolNameRequired;
+
+  /// No description provided for @schoolNameMinimumThree.
+  ///
+  /// In en, this message translates to:
+  /// **'School name must be at least 3 characters.'**
+  String get schoolNameMinimumThree;
+
+  /// No description provided for @schoolNameMaximumEighty.
+  ///
+  /// In en, this message translates to:
+  /// **'School name must be at most 80 characters.'**
+  String get schoolNameMaximumEighty;
+
+  /// No description provided for @addressRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Address is required.'**
+  String get addressRequired;
+
+  /// No description provided for @addressMinimumFive.
+  ///
+  /// In en, this message translates to:
+  /// **'Address must be at least 5 characters.'**
+  String get addressMinimumFive;
+
+  /// No description provided for @addressMaximumOneSixty.
+  ///
+  /// In en, this message translates to:
+  /// **'Address must be at most 160 characters.'**
+  String get addressMaximumOneSixty;
+
+  /// No description provided for @curriculumNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Curriculum name is required.'**
+  String get curriculumNameRequired;
+
+  /// No description provided for @syllabusTitleRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Syllabus title is required.'**
+  String get syllabusTitleRequired;
+
+  /// No description provided for @subjectNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject name is required.'**
+  String get subjectNameRequired;
+
+  /// No description provided for @unitNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit name is required.'**
+  String get unitNameRequired;
+
+  /// No description provided for @competencyDescriptionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Competency description is required.'**
+  String get competencyDescriptionRequired;
+
+  /// No description provided for @strategyNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Strategy name is required.'**
+  String get strategyNameRequired;
+
+  /// No description provided for @sampleFileNotAttached.
+  ///
+  /// In en, this message translates to:
+  /// **'No sample file is attached to this strategy.'**
+  String get sampleFileNotAttached;
+
+  /// No description provided for @sampleFileNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample file was not found in storage.'**
+  String get sampleFileNotFound;
+
+  /// No description provided for @sampleFileDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample file downloaded.'**
+  String get sampleFileDownloaded;
+
+  /// No description provided for @sampleFileDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to download sample file.'**
+  String get sampleFileDownloadFailed;
+
+  /// No description provided for @minimumAttendanceRangeError.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum attendance must be between 0 and 100.'**
+  String get minimumAttendanceRangeError;
+
+  /// No description provided for @databaseBackupCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Database backup created: {path}'**
+  String databaseBackupCreated(Object path);
+
+  /// No description provided for @applicationCacheCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Application cache cleared.'**
+  String get applicationCacheCleared;
+
+  /// No description provided for @selectOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Select option'**
+  String get selectOption;
+
+  /// No description provided for @periodCreateDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not have permission to create periods.'**
+  String get periodCreateDenied;
+
+  /// No description provided for @targetCandidateRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Target candidate removed.'**
+  String get targetCandidateRemoved;
+
+  /// No description provided for @targetCandidatesRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Target candidates removed.'**
+  String get targetCandidatesRemoved;
+
+  /// No description provided for @manualTargetsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual targets saved.'**
+  String get manualTargetsSaved;
+
+  /// No description provided for @allocatedQuotaMustEqualTargetQuota.
+  ///
+  /// In en, this message translates to:
+  /// **'Allocated quota must equal target quota.'**
+  String get allocatedQuotaMustEqualTargetQuota;
+
+  /// No description provided for @assistancePeriodCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistance period created.'**
+  String get assistancePeriodCreated;
+
+  /// No description provided for @approvalDocumentNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Approval document file was not found.'**
+  String get approvalDocumentNotFound;
+
+  /// No description provided for @approvalDocumentDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Approval document downloaded.'**
+  String get approvalDocumentDownloaded;
+
+  /// No description provided for @planExportedSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan exported and marked as submitted.'**
+  String get planExportedSubmitted;
+
+  /// No description provided for @planExported.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan exported.'**
+  String get planExported;
+
+  /// No description provided for @recipientListExported.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipient list exported.'**
+  String get recipientListExported;
+
+  /// No description provided for @filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get filter;
+
+  /// No description provided for @value.
+  ///
+  /// In en, this message translates to:
+  /// **'Value'**
+  String get value;
+
+  /// No description provided for @done.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get done;
+
+  /// No description provided for @teachers.
+  ///
+  /// In en, this message translates to:
+  /// **'Teachers'**
+  String get teachers;
+
+  /// No description provided for @confirmActionForSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'{action} {subject}?'**
+  String confirmActionForSubject(Object action, Object subject);
 }
 
 class _AppLocalizationsDelegate

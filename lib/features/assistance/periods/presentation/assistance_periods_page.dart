@@ -556,7 +556,7 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
     List<AssistanceProgram> programs,
   ) async {
     if (!_canCreate) {
-      AppToast.showFailed('You do not have permission to create periods.');
+      AppToast.showFailed(context.l10n.periodCreateDenied);
       return;
     }
     await showGuardedDialog<void>(
@@ -1299,7 +1299,12 @@ class _RuleTargetSection extends StatelessWidget {
                         ),
                         AppTableColumn(
                           title: context.l10n.status,
-                          cell: (item) => _text(item.eligibilityStatus.label),
+                          cell: (item) => _text(
+                            translateAssistanceEligibilityStatus(
+                              context,
+                              item.eligibilityStatus,
+                            ),
+                          ),
                         ),
                         AppTableColumn(
                           title: context.l10n.reason,
@@ -1345,7 +1350,10 @@ class _RuleTargetSection extends StatelessWidget {
       builder: (dialogContext) => AlertDialog(
         title: Text(context.l10n.removeTargetCandidateTitle),
         content: Text(
-          'Remove ${item.studentName ?? item.studentId} from ${rule.displayName} targets?',
+          context.l10n.removeTargetCandidateConfirm(
+            item.studentName ?? item.studentId,
+            rule.displayName,
+          ),
         ),
         actions: [
           TextButton(
@@ -1362,14 +1370,17 @@ class _RuleTargetSection extends StatelessWidget {
     );
     if (confirmed != true || !context.mounted) return;
 
+    final cubit = context.read<AssistancePlanCubit>();
+    final removedReason = context.l10n.removedFromTargetPlan;
+    final successMessage = context.l10n.targetCandidateRemoved;
     try {
-      await context.read<AssistancePlanCubit>().updateAssessment(
+      await cubit.updateAssessment(
         item.copyWith(
           decisionStatus: AssistanceDecisionStatus.cancelled,
-          priorityReason: item.priorityReason ?? 'Removed from target plan',
+          priorityReason: item.priorityReason ?? removedReason,
         ),
       );
-      AppToast.showSuccess('Target candidate removed.');
+      AppToast.showSuccess(successMessage);
     } catch (e) {
       AppToast.showFailed(e.toString());
     }
@@ -1385,7 +1396,10 @@ class _RuleTargetSection extends StatelessWidget {
       builder: (dialogContext) => AlertDialog(
         title: Text(context.l10n.removeAllTargetCandidatesTitle),
         content: Text(
-          'Remove all ${rows.length} selected candidates from ${rule.displayName}?',
+          context.l10n.removeAllTargetCandidatesConfirm(
+            rows.length,
+            rule.displayName,
+          ),
         ),
         actions: [
           TextButton(
@@ -1402,14 +1416,17 @@ class _RuleTargetSection extends StatelessWidget {
     );
     if (confirmed != true || !context.mounted) return;
 
+    final cubit = context.read<AssistancePlanCubit>();
+    final successMessage = context.l10n.targetCandidatesRemoved;
+    final errorTitle = context.l10n.failedRemoveTargets;
     try {
-      await context.read<AssistancePlanCubit>().cancelRuleTargets(rule.id);
-      AppToast.showSuccess('Target candidates removed.');
+      await cubit.cancelRuleTargets(rule.id);
+      AppToast.showSuccess(successMessage);
     } catch (e) {
       if (!context.mounted) return;
       showErrorToastWithDetails(
         context,
-        title: context.l10n.failedRemoveTargets,
+        title: errorTitle,
         error: e,
       );
     }
@@ -1445,7 +1462,13 @@ class _ReviewTab extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _sectionTitle(
-          'Review & Export\nTarget: ${period.targetQuota} | Selected: ${state.assessments.length} | Eligible: $eligible | Manual: $manual | Auto: $auto',
+          context.l10n.reviewExportSummary(
+            period.targetQuota,
+            state.assessments.length,
+            eligible,
+            manual,
+            auto,
+          ),
         ),
         const SizedBox(height: 12),
         Expanded(
@@ -1467,11 +1490,19 @@ class _ReviewTab extends StatelessWidget {
               AppTableColumn(
                 title: context.l10n.rule,
                 flex: 2,
-                cell: (item) => _text(item.ruleName ?? item.ruleType.label),
+                cell: (item) => _text(
+                  item.ruleName ??
+                      translateAssistanceRuleType(context, item.ruleType),
+                ),
               ),
               AppTableColumn(
                 title: context.l10n.source,
-                cell: (item) => _text(item.selectionMode.label),
+                cell: (item) => _text(
+                  translateAssistanceSelectionMode(
+                    context,
+                    item.selectionMode,
+                  ),
+                ),
               ),
               AppTableColumn(
                 title: context.l10n.attendance,
@@ -1484,11 +1515,21 @@ class _ReviewTab extends StatelessWidget {
               ),
               AppTableColumn(
                 title: context.l10n.status,
-                cell: (item) => _text(item.decisionStatus.label),
+                cell: (item) => _text(
+                  translateAssistanceDecisionStatus(
+                    context,
+                    item.decisionStatus,
+                  ),
+                ),
               ),
               AppTableColumn(
                 title: context.l10n.eligibility,
-                cell: (item) => _text(item.eligibilityStatus.label),
+                cell: (item) => _text(
+                  translateAssistanceEligibilityStatus(
+                    context,
+                    item.eligibilityStatus,
+                  ),
+                ),
               ),
               AppTableColumn(
                 title: context.l10n.reason,
@@ -1532,13 +1573,11 @@ class _ReviewTab extends StatelessWidget {
               if (canUpdate)
                 FilledButton.icon(
                   onPressed: () async {
+                    final cubit = context.read<AssistancePlanCubit>();
+                    final successMessage = context.l10n.planMarkedSubmitted;
                     try {
-                      await context
-                          .read<AssistancePlanCubit>()
-                          .markPlanSubmitted();
-                      AppToast.showSuccess(
-                        'Assistance plan marked as submitted.',
-                      );
+                      await cubit.markPlanSubmitted();
+                      AppToast.showSuccess(successMessage);
                     } catch (e) {
                       AppToast.showFailed(e.toString());
                     }
@@ -1768,7 +1807,13 @@ class _ApprovalTabState extends State<_ApprovalTab> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  _approvalStatusPill(widget.period.status.label, locked),
+                  _approvalStatusPill(
+                    translateAssistancePeriodStatus(
+                      context,
+                      widget.period.status,
+                    ),
+                    locked,
+                  ),
                 ],
               ),
             ),
@@ -1854,6 +1899,7 @@ class _ApprovalTabState extends State<_ApprovalTab> {
               alignment: Alignment.centerRight,
               child: OutlinedButton.icon(
                 onPressed: () => _downloadStoredDocument(
+                  context: context,
                   sourcePath: doc.filePath,
                   fileName: doc.fileName,
                 ),
@@ -1924,9 +1970,9 @@ class _ApprovalTabState extends State<_ApprovalTab> {
                             ),
                           ),
                           const SizedBox(height: 3),
-                          const Text(
-                            'PDF, JPG, or PNG',
-                            style: TextStyle(
+                          Text(
+                            context.l10n.approvalDocumentFileType,
+                            style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -2211,7 +2257,8 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                       >(
                         label: context.l10n.status,
                         items: AssistanceRecipientStatus.values,
-                        labelBuilder: (status) => status.label,
+                        labelBuilder: (status) =>
+                            translateAssistanceRecipientStatus(context, status),
                         valueBuilder: (status) => status.value,
                         value: _statusFilter,
                         isRequired: false,
@@ -2227,7 +2274,8 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                       CommonFormWidgets.dropdownFieldTyped<AssistanceRuleType>(
                         label: context.l10n.rule,
                         items: ruleOptions,
-                        labelBuilder: (rule) => rule.label,
+                        labelBuilder: (rule) =>
+                            translateAssistanceRuleType(context, rule),
                         valueBuilder: (rule) => rule.value,
                         value: _ruleFilter,
                         isRequired: false,
@@ -2255,6 +2303,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                   onPressed: recipients.isEmpty || !widget.canExport
                       ? null
                       : () => _exportRecipients(
+                          context: context,
                           period: widget.period,
                           program: widget.program,
                           recipients: recipients,
@@ -2367,7 +2416,10 @@ class _RecipientsTabState extends State<_RecipientsTab> {
               AppTableColumn(
                 title: context.l10n.rule,
                 flex: 2,
-                cell: (item) => _text(item.ruleName ?? item.ruleType.label),
+                cell: (item) => _text(
+                  item.ruleName ??
+                      translateAssistanceRuleType(context, item.ruleType),
+                ),
               ),
               AppTableColumn(
                 title: context.l10n.benefit,
@@ -2375,7 +2427,9 @@ class _RecipientsTabState extends State<_RecipientsTab> {
               ),
               AppTableColumn(
                 title: context.l10n.status,
-                cell: (item) => _text(item.status.label),
+                cell: (item) => _text(
+                  translateAssistanceRecipientStatus(context, item.status),
+                ),
               ),
               if (widget.canUpdate &&
                   widget.period.status == AssistancePeriodStatus.approved)
@@ -2400,7 +2454,14 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                           onPressed: done
                               ? null
                               : () => _updateRecipientStatus(item, nextStatus),
-                          child: Text(done ? item.status.label : label),
+                          child: Text(
+                            done
+                                ? translateAssistanceRecipientStatus(
+                                    context,
+                                    item.status,
+                                  )
+                                : label,
+                          ),
                         ),
                         IconButton(
                           tooltip: context.l10n.cancelRecipient,
@@ -2486,7 +2547,12 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    _distributionStatusPill(widget.period.status.label),
+                    _distributionStatusPill(
+                      translateAssistancePeriodStatus(
+                        context,
+                        widget.period.status,
+                      ),
+                    ),
                     if (editable && widget.canApprove) ...[
                       const SizedBox(height: 8),
                       PopupMenuButton<_FinalizeDistributionAction>(
@@ -2752,6 +2818,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                             IconButton(
                               tooltip: context.l10n.downloadEvidence,
                               onPressed: () => _downloadStoredDocument(
+                                context: context,
                                 sourcePath: document.filePath,
                                 fileName: document.fileName,
                               ),
@@ -3212,10 +3279,14 @@ class _RecipientsTabState extends State<_RecipientsTab> {
       }
       if (query.isEmpty) return true;
       final student = item.studentName ?? item.studentId;
-      final rule = item.ruleName ?? item.ruleType.label;
+      final rule =
+          item.ruleName ?? translateAssistanceRuleType(context, item.ruleType);
       return student.toLowerCase().contains(query) ||
           rule.toLowerCase().contains(query) ||
-          item.status.label.toLowerCase().contains(query);
+          translateAssistanceRecipientStatus(
+            context,
+            item.status,
+          ).toLowerCase().contains(query);
     }).toList();
   }
 }
@@ -3280,7 +3351,11 @@ class _SelectStudentsDialogState extends State<_SelectStudentsDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Quota: ${widget.rule.quota} | Selected: $currentRuleCount | Remaining: $remaining | Min Attendance applies during target generation',
+              context.l10n.candidateQuotaSummary(
+                widget.rule.quota,
+                currentRuleCount,
+                remaining,
+              ),
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
@@ -3371,7 +3446,9 @@ class _SelectStudentsDialogState extends State<_SelectStudentsDialog> {
         ),
         FilledButton(
           onPressed: _saving || _selectedStudentIds.isEmpty ? null : _save,
-          child: Text(_saving ? 'Saving...' : 'Save Selected'),
+          child: Text(
+            _saving ? context.l10n.saving : context.l10n.saveSelected,
+          ),
         ),
       ],
     );
@@ -3386,6 +3463,8 @@ class _SelectStudentsDialogState extends State<_SelectStudentsDialog> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
+    final successMessage = context.l10n.manualTargetsSaved;
+    final errorTitle = context.l10n.failedSaveManualTargets;
     try {
       final cubit = context.read<AssistancePlanCubit>();
       final reasonsByStudentId = {
@@ -3398,13 +3477,13 @@ class _SelectStudentsDialogState extends State<_SelectStudentsDialog> {
         rule: widget.rule,
         reasonsByStudentId: reasonsByStudentId,
       );
-      AppToast.showSuccess('Manual targets saved.');
+      AppToast.showSuccess(successMessage);
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
       showErrorToastWithDetails(
         context,
-        title: context.l10n.failedSaveManualTargets,
+        title: errorTitle,
         error: e,
       );
       if (mounted) setState(() => _saving = false);
@@ -3464,11 +3543,11 @@ class _CreateAssistancePeriodDialogState
         key: _formKey,
         child: StepProcessCard(
           title: context.l10n.createAssistancePeriod,
-          continueText: 'Next',
+          continueText: context.l10n.next,
           completedText: _saving
               ? context.l10n.creating
               : context.l10n.createPeriod,
-          backText: 'Back',
+          backText: context.l10n.back,
           onClose: _saving ? null : () => Navigator.pop(context),
           onContinueRequested: _onStepContinue,
           onCompleted: () {
@@ -3656,9 +3735,9 @@ class _CreateAssistancePeriodDialogState
           ],
         ),
         const SizedBox(height: 10),
-        const Text(
-          'Drag rows to change priority.',
-          style: TextStyle(
+        Text(
+          context.l10n.dragRowsPriority,
+          style: const TextStyle(
             color: AppColors.textSecondary,
             fontSize: 12,
             fontWeight: FontWeight.w500,
@@ -3805,7 +3884,10 @@ class _CreateAssistancePeriodDialogState
                               flex: 3,
                               child: _RuleTableCell(
                                 child: Text(
-                                  rule.type.label,
+                                  translateAssistanceRuleType(
+                                    context,
+                                    rule.type,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -3900,8 +3982,8 @@ class _CreateAssistancePeriodDialogState
     final statusText = _remaining == 0
         ? context.l10n.ready
         : _remaining > 0
-        ? 'Remaining $_remaining'
-        : 'Over ${-_remaining}';
+        ? context.l10n.remainingCount(_remaining)
+        : context.l10n.overAllocatedCount(-_remaining);
     final statusColor = _remaining == 0
         ? AppColors.primaryDark
         : AppColors.errorDark;
@@ -3913,17 +3995,21 @@ class _CreateAssistancePeriodDialogState
           spacing: 8,
           runSpacing: 8,
           children: [
-            _reviewBadge('Program', _program.name),
-            _reviewBadge('Period', _periodName),
-            _reviewBadge('Date', _dateRange(_startDate, _endDate)),
-            _reviewBadge('Target', '$_targetQuota'),
+            _reviewBadge(context.l10n.program, _program.name),
+            _reviewBadge(context.l10n.period, _periodName),
+            _reviewBadge(context.l10n.date, _dateRange(_startDate, _endDate)),
+            _reviewBadge(context.l10n.target, '$_targetQuota'),
             _reviewBadge(
-              'Min Attendance',
+              context.l10n.minimumAttendanceShort,
               '${_minimumAttendance.toStringAsFixed(0)}%',
             ),
-            _reviewBadge('Calculation', _calculationRangeDraft()),
-            _reviewBadge('Allocation', '$_allocated / $_targetQuota'),
-            _reviewBadge('Status', statusText, valueColor: statusColor),
+            _reviewBadge(context.l10n.calculation, _calculationRangeDraft()),
+            _reviewBadge(context.l10n.allocation, '$_allocated / $_targetQuota'),
+            _reviewBadge(
+              context.l10n.status,
+              statusText,
+              valueColor: statusColor,
+            ),
           ],
         ),
         const SizedBox(height: 14),
@@ -4007,7 +4093,10 @@ class _CreateAssistancePeriodDialogState
                               flex: 3,
                               child: _RuleTableCell(
                                 child: Text(
-                                  rule.type.label,
+                                  translateAssistanceRuleType(
+                                    context,
+                                    rule.type,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -4103,7 +4192,7 @@ class _CreateAssistancePeriodDialogState
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
-          mode.label,
+          translateAssistanceSelectionMode(context, mode),
           style: TextStyle(
             color: auto ? AppColors.primaryDark : AppColors.textSecondary,
             fontSize: 11,
@@ -4128,7 +4217,7 @@ class _CreateAssistancePeriodDialogState
       setState(() => _rules.removeWhere((rule) => rule.quota == 0));
     }
     if (currentIndex == 1 && _remaining != 0) {
-      AppToast.showFailed('Allocated quota must equal target quota.');
+      AppToast.showFailed(context.l10n.allocatedQuotaMustEqualTargetQuota);
       return false;
     }
     return true;
@@ -4137,7 +4226,7 @@ class _CreateAssistancePeriodDialogState
   Future<bool> _confirmRemoveZeroQuotaRules() async {
     final zeroQuotaRules = _rules
         .where((rule) => rule.quota == 0)
-        .map((rule) => rule.type.label)
+        .map((rule) => translateAssistanceRuleType(context, rule.type))
         .join(', ');
 
     return await showGuardedDialog<bool>(
@@ -4146,11 +4235,7 @@ class _CreateAssistancePeriodDialogState
           builder: (context) {
             return AlertDialog(
               title: Text(context.l10n.removeZeroQuotaRulesTitle),
-              content: Text(
-                'Some selected rules have quota 0: $zeroQuotaRules.\n\n'
-                'If you continue, those rules will be removed from this '
-                'assistance period setup.',
-              ),
+              content: Text(context.l10n.zeroQuotaRulesWarning(zeroQuotaRules)),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
@@ -4169,12 +4254,15 @@ class _CreateAssistancePeriodDialogState
 
   Future<void> _create() async {
     if (_remaining != 0) {
-      AppToast.showFailed('Allocated quota must equal target quota.');
+      AppToast.showFailed(context.l10n.allocatedQuotaMustEqualTargetQuota);
       return;
     }
     setState(() => _saving = true);
+    final successMessage = context.l10n.assistancePeriodCreated;
+    final errorTitle = context.l10n.createAssistancePeriodFailed;
+    final cubit = context.read<AssistancePlanCubit>();
     try {
-      await context.read<AssistancePlanCubit>().createAssistancePeriod(
+      await cubit.createAssistancePeriod(
         assistanceProgramId: _program.id,
         periodName: _periodName,
         startDate: _dateOnly(_startDate),
@@ -4199,13 +4287,13 @@ class _CreateAssistancePeriodDialogState
             ),
         ],
       );
-      AppToast.showSuccess('Assistance period created.');
+      AppToast.showSuccess(successMessage);
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
         showErrorToastWithDetails(
           context,
-          title: context.l10n.createAssistancePeriodFailed,
+          title: errorTitle,
           error: e,
         );
       }
@@ -4243,8 +4331,15 @@ class _CreateAssistancePeriodDialogState
                             }
                           });
                         },
-                        title: Text(type.label),
-                        subtitle: Text(type.defaultSelectionMode.label),
+                        title: Text(
+                          translateAssistanceRuleType(context, type),
+                        ),
+                        subtitle: Text(
+                          translateAssistanceSelectionMode(
+                            context,
+                            type.defaultSelectionMode,
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -4293,24 +4388,31 @@ Future<String> _activeSessionUsername() async {
 }
 
 Future<void> _downloadStoredDocument({
+  required BuildContext context,
   required String sourcePath,
   required String fileName,
 }) async {
+  final notFoundMessage = context.l10n.approvalDocumentNotFound;
+  final downloadedMessage = context.l10n.approvalDocumentDownloaded;
+  final fileLabel = context.l10n.approvalDocumentFileLabel;
   final source = io.File(sourcePath);
   if (!await source.exists()) {
-    AppToast.showFailed('Approval document file was not found.');
+    AppToast.showFailed(notFoundMessage);
     return;
   }
   final extension = fileName.split('.').last.toLowerCase();
   final location = await getSaveLocation(
     suggestedName: generatedFileName(fileName),
     acceptedTypeGroups: [
-      XTypeGroup(label: 'Approval document', extensions: [extension]),
+      XTypeGroup(
+        label: fileLabel,
+        extensions: [extension],
+      ),
     ],
   );
   if (location == null) return;
   await source.copy(location.path);
-  AppToast.showSuccess('Approval document downloaded.');
+  AppToast.showSuccess(downloadedMessage);
 }
 
 Future<void> _exportPlan({
@@ -4319,6 +4421,11 @@ Future<void> _exportPlan({
   required AssistancePlanState state,
   required _AssistanceExportFormat format,
 }) async {
+  final cubit = context.read<AssistancePlanCubit>();
+  final submittedMessage = context.l10n.planExportedSubmitted;
+  final exportedMessage = context.l10n.planExported;
+  final lines = _planExportLines(context, period, state);
+  final html = _planExportHtml(context, period, state);
   final isPdf = format == _AssistanceExportFormat.pdf;
   final safeName = period.label
       .toLowerCase()
@@ -4337,27 +4444,30 @@ Future<void> _exportPlan({
   );
   if (location == null) return;
 
-  final lines = _planExportLines(period, state);
   final bytes = isPdf
       ? _simplePdfBytes(lines)
-      : utf8.encode(_planExportHtml(period, state));
+      : utf8.encode(html);
   await io.File(location.path).writeAsBytes(bytes);
   if (!context.mounted) return;
   try {
-    await context.read<AssistancePlanCubit>().markPlanSubmitted();
-    AppToast.showSuccess('Plan exported and marked as submitted.');
+    await cubit.markPlanSubmitted();
+    AppToast.showSuccess(submittedMessage);
   } catch (e) {
-    AppToast.showSuccess('Plan exported.');
+    AppToast.showSuccess(exportedMessage);
     AppToast.showFailed(e.toString());
   }
 }
 
 Future<void> _exportRecipients({
+  required BuildContext context,
   required AssistancePeriod period,
   required AssistanceProgram program,
   required List<AssistanceRecipient> recipients,
   required _AssistanceExportFormat format,
 }) async {
+  final exportedMessage = context.l10n.recipientListExported;
+  final lines = _recipientExportLines(context, period, program, recipients);
+  final html = _recipientExportHtml(context, period, program, recipients);
   final isPdf = format == _AssistanceExportFormat.pdf;
   final safeName = period.label
       .toLowerCase()
@@ -4376,15 +4486,15 @@ Future<void> _exportRecipients({
   );
   if (location == null) return;
 
-  final lines = _recipientExportLines(period, program, recipients);
   final bytes = isPdf
       ? _simplePdfBytes(lines)
-      : utf8.encode(_recipientExportHtml(period, program, recipients));
+      : utf8.encode(html);
   await io.File(location.path).writeAsBytes(bytes);
-  AppToast.showSuccess('Recipient list exported.');
+  AppToast.showSuccess(exportedMessage);
 }
 
 List<String> _planExportLines(
+  BuildContext context,
   AssistancePeriod period,
   AssistancePlanState state,
 ) {
@@ -4398,24 +4508,37 @@ List<String> _planExportLines(
       )
       .length;
   return [
-    'Assistance Plan',
-    'Period: ${period.label}',
-    'Date: ${_periodDateRange(period)}',
-    'Target Quota: ${period.targetQuota} | Selected: $selected | Eligible: $eligible',
-    'Minimum Attendance: ${period.minimumAttendancePercentage.toStringAsFixed(0)}%',
-    'Calculation Range: ${_calculationRange(period)}',
+    context.l10n.assistancePlanTitle,
+    '${context.l10n.period}: ${period.label}',
+    '${context.l10n.date}: ${_periodDateRange(period)}',
+    '${context.l10n.targetQuota}: ${period.targetQuota} | '
+        '${context.l10n.selected}: $selected | '
+        '${context.l10n.eligible}: $eligible',
+    '${context.l10n.minimumAttendance}: '
+        '${period.minimumAttendancePercentage.toStringAsFixed(0)}%',
+    '${context.l10n.calculationRange}: ${_calculationRange(period)}',
     '',
-    'No | Student | Rule | Source | Attendance | Score | Eligibility | Status | Reason',
+    'No | ${context.l10n.student} | ${context.l10n.rule} | '
+        '${context.l10n.source} | ${context.l10n.attendance} | '
+        '${context.l10n.score} | ${context.l10n.eligibility} | '
+        '${context.l10n.status} | ${context.l10n.reason}',
     for (var index = 0; index < state.assessments.length; index++)
-      '${index + 1} | ${state.assessments[index].studentName ?? state.assessments[index].studentId} | ${state.assessments[index].ruleName ?? state.assessments[index].ruleType.label} | ${state.assessments[index].selectionMode.label} | ${(state.assessments[index].attendanceScore ?? 0).toStringAsFixed(0)}% | ${state.assessments[index].totalScore.toStringAsFixed(0)} | ${state.assessments[index].eligibilityStatus.label} | ${state.assessments[index].decisionStatus.label} | ${state.assessments[index].specialCaseNote ?? state.assessments[index].priorityReason ?? '-'}',
+      '${index + 1} | ${state.assessments[index].studentName ?? state.assessments[index].studentId} | ${state.assessments[index].ruleName ?? translateAssistanceRuleType(context, state.assessments[index].ruleType)} | ${translateAssistanceSelectionMode(context, state.assessments[index].selectionMode)} | ${(state.assessments[index].attendanceScore ?? 0).toStringAsFixed(0)}% | ${state.assessments[index].totalScore.toStringAsFixed(0)} | ${translateAssistanceEligibilityStatus(context, state.assessments[index].eligibilityStatus)} | ${translateAssistanceDecisionStatus(context, state.assessments[index].decisionStatus)} | ${state.assessments[index].specialCaseNote ?? state.assessments[index].priorityReason ?? '-'}',
     '',
-    'Prepared by: ______________________    Date: ______________________',
-    'Reviewed by: ______________________    Date: ______________________',
-    'Approved by: ______________________    Date: ______________________',
+    '${context.l10n.preparedBy}: ______________________    '
+        '${context.l10n.date}: ______________________',
+    '${context.l10n.reviewedBy}: ______________________    '
+        '${context.l10n.date}: ______________________',
+    '${context.l10n.approvedBy}: ______________________    '
+        '${context.l10n.date}: ______________________',
   ];
 }
 
-String _planExportHtml(AssistancePeriod period, AssistancePlanState state) {
+String _planExportHtml(
+  BuildContext context,
+  AssistancePeriod period,
+  AssistancePlanState state,
+) {
   String escape(String value) => const HtmlEscape().convert(value);
   final selected = state.assessments
       .where((item) => item.decisionStatus == AssistanceDecisionStatus.approved)
@@ -4433,12 +4556,12 @@ String _planExportHtml(AssistancePeriod period, AssistancePlanState state) {
       <tr>
         <td class="center">${index + 1}</td>
         <td>${escape(item.studentName ?? item.studentId)}</td>
-        <td>${escape(item.ruleName ?? item.ruleType.label)}</td>
-        <td class="center">${escape(item.selectionMode.label)}</td>
+        <td>${escape(item.ruleName ?? translateAssistanceRuleType(context, item.ruleType))}</td>
+        <td class="center">${escape(translateAssistanceSelectionMode(context, item.selectionMode))}</td>
         <td class="number">${(item.attendanceScore ?? 0).toStringAsFixed(0)}%</td>
         <td class="number">${item.totalScore.toStringAsFixed(0)}</td>
-        <td class="center">${escape(item.eligibilityStatus.label)}</td>
-        <td class="center">${escape(item.decisionStatus.label)}</td>
+        <td class="center">${escape(translateAssistanceEligibilityStatus(context, item.eligibilityStatus))}</td>
+        <td class="center">${escape(translateAssistanceDecisionStatus(context, item.decisionStatus))}</td>
         <td>${escape(item.specialCaseNote ?? item.priorityReason ?? '-')}</td>
       </tr>
     ''';
@@ -4466,28 +4589,28 @@ String _planExportHtml(AssistancePeriod period, AssistancePlanState state) {
         </style>
       </head>
       <body>
-        <h1>Assistance Candidate Plan</h1>
+        <h1>${escape(context.l10n.assistanceCandidatePlanTitle)}</h1>
         <div class="subtitle">${escape(period.label)} &bull; ${escape(_periodDateRange(period))}</div>
         <table class="summary">
           <tr>
-            <td>Target quota<strong>${period.targetQuota}</strong></td>
-            <td>Selected<strong>$selected</strong></td>
-            <td>Eligible<strong>$eligible</strong></td>
-            <td>Minimum attendance<strong>${period.minimumAttendancePercentage.toStringAsFixed(0)}%</strong></td>
+            <td>${escape(context.l10n.targetQuota)}<strong>${period.targetQuota}</strong></td>
+            <td>${escape(context.l10n.selected)}<strong>$selected</strong></td>
+            <td>${escape(context.l10n.eligible)}<strong>$eligible</strong></td>
+            <td>${escape(context.l10n.minimumAttendance)}<strong>${period.minimumAttendancePercentage.toStringAsFixed(0)}%</strong></td>
           </tr>
         </table>
-        <div class="meta"><b>Calculation range:</b> ${escape(_calculationRange(period))}</div>
+        <div class="meta"><b>${escape(context.l10n.calculationRange)}:</b> ${escape(_calculationRange(period))}</div>
         <table class="data">
           <tr>
-            <th>No</th><th>Student</th><th>Rule</th><th>Source</th>
-            <th>Attendance</th><th>Score</th><th>Eligibility</th>
-            <th>Status</th><th>Reason</th>
+            <th>No</th><th>${escape(context.l10n.student)}</th><th>${escape(context.l10n.rule)}</th><th>${escape(context.l10n.source)}</th>
+            <th>${escape(context.l10n.attendance)}</th><th>${escape(context.l10n.score)}</th><th>${escape(context.l10n.eligibility)}</th>
+            <th>${escape(context.l10n.status)}</th><th>${escape(context.l10n.reason)}</th>
           </tr>
           $rows
         </table>
         <table class="signatures">
-          <tr><td>Prepared by</td><td>Reviewed by</td><td>Approved by</td></tr>
-          <tr><td>Name / Date</td><td>Name / Date</td><td>Name / Date</td></tr>
+          <tr><td>${escape(context.l10n.preparedBy)}</td><td>${escape(context.l10n.reviewedBy)}</td><td>${escape(context.l10n.approvedBy)}</td></tr>
+          <tr><td>${escape(context.l10n.nameDate)}</td><td>${escape(context.l10n.nameDate)}</td><td>${escape(context.l10n.nameDate)}</td></tr>
         </table>
       </body>
     </html>
@@ -4495,25 +4618,29 @@ String _planExportHtml(AssistancePeriod period, AssistancePlanState state) {
 }
 
 List<String> _recipientExportLines(
+  BuildContext context,
   AssistancePeriod period,
   AssistanceProgram program,
   List<AssistanceRecipient> recipients,
 ) {
   return [
-    'Assistance Recipients',
-    'Period: ${period.label}',
-    'Program: ${program.name}',
-    'Date: ${_periodDateRange(period)}',
-    'Benefit: ${program.defaultBenefit}',
-    'Total Recipients: ${recipients.length}',
+    context.l10n.assistanceRecipientsTitle,
+    '${context.l10n.period}: ${period.label}',
+    '${context.l10n.program}: ${program.name}',
+    '${context.l10n.date}: ${_periodDateRange(period)}',
+    '${context.l10n.benefit}: ${program.defaultBenefit}',
+    '${context.l10n.totalRecipients}: ${recipients.length}',
     '',
-    'Student | Rule | Benefit | Score | Status | Approved At',
+    '${context.l10n.student} | ${context.l10n.rule} | '
+        '${context.l10n.benefit} | ${context.l10n.score} | '
+        '${context.l10n.status} | ${context.l10n.approvedAt}',
     for (final item in recipients)
-      '${item.studentName ?? item.studentId} | ${item.ruleName ?? item.ruleType.label} | ${_recipientBenefit(item, program)} | ${item.finalScore.toStringAsFixed(0)} | ${item.status.label} | ${_formatDateTimeValue(item.approvedAt)}',
+      '${item.studentName ?? item.studentId} | ${item.ruleName ?? translateAssistanceRuleType(context, item.ruleType)} | ${_recipientBenefit(item, program)} | ${item.finalScore.toStringAsFixed(0)} | ${translateAssistanceRecipientStatus(context, item.status)} | ${_formatDateTimeValue(item.approvedAt)}',
   ];
 }
 
 String _recipientExportHtml(
+  BuildContext context,
   AssistancePeriod period,
   AssistanceProgram program,
   List<AssistanceRecipient> recipients,
@@ -4523,10 +4650,10 @@ String _recipientExportHtml(
     return '''
       <tr>
         <td>${escape(item.studentName ?? item.studentId)}</td>
-        <td>${escape(item.ruleName ?? item.ruleType.label)}</td>
+        <td>${escape(item.ruleName ?? translateAssistanceRuleType(context, item.ruleType))}</td>
         <td>${escape(_recipientBenefit(item, program))}</td>
         <td>${item.finalScore.toStringAsFixed(0)}</td>
-        <td>${escape(item.status.label)}</td>
+        <td>${escape(translateAssistanceRecipientStatus(context, item.status))}</td>
         <td>${escape(_formatDateTimeValue(item.approvedAt))}</td>
       </tr>
     ''';
@@ -4534,16 +4661,16 @@ String _recipientExportHtml(
   return '''
     <html>
       <body>
-        <h2>Assistance Recipients</h2>
-        <p><b>Period:</b> ${escape(period.label)}</p>
-        <p><b>Program:</b> ${escape(program.name)}</p>
-        <p><b>Date:</b> ${escape(_periodDateRange(period))}</p>
-        <p><b>Benefit:</b> ${escape(program.defaultBenefit)}</p>
-        <p><b>Total Recipients:</b> ${recipients.length}</p>
+        <h2>${escape(context.l10n.assistanceRecipientsTitle)}</h2>
+        <p><b>${escape(context.l10n.period)}:</b> ${escape(period.label)}</p>
+        <p><b>${escape(context.l10n.program)}:</b> ${escape(program.name)}</p>
+        <p><b>${escape(context.l10n.date)}:</b> ${escape(_periodDateRange(period))}</p>
+        <p><b>${escape(context.l10n.benefit)}:</b> ${escape(program.defaultBenefit)}</p>
+        <p><b>${escape(context.l10n.totalRecipients)}:</b> ${recipients.length}</p>
         <table border="1" cellspacing="0" cellpadding="6">
           <tr>
-            <th>Student</th><th>Rule</th><th>Benefit</th>
-            <th>Score</th><th>Status</th><th>Approved At</th>
+            <th>${escape(context.l10n.student)}</th><th>${escape(context.l10n.rule)}</th><th>${escape(context.l10n.benefit)}</th>
+            <th>${escape(context.l10n.score)}</th><th>${escape(context.l10n.status)}</th><th>${escape(context.l10n.approvedAt)}</th>
           </tr>
           $rows
         </table>

@@ -309,9 +309,9 @@ class _ExamScoreGroupTable extends StatelessWidget {
                       TableRow(
                         children: [
                           _TableCell(group.examDate),
-                          _TableCell(_scopeSemesterText(group)),
+                          _TableCell(_scopeSemesterText(context, group)),
                           _TableCell(
-                            '${group.examType}\n${_itemSummary(group)}',
+                            '${_examTypeLabel(context, group.examType)}\n${_itemSummary(group)}',
                           ),
                           _ScoreAverageCell(
                             score: _scoreSummary(group),
@@ -346,8 +346,13 @@ class _ExamScoreGroupTable extends StatelessWidget {
     return labels.join('\n');
   }
 
-  String _scopeSemesterText(StudentExamScoreGroup group) {
-    final scope = group.isSchool ? 'School' : 'Internal';
+  String _scopeSemesterText(
+    BuildContext context,
+    StudentExamScoreGroup group,
+  ) {
+    final scope = group.isSchool
+        ? context.l10n.scopeSchool
+        : context.l10n.scopeInternal;
     if (!group.isSchool) return scope;
     return '$scope\n${_dash(group.semester)} - ${group.academicYear}';
   }
@@ -480,16 +485,20 @@ class _ExamScoreActionCell extends StatelessWidget {
   final Future<void> Function(StudentExamScoreGroup group) onEdit;
   final Future<void> Function(StudentExamScoreGroup group) onDelete;
 
-  Future<void> _download() async {
+  Future<void> _download(BuildContext context) async {
+    final notAttachedMessage = context.l10n.evidenceNotAttached;
+    final notFoundMessage = context.l10n.evidenceNotFound;
+    final downloadedMessage = context.l10n.evidenceDownloaded;
+    final failedMessage = context.l10n.evidenceDownloadFailed;
     final sourcePath = group.evidenceFilePath?.trim();
     if (sourcePath == null || sourcePath.isEmpty) {
-      AppToast.showFailed('No evidence file is attached.');
+      AppToast.showFailed(notAttachedMessage);
       return;
     }
 
     final sourceFile = io.File(sourcePath);
     if (!await sourceFile.exists()) {
-      AppToast.showFailed('Evidence file was not found in storage.');
+      AppToast.showFailed(notFoundMessage);
       return;
     }
 
@@ -503,9 +512,9 @@ class _ExamScoreActionCell extends StatelessWidget {
       if (p.normalize(sourceFile.path) != p.normalize(location.path)) {
         await sourceFile.copy(location.path);
       }
-      AppToast.showSuccess('Evidence downloaded.');
+      AppToast.showSuccess(downloadedMessage);
     } catch (_) {
-      AppToast.showFailed('Failed to download evidence.');
+      AppToast.showFailed(failedMessage);
     }
   }
 
@@ -529,7 +538,7 @@ class _ExamScoreActionCell extends StatelessWidget {
           Tooltip(
             message: context.l10n.downloadEvidence,
             child: IconButton(
-              onPressed: group.hasEvidence ? () => _download() : null,
+              onPressed: group.hasEvidence ? () => _download(context) : null,
               icon: const Icon(Icons.download_outlined, size: 18),
               color: AppColors.primary,
               disabledColor: AppColors.textHint,
@@ -684,6 +693,8 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
                           ? context.l10n.examType
                           : context.l10n.internalType,
                       items: _isSchool ? _schoolExamTypes : _internalExamTypes,
+                      itemLabelBuilder: (value) =>
+                          _examTypeLabel(context, value),
                       value: _currentExamType,
                       onChanged: (value) {
                         setState(() {
@@ -711,6 +722,8 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
                     CommonFormWidgets.dropdownField(
                       label: context.l10n.source,
                       items: const ['school_report', 'tryout', 'external'],
+                      itemLabelBuilder: (value) =>
+                          _examSourceLabel(context, value),
                       value: _schoolSource,
                       onChanged: (value) => setState(
                         () => _schoolSource = value ?? 'school_report',
@@ -786,7 +799,7 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(_isEdit ? 'Update' : 'Save'),
+              : Text(_isEdit ? context.l10n.update : context.l10n.save),
         ),
       ],
     );
@@ -797,7 +810,7 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
     return FormField<String>(
       validator: (_) {
         if (_evidenceRequired && !hasFile) {
-          return 'Evidence file is required for $_currentExamType';
+          return context.l10n.evidenceRequiredForExamType(_currentExamType);
         }
         return null;
       },
@@ -806,7 +819,7 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
           decoration: InputDecoration(
             labelText: context.l10n.evidenceFile,
             helperText: _evidenceRequired
-                ? 'Required for $_currentExamType. Allowed: PDF, JPG, PNG.'
+                ? context.l10n.evidenceRequiredForType(_currentExamType)
                 : 'Optional. Allowed: PDF, JPG, PNG.',
             errorText: field.errorText,
           ),
@@ -814,7 +827,9 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
             children: [
               Expanded(
                 child: Text(
-                  hasFile ? _evidenceFileName ?? 'Selected file' : 'No file',
+                  hasFile
+                      ? _evidenceFileName ?? context.l10n.selectedFile
+                      : context.l10n.noFile,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -852,7 +867,7 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
       ),
       validator: (value) {
         if (value?.trim().isEmpty ?? true) {
-          return 'Exam date is required';
+          return context.l10n.examDateRequired;
         }
         return null;
       },
@@ -880,25 +895,29 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
   }
 
   Future<void> _pickEvidence() async {
+    final evidenceLabel = context.l10n.evidenceFile;
+    final invalidTypeMessage = context.l10n.allowedPdfJpgPng;
+    final tooLargeMessage = context.l10n.evidenceMaxTwentyMb;
     final group = XTypeGroup(
-      label: context.l10n.evidenceFile,
+      label: evidenceLabel,
       extensions: ['pdf', 'jpg', 'jpeg', 'png'],
     );
     final file = await openFile(acceptedTypeGroups: [group]);
-    if (file == null) return;
+    if (file == null || !mounted) return;
     final extension = p
         .extension(file.path)
         .replaceFirst('.', '')
         .toLowerCase();
     if (!['pdf', 'jpg', 'jpeg', 'png'].contains(extension)) {
-      AppToast.showFailed('Only PDF, JPG, and PNG files are allowed.');
+      AppToast.showFailed(invalidTypeMessage);
       return;
     }
     const maxEvidenceSize = 20 * 1024 * 1024;
     if (await io.File(file.path).length() > maxEvidenceSize) {
-      AppToast.showFailed('Evidence file must be 20 MB or smaller.');
+      AppToast.showFailed(tooLargeMessage);
       return;
     }
+    if (!mounted) return;
     setState(() {
       _evidenceSourcePath = file.path;
       _evidenceFileName = file.name;
@@ -1060,7 +1079,7 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
     }
     final items = _buildItems();
     if (items.isEmpty) {
-      AppToast.showFailed('Input at least one score item.');
+      AppToast.showFailed(context.l10n.inputAtLeastOneScore);
       return;
     }
 
@@ -1143,6 +1162,25 @@ class _ScoreExamDialogState extends State<_ScoreExamDialog> {
     }
     return null;
   }
+}
+
+String _examTypeLabel(BuildContext context, String value) {
+  return switch (value.trim()) {
+    'Quiz' => context.l10n.assessmentQuiz,
+    'Observation' => context.l10n.assessmentObservation,
+    'Practical' => context.l10n.assessmentPractical,
+    'Other' => context.l10n.other,
+    _ => value,
+  };
+}
+
+String _examSourceLabel(BuildContext context, String value) {
+  return switch (value.trim().toLowerCase()) {
+    'school_report' => context.l10n.examSourceSchoolReport,
+    'tryout' => context.l10n.examSourceTryout,
+    'external' => context.l10n.examSourceExternal,
+    _ => value,
+  };
 }
 
 class _ScoreRowsEditor extends StatelessWidget {
@@ -1574,10 +1612,10 @@ class _ScoreNumberFieldState extends State<_ScoreNumberField> {
       return widget.required ? '${widget.label} is required' : null;
     }
     final value = double.tryParse(trimmed);
-    if (value == null) return '${widget.label} must be a number';
+    if (value == null) return context.l10n.fieldMustBeNumber(widget.label);
     final max = _parseNumber(widget.maxController?.text);
     if (max != null && value > max) {
-      return '${widget.label} must be less than or equal to Max.';
+      return context.l10n.fieldMustNotExceedMax(widget.label);
     }
     return null;
   }

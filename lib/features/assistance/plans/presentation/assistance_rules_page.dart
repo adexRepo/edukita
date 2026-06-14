@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
+import 'package:edukita/features/assistance/presentation/assistance_localized_display.dart';
 import 'package:edukita/features/assistance/plans/data/assistance_plan_models.dart';
 import 'package:edukita/features/assistance/plans/domain/assistance_plan_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
@@ -56,7 +57,7 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
             AppPageHeader(
               title: context.l10n.rules,
               subtitle:
-                  'Maintain assistance rule master data and custom manual rules.',
+                  context.l10n.assistanceRulesSubtitle,
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -112,7 +113,7 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
                       title: context.l10n.ruleType,
                       flex: 2,
                       cell: (rule) => Text(
-                        rule.ruleType.label,
+                        translateAssistanceRuleType(context, rule.ruleType),
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 12),
                       ),
@@ -120,7 +121,10 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
                     AppTableColumn(
                       title: context.l10n.mode,
                       cell: (rule) => Text(
-                        rule.selectionMode.label,
+                        translateAssistanceSelectionMode(
+                          context,
+                          rule.selectionMode,
+                        ),
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),
@@ -136,7 +140,9 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
                     AppTableColumn(
                       title: context.l10n.defaultLabel,
                       cell: (rule) => _StatusChip(
-                        label: rule.isSystemDefault ? 'System' : 'Custom',
+                        label: rule.isSystemDefault
+                            ? context.l10n.systemLabel
+                            : context.l10n.customLabel,
                       ),
                     ),
                     AppTableColumn(
@@ -152,8 +158,8 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
                       title: context.l10n.actions,
                       cell: (rule) => IconButton(
                         tooltip: rule.isSystemDefault
-                            ? 'System rules can only be activated/deactivated'
-                            : 'Edit custom rule',
+                            ? context.l10n.systemRuleToggleOnly
+                            : context.l10n.editCustomRule,
                         onPressed: rule.isSystemDefault
                             ? null
                             : () => _showRuleDialog(rule: rule),
@@ -221,7 +227,9 @@ class _AssistanceRuleDialogState extends State<_AssistanceRuleDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: AppDialogTitle(
-        widget.rule == null ? 'Add Custom Rule' : 'Edit Custom Rule',
+        widget.rule == null
+            ? context.l10n.addCustomRule
+            : context.l10n.editCustomRuleTitle,
       ),
       content: SizedBox(
         width: 460,

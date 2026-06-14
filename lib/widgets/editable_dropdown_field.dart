@@ -1,4 +1,5 @@
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -12,6 +13,7 @@ class EditableDropdownField extends StatelessWidget {
     this.validator,
     this.inputFormatters,
     this.onChanged,
+    this.optionLabelBuilder,
   });
 
   final TextEditingController controller;
@@ -21,10 +23,14 @@ class EditableDropdownField extends StatelessWidget {
   final FormFieldValidator<String>? validator;
   final List<TextInputFormatter>? inputFormatters;
   final ValueChanged<String>? onChanged;
+  final String Function(String)? optionLabelBuilder;
 
   @override
   Widget build(BuildContext context) {
-    final menuWidth = AppDropdownStyle.menuWidthForLabels(context, options);
+    final optionLabels = options
+        .map((option) => optionLabelBuilder?.call(option) ?? option)
+        .toList();
+    final menuWidth = AppDropdownStyle.menuWidthForLabels(context, optionLabels);
 
     return TextFormField(
       controller: controller,
@@ -32,7 +38,7 @@ class EditableDropdownField extends StatelessWidget {
         label: label,
         hintText: hintText,
         suffixIcon: PopupMenuButton<String>(
-          tooltip: 'Select option',
+          tooltip: context.l10n.selectOption,
           enabled: options.isNotEmpty,
           icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
           color: AppColors.white,
@@ -46,16 +52,16 @@ class EditableDropdownField extends StatelessWidget {
             onChanged?.call(value);
           },
           itemBuilder: (context) {
-            return options
+            return options.asMap().entries
                 .map(
-                  (option) => PopupMenuItem<String>(
-                    value: option,
+                  (entry) => PopupMenuItem<String>(
+                    value: entry.value,
                     padding: EdgeInsets.zero,
                     child: SizedBox(
                       width: menuWidth,
                       child: AppDropdownStyle.menuItemLabel(
-                        label: option,
-                        selected: option == controller.text,
+                        label: optionLabels[entry.key],
+                        selected: entry.value == controller.text,
                       ),
                     ),
                   ),

@@ -57,7 +57,9 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: AppDialogTitle(
-        widget.curriculum == null ? 'Add Curriculum' : 'Edit Curriculum',
+        widget.curriculum == null
+            ? context.l10n.addCurriculum
+            : context.l10n.editCurriculum,
       ),
       content: SizedBox(
         width: 680,
@@ -74,7 +76,7 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
                     onSaved: (value) => name = value?.trim() ?? '',
                     validator: (value) {
                       if (value?.trim().isEmpty ?? true) {
-                        return 'Curriculum name is required';
+                        return context.l10n.curriculumNameRequired;
                       }
                       return null;
                     },
@@ -248,7 +250,9 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
 
     return AlertDialog(
       title: AppDialogTitle(
-        widget.syllabus == null ? 'Add Syllabus' : 'Edit Syllabus',
+        widget.syllabus == null
+            ? context.l10n.addSyllabus
+            : context.l10n.editSyllabus,
       ),
       content: SizedBox(
         width: 680,
@@ -336,7 +340,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
                     onSaved: (value) => title = value?.trim() ?? '',
                     validator: (value) {
                       if (value?.trim().isEmpty ?? true) {
-                        return 'Syllabus title is required';
+                        return context.l10n.syllabusTitleRequired;
                       }
                       return null;
                     },
@@ -505,7 +509,9 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: AppDialogTitle(
-        widget.subject == null ? 'Add Subject' : 'Edit Subject',
+        widget.subject == null
+            ? context.l10n.addSubject
+            : context.l10n.editSubject,
       ),
       content: SingleChildScrollView(
         child: Form(
@@ -519,7 +525,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
                 onSaved: (value) => name = value?.trim() ?? '',
                 validator: (value) {
                   if (value?.trim().isEmpty ?? true) {
-                    return 'Subject name is required';
+                    return context.l10n.subjectNameRequired;
                   }
                   return null;
                 },
@@ -638,7 +644,9 @@ class _UnitFormDialogState extends State<UnitFormDialog> {
     );
 
     return AlertDialog(
-      title: AppDialogTitle(widget.unit == null ? 'Add Unit' : 'Edit Unit'),
+      title: AppDialogTitle(
+        widget.unit == null ? context.l10n.addUnit : context.l10n.editUnit,
+      ),
       content: SizedBox(
         width: 680,
         child: SingleChildScrollView(
@@ -669,7 +677,7 @@ class _UnitFormDialogState extends State<UnitFormDialog> {
                   onSaved: (value) => name = value?.trim() ?? '',
                   validator: (value) {
                     if (value?.trim().isEmpty ?? true) {
-                      return 'Unit name is required';
+                      return context.l10n.unitNameRequired;
                     }
                     return null;
                   },
@@ -779,7 +787,9 @@ class _CompetencyFormDialogState extends State<CompetencyFormDialog> {
 
     return AlertDialog(
       title: AppDialogTitle(
-        widget.competency == null ? 'Add Competency' : 'Edit Competency',
+        widget.competency == null
+            ? context.l10n.addCompetency
+            : context.l10n.editCompetency,
       ),
       content: SizedBox(
         width: 680,
@@ -823,7 +833,7 @@ class _CompetencyFormDialogState extends State<CompetencyFormDialog> {
                   onSaved: (value) => description = value?.trim() ?? '',
                   validator: (value) {
                     if (value?.trim().isEmpty ?? true) {
-                      return 'Competency description is required';
+                      return context.l10n.competencyDescriptionRequired;
                     }
                     return null;
                   },

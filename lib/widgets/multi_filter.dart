@@ -1,4 +1,5 @@
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:flutter/material.dart';
 
@@ -97,7 +98,7 @@ class _MultiFilterButtonState extends State<MultiFilterButton> {
         //   onPressed: _openFilter,
         // ),
         IconButton.filled(
-          tooltip: "Filter",
+          tooltip: context.l10n.filter,
           onPressed: _openFilter,
           icon: const Icon(Icons.filter_list, color: AppColors.surface),
         ),
@@ -296,7 +297,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
             borderRadius: AppDropdownStyle.menuBorderRadius,
             menuMaxHeight: AppDropdownStyle.menuMaxHeight,
             style: AppDropdownStyle.textStyle,
-            decoration: const InputDecoration(labelText: "Field"),
+            decoration: InputDecoration(labelText: context.l10n.field),
           ),
           const SizedBox(height: 10),
           Flexible(
@@ -323,9 +324,12 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              TextButton(onPressed: clearAll, child: const Text("Clear")),
+              TextButton(onPressed: clearAll, child: Text(context.l10n.clear)),
               const SizedBox(width: 8),
-              ElevatedButton(onPressed: addFilter, child: const Text("Add")),
+              ElevatedButton(
+                onPressed: addFilter,
+                child: Text(context.l10n.buttonAdd),
+              ),
             ],
           ),
         ],
@@ -350,10 +354,10 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel"),
+                child: Text(context.l10n.buttonCancel),
               ),
               const SizedBox(width: 6),
-              ElevatedButton(onPressed: done, child: const Text("Done")),
+              ElevatedButton(onPressed: done, child: Text(context.l10n.done)),
             ],
           ),
           const SizedBox(height: 10),
@@ -474,9 +478,9 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
           borderRadius: AppDropdownStyle.menuBorderRadius,
           menuMaxHeight: AppDropdownStyle.menuMaxHeight,
           style: AppDropdownStyle.textStyle,
-          decoration: const InputDecoration(
-            labelText: "Value",
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: context.l10n.value,
+            border: const OutlineInputBorder(),
           ),
         );
 
@@ -486,7 +490,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
           keyboardType: TextInputType.number,
           validator: (val) => selectedField.validator?.call(val),
           decoration: InputDecoration(
-            hintText: AppFormFieldStyle.enter('number'),
+            hintText: context.l10n.enterField(context.l10n.number),
             border: const OutlineInputBorder(),
           ),
         );
@@ -524,7 +528,7 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
           keyboardType: TextInputType.text,
           validator: (val) => selectedField.validator?.call(val),
           decoration: InputDecoration(
-            hintText: AppFormFieldStyle.enter('value'),
+            hintText: context.l10n.enterField(context.l10n.value),
             border: const OutlineInputBorder(),
           ),
         );

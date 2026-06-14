@@ -20,7 +20,7 @@ class AppDialogTitle extends StatelessWidget {
         const SizedBox(width: 8),
         Semantics(
           button: true,
-          label: 'Close dialog',
+          label: MaterialLocalizations.of(context).closeButtonLabel,
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
             onTap: () => Navigator.of(context).maybePop(),

@@ -2152,7 +2152,7 @@ class _ScheduleItem extends StatelessWidget {
     return _ListTileShell(
       leading: Icons.schedule_outlined,
       title: item.title,
-      subtitle: '${_shortDate(item.date)} | ${item.time}',
+      subtitle: '${_shortDate(context, item.date)} | ${item.time}',
       margin: EdgeInsets.only(bottom: isLast ? 0 : 9),
       onTap: () => context.go('/schedules'),
       trailing: Column(
@@ -2439,7 +2439,7 @@ class _RecentNotesPanel extends StatelessWidget {
                     title: '${note.studentName} - ${note.noteType}',
                     subtitle: note.comment,
                     trailing: Text(
-                      _shortDate(note.date),
+                      _shortDate(context, note.date),
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 11,
@@ -2764,24 +2764,9 @@ String _shortStatus(String value) {
   };
 }
 
-String _shortDate(String value) {
+String _shortDate(BuildContext context, String value) {
   if (value.length < 10) return value;
-  final parts = value.substring(0, 10).split('-');
-  if (parts.length != 3) return value;
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  final month = int.tryParse(parts[1]) ?? 1;
-  return '${parts[2]} ${months[(month - 1).clamp(0, 11).toInt()]}';
+  final date = DateTime.tryParse(value.substring(0, 10));
+  if (date == null) return value;
+  return MaterialLocalizations.of(context).formatShortMonthDay(date);
 }

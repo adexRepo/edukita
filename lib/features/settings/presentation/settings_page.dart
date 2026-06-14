@@ -147,7 +147,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _minimumAttendanceController.text.trim(),
     );
     if (attendance == null || attendance < 0 || attendance > 100) {
-      AppToast.showFailed('Minimum attendance must be between 0 and 100.');
+      AppToast.showFailed(context.l10n.minimumAttendanceRangeError);
       return;
     }
 
@@ -203,13 +203,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _backupDatabase() async {
     if (_backingUp) return;
+    final l10n = context.l10n;
     final directoryPath = await getDirectoryPath();
     if (directoryPath == null) return;
 
     setState(() => _backingUp = true);
     try {
       final path = await _repository.backupDatabase(directoryPath);
-      AppToast.showSuccess('Database backup created: $path');
+      AppToast.showSuccess(l10n.databaseBackupCreated(path));
     } catch (error) {
       AppToast.showFailed(error.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -254,7 +255,7 @@ class _SettingsPageState extends State<SettingsPage> {
     if (getIt.isRegistered<StrategyCacheService>()) {
       getIt<StrategyCacheService>().clear();
     }
-    AppToast.showSuccess('Application cache cleared.');
+    AppToast.showSuccess(context.l10n.applicationCacheCleared);
   }
 
   String _fallback(String value, String fallback) {
@@ -362,44 +363,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 _SettingsOption('system', context.l10n.followSystem),
               ],
               onChanged: (value) => setState(() => _themeMode = value),
-            ),
-            _settingsDropdown(
-              label: context.l10n.uiDensity,
-              value: _uiDensity,
-              items: [
-                _SettingsOption('compact', context.l10n.compact),
-                _SettingsOption('normal', context.l10n.normal),
-                _SettingsOption('comfortable', context.l10n.comfortable),
-              ],
-              onChanged: (value) => setState(() => _uiDensity = value),
-            ),
-            _settingsDropdown(
-              label: context.l10n.dateFormat,
-              value: _dateFormat,
-              items: const [
-                _SettingsOption('yyyy-MM-dd', '2026-05-27'),
-                _SettingsOption('dd/MM/yyyy', '27/05/2026'),
-                _SettingsOption('dd MMM yyyy', '27 May 2026'),
-              ],
-              onChanged: (value) => setState(() => _dateFormat = value),
-            ),
-            _settingsDropdown(
-              label: context.l10n.timeFormat,
-              value: _timeFormat,
-              items: const [
-                _SettingsOption('24h', '24-hour'),
-                _SettingsOption('12h', '12-hour'),
-              ],
-              onChanged: (value) => setState(() => _timeFormat = value),
-            ),
-            _settingsDropdown(
-              label: context.l10n.numberFormat,
-              value: _numberFormat,
-              items: [
-                _SettingsOption('id_ID', context.l10n.indonesian),
-                _SettingsOption('en_US', context.l10n.englishUs),
-              ],
-              onChanged: (value) => setState(() => _numberFormat = value),
             ),
           ]),
         ],

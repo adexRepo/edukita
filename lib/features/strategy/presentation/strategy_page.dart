@@ -103,15 +103,19 @@ class _StrategyPageState extends State<StrategyPage> {
 
   Future<void> _downloadStrategySample(Strategy strategy) async {
     final sampleFileLabel = context.l10n.sampleImplementationFile;
+    final notAttachedMessage = context.l10n.sampleFileNotAttached;
+    final notFoundMessage = context.l10n.sampleFileNotFound;
+    final downloadedMessage = context.l10n.sampleFileDownloaded;
+    final failedMessage = context.l10n.sampleFileDownloadFailed;
     final sourcePath = strategy.sampleFilePath?.trim();
     if (sourcePath == null || sourcePath.isEmpty) {
-      AppToast.showFailed('No sample file is attached to this strategy.');
+      AppToast.showFailed(notAttachedMessage);
       return;
     }
 
     final sourceFile = io.File(sourcePath);
     if (!await sourceFile.exists()) {
-      AppToast.showFailed('Sample file was not found in storage.');
+      AppToast.showFailed(notFoundMessage);
       return;
     }
 
@@ -131,9 +135,9 @@ class _StrategyPageState extends State<StrategyPage> {
       if (p.normalize(sourceFile.path) != p.normalize(location.path)) {
         await sourceFile.copy(location.path);
       }
-      AppToast.showSuccess('Sample file downloaded.');
+      AppToast.showSuccess(downloadedMessage);
     } catch (_) {
-      AppToast.showFailed('Failed to download sample file.');
+      AppToast.showFailed(failedMessage);
     }
   }
 
@@ -257,8 +261,8 @@ class _StrategyPageState extends State<StrategyPage> {
               children: [
                 IconButton(
                   tooltip: strategy.sampleFilePath?.trim().isNotEmpty == true
-                      ? 'Download sample'
-                      : 'No sample file',
+                      ? context.l10n.downloadSample
+                      : context.l10n.noSampleFile,
                   onPressed: strategy.sampleFilePath?.trim().isNotEmpty == true
                       ? () => _downloadStrategySample(strategy)
                       : null,

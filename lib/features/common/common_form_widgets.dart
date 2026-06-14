@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -22,7 +23,7 @@ class CommonFormWidgets {
   }
 
   // Common text field
-  static TextFormField textField({
+  static Widget textField({
     required String label,
     required String? value,
     required Function(String?) onSaved,
@@ -37,35 +38,37 @@ class CommonFormWidgets {
     List<TextInputFormatter>? inputFormatters,
     bool isRequired = true,
   }) {
-    return TextFormField(
-      controller: controller,
-      initialValue: controller == null ? value : null,
-      onSaved: onSaved,
-      onChanged: onChanged,
-      readOnly: readOnly,
-      inputFormatters: inputFormatters,
-      validator:
-          validator ??
-          (value) {
-            if (value?.isEmpty ?? true) {
-              return '$label cannot be empty';
-            }
-            return null;
-          },
-      maxLines: maxLines,
-      minLines: minLines,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
-        label: _fieldLabel(label, isRequired),
-        hintText: hint ?? AppFormFieldStyle.enter(label),
-        border: const OutlineInputBorder(),
-        contentPadding: AppFormFieldStyle.contentPadding,
+    return Builder(
+      builder: (context) => TextFormField(
+        controller: controller,
+        initialValue: controller == null ? value : null,
+        onSaved: onSaved,
+        onChanged: onChanged,
+        readOnly: readOnly,
+        inputFormatters: inputFormatters,
+        validator:
+            validator ??
+            (value) {
+              if (value?.isEmpty ?? true) {
+                return context.l10n.fieldCannotBeEmpty(label);
+              }
+              return null;
+            },
+        maxLines: maxLines,
+        minLines: minLines,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          label: _fieldLabel(label, isRequired),
+          hintText: hint ?? context.l10n.enterField(label),
+          border: const OutlineInputBorder(),
+          contentPadding: AppFormFieldStyle.contentPadding,
+        ),
       ),
     );
   }
 
   // Common dropdown field
-  static AppDropdownButtonFormField<String> dropdownField({
+  static Widget dropdownField({
     required String label,
     required List<String> items,
     String? value,
@@ -74,65 +77,75 @@ class CommonFormWidgets {
     bool isRequired = true,
     ValueChanged<String?>? onChanged,
     String? hint,
+    String Function(String)? itemLabelBuilder,
   }) {
-    final allowEmptySelection = !isRequired;
-    final initialValue = allowEmptySelection && (value == null || value.isEmpty)
-        ? ''
-        : value;
-    final dropdownItems = <DropdownMenuItem<String>>[
-      if (allowEmptySelection)
-        DropdownMenuItem(
-          value: '',
-          child: AppDropdownStyle.menuItemLabel(
-            label: 'Select',
-            selected: initialValue == '',
+    return Builder(
+      builder: (context) {
+        final allowEmptySelection = !isRequired;
+        final initialValue =
+            allowEmptySelection && (value == null || value.isEmpty)
+            ? ''
+            : value;
+        final dropdownItems = <DropdownMenuItem<String>>[
+          if (allowEmptySelection)
+            DropdownMenuItem(
+              value: '',
+              child: AppDropdownStyle.menuItemLabel(
+                label: context.l10n.selectOption,
+                selected: initialValue == '',
+              ),
+            ),
+          ...items.map(
+            (item) => DropdownMenuItem(
+              value: item,
+              child: AppDropdownStyle.menuItemLabel(
+                label: itemLabelBuilder?.call(item) ?? item,
+                selected: item == initialValue,
+              ),
+            ),
           ),
-        ),
-      ...items.map(
-        (item) => DropdownMenuItem(
-          value: item,
-          child: AppDropdownStyle.menuItemLabel(
-            label: item,
-            selected: item == initialValue,
-          ),
-        ),
-      ),
-    ];
-    final labels = [if (allowEmptySelection) 'Select', ...items];
+        ];
+        final labels = [
+          if (allowEmptySelection) context.l10n.selectOption,
+          ...items.map((item) => itemLabelBuilder?.call(item) ?? item),
+        ];
 
-    return AppDropdownButtonFormField<String>(
-      initialValue: initialValue,
-      isExpanded: false,
-      items: dropdownItems,
-      selectedItemBuilder: (context) => AppDropdownStyle.selectedLabels(labels),
-      onChanged: (value) =>
-          onChanged?.call(value?.isEmpty == true ? null : value),
-      onSaved: (value) => onSaved(value?.isEmpty == true ? null : value),
-      dropdownColor: AppColors.white,
-      focusColor: AppColors.transparent,
-      iconEnabledColor: AppColors.primary,
-      borderRadius: AppDropdownStyle.menuBorderRadius,
-      menuMaxHeight: AppDropdownStyle.menuMaxHeight,
-      style: AppDropdownStyle.textStyle,
-      validator:
-          validator ??
-          (value) {
-            if (isRequired && (value?.isEmpty ?? true)) {
-              return 'Please select $label';
-            }
-            return null;
-          },
-      decoration: InputDecoration(
-        label: _fieldLabel(label, isRequired),
-        hintText: hint ?? AppFormFieldStyle.select(label),
-        border: const OutlineInputBorder(),
-        contentPadding: AppFormFieldStyle.contentPadding,
-      ),
+        return AppDropdownButtonFormField<String>(
+          initialValue: initialValue,
+          isExpanded: false,
+          items: dropdownItems,
+          selectedItemBuilder: (context) =>
+              AppDropdownStyle.selectedLabels(labels),
+          onChanged: (value) =>
+              onChanged?.call(value?.isEmpty == true ? null : value),
+          onSaved: (value) => onSaved(value?.isEmpty == true ? null : value),
+          dropdownColor: AppColors.white,
+          focusColor: AppColors.transparent,
+          iconEnabledColor: AppColors.primary,
+          borderRadius: AppDropdownStyle.menuBorderRadius,
+          menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+          style: AppDropdownStyle.textStyle,
+          validator:
+              validator ??
+              (value) {
+                if (isRequired && (value?.isEmpty ?? true)) {
+                  return context.l10n.pleaseSelectField(label);
+                }
+                return null;
+              },
+          decoration: InputDecoration(
+            label: _fieldLabel(label, isRequired),
+            hintText: hint ?? context.l10n.selectField(label),
+            border: const OutlineInputBorder(),
+            contentPadding: AppFormFieldStyle.contentPadding,
+          ),
+        );
+      },
     );
   }
 
   // Common dropdown with objects
-  static AppDropdownButtonFormField<String> dropdownFieldTyped<T>({
+  static Widget dropdownFieldTyped<T>({
     required String label,
     required List<T> items,
     required String Function(T) labelBuilder,
@@ -143,86 +156,101 @@ class CommonFormWidgets {
     String? Function(T?)? validator,
     bool isRequired = true,
   }) {
-    final valueString = value != null ? valueBuilder(value) : null;
-    final allowEmptySelection = !isRequired;
-    final initialValue =
-        allowEmptySelection && (valueString == null || valueString.isEmpty)
-        ? ''
-        : valueString;
-    final labels = [
-      if (allowEmptySelection) 'Select',
-      ...items.map(labelBuilder),
-    ];
-    final dropdownItems = <DropdownMenuItem<String>>[
-      if (allowEmptySelection)
-        DropdownMenuItem(
-          value: '',
-          child: AppDropdownStyle.menuItemLabel(
-            label: 'Select',
-            selected: initialValue == '',
+    return Builder(
+      builder: (context) {
+        final valueString = value != null ? valueBuilder(value) : null;
+        final allowEmptySelection = !isRequired;
+        final initialValue =
+            allowEmptySelection && (valueString == null || valueString.isEmpty)
+            ? ''
+            : valueString;
+        final labels = [
+          if (allowEmptySelection) context.l10n.selectOption,
+          ...items.map(labelBuilder),
+        ];
+        final dropdownItems = <DropdownMenuItem<String>>[
+          if (allowEmptySelection)
+            DropdownMenuItem(
+              value: '',
+              child: AppDropdownStyle.menuItemLabel(
+                label: context.l10n.selectOption,
+                selected: initialValue == '',
+              ),
+            ),
+          ...items.map(
+            (item) => DropdownMenuItem(
+              value: valueBuilder(item),
+              child: AppDropdownStyle.menuItemLabel(
+                label: labelBuilder(item),
+                selected: valueBuilder(item) == initialValue,
+              ),
+            ),
           ),
-        ),
-      ...items.map(
-        (item) => DropdownMenuItem(
-          value: valueBuilder(item),
-          child: AppDropdownStyle.menuItemLabel(
-            label: labelBuilder(item),
-            selected: valueBuilder(item) == initialValue,
-          ),
-        ),
-      ),
-    ];
+        ];
 
-    return AppDropdownButtonFormField<String>(
-      initialValue: initialValue,
-      isExpanded: false,
-      items: dropdownItems,
-      selectedItemBuilder: (context) => AppDropdownStyle.selectedLabels(labels),
-      onChanged: (newValue) {
-        if (onChanged == null) return;
-        if (newValue == null || newValue.isEmpty) {
-          onChanged(null);
-          return;
-        }
-        final selectedItem = items.firstWhere(
-          (item) => valueBuilder(item) == newValue,
-          orElse: () => items.first,
+        return AppDropdownButtonFormField<String>(
+          initialValue: initialValue,
+          isExpanded: false,
+          items: dropdownItems,
+          selectedItemBuilder: (context) =>
+              AppDropdownStyle.selectedLabels(labels),
+          onChanged: (newValue) {
+            if (onChanged == null) return;
+            if (newValue == null || newValue.isEmpty) {
+              onChanged(null);
+              return;
+            }
+            final selectedItem = items.firstWhere(
+              (item) => valueBuilder(item) == newValue,
+              orElse: () => items.first,
+            );
+            onChanged(selectedItem);
+          },
+          onSaved: (newValue) {
+            if (newValue == null || newValue.isEmpty) {
+              onSaved(null);
+              return;
+            }
+            final selectedItem = items.firstWhere(
+              (item) => valueBuilder(item) == newValue,
+              orElse: () => items.first,
+            );
+            onSaved(selectedItem);
+          },
+          dropdownColor: AppColors.white,
+          focusColor: AppColors.transparent,
+          iconEnabledColor: AppColors.primary,
+          borderRadius: AppDropdownStyle.menuBorderRadius,
+          menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+          style: AppDropdownStyle.textStyle,
+          validator: (newValue) {
+            if (isRequired && (newValue?.isEmpty ?? true)) {
+              return context.l10n.pleaseSelectField(label);
+            }
+            if (validator == null ||
+                newValue == null ||
+                newValue.isEmpty ||
+                items.isEmpty) {
+              return null;
+            }
+            final selectedItem = items.firstWhere(
+              (item) => valueBuilder(item) == newValue,
+              orElse: () => items.first,
+            );
+            return validator(selectedItem);
+          },
+          decoration: InputDecoration(
+            label: _fieldLabel(label, isRequired),
+            border: const OutlineInputBorder(),
+            contentPadding: AppFormFieldStyle.contentPadding,
+          ),
         );
-        onChanged(selectedItem);
       },
-      onSaved: (newValue) {
-        if (newValue == null || newValue.isEmpty) {
-          onSaved(null);
-        } else {
-          final selectedItem = items.firstWhere(
-            (item) => valueBuilder(item) == newValue,
-            orElse: () => items.first,
-          );
-          onSaved(selectedItem);
-        }
-      },
-      dropdownColor: AppColors.white,
-      focusColor: AppColors.transparent,
-      iconEnabledColor: AppColors.primary,
-      borderRadius: AppDropdownStyle.menuBorderRadius,
-      menuMaxHeight: AppDropdownStyle.menuMaxHeight,
-      style: AppDropdownStyle.textStyle,
-      validator: (value) {
-        if (isRequired && (value?.isEmpty ?? true)) {
-          return 'Please select $label';
-        }
-        return null;
-      },
-      decoration: InputDecoration(
-        label: _fieldLabel(label, isRequired),
-        border: const OutlineInputBorder(),
-        contentPadding: AppFormFieldStyle.contentPadding,
-      ),
     );
   }
 
   // Integer field
-  static TextFormField integerField({
+  static Widget integerField({
     required String label,
     int? value,
     required Function(int?) onSaved,
@@ -230,7 +258,7 @@ class CommonFormWidgets {
     String? Function(String?)? validator,
     bool isRequired = false,
   }) {
-    return TextFormField(
+    return Builder(builder: (context) => TextFormField(
       initialValue: value?.toString(),
       onSaved: (value) {
         onSaved(value != null && value.isNotEmpty ? int.parse(value) : null);
@@ -248,22 +276,22 @@ class CommonFormWidgets {
               int.parse(value!);
               return null;
             } catch (e) {
-              return '$label must be a number';
+              return context.l10n.fieldMustBeNumber(label);
             }
           },
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       decoration: InputDecoration(
         label: _fieldLabel(label, isRequired),
-        hintText: AppFormFieldStyle.enter(label),
+        hintText: context.l10n.enterField(label),
         border: const OutlineInputBorder(),
         contentPadding: AppFormFieldStyle.contentPadding,
       ),
-    );
+    ));
   }
 
   // Double field
-  static TextFormField doubleField({
+  static Widget doubleField({
     required String label,
     double? value,
     required Function(double?) onSaved,
@@ -271,7 +299,7 @@ class CommonFormWidgets {
     String? Function(String?)? validator,
     bool isRequired = false,
   }) {
-    return TextFormField(
+    return Builder(builder: (context) => TextFormField(
       initialValue: value?.toString(),
       onSaved: (value) {
         onSaved(value != null && value.isNotEmpty ? double.parse(value) : null);
@@ -289,17 +317,17 @@ class CommonFormWidgets {
               double.parse(value!);
               return null;
             } catch (e) {
-              return '$label must be a number';
+              return context.l10n.fieldMustBeNumber(label);
             }
           },
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(
         label: _fieldLabel(label, isRequired),
-        hintText: AppFormFieldStyle.enter(label),
+        hintText: context.l10n.enterField(label),
         border: const OutlineInputBorder(),
         contentPadding: AppFormFieldStyle.contentPadding,
       ),
-    );
+    ));
   }
 
   // Date field
@@ -330,7 +358,7 @@ class CommonFormWidgets {
       decoration: InputDecoration(
         label: _fieldLabel(label, isRequired),
         hintText:
-            '${AppFormFieldStyle.select(label)} '
+            '${context.l10n.selectField(label)} '
             '(${AppFormFieldStyle.dateFormat})',
         border: const OutlineInputBorder(),
         contentPadding: AppFormFieldStyle.contentPadding,

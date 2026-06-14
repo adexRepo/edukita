@@ -429,9 +429,14 @@ class StudentRepository extends BaseRepository<Student> {
   ]) async {
     final db = await _dbProvider.database;
     final prepared = await _prepareRegistrationForm(student.id, advanced);
+    final now = DateTime.now().toIso8601String();
     try {
       await db.transaction((txn) async {
-        await txn.insert(table, mapper.toMap(student));
+        await txn.insert(table, {
+          ...mapper.toMap(student),
+          'created_at': now,
+          'updated_at': now,
+        });
         await txn.insert('student_schools', {
           'id': const Uuid().v4(),
           'student_id': student.id,
@@ -470,26 +475,59 @@ class StudentRepository extends BaseRepository<Student> {
     StudentAdvancedFormData advanced = const StudentAdvancedFormData(),
   ]) async {
     final db = await _dbProvider.database;
+    final previousStudent = await db.query(
+      table,
+      columns: const ['photo_path'],
+      where: 'id = ?',
+      whereArgs: [student.id],
+      limit: 1,
+    );
+    final previousPhotoPath = previousStudent.isEmpty
+        ? null
+        : previousStudent.first['photo_path']?.toString();
+    final previousRegistrationPath = (await _loadRegistrationForm(
+      db,
+      student.id,
+    )).filePath;
     final prepared = await _prepareRegistrationForm(student.id, advanced);
+    final now = DateTime.now().toIso8601String();
     try {
       await db.transaction((txn) async {
         await txn.update(
           table,
-          mapper.toMap(student),
+          {...mapper.toMap(student), 'updated_at': now},
           where: 'id = ?',
           whereArgs: [student.id],
         );
-        await txn.delete(
+        await txn.update(
           'student_schools',
+          {'status': 0},
           where: 'student_id = ?',
           whereArgs: [student.id],
         );
-        await txn.insert('student_schools', {
-          'id': const Uuid().v4(),
-          'student_id': student.id,
-          'school_id': schoolId,
-          'status': 1,
-        });
+        final existingSchool = await txn.query(
+          'student_schools',
+          columns: const ['id'],
+          where: 'student_id = ? AND school_id = ?',
+          whereArgs: [student.id, schoolId],
+          orderBy: 'rowid DESC',
+          limit: 1,
+        );
+        if (existingSchool.isEmpty) {
+          await txn.insert('student_schools', {
+            'id': const Uuid().v4(),
+            'student_id': student.id,
+            'school_id': schoolId,
+            'status': 1,
+          });
+        } else {
+          await txn.update(
+            'student_schools',
+            {'status': 1},
+            where: 'id = ?',
+            whereArgs: [existingSchool.first['id']],
+          );
+        }
         final savedGuardians = await _saveGuardians(txn, student.id, guardians);
         await _saveAdvancedData(
           txn,
@@ -519,6 +557,19 @@ class StudentRepository extends BaseRepository<Student> {
     } catch (_) {
       await _deleteFileQuietly(prepared.$2);
       rethrow;
+    }
+    final currentPhotoPath = _nullIfBlank(student.photoPath);
+    if (_normalizedPathsDiffer(previousPhotoPath, currentPhotoPath)) {
+      await _deleteManagedFileQuietly(previousPhotoPath);
+    }
+    final currentRegistrationPath = _nullIfBlank(
+      prepared.$1.registrationForm.filePath,
+    );
+    if (_normalizedPathsDiffer(
+      previousRegistrationPath,
+      currentRegistrationPath,
+    )) {
+      await _deleteManagedFileQuietly(previousRegistrationPath);
     }
   }
 
@@ -892,9 +943,13 @@ class StudentRepository extends BaseRepository<Student> {
 
     final validRelations = relations.where((relation) => relation.hasData);
     final resolved = <StudentRelationFormData>[];
+    final resolvedStudentIds = <String>{};
 
     for (final relation in validRelations) {
       final related = await _findStudentRelationTarget(txn, student, relation);
+      if (!resolvedStudentIds.add(related.id)) {
+        throw Exception('The same sibling cannot be added more than once.');
+      }
       final relationType = _nullIfBlank(relation.relationType);
       final agePosition = _nullIfBlank(relation.agePosition);
       if (relationType == null || agePosition == null) {
@@ -1016,18 +1071,7 @@ class StudentRepository extends BaseRepository<Student> {
       relatedStudentIds.add(relatedStudentId);
     }
 
-    final guardianIds = guardians
-        .map((guardian) => guardian.guardianId)
-        .toList(growable: false);
-    final guardianPlaceholders = List.filled(guardianIds.length, '?').join(', ');
-
     for (final relatedStudentId in relatedStudentIds) {
-      await txn.delete(
-        'student_guardians',
-        where: 'student_id = ? AND guardian_id NOT IN ($guardianPlaceholders)',
-        whereArgs: [relatedStudentId, ...guardianIds],
-      );
-
       final hasPrimaryGuardian = guardians.any((guardian) => guardian.isPrimary);
       if (hasPrimaryGuardian) {
         await txn.update(
@@ -1252,7 +1296,21 @@ class StudentRepository extends BaseRepository<Student> {
     }
 
     if (filePath == null) {
-      throw Exception('Registration form is required.');
+      await txn.delete(
+        'student_documents',
+        where: 'student_id = ? AND document_type = ?',
+        whereArgs: [
+          studentId,
+          StudentDocumentTypeOptions.registrationForm,
+        ],
+      );
+      await UploadedFileRepository.deactivate(
+        txn,
+        entityType: 'student',
+        entityId: studentId,
+        documentType: 'registration_form',
+      );
+      return;
     }
 
     await txn.delete(
@@ -1374,6 +1432,13 @@ class StudentRepository extends BaseRepository<Student> {
     final trimmed = value?.trim();
     if (trimmed == null || trimmed.isEmpty) return null;
     return trimmed;
+  }
+
+  bool _normalizedPathsDiffer(String? first, String? second) {
+    final firstPath = _nullIfBlank(first);
+    final secondPath = _nullIfBlank(second);
+    if (firstPath == null || secondPath == null) return firstPath != secondPath;
+    return p.normalize(firstPath) != p.normalize(secondPath);
   }
 
   Future<void> setStudentActiveStatus(String studentId, bool active) async {
@@ -1885,6 +1950,19 @@ class StudentRepository extends BaseRepository<Student> {
       }
     } catch (_) {
       // File cleanup must not hide the original database failure.
+    }
+  }
+
+  Future<void> _deleteManagedFileQuietly(String? filePath) async {
+    if (filePath == null || filePath.trim().isEmpty) return;
+    try {
+      final storagePath = await AppStoragePaths.storageDirectory();
+      final normalizedStorage = p.normalize(p.absolute(storagePath));
+      final normalizedFile = p.normalize(p.absolute(filePath));
+      if (!p.isWithin(normalizedStorage, normalizedFile)) return;
+      await _deleteFileQuietly(normalizedFile);
+    } catch (_) {
+      // Cleanup is best effort after the database transaction succeeds.
     }
   }
 

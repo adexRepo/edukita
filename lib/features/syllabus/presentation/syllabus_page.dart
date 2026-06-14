@@ -254,15 +254,19 @@ class _SyllabusPageState extends State<SyllabusPage> {
 
   Future<void> _downloadStrategySample(Strategy strategy) async {
     final sampleFileLabel = context.l10n.sampleImplementationFile;
+    final notAttachedMessage = context.l10n.sampleFileNotAttached;
+    final notFoundMessage = context.l10n.sampleFileNotFound;
+    final downloadedMessage = context.l10n.sampleFileDownloaded;
+    final failedMessage = context.l10n.sampleFileDownloadFailed;
     final sourcePath = strategy.sampleFilePath?.trim();
     if (sourcePath == null || sourcePath.isEmpty) {
-      AppToast.showFailed('No sample file is attached to this strategy.');
+      AppToast.showFailed(notAttachedMessage);
       return;
     }
 
     final sourceFile = io.File(sourcePath);
     if (!await sourceFile.exists()) {
-      AppToast.showFailed('Sample file was not found in storage.');
+      AppToast.showFailed(notFoundMessage);
       return;
     }
 
@@ -282,9 +286,9 @@ class _SyllabusPageState extends State<SyllabusPage> {
       if (p.normalize(sourceFile.path) != p.normalize(location.path)) {
         await sourceFile.copy(location.path);
       }
-      AppToast.showSuccess('Sample file downloaded.');
+      AppToast.showSuccess(downloadedMessage);
     } catch (_) {
-      AppToast.showFailed('Failed to download sample file.');
+      AppToast.showFailed(failedMessage);
     }
   }
 
@@ -411,7 +415,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.search),
               hintText: context.l10n.searchItems(
-                _selectedView.label.toLowerCase(),
+                _viewLabel(context, _selectedView).toLowerCase(),
               ),
               suffixIcon: _searchQuery.isEmpty
                   ? null
@@ -436,8 +440,8 @@ class _SyllabusPageState extends State<SyllabusPage> {
           icon: const Icon(Icons.refresh),
         );
         final title = AppPageHeader(
-          title: _selectedView.label,
-          subtitle: _selectedView.description,
+          title: _viewLabel(context, _selectedView),
+          subtitle: _viewDescription(context, _selectedView),
         );
 
         if (compact) {
@@ -490,7 +494,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
         _CurriculumView.strategies => () => _showStrategyForm(),
       },
       icon: const Icon(Icons.add),
-      label: Text(_selectedView.addLabel),
+      label: Text(_viewAddLabel(context, _selectedView)),
     );
   }
 
@@ -1013,7 +1017,7 @@ class _DeleteImpactContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lines = _impactLines(impact);
+    final lines = _impactLines(context, impact);
     if (lines.isEmpty) {
       return Text(context.l10n.deleteItemConfirm(subject));
     }
@@ -1037,9 +1041,9 @@ class _DeleteImpactContent extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'This will also affect:',
-                style: TextStyle(fontWeight: FontWeight.w700),
+              Text(
+                context.l10n.thisWillAlsoAffect,
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               for (final line in lines)
@@ -1051,9 +1055,9 @@ class _DeleteImpactContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        const Text(
-          'Please review before continuing. This action cannot be undone.',
-          style: TextStyle(
+        Text(
+          context.l10n.reviewCannotUndo,
+          style: const TextStyle(
             color: AppColors.errorDark,
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -1063,20 +1067,23 @@ class _DeleteImpactContent extends StatelessWidget {
     );
   }
 
-  List<String> _impactLines(CurriculumDeleteImpact? impact) {
+  List<String> _impactLines(
+    BuildContext context,
+    CurriculumDeleteImpact? impact,
+  ) {
     if (impact == null || !impact.hasImpact) return const [];
     return [
-      if (impact.units > 0) '${impact.units} unit(s) will be deleted',
+      if (impact.units > 0) context.l10n.impactUnitsDeleted(impact.units),
       if (impact.syllabiDetached > 0)
-        '${impact.syllabiDetached} syllabus reference(s) will be detached',
+        context.l10n.impactSyllabiDetached(impact.syllabiDetached),
       if (impact.schedules > 0)
-        '${impact.schedules} teaching schedule(s) will be deleted',
+        context.l10n.impactSchedulesDeleted(impact.schedules),
       if (impact.assessments > 0)
-        '${impact.assessments} assessment(s) will be deleted',
+        context.l10n.impactAssessmentsDeleted(impact.assessments),
       if (impact.competencies > 0)
-        '${impact.competencies} competenc(y/ies) will be deleted',
+        context.l10n.impactCompetenciesDeleted(impact.competencies),
       if (impact.studentScoresDetached > 0)
-        '${impact.studentScoresDetached} student score reference(s) will be detached',
+        context.l10n.impactStudentScoresDetached(impact.studentScoresDetached),
     ];
   }
 }
@@ -1127,6 +1134,39 @@ enum _CurriculumView {
   final IconData icon;
 }
 
+String _viewLabel(BuildContext context, _CurriculumView view) {
+  return switch (view) {
+    _CurriculumView.curriculums => context.l10n.curriculum,
+    _CurriculumView.subjects => context.l10n.subjects,
+    _CurriculumView.syllabus => context.l10n.syllabus,
+    _CurriculumView.units => context.l10n.units,
+    _CurriculumView.competencies => context.l10n.competencies,
+    _CurriculumView.strategies => context.l10n.strategies,
+  };
+}
+
+String _viewDescription(BuildContext context, _CurriculumView view) {
+  return switch (view) {
+    _CurriculumView.curriculums => context.l10n.curriculumSectionDescription,
+    _CurriculumView.subjects => context.l10n.subjectSectionDescription,
+    _CurriculumView.syllabus => context.l10n.syllabusSectionDescription,
+    _CurriculumView.units => context.l10n.unitSectionDescription,
+    _CurriculumView.competencies => context.l10n.competencySectionDescription,
+    _CurriculumView.strategies => context.l10n.strategySectionDescription,
+  };
+}
+
+String _viewAddLabel(BuildContext context, _CurriculumView view) {
+  return switch (view) {
+    _CurriculumView.curriculums => context.l10n.addCurriculum,
+    _CurriculumView.subjects => context.l10n.addSubject,
+    _CurriculumView.syllabus => context.l10n.addSyllabus,
+    _CurriculumView.units => context.l10n.addUnit,
+    _CurriculumView.competencies => context.l10n.addCompetency,
+    _CurriculumView.strategies => context.l10n.addStrategy,
+  };
+}
+
 class _CurriculumNavigator extends StatelessWidget {
   const _CurriculumNavigator({
     required this.width,
@@ -1164,7 +1204,7 @@ class _CurriculumNavigator extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Curriculum',
+                          context.l10n.curriculum,
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(
                                 color: AppColors.textPrimary,
@@ -1172,9 +1212,9 @@ class _CurriculumNavigator extends StatelessWidget {
                               ),
                         ),
                         const SizedBox(height: 3),
-                        const Text(
-                          'Setup structure',
-                          style: TextStyle(
+                        Text(
+                          context.l10n.setupStructure,
+                          style: const TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 11,
                           ),
@@ -1345,7 +1385,7 @@ class _CurriculumNavItem extends StatelessWidget {
     final foreground = selected ? AppColors.primaryDark : AppColors.textPrimary;
 
     return Tooltip(
-      message: view.label,
+      message: _viewLabel(context, view),
       waitDuration: const Duration(milliseconds: 450),
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
@@ -1364,7 +1404,7 @@ class _CurriculumNavItem extends StatelessWidget {
               const SizedBox(width: 9),
               Expanded(
                 child: Text(
-                  view.label,
+                  _viewLabel(context, view),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(

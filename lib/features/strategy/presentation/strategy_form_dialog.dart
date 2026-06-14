@@ -75,7 +75,9 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: AppDialogTitle(
-        widget.strategy == null ? 'Add Strategy' : 'Edit Strategy',
+        widget.strategy == null
+            ? context.l10n.addStrategy
+            : context.l10n.editStrategy,
       ),
       content: SizedBox(
         width: 680,
@@ -100,7 +102,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
                     onSaved: (value) => name = value ?? '',
                     validator: (value) {
                       if (value?.trim().isEmpty ?? true) {
-                        return 'Strategy name is required';
+                        return context.l10n.strategyNameRequired;
                       }
                       return null;
                     },
@@ -226,7 +228,9 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
           OutlinedButton.icon(
             onPressed: _isSaving ? null : _pickSampleFile,
             icon: const Icon(Icons.upload_file, size: 16),
-            label: Text(hasFile ? 'Change' : 'Upload'),
+            label: Text(
+              hasFile ? context.l10n.change : context.l10n.upload,
+            ),
           ),
           if (hasFile) ...[
             const SizedBox(width: 4),
@@ -250,17 +254,16 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
   }
 
   Future<void> _pickSampleFile() async {
+    final invalidFileMessage = context.l10n.allowedSampleFileTypes;
     final sampleGroup = XTypeGroup(
       label: context.l10n.sampleImplementationFile,
       extensions: _allowedSampleExtensions,
     );
     final file = await openFile(acceptedTypeGroups: [sampleGroup]);
-    if (file == null) return;
+    if (file == null || !mounted) return;
 
     if (!_isAllowedSampleFile(file.path)) {
-      AppToast.showFailed(
-        'Only Excel, Word, TXT, MD, and PDF files are allowed.',
-      );
+      AppToast.showFailed(invalidFileMessage);
       return;
     }
 
@@ -287,7 +290,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
     if (sourcePath == null || sourcePath.isEmpty) return sampleFilePath;
 
     if (!_isAllowedSampleFile(sourcePath)) {
-      throw StateError('Unsupported sample file type.');
+      throw StateError(context.l10n.unsupportedSampleFileType);
     }
 
     final sourceFile = File(sourcePath);

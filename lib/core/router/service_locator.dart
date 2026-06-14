@@ -12,7 +12,6 @@ import 'package:edukita/features/reports/assessment_cubit.dart';
 import 'package:edukita/features/reports/assessment_repository.dart';
 import 'package:edukita/features/report_definitions/domain/report_definition_cubit.dart';
 import 'package:edukita/features/report_definitions/domain/report_definition_repository.dart';
-import 'package:edukita/features/parameters/domain/system_config_repository.dart';
 import 'package:edukita/features/schools/domain/class_cubit.dart';
 import 'package:edukita/features/schools/domain/class_repository.dart';
 import 'package:edukita/features/schools/domain/school_cubit.dart';
@@ -57,9 +56,6 @@ Future<void> setupLocator() async {
   );
   getIt.registerLazySingleton<ReportDefinitionRepository>(
     () => ReportDefinitionRepository(db),
-  );
-  getIt.registerLazySingleton<SystemConfigRepository>(
-    () => SystemConfigRepository(db),
   );
   getIt.registerLazySingleton<SettingsRepository>(() => SettingsRepository(db));
   getIt.registerLazySingleton<TeachingActivityRepository>(

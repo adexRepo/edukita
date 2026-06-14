@@ -193,7 +193,7 @@ class _SchedulePageState extends State<SchedulePage> {
         .toList();
     if (allowed.isNotEmpty) return allowed;
     return [
-      Teacher(id: teacherId, fullName: 'Linked teacher profile'),
+      Teacher(id: teacherId, fullName: context.l10n.linkedTeacherProfile),
     ];
   }
 
@@ -206,6 +206,10 @@ class _SchedulePageState extends State<SchedulePage> {
   }) async {
     if (existingSchedule == null && !_canCreateSchedule) {
       AppToast.showFailed(context.l10n.scheduleCreateDenied);
+      return;
+    }
+    if (existingSchedule == null && units.isEmpty) {
+      AppToast.showFailed(context.l10n.teachingScheduleRequiresUnit);
       return;
     }
     if (existingSchedule == null &&
@@ -573,12 +577,33 @@ class _SchedulePageState extends State<SchedulePage> {
       itemBuilder: (context) => [
         PopupMenuItem(
           value: _ScheduleAddType.schedule,
-          enabled: units.isNotEmpty,
           child: Row(
             children: [
-              const Icon(Icons.school_outlined, size: 18),
+              Icon(
+                units.isEmpty
+                    ? Icons.warning_amber_rounded
+                    : Icons.school_outlined,
+                size: 18,
+                color: units.isEmpty ? AppColors.warning : null,
+              ),
               const SizedBox(width: 10),
-              Text(context.l10n.teachingSchedule),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(context.l10n.teachingSchedule),
+                    if (units.isEmpty)
+                      Text(
+                        context.l10n.teachingScheduleRequiresUnitShort,
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 10,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -767,7 +792,7 @@ class _SchedulePageState extends State<SchedulePage> {
       final levelLabel = _scheduleLevelLabel(schedule, classes);
       final title = schedule.title?.trim().isNotEmpty == true
           ? schedule.title!.trim()
-          : unit?.name ?? 'Teaching Schedule';
+          : unit?.name ?? context.l10n.teachingSchedule;
       results.add(
         _ScheduleSearchResult(
           title: title,
@@ -1270,12 +1295,12 @@ class _SchedulePageState extends State<SchedulePage> {
                   ),
                 ),
                 _countBadge(
-                  '${visibleSchedules.length} schedules',
+                  context.l10n.scheduleCount(visibleSchedules.length),
                   AppColors.accentBlue,
                 ),
                 const SizedBox(width: 8),
                 _countBadge(
-                  '${visibleEvents.length} events',
+                  context.l10n.eventCount(visibleEvents.length),
                   AppColors.warning,
                 ),
               ],
@@ -2069,7 +2094,9 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 
   String? _visibleEventType(ScheduleEvent event) {
-    return event.type == 'Other Event' ? null : event.type;
+    return event.type == 'Other Event'
+        ? null
+        : _eventTypeLabel(context, event.type);
   }
 
   DateTime? _parseDateKey(String? value) {
@@ -2305,7 +2332,9 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                         onSaved: (value) => date = _nullIfBlank(value),
                         validator: (value) {
                           if (value?.trim().isEmpty ?? true) {
-                            return '${context.l10n.date} is required';
+                            return context.l10n.fieldRequiredMessage(
+                              context.l10n.date,
+                            );
                           }
                           return null;
                         },
@@ -2416,8 +2445,9 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
       AppToast.showSubmissionSuccess(action: action, subject: 'schedule');
       if (mounted) Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return;
       AppToast.showFailed(
-        _scheduleSaveErrorMessage(e),
+        _scheduleSaveErrorMessage(context, e),
         title: cannotSaveTitle,
       );
       if (mounted) setState(() => _isSaving = false);
@@ -2555,7 +2585,9 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                   onSaved: (value) => title = value?.trim() ?? '',
                   validator: (value) {
                     if (value?.trim().isEmpty ?? true) {
-                      return '${context.l10n.eventName} is required';
+                      return context.l10n.fieldRequiredMessage(
+                        context.l10n.eventName,
+                      );
                     }
                     return null;
                   },
@@ -2566,6 +2598,7 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                     label: context.l10n.type,
                     items: eventTypes,
                     value: type,
+                    itemLabelBuilder: (value) => _eventTypeLabel(context, value),
                     onSaved: (value) => type = value ?? eventTypes.first,
                   ),
                   const SizedBox(height: 16),
@@ -2574,7 +2607,8 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                   CommonFormWidgets.dropdownFieldTyped<School>(
                     label: context.l10n.school,
                     items: widget.schools,
-                    labelBuilder: (item) => item.name ?? 'Unnamed School',
+                    labelBuilder: (item) =>
+                        item.name ?? context.l10n.unnamedSchool,
                     valueBuilder: (item) => item.id,
                     value: selectedSchool,
                     isRequired: false,
@@ -2610,7 +2644,9 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                         onSaved: (value) => date = value?.trim() ?? '',
                         validator: (value) {
                           if (value?.trim().isEmpty ?? true) {
-                            return '${context.l10n.startDate} is required';
+                            return context.l10n.fieldRequiredMessage(
+                              context.l10n.startDate,
+                            );
                           }
                           return null;
                         },
@@ -2644,7 +2680,9 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                         onSaved: (value) => endDate = value?.trim() ?? date,
                         validator: (value) {
                           if (value?.trim().isEmpty ?? true) {
-                            return '${context.l10n.endDate} is required';
+                            return context.l10n.fieldRequiredMessage(
+                              context.l10n.endDate,
+                            );
                           }
                           if (value!.trim().compareTo(
                                 _startDateController.text,
@@ -2832,7 +2870,7 @@ class _PickerFormField extends StatelessWidget {
           validator ??
           (value) {
             if (isRequired && (value?.trim().isEmpty ?? true)) {
-              return '$label is required';
+              return context.l10n.fieldRequiredMessage(label);
             }
             return null;
           },
@@ -2917,9 +2955,19 @@ String? _nullIfBlank(String? value) {
   return trimmed;
 }
 
-String _scheduleSaveErrorMessage(Object error) {
+String _eventTypeLabel(BuildContext context, String value) {
+  return switch (value) {
+    'Exam' => context.l10n.eventTypeExam,
+    'Holiday' => context.l10n.eventTypeHoliday,
+    'Report Card' => context.l10n.eventTypeReportCard,
+    'Other Event' => context.l10n.otherEvent,
+    _ => value,
+  };
+}
+
+String _scheduleSaveErrorMessage(BuildContext context, Object error) {
   final message = error.toString().replaceFirst('Exception: ', '').trim();
-  if (message.isEmpty) return 'Failed to save the schedule.';
+  if (message.isEmpty) return context.l10n.failedToSaveSchedule;
   return message;
 }
 

@@ -68,8 +68,9 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   value: nickName,
                   onSaved: (value) => nickName = value?.trim(),
                   validator: (value) => AppFormValidation.requiredText(
+                    context,
                     value,
-                    'Nick name',
+                    context.l10n.nickName,
                     minLength: 2,
                     maxLength: 40,
                   ),
@@ -81,8 +82,9 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   value: fullName,
                   onSaved: (value) => fullName = value?.trim() ?? '',
                   validator: (value) => AppFormValidation.requiredText(
+                    context,
                     value,
-                    'Full name',
+                    context.l10n.fullName,
                     minLength: 3,
                     maxLength: 80,
                   ),
@@ -122,6 +124,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   onSaved: (value) => lastEducationType = value,
                   validator: (value) =>
                       AppFormValidation.requiredText(
+                        context,
                         value,
                         context.l10n.educationLevel,
                       ),
@@ -131,6 +134,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   initialValue: gender,
                   validator: (value) =>
                       AppFormValidation.requiredText(
+                        context,
                         value,
                         context.l10n.gender,
                       ),
@@ -192,7 +196,8 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   value: email,
                   onSaved: (value) => email = value?.trim(),
                   keyboardType: TextInputType.emailAddress,
-                  validator: AppFormValidation.requiredEmail,
+                  validator: (value) =>
+                      AppFormValidation.requiredEmail(context, value),
                   inputFormatters: [LengthLimitingTextInputFormatter(120)],
                 ),
                 const SizedBox(height: 12),
@@ -203,7 +208,8 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                   keyboardType: TextInputType.phone,
                   hintText: AppFormValidation.mobilePlaceholder,
                   inputFormatters: AppFormValidation.mobileInputFormatters,
-                  validator: AppFormValidation.requiredMobile,
+                  validator: (value) =>
+                      AppFormValidation.requiredMobile(context, value),
                 ),
               ],
             ),

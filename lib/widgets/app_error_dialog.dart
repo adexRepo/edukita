@@ -1,4 +1,5 @@
 import 'package:edukita/core/router/root_navigator.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
@@ -38,7 +39,7 @@ Future<void> showErrorDetailDialog(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close'),
+            child: Text(context.l10n.close),
           ),
         ],
       ),

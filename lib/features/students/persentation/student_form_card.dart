@@ -61,6 +61,8 @@ class StudentFormCard extends StatefulWidget {
 }
 
 class _StudentFormCardState extends State<StudentFormCard> {
+  static const double _singleLineFieldHeight = 52;
+
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _studentNoController;
   late final TextEditingController _fullNameController;
@@ -383,6 +385,16 @@ class _StudentFormCardState extends State<StudentFormCard> {
       _showMessage(activityError);
       return;
     }
+    final siblingError = _validateSiblingDrafts();
+    if (siblingError != null) {
+      _showMessage(siblingError);
+      return;
+    }
+    final studentDateError = _validateStudentDates();
+    if (studentDateError != null) {
+      _showMessage(studentDateError);
+      return;
+    }
     final primaryGuardianCount = guardians
         .where((guardian) => guardian.isPrimary)
         .length;
@@ -391,7 +403,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
       return;
     }
     if (primaryGuardianCount == 0) {
-      _showMessage('Select one primary guardian.');
+      _showMessage(context.l10n.selectPrimaryGuardian);
       return;
     }
     if (primaryGuardianCount > 1) {
@@ -547,22 +559,29 @@ class _StudentFormCardState extends State<StudentFormCard> {
       final draft = entries[displayIndex].value;
       final number = displayIndex + 1;
       final nameError = AppFormValidation.requiredText(
+        context,
         draft.nameController.text,
-        'Guardian #$number name',
+        context.l10n.guardianNumberName(number),
         minLength: 3,
         maxLength: 80,
       );
       if (nameError != null) return nameError;
 
       final mobileError = AppFormValidation.requiredMobile(
+        context,
         draft.mobileController.text,
       );
-      if (mobileError != null) return 'Guardian #$number: $mobileError';
+      if (mobileError != null) {
+        return context.l10n.guardianNumberError(number, mobileError);
+      }
 
       final emailError = AppFormValidation.optionalEmail(
+        context,
         draft.emailController.text,
       );
-      if (emailError != null) return 'Guardian #$number: $emailError';
+      if (emailError != null) {
+        return context.l10n.guardianNumberError(number, emailError);
+      }
     }
     return null;
   }
@@ -573,15 +592,17 @@ class _StudentFormCardState extends State<StudentFormCard> {
       final draft = entries[displayIndex].value;
       final number = displayIndex + 1;
       final typeError = AppFormValidation.requiredText(
+        context,
         draft.typeController.text,
-        'Activity #$number type',
+        context.l10n.activityNumberType(number),
         maxLength: 60,
       );
       if (typeError != null) return typeError;
 
       final nameError = AppFormValidation.requiredText(
+        context,
         draft.nameController.text,
-        'Activity #$number name',
+        context.l10n.activityNumberName(number),
         minLength: 2,
         maxLength: 80,
       );
@@ -591,13 +612,41 @@ class _StudentFormCardState extends State<StudentFormCard> {
         draft.startDateController.text,
       );
       if (startDateError != null) {
-        return 'Activity #$number start date: $startDateError';
+        return context.l10n.activityNumberStartDateError(
+          number,
+          startDateError,
+        );
       }
 
       final endDateError = _validateOptionalDate(draft.endDateController.text);
       if (endDateError != null) {
-        return 'Activity #$number end date: $endDateError';
+        return context.l10n.activityNumberEndDateError(number, endDateError);
       }
+      final startDate = DateTime.tryParse(draft.startDateController.text.trim());
+      final endDate = DateTime.tryParse(draft.endDateController.text.trim());
+      if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
+        return context.l10n.activityEndBeforeStart(number);
+      }
+    }
+    return null;
+  }
+
+  String? _validateSiblingDrafts() {
+    final seen = <String>{};
+    for (final draft in _relationDrafts.where((item) => item.hasInput)) {
+      final identity = draft.resolvedIdentity;
+      if (!seen.add(identity)) {
+        return context.l10n.duplicateSibling;
+      }
+    }
+    return null;
+  }
+
+  String? _validateStudentDates() {
+    final birthDate = DateTime.tryParse(_birthDateController.text.trim());
+    final joinDate = DateTime.tryParse(_joinAtController.text.trim());
+    if (birthDate != null && joinDate != null && birthDate.isAfter(joinDate)) {
+      return context.l10n.birthDateAfterJoinDate;
     }
     return null;
   }
@@ -606,7 +655,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return null;
     if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text)) {
-      return 'Use YYYY-MM-DD';
+      return context.l10n.useDateFormat;
     }
     return null;
   }
@@ -704,7 +753,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
       }
 
       if (result.studentId == widget.initialStudent?.id) {
-        _showMessage('Student cannot be related to themself.');
+        _showMessage(context.l10n.studentCannotRelateSelf);
         return;
       }
 
@@ -713,13 +762,14 @@ class _StudentFormCardState extends State<StudentFormCard> {
         draft.relatedStudentName = result.fullName;
         draft.studentLookupController.text =
             result.studentNo ?? result.studentId;
+        draft.resolvedLookupValue = draft.studentLookupController.text.trim();
         _applyLookupGuardians(result.guardians);
       });
 
       if (result.guardians.isEmpty) {
         _showMessage('Sibling found, but no guardian data is recorded yet.');
       } else {
-        AppToast.showSuccess('Sibling guardians copied to family section.');
+        AppToast.showSuccess(context.l10n.siblingGuardiansCopied);
       }
     } catch (error) {
       if (!mounted) return;
@@ -800,7 +850,11 @@ class _StudentFormCardState extends State<StudentFormCard> {
   String _compactDate(DateTime date) {
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
-    return '${date.year}$month$day';
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    final second = date.second.toString().padLeft(2, '0');
+    final millisecond = date.millisecond.toString().padLeft(3, '0');
+    return '${date.year}$month${day}_$hour$minute$second$millisecond';
   }
 
   String _fileSafeName(String value) {
@@ -837,13 +891,22 @@ class _StudentFormCardState extends State<StudentFormCard> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.all(20),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      child: Theme(
+        data: theme.copyWith(
+          inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+            constraints: const BoxConstraints(
+              minHeight: _singleLineFieldHeight,
+            ),
+          ),
+        ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             _FormSection(
               title: context.l10n.basicInfo,
               isRequired: true,
@@ -852,19 +915,35 @@ class _StudentFormCardState extends State<StudentFormCard> {
                 _fieldGrid([
                   _generatedStudentNoDisplay(),
                   TextFormField(
+                    controller: _nisController,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.nis,
+                    ),
+                    validator: (value) {
+                      final text = value?.trim() ?? '';
+                      if (text.length > 10) {
+                        return context.l10n.nisMaxTenCharacters;
+                      }
+                      return null;
+                    },
+                    inputFormatters: [LengthLimitingTextInputFormatter(10)],
+                  ),
+                  TextFormField(
                     controller: _fullNameController,
                     decoration: InputDecoration(
                       label: _requiredLabel(context.l10n.fullName),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Full name is required';
+                        return context.l10n.fieldRequiredMessage(
+                          context.l10n.fullName,
+                        );
                       }
                       if (value.trim().length < 3) {
-                        return 'Minimum 3 characters';
+                        return context.l10n.fullNameMinimumThree;
                       }
                       if (value.trim().length > 80) {
-                        return 'Full name must be at most 80 characters';
+                        return context.l10n.fullNameMaximumEighty;
                       }
                       return null;
                     },
@@ -877,37 +956,55 @@ class _StudentFormCardState extends State<StudentFormCard> {
                     ),
                     inputFormatters: [LengthLimitingTextInputFormatter(40)],
                     validator: (value) => AppFormValidation.optionalText(
+                      context,
                       value,
-                      'Nick name',
+                      context.l10n.nickName,
                       maxLength: 40,
                     ),
                   ),
-                  _EnumSegmentedField<Gender>(
-                    label: _requiredLabel(context.l10n.gender),
-                    value: _selectedGender,
-                    values: Gender.values,
-                    labelBuilder: (gender) => gender.name,
-                    onChanged: (gender) =>
-                        setState(() => _selectedGender = gender),
+                  _dateField(
+                    context.l10n.birthDate,
+                    _birthDateController,
+                    firstDate: DateTime(1900),
                   ),
-                  TextFormField(
-                    controller: _nisController,
+                  AppDropdownButtonFormField<Gender>(
+                    initialValue: _selectedGender,
+                    isExpanded: false,
                     decoration: InputDecoration(
-                      label: _requiredLabel(context.l10n.nis),
+                      label: _requiredLabel(context.l10n.gender),
                     ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'NISN is required';
+                    items: Gender.values
+                        .map(
+                          (gender) => DropdownMenuItem<Gender>(
+                            value: gender,
+                            child: AppDropdownStyle.menuItemLabel(
+                              label: _genderLabel(gender),
+                              selected: gender == _selectedGender,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    selectedItemBuilder: (context) =>
+                        AppDropdownStyle.selectedLabels(
+                          Gender.values.map(_genderLabel),
+                        ),
+                    dropdownColor: AppColors.white,
+                    focusColor: AppColors.transparent,
+                    iconEnabledColor: AppColors.primary,
+                    borderRadius: AppDropdownStyle.menuBorderRadius,
+                    menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                    style: AppDropdownStyle.textStyle,
+                    onChanged: (gender) {
+                      if (gender != null) {
+                        setState(() => _selectedGender = gender);
                       }
-                      if (value.trim().length > 10) {
-                        return 'NISN must be at most 10 characters';
-                      }
-                      return null;
                     },
-                    inputFormatters: [LengthLimitingTextInputFormatter(10)],
                   ),
-                  _dateField(context.l10n.birthDate, _birthDateController),
-                  _dateField(context.l10n.joinDate, _joinAtController),
+                  _dateField(
+                    context.l10n.joinDate,
+                    _joinAtController,
+                    firstDate: DateTime(1900),
+                  ),
                 ], maxColumns: 3),
                 const SizedBox(height: 12),
                 _registrationFormPicker(),
@@ -962,7 +1059,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
                     }),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please select a school';
+                        return context.l10n.selectSchoolRequired;
                       }
                       return null;
                     },
@@ -1006,7 +1103,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
                         : (value) => setState(() => _selectedClassId = value),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please select a class';
+                        return context.l10n.selectClassRequired;
                       }
                       return null;
                     },
@@ -1028,12 +1125,14 @@ class _StudentFormCardState extends State<StudentFormCard> {
                     ),
                     keyboardType: TextInputType.phone,
                     inputFormatters: AppFormValidation.mobileInputFormatters,
-                    validator: AppFormValidation.optionalMobile,
+                    validator: (value) =>
+                        AppFormValidation.optionalMobile(context, value),
                   ),
                   TextFormField(
                     controller: _emailAddrController,
                     decoration: InputDecoration(labelText: context.l10n.email),
-                    validator: AppFormValidation.optionalEmail,
+                    validator: (value) =>
+                        AppFormValidation.optionalEmail(context, value),
                     inputFormatters: [LengthLimitingTextInputFormatter(120)],
                   ),
                 ], maxColumns: 2),
@@ -1094,7 +1193,8 @@ class _StudentFormCardState extends State<StudentFormCard> {
                 ),
               ],
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1132,13 +1232,19 @@ class _StudentFormCardState extends State<StudentFormCard> {
       isRequired: true,
       initiallyExpanded: true,
       children: [
-        _InlineSectionTitle(context.l10n.siblingRelation),
+        _InlineSectionTitle(
+          context.l10n.siblingRelation,
+          tooltip: context.l10n.siblingRelationHelp,
+        ),
         const SizedBox(height: 10),
         for (var index = 0; index < _relationDrafts.length; index++) ...[
           _SiblingRelationDraftCard(
             draft: _relationDrafts[index],
             canRemove: _relationDrafts.length > 1,
             onLookup: () => _lookupSibling(_relationDrafts[index]),
+            onLookupChanged: (value) => setState(() {
+              _relationDrafts[index].invalidateResolvedLookup(value);
+            }),
             onRemove: () => setState(() {
               _relationDrafts.removeAt(index).dispose();
             }),
@@ -1204,7 +1310,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
 
   Widget _householdProfileSection() {
     return _FormSection(
-      title: 'Household & Education Profile',
+      title: context.l10n.householdEducationProfile,
       isRequired: true,
       initiallyExpanded: true,
       children: [
@@ -1213,13 +1319,14 @@ class _StudentFormCardState extends State<StudentFormCard> {
           minLines: 2,
           maxLines: 3,
           decoration: InputDecoration(
-            label: _requiredLabel('Home Address'),
-            hintText: 'Street, RT/RW, house number, village, and district',
+            label: _requiredLabel(context.l10n.homeAddress),
+            hintText: context.l10n.homeAddressHint,
           ),
           inputFormatters: [LengthLimitingTextInputFormatter(240)],
           validator: (value) => AppFormValidation.requiredText(
+            context,
             value,
-            'Home address',
+            context.l10n.homeAddress,
             minLength: 5,
             maxLength: 240,
           ),
@@ -1228,7 +1335,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
         _fieldGrid([
           _requiredMoneyField(
             controller: _dailyTransportCostController,
-            label: 'Daily School Transport Cost',
+            label: context.l10n.dailySchoolTransportCost,
           ),
           AppDropdownButtonFormField<String>(
             initialValue: _selectedHousingStatus,
@@ -1238,7 +1345,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
                   (status) => DropdownMenuItem<String>(
                     value: status,
                     child: AppDropdownStyle.menuItemLabel(
-                      label: StudentHousingStatusOptions.label(status),
+                      label: _housingStatusLabel(context, status),
                       selected: status == _selectedHousingStatus,
                     ),
                   ),
@@ -1246,12 +1353,12 @@ class _StudentFormCardState extends State<StudentFormCard> {
                 .toList(),
             selectedItemBuilder: (context) => AppDropdownStyle.selectedLabels(
               StudentHousingStatusOptions.values.map(
-                StudentHousingStatusOptions.label,
+                (status) => _housingStatusLabel(context, status),
               ),
             ),
             decoration: InputDecoration(
-              label: _requiredLabel('Housing Status'),
-              hintText: 'Select housing status',
+              label: _requiredLabel(context.l10n.housingStatus),
+              hintText: context.l10n.selectHousingStatus,
             ),
             dropdownColor: AppColors.white,
             focusColor: AppColors.transparent,
@@ -1263,7 +1370,9 @@ class _StudentFormCardState extends State<StudentFormCard> {
                 setState(() => _selectedHousingStatus = value),
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Housing status is required';
+                return context.l10n.fieldRequiredMessage(
+                  context.l10n.housingStatus,
+                );
               }
               return null;
             },
@@ -1271,7 +1380,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
           TextFormField(
             controller: _householdMemberCountController,
             decoration: InputDecoration(
-              label: _requiredLabel('Household Member Count'),
+              label: _requiredLabel(context.l10n.householdMemberCount),
             ),
             keyboardType: TextInputType.number,
             inputFormatters: [
@@ -1280,20 +1389,20 @@ class _StudentFormCardState extends State<StudentFormCard> {
             ],
             validator: (value) => _requiredPositiveInteger(
               value,
-              'Household member count',
+              context.l10n.householdMemberCount,
             ),
           ),
           _requiredMoneyField(
             controller: _fatherIncomeController,
-            label: 'Father Income',
+            label: context.l10n.fatherIncome,
           ),
           _requiredMoneyField(
             controller: _motherIncomeController,
-            label: 'Mother Income',
+            label: context.l10n.motherIncome,
           ),
           _requiredMoneyField(
             controller: _educationArrearsController,
-            label: 'Education Arrears',
+            label: context.l10n.educationArrears,
           ),
         ], maxColumns: 3),
         const SizedBox(height: 12),
@@ -1303,13 +1412,14 @@ class _StudentFormCardState extends State<StudentFormCard> {
             minLines: 2,
             maxLines: 4,
             decoration: InputDecoration(
-              label: _requiredLabel('Academic Achievement'),
-              hintText: 'Ranking, academic competition, or write None',
+              labelText: context.l10n.academicAchievement,
+              hintText: context.l10n.academicAchievementHint,
             ),
             inputFormatters: [LengthLimitingTextInputFormatter(300)],
-            validator: (value) => AppFormValidation.requiredText(
+            validator: (value) => AppFormValidation.optionalText(
+              context,
               value,
-              'Academic achievement',
+              context.l10n.academicAchievement,
               maxLength: 300,
             ),
           ),
@@ -1318,13 +1428,14 @@ class _StudentFormCardState extends State<StudentFormCard> {
             minLines: 2,
             maxLines: 4,
             decoration: InputDecoration(
-              label: _requiredLabel('Non-Academic Achievement'),
-              hintText: 'Sports, arts, or write None',
+              labelText: context.l10n.nonAcademicAchievement,
+              hintText: context.l10n.nonAcademicAchievementHint,
             ),
             inputFormatters: [LengthLimitingTextInputFormatter(300)],
-            validator: (value) => AppFormValidation.requiredText(
+            validator: (value) => AppFormValidation.optionalText(
+              context,
               value,
-              'Non-academic achievement',
+              context.l10n.nonAcademicAchievement,
               maxLength: 300,
             ),
           ),
@@ -1350,8 +1461,10 @@ class _StudentFormCardState extends State<StudentFormCard> {
       ],
       validator: (value) {
         final text = value?.trim() ?? '';
-        if (text.isEmpty) return '$label is required';
-        if (double.tryParse(text) == null) return '$label must be a number';
+        if (text.isEmpty) return context.l10n.fieldRequiredMessage(label);
+        if (double.tryParse(text) == null) {
+          return context.l10n.fieldMustBeNumber(label);
+        }
         return null;
       },
     );
@@ -1359,9 +1472,11 @@ class _StudentFormCardState extends State<StudentFormCard> {
 
   String? _requiredPositiveInteger(String? value, String label) {
     final text = value?.trim() ?? '';
-    if (text.isEmpty) return '$label is required';
+    if (text.isEmpty) return context.l10n.fieldRequiredMessage(label);
     final number = int.tryParse(text);
-    if (number == null || number < 1) return '$label must be at least 1';
+    if (number == null || number < 1) {
+      return context.l10n.fieldMustBeAtLeastOne(label);
+    }
     return null;
   }
 
@@ -1389,22 +1504,35 @@ class _StudentFormCardState extends State<StudentFormCard> {
   }
 
   Widget _generatedStudentNoDisplay() {
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: context.l10n.generatedNo,
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.all(12),
-      ),
-      child: Text(
-        _studentNoController.text,
-        style: Theme.of(
-          context,
-        ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: _singleLineFieldHeight),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: context.l10n.generatedNo,
+          border: const OutlineInputBorder(),
+        ),
+        child: Text(
+          _studentNoController.text,
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
       ),
     );
   }
 
-  TextFormField _dateField(String label, TextEditingController controller) {
+  String _genderLabel(Gender gender) {
+    return switch (gender) {
+      Gender.male => context.l10n.genderMale,
+      Gender.female => context.l10n.genderFemale,
+    };
+  }
+
+  TextFormField _dateField(
+    String label,
+    TextEditingController controller, {
+    required DateTime firstDate,
+  }) {
     return TextFormField(
       controller: controller,
       readOnly: true,
@@ -1415,16 +1543,25 @@ class _StudentFormCardState extends State<StudentFormCard> {
       ),
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
-          return '$label is required';
+          return context.l10n.fieldRequiredMessage(label);
         }
         return null;
       },
       onTap: () async {
+        final lastDate = DateTime.now();
+        final parsedDate = DateTime.tryParse(controller.text);
+        final initialDate = parsedDate == null
+            ? lastDate
+            : parsedDate.isBefore(firstDate)
+            ? firstDate
+            : parsedDate.isAfter(lastDate)
+            ? lastDate
+            : parsedDate;
         final date = await showDatePicker(
           context: context,
-          initialDate: DateTime.tryParse(controller.text) ?? DateTime.now(),
-          firstDate: DateTime(2000),
-          lastDate: DateTime.now(),
+          initialDate: initialDate,
+          firstDate: firstDate,
+          lastDate: lastDate,
         );
 
         if (date != null) {
@@ -1480,19 +1617,12 @@ class _StudentFormCardState extends State<StudentFormCard> {
         _registrationFormSourcePath ?? _registrationFormStoredPath;
     return FormField<String>(
       initialValue: initialValue,
-      validator: (_) {
-        final hasFile =
-            (_registrationFormSourcePath?.trim().isNotEmpty ?? false) ||
-            (_registrationFormStoredPath?.trim().isNotEmpty ?? false);
-        if (!hasFile) return context.l10n.registrationFormRequired;
-        return null;
-      },
       builder: (field) {
         return InputDecorator(
           decoration: InputDecoration(
-            label: _requiredLabel(context.l10n.registrationForm),
-            helperText: context.l10n.uploadRegistrationFormHelp,
-            errorText: field.errorText,
+            labelText: context.l10n.registrationForm,
+            helperText:
+                '${context.l10n.uploadRegistrationFormHelp} (${context.l10n.optional})',
             border: const OutlineInputBorder(),
             contentPadding: const EdgeInsets.all(12),
           ),
@@ -1573,7 +1703,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
     validator: (value) {
       if (value == null || value.isEmpty) return null;
       final number = int.tryParse(value);
-      if (number == null) return 'Must be a number';
+      if (number == null) return context.l10n.mustBeNumber;
       return null;
     },
   );
@@ -1586,7 +1716,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
     validator: (value) {
       if (value == null || value.isEmpty) return null;
       final number = int.tryParse(value);
-      if (number == null) return 'Must be a number';
+      if (number == null) return context.l10n.mustBeNumber;
       return null;
     },
   );
@@ -1599,7 +1729,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
     validator: (value) {
       if (value == null || value.isEmpty) return null;
       final number = int.tryParse(value);
-      if (number == null) return 'Must be a number';
+      if (number == null) return context.l10n.mustBeNumber;
       return null;
     },
   );
@@ -1614,7 +1744,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
     validator: (value) {
       if (value == null || value.isEmpty) return null;
       final number = double.tryParse(value);
-      if (number == null) return 'Must be a number';
+      if (number == null) return context.l10n.mustBeNumber;
       return null;
     },
   );
@@ -1629,13 +1759,13 @@ class _StudentFormCardState extends State<StudentFormCard> {
     validator: (value) {
       if (value == null || value.isEmpty) return null;
       final number = double.tryParse(value);
-      if (number == null) return 'Must be a number';
+      if (number == null) return context.l10n.mustBeNumber;
       return null;
     },
   );
 }
 
-class _FormSection extends StatelessWidget {
+class _FormSection extends StatefulWidget {
   const _FormSection({
     required this.title,
     required this.children,
@@ -1649,23 +1779,52 @@ class _FormSection extends StatelessWidget {
   final bool initiallyExpanded;
 
   @override
+  State<_FormSection> createState() => _FormSectionState();
+}
+
+class _FormSectionState extends State<_FormSection> {
+  late bool _expanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _expanded = widget.initiallyExpanded || widget.isRequired;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(8);
-    return DecoratedBox(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOut,
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: borderRadius,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: _expanded ? AppColors.primaryLight : AppColors.border,
+          width: _expanded ? 1.2 : 1,
+        ),
+        boxShadow: _expanded
+            ? [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
       ),
       child: ClipRRect(
         borderRadius: borderRadius,
         child: ExpansionTile(
-          initiallyExpanded: initiallyExpanded || isRequired,
+          initiallyExpanded: _expanded,
+          onExpansionChanged: (expanded) =>
+              setState(() => _expanded = expanded),
           maintainState: true,
           tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-          childrenPadding: const EdgeInsets.fromLTRB(14, 4, 14, 16),
+          childrenPadding: EdgeInsets.zero,
           backgroundColor: AppColors.white,
-          collapsedBackgroundColor: AppColors.white,
+          collapsedBackgroundColor: AppColors.surfaceSoft,
           shape: const Border(),
           collapsedShape: const Border(),
           iconColor: AppColors.primary,
@@ -1674,7 +1833,7 @@ class _FormSection extends StatelessWidget {
             children: [
               Flexible(
                 child: Text(
-                  title,
+                  widget.title,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: AppColors.textPrimary,
@@ -1682,7 +1841,7 @@ class _FormSection extends StatelessWidget {
                   ),
                 ),
               ),
-              if (isRequired) ...[
+              if (widget.isRequired) ...[
                 const SizedBox(width: 5),
                 const Text(
                   '*',
@@ -1695,11 +1854,15 @@ class _FormSection extends StatelessWidget {
             ],
           ),
           children: [
-            SizedBox(
-              width: double.infinity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: children,
+            const Divider(height: 1, thickness: 1, color: AppColors.border),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: widget.children,
+                ),
               ),
             ),
           ],
@@ -1710,19 +1873,36 @@ class _FormSection extends StatelessWidget {
 }
 
 class _InlineSectionTitle extends StatelessWidget {
-  const _InlineSectionTitle(this.title);
+  const _InlineSectionTitle(this.title, {this.tooltip});
 
   final String title;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: Text(
-        title,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          if (tooltip != null) ...[
+            const SizedBox(width: 5),
+            Tooltip(
+              message: tooltip!,
+              child: const Icon(
+                Icons.help_outline,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1829,6 +2009,7 @@ class _SiblingRelationDraft {
     : relationId = data.id,
       relatedStudentId = data.relatedStudentId,
       relatedStudentName = data.relatedStudentName,
+      resolvedLookupValue = data.relatedStudentNo ?? data.relatedStudentId,
       relationType =
           StudentRelationOptions.relationTypes.contains(data.relationType)
           ? data.relationType!
@@ -1845,6 +2026,7 @@ class _SiblingRelationDraft {
   String? relationId;
   String? relatedStudentId;
   String? relatedStudentName;
+  String? resolvedLookupValue;
   String relationType;
   String agePosition;
   bool isSearching = false;
@@ -1853,12 +2035,31 @@ class _SiblingRelationDraft {
     return studentLookupController.text.trim().isNotEmpty;
   }
 
+  String get resolvedIdentity {
+    final lookup = studentLookupController.text.trim().toLowerCase();
+    final resolvedId = relatedStudentId?.trim().toLowerCase();
+    return resolvedLookupValue?.trim().toLowerCase() == lookup &&
+            resolvedId != null &&
+            resolvedId.isNotEmpty
+        ? resolvedId
+        : lookup;
+  }
+
+  void invalidateResolvedLookup(String value) {
+    if (value.trim() == resolvedLookupValue?.trim()) return;
+    relatedStudentId = null;
+    relatedStudentName = null;
+    resolvedLookupValue = null;
+  }
+
   StudentRelationFormData toData() {
+    final lookup = studentLookupController.text.trim();
+    final resolvedStillMatches = lookup == resolvedLookupValue?.trim();
     return StudentRelationFormData(
       id: relationId,
-      relatedStudentId: relatedStudentId,
-      relatedStudentNo: nullIfEmpty(studentLookupController.text),
-      relatedStudentName: relatedStudentName,
+      relatedStudentId: resolvedStillMatches ? relatedStudentId : null,
+      relatedStudentNo: nullIfEmpty(lookup),
+      relatedStudentName: resolvedStillMatches ? relatedStudentName : null,
       relationType: relationType,
       agePosition: agePosition,
     );
@@ -1953,12 +2154,14 @@ class _SiblingRelationDraftCard extends StatelessWidget {
     required this.draft,
     required this.canRemove,
     required this.onLookup,
+    required this.onLookupChanged,
     required this.onRemove,
   });
 
   final _SiblingRelationDraft draft;
   final bool canRemove;
   final VoidCallback onLookup;
+  final ValueChanged<String> onLookupChanged;
   final VoidCallback onRemove;
 
   @override
@@ -1980,10 +2183,7 @@ class _SiblingRelationDraftCard extends StatelessWidget {
                 child: TextFormField(
                   controller: draft.studentLookupController,
                   decoration: InputDecoration(
-                    label: _requiredFieldLabel(
-                      context,
-                      context.l10n.studentIdNo,
-                    ),
+                    labelText: context.l10n.studentIdNo,
                     suffixIcon: IconButton(
                       onPressed: draft.isSearching ? null : onLookup,
                       tooltip: context.l10n.searchSibling,
@@ -1999,11 +2199,12 @@ class _SiblingRelationDraftCard extends StatelessWidget {
                   validator: (value) {
                     if (!draft.hasInput) return null;
                     if (value == null || value.trim().isEmpty) {
-                      return 'Student ID or No is required';
+                      return context.l10n.studentIdNoRequired;
                     }
                     return null;
                   },
                   inputFormatters: [LengthLimitingTextInputFormatter(40)],
+                  onChanged: onLookupChanged,
                 ),
               ),
               const SizedBox(width: 12),
@@ -2019,7 +2220,7 @@ class _SiblingRelationDraftCard extends StatelessWidget {
                         (value) => DropdownMenuItem(
                           value: value,
                           child: AppDropdownStyle.menuItemLabel(
-                            label: value,
+                            label: _familyRelationLabel(context, value),
                             selected: value == draft.relationType,
                           ),
                         ),
@@ -2027,7 +2228,9 @@ class _SiblingRelationDraftCard extends StatelessWidget {
                       .toList(),
                   selectedItemBuilder: (context) =>
                       AppDropdownStyle.selectedLabels(
-                        StudentRelationOptions.relationTypes,
+                        StudentRelationOptions.relationTypes.map(
+                          (value) => _familyRelationLabel(context, value),
+                        ),
                       ),
                   dropdownColor: AppColors.white,
                   focusColor: AppColors.transparent,
@@ -2056,7 +2259,7 @@ class _SiblingRelationDraftCard extends StatelessWidget {
                         (value) => DropdownMenuItem(
                           value: value,
                           child: AppDropdownStyle.menuItemLabel(
-                            label: value,
+                            label: _agePositionLabel(context, value),
                             selected: value == draft.agePosition,
                           ),
                         ),
@@ -2064,7 +2267,9 @@ class _SiblingRelationDraftCard extends StatelessWidget {
                       .toList(),
                   selectedItemBuilder: (context) =>
                       AppDropdownStyle.selectedLabels(
-                        StudentRelationOptions.agePositions,
+                        StudentRelationOptions.agePositions.map(
+                          (value) => _agePositionLabel(context, value),
+                        ),
                       ),
                   dropdownColor: AppColors.white,
                   focusColor: AppColors.transparent,
@@ -2234,12 +2439,12 @@ class _GuardianDraftTable extends StatelessWidget {
         ),
         const Divider(height: 1),
         if (entries.isEmpty)
-          const SizedBox(
+          SizedBox(
             height: 88,
             child: Center(
               child: Text(
-                'No parent / guardian yet',
-                style: TextStyle(
+                context.l10n.noGuardiansYet,
+                style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -2293,7 +2498,12 @@ class _GuardianDraftTableRow extends StatelessWidget {
           child: Row(
             children: [
               SizedBox(width: 42, child: _RowNumber(number)),
-              Expanded(flex: 2, child: _DraftCellText(draft.relationship)),
+              Expanded(
+                flex: 2,
+                child: _DraftCellText(
+                  _familyRelationLabel(context, draft.relationship),
+                ),
+              ),
               Expanded(
                 flex: 3,
                 child: _DraftCellText(draft.nameController.text),
@@ -2304,7 +2514,7 @@ class _GuardianDraftTableRow extends StatelessWidget {
               ),
               Expanded(
                 child: _DraftCellText(
-                  draft.isPrimary ? 'Yes' : 'No',
+                  draft.isPrimary ? context.l10n.yes : context.l10n.no,
                   highlight: draft.isPrimary,
                 ),
               ),
@@ -2380,12 +2590,12 @@ class _ActivityDraftTable extends StatelessWidget {
         ),
         const Divider(height: 1),
         if (entries.isEmpty)
-          const SizedBox(
+          SizedBox(
             height: 88,
             child: Center(
               child: Text(
-                'No activity yet',
-                style: TextStyle(
+                context.l10n.noActivitiesYet,
+                style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -2447,7 +2657,9 @@ class _ActivityDraftTableRow extends StatelessWidget {
               SizedBox(width: 42, child: _RowNumber(number)),
               Expanded(
                 flex: 2,
-                child: _DraftCellText(draft.typeController.text),
+                child: _DraftCellText(
+                  _activityTypeLabel(context, draft.typeController.text),
+                ),
               ),
               Expanded(
                 flex: 3,
@@ -2624,7 +2836,7 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
                         (relationship) => DropdownMenuItem(
                           value: relationship,
                           child: AppDropdownStyle.menuItemLabel(
-                            label: relationship,
+                            label: _familyRelationLabel(context, relationship),
                             selected: relationship == _relationship,
                           ),
                         ),
@@ -2632,7 +2844,9 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
                       .toList(),
                   selectedItemBuilder: (context) =>
                       AppDropdownStyle.selectedLabels(
-                        GuardianRelationshipOptions.values,
+                        GuardianRelationshipOptions.values.map(
+                          (value) => _familyRelationLabel(context, value),
+                        ),
                       ),
                   dropdownColor: AppColors.white,
                   focusColor: AppColors.transparent,
@@ -2652,19 +2866,16 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
                   },
                 ),
                 const SizedBox(height: 14),
-                InputDecorator(
-                  decoration: InputDecoration(
-                    label: _requiredFieldLabel(
-                      context,
-                      context.l10n.primaryGuardian,
-                    ),
-                    border: const OutlineInputBorder(),
-                    contentPadding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+                _StandaloneSegmentedField(
+                  label: _requiredFieldLabel(
+                    context,
+                    context.l10n.primaryGuardian,
                   ),
                   child: SizedBox(
                     width: double.infinity,
                     child: SegmentedButton<bool>(
                       expandedInsets: EdgeInsets.zero,
+                      style: _compactSegmentedButtonStyle(),
                       showSelectedIcon: false,
                       segments: [
                         ButtonSegment(
@@ -2693,8 +2904,9 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
                     ),
                   ),
                   validator: (value) => AppFormValidation.requiredText(
+                    context,
                     value,
-                    'Guardian name',
+                    context.l10n.parentGuardianName,
                     minLength: 3,
                     maxLength: 80,
                   ),
@@ -2716,7 +2928,8 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
                         keyboardType: TextInputType.phone,
                         inputFormatters:
                             AppFormValidation.mobileInputFormatters,
-                        validator: AppFormValidation.requiredMobile,
+                        validator: (value) =>
+                            AppFormValidation.requiredMobile(context, value),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -2726,7 +2939,8 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
                         decoration: InputDecoration(
                           labelText: context.l10n.email,
                         ),
-                        validator: AppFormValidation.optionalEmail,
+                        validator: (value) =>
+                            AppFormValidation.optionalEmail(context, value),
                         inputFormatters: [
                           LengthLimitingTextInputFormatter(120),
                         ],
@@ -2744,8 +2958,9 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
                           labelText: context.l10n.occupation,
                         ),
                         validator: (value) => AppFormValidation.optionalText(
+                          context,
                           value,
-                          'Occupation',
+                          context.l10n.occupation,
                           maxLength: 60,
                         ),
                         inputFormatters: [LengthLimitingTextInputFormatter(60)],
@@ -2759,8 +2974,9 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
                           labelText: context.l10n.address,
                         ),
                         validator: (value) => AppFormValidation.optionalText(
+                          context,
                           value,
-                          'Address',
+                          context.l10n.address,
                           maxLength: 160,
                         ),
                         inputFormatters: [
@@ -2878,12 +3094,14 @@ class _ActivityDraftDialogState extends State<_ActivityDraftDialog> {
                 EditableDropdownField(
                   controller: _typeController,
                   label: _requiredFieldLabel(context, context.l10n.type),
-                  hintText: AppFormFieldStyle.select('or type'),
+                  hintText: context.l10n.selectField(context.l10n.orType),
                   options: StudentActivityTypeOptions.values,
+                  optionLabelBuilder: (value) =>
+                      _activityTypeLabel(context, value),
                   inputFormatters: [LengthLimitingTextInputFormatter(60)],
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Type is required';
+                      return context.l10n.typeRequired;
                     }
                     return null;
                   },
@@ -2898,8 +3116,9 @@ class _ActivityDraftDialogState extends State<_ActivityDraftDialog> {
                     ),
                   ),
                   validator: (value) => AppFormValidation.requiredText(
+                    context,
                     value,
-                    'Activity name',
+                    context.l10n.activityName,
                     minLength: 2,
                     maxLength: 80,
                   ),
@@ -3054,7 +3273,7 @@ class _OptionalDateTextFieldState extends State<_OptionalDateTextField> {
         final text = value?.trim() ?? '';
         if (text.isEmpty) return null;
         if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text)) {
-          return 'Use YYYY-MM-DD';
+          return context.l10n.useDateFormat;
         }
         return null;
       },
@@ -3062,51 +3281,89 @@ class _OptionalDateTextFieldState extends State<_OptionalDateTextField> {
   }
 }
 
-class _EnumSegmentedField<T extends Enum> extends StatelessWidget {
-  const _EnumSegmentedField({
+class _StandaloneSegmentedField extends StatelessWidget {
+  const _StandaloneSegmentedField({
     required this.label,
-    required this.value,
-    required this.values,
-    required this.labelBuilder,
-    required this.onChanged,
+    required this.child,
   });
 
   final Widget label;
-  final T value;
-  final List<T> values;
-  final String Function(T value) labelBuilder;
-  final ValueChanged<T> onChanged;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return InputDecorator(
-      decoration: InputDecoration(
-        label: label,
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        child: SegmentedButton<T>(
-          expandedInsets: EdgeInsets.zero,
-          style: SegmentedButton.styleFrom(
-            backgroundColor: AppColors.surfaceSoft,
-            selectedForegroundColor: Theme.of(context).colorScheme.onSurface,
-            selectedBackgroundColor: AppColors.primary,
-          ),
-          showSelectedIcon: false,
-          segments: values
-              .map(
-                (item) => ButtonSegment<T>(
-                  value: item,
-                  label: Text(labelBuilder(item)),
-                ),
-              )
-              .toList(),
-          selected: {value},
-          onSelectionChanged: (selection) => onChanged(selection.first),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        DefaultTextStyle.merge(
+          style: AppFormFieldStyle.labelStyle,
+          child: label,
         ),
-      ),
+        const SizedBox(height: 6),
+        child,
+      ],
     );
   }
+}
+
+ButtonStyle _compactSegmentedButtonStyle() {
+  return SegmentedButton.styleFrom(
+    visualDensity: VisualDensity.compact,
+    minimumSize: const Size(0, 38),
+    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    backgroundColor: AppColors.surfaceSoft,
+    selectedForegroundColor: AppColors.textPrimary,
+    selectedBackgroundColor: AppColors.primary,
+  );
+}
+
+String _housingStatusLabel(BuildContext context, String value) {
+  return switch (value) {
+    StudentHousingStatusOptions.owned => context.l10n.housingStatusOwned,
+    StudentHousingStatusOptions.rented => context.l10n.housingStatusRented,
+    StudentHousingStatusOptions.stayingWithFamily =>
+      context.l10n.housingStatusStayingWithFamily,
+    StudentHousingStatusOptions.other => context.l10n.housingStatusOther,
+    _ => StudentHousingStatusOptions.label(value),
+  };
+}
+
+String _activityTypeLabel(BuildContext context, String value) {
+  return switch (StudentActivityTypeOptions.normalize(value)) {
+    StudentActivityTypeOptions.schoolExtracurricular =>
+      context.l10n.activityTypeSchoolExtracurricular,
+    'Martial Arts' => context.l10n.activityTypeMartialArts,
+    'Arts' => context.l10n.activityTypeArts,
+    'Robotics Club' => context.l10n.activityTypeRoboticsClub,
+    'Language Club' => context.l10n.activityTypeLanguageClub,
+    'Community Service' => context.l10n.activityTypeCommunityService,
+    'Competition' => context.l10n.activityTypeCompetition,
+    StudentActivityTypeOptions.otherActivity =>
+      context.l10n.activityTypeOtherActivity,
+    final label => label,
+  };
+}
+
+String _familyRelationLabel(BuildContext context, String value) {
+  return switch (value.trim().toUpperCase()) {
+    'MOTHER' => context.l10n.familyRelationMother,
+    'FATHER' => context.l10n.familyRelationFather,
+    'BROTHER' => context.l10n.familyRelationBrother,
+    'SISTER' => context.l10n.familyRelationSister,
+    'UNCLE' => context.l10n.familyRelationUncle,
+    'AUNTY' => context.l10n.familyRelationAunt,
+    'GRANDPA' => context.l10n.familyRelationGrandfather,
+    'GRANDMA' => context.l10n.familyRelationGrandmother,
+    _ => value,
+  };
+}
+
+String _agePositionLabel(BuildContext context, String value) {
+  return switch (value.trim().toUpperCase()) {
+    'OLDER' => context.l10n.agePositionOlder,
+    'YOUNGER' => context.l10n.agePositionYounger,
+    _ => value,
+  };
 }

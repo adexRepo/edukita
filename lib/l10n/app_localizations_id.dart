@@ -298,6 +298,14 @@ class AppLocalizationsId extends AppLocalizations {
   String get teachingSchedule => 'Jadwal mengajar';
 
   @override
+  String get teachingScheduleRequiresUnit =>
+      'Buat minimal satu unit silabus di Parameter > Academic > Units sebelum menambahkan jadwal mengajar.';
+
+  @override
+  String get teachingScheduleRequiresUnitShort =>
+      'Buat unit silabus terlebih dahulu';
+
+  @override
   String get schoolEvent => 'Event sekolah';
 
   @override
@@ -1300,6 +1308,10 @@ class AppLocalizationsId extends AppLocalizations {
   String get siblingRelation => 'Relasi Saudara';
 
   @override
+  String get siblingRelationHelp =>
+      'Masukkan nomor siswa saudara yang sudah terdaftar jika kedua siswa berasal dari keluarga yang sama.';
+
+  @override
   String get addSiblingRelation => 'Tambah Relasi Saudara';
 
   @override
@@ -1430,9 +1442,6 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get removeRow => 'Hapus baris';
-
-  @override
-  String get downloadEvidence => 'Unduh bukti';
 
   @override
   String get removeScoreRecord => 'Hapus data nilai';
@@ -3066,6 +3075,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get addSchool => 'Tambah Sekolah';
 
   @override
+  String get editSchool => 'Ubah Sekolah';
+
+  @override
   String get addClass => 'Tambah Kelas';
 
   @override
@@ -3641,6 +3653,9 @@ class AppLocalizationsId extends AppLocalizations {
       'Belum ada dokumen bukti distribusi yang diunggah.';
 
   @override
+  String get downloadEvidence => 'Unduh bukti';
+
+  @override
   String get deleteEvidence => 'Hapus bukti';
 
   @override
@@ -3784,6 +3799,573 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
+  String fieldMinimumCharacters(Object field, int count) {
+    return '$field minimal harus $count karakter.';
+  }
+
+  @override
+  String fieldMaximumCharacters(Object field, int count) {
+    return '$field maksimal boleh $count karakter.';
+  }
+
+  @override
+  String get mobileNumberRequired => 'Nomor ponsel wajib diisi.';
+
+  @override
+  String get mobileNumberLengthInvalid =>
+      'Nomor ponsel harus terdiri dari 11 sampai 13 digit.';
+
+  @override
+  String get emailFormatInvalid => 'Format email tidak valid.';
+
+  @override
+  String guardianNumberName(int number) {
+    return 'Nama wali #$number';
+  }
+
+  @override
+  String guardianNumberError(int number, Object error) {
+    return 'Wali #$number: $error';
+  }
+
+  @override
+  String activityNumberType(int number) {
+    return 'Jenis kegiatan #$number';
+  }
+
+  @override
+  String activityNumberName(int number) {
+    return 'Nama kegiatan #$number';
+  }
+
+  @override
+  String activityNumberStartDateError(int number, Object error) {
+    return 'Tanggal mulai kegiatan #$number: $error';
+  }
+
+  @override
+  String activityNumberEndDateError(int number, Object error) {
+    return 'Tanggal selesai kegiatan #$number: $error';
+  }
+
+  @override
+  String get useDateFormat => 'Gunakan format YYYY-MM-DD.';
+
+  @override
+  String get duplicateClassAndYear => 'Kelas dan tahun tidak boleh sama.';
+
+  @override
+  String classNumberDuplicateClassAndYear(int number) {
+    return 'Kelas #$number: kelas dan tahun tidak boleh sama.';
+  }
+
+  @override
+  String get alphabetOnly => 'Hanya boleh menggunakan huruf.';
+
+  @override
+  String get failedToSaveSchedule => 'Gagal menyimpan jadwal.';
+
+  @override
+  String pleaseSelectField(Object field) {
+    return 'Silakan pilih $field.';
+  }
+
+  @override
+  String fieldCannotBeEmpty(Object field) {
+    return '$field tidak boleh kosong.';
+  }
+
+  @override
+  String sortByDescending(Object column) {
+    return 'Urutkan $column secara menurun.';
+  }
+
+  @override
+  String sortedByDescending(Object column) {
+    return '$column diurutkan secara menurun.';
+  }
+
+  @override
+  String sortedByAscending(Object column) {
+    return '$column diurutkan secara menaik.';
+  }
+
+  @override
+  String get removeAllClassesConfirm =>
+      'Hapus semua kelas yang telah dimasukkan dari formulir sekolah ini?';
+
+  @override
+  String get schoolInfo => 'Informasi Sekolah';
+
+  @override
+  String get schoolName => 'Nama Sekolah';
+
+  @override
+  String classesCount(int count) {
+    return 'Kelas ($count)';
+  }
+
+  @override
+  String get editClass => 'Ubah Kelas';
+
+  @override
+  String duplicateClassEntry(int number) {
+    return 'Kelas #$number: kelas dan tahun tidak boleh sama.';
+  }
+
+  @override
+  String get addCurriculum => 'Tambah Kurikulum';
+
+  @override
+  String get editCurriculum => 'Ubah Kurikulum';
+
+  @override
+  String get addSyllabus => 'Tambah Silabus';
+
+  @override
+  String get editSyllabus => 'Ubah Silabus';
+
+  @override
+  String get editSubject => 'Ubah Mata Pelajaran';
+
+  @override
+  String get editUnit => 'Ubah Unit';
+
+  @override
+  String get addCompetency => 'Tambah Kompetensi';
+
+  @override
+  String get editCompetency => 'Ubah Kompetensi';
+
+  @override
+  String get addStrategy => 'Tambah Strategi';
+
+  @override
+  String get editStrategy => 'Ubah Strategi';
+
+  @override
+  String get noSampleFile => 'Tidak ada berkas contoh';
+
+  @override
+  String get reviewCannotUndo =>
+      'Periksa kembali sebelum melanjutkan. Tindakan ini tidak dapat dibatalkan.';
+
+  @override
+  String cancelledWithReason(Object reason) {
+    return 'Dibatalkan: $reason';
+  }
+
+  @override
+  String get noStudentsAvailable => 'Tidak ada siswa yang tersedia.';
+
+  @override
+  String get noNoteHistoryForStudent =>
+      'Belum ada riwayat catatan untuk siswa ini.';
+
+  @override
+  String addedByName(Object name) {
+    return 'Ditambahkan oleh $name';
+  }
+
+  @override
+  String get noActiveStudentsInClass => 'Tidak ada siswa aktif di kelas ini.';
+
+  @override
+  String saveAllCount(int count) {
+    return 'Simpan Semua ($count)';
+  }
+
+  @override
+  String deleteAssessmentForStudent(Object student) {
+    return 'Hapus penilaian untuk $student?';
+  }
+
+  @override
+  String get deleteSavedAssessment => 'Hapus penilaian tersimpan';
+
+  @override
+  String get noSavedRecord => 'Belum ada data tersimpan';
+
+  @override
+  String get deleteStudentNoteConfirm => 'Hapus catatan siswa ini?';
+
+  @override
+  String get editStudentNote => 'Ubah Catatan Siswa';
+
+  @override
+  String get addStudentNote => 'Tambah Catatan Siswa';
+
+  @override
+  String get updateNote => 'Perbarui Catatan';
+
+  @override
+  String get addNote => 'Tambah Catatan';
+
+  @override
+  String get selectPrimaryGuardian => 'Pilih satu wali utama.';
+
+  @override
+  String get studentCannotRelateSelf =>
+      'Siswa tidak dapat dihubungkan dengan dirinya sendiri.';
+
+  @override
+  String get noActivitiesYet => 'Belum ada kegiatan';
+
+  @override
+  String get yes => 'Ya';
+
+  @override
+  String get no => 'Tidak';
+
+  @override
+  String get scopeSchool => 'Sekolah';
+
+  @override
+  String get scopeInternal => 'Internal';
+
+  @override
+  String evidenceRequiredForType(Object type) {
+    return 'Wajib untuk $type. Format yang diizinkan: PDF, JPG, PNG.';
+  }
+
+  @override
+  String get selectedFile => 'Berkas terpilih';
+
+  @override
+  String get noFile => 'Tidak ada berkas';
+
+  @override
+  String get next => 'Berikutnya';
+
+  @override
+  String get update => 'Perbarui';
+
+  @override
+  String get systemLabel => 'Sistem';
+
+  @override
+  String get customLabel => 'Kustom';
+
+  @override
+  String get systemRuleToggleOnly =>
+      'Aturan sistem hanya dapat diaktifkan atau dinonaktifkan';
+
+  @override
+  String get editCustomRule => 'Ubah aturan kustom';
+
+  @override
+  String get editCustomRuleTitle => 'Ubah Aturan Kustom';
+
+  @override
+  String removeTargetCandidateConfirm(Object student, Object rule) {
+    return 'Hapus $student dari target $rule?';
+  }
+
+  @override
+  String removeAllTargetCandidatesConfirm(int count, Object rule) {
+    return 'Hapus semua $count kandidat terpilih dari $rule?';
+  }
+
+  @override
+  String get removedFromTargetPlan => 'Dihapus dari rencana target';
+
+  @override
+  String remainingCount(int count) {
+    return 'Sisa $count';
+  }
+
+  @override
+  String overAllocatedCount(int count) {
+    return 'Kelebihan $count';
+  }
+
+  @override
+  String get minimumAttendanceShort => 'Min. Kehadiran';
+
+  @override
+  String get reportNameHint => 'Laporan Nilai Ujian Siswa';
+
+  @override
+  String get success => 'Berhasil';
+
+  @override
+  String get changesSavedSuccessfully => 'Perubahan berhasil disimpan.';
+
+  @override
+  String get failedToSaveChanges => 'Gagal menyimpan perubahan.';
+
+  @override
+  String get noDataAvailable => 'Tidak ada data';
+
+  @override
+  String get unknownDate => 'Tanggal tidak diketahui';
+
+  @override
+  String get assistancePlanTitle => 'Rencana Bantuan';
+
+  @override
+  String get assistanceCandidatePlanTitle => 'Rencana Kandidat Bantuan';
+
+  @override
+  String get assistanceRecipientsTitle => 'Penerima Bantuan';
+
+  @override
+  String get eligible => 'Memenuhi Syarat';
+
+  @override
+  String get preparedBy => 'Disiapkan oleh';
+
+  @override
+  String get reviewedBy => 'Ditinjau oleh';
+
+  @override
+  String get totalRecipients => 'Total Penerima';
+
+  @override
+  String get nameDate => 'Nama / Tanggal';
+
+  @override
+  String get fixedPriority => 'Prioritas Tetap';
+
+  @override
+  String get needBased => 'Berdasarkan Kebutuhan';
+
+  @override
+  String get meritBased => 'Berdasarkan Prestasi';
+
+  @override
+  String get growthBased => 'Berdasarkan Perkembangan';
+
+  @override
+  String get specialCase => 'Kasus Khusus';
+
+  @override
+  String get teacherRecommendation => 'Rekomendasi Pengajar';
+
+  @override
+  String get rollingAttendance => 'Rotasi Kehadiran';
+
+  @override
+  String get manualPriority => 'Prioritas Manual';
+
+  @override
+  String get temporarySupport => 'Bantuan Sementara';
+
+  @override
+  String get attendanceBased => 'Berdasarkan Kehadiran';
+
+  @override
+  String changeSchoolTypeRemovesClasses(Object oldType, Object newType) {
+    return 'Mengubah jenis sekolah dari $oldType menjadi $newType akan menghapus kelas yang telah dibuat untuk $oldType.';
+  }
+
+  @override
+  String get invalidUsernameOrPassword =>
+      'Nama pengguna atau kata sandi salah.';
+
+  @override
+  String get loginFailedTryAgain => 'Gagal masuk. Silakan coba lagi.';
+
+  @override
+  String get linkedTeacherProfile => 'Profil pengajar yang terhubung';
+
+  @override
+  String scheduleCount(int count) {
+    return '$count jadwal';
+  }
+
+  @override
+  String eventCount(int count) {
+    return '$count acara';
+  }
+
+  @override
+  String get unnamedSchool => 'Sekolah Tanpa Nama';
+
+  @override
+  String starsCount(Object score) {
+    return '$score bintang';
+  }
+
+  @override
+  String followUpWithNotes(Object notes) {
+    return 'Tindak lanjut: $notes';
+  }
+
+  @override
+  String shownCount(int count) {
+    return '$count ditampilkan';
+  }
+
+  @override
+  String get defaultScore => 'Nilai default';
+
+  @override
+  String get defaultRating => 'Rating default';
+
+  @override
+  String shownSelectedCount(int shown, int selected) {
+    return '$shown ditampilkan | $selected dipilih';
+  }
+
+  @override
+  String get defaultScoreRangeError => 'Nilai default harus antara 0 dan 100.';
+
+  @override
+  String get defaultRatingRangeError =>
+      'Rating default harus antara 0,5 dan 5.';
+
+  @override
+  String assessmentModeDescription(Object type, Object mode) {
+    return '$type menggunakan $mode.';
+  }
+
+  @override
+  String get numericScoreRange => 'nilai angka 0-100';
+
+  @override
+  String get starRatingRange => 'rating bintang 0,5-5';
+
+  @override
+  String get enterNote => 'Masukkan catatan';
+
+  @override
+  String enterField(Object field) {
+    return 'Masukkan $field';
+  }
+
+  @override
+  String get allowedSampleFileTypes =>
+      'Hanya berkas Excel, Word, TXT, MD, dan PDF yang diizinkan.';
+
+  @override
+  String get unsupportedSampleFileType => 'Jenis berkas contoh tidak didukung.';
+
+  @override
+  String get assistanceRulesSubtitle =>
+      'Kelola data master aturan bantuan dan aturan manual kustom.';
+
+  @override
+  String get thisWillAlsoAffect => 'Ini juga akan berdampak pada:';
+
+  @override
+  String get setupStructure => 'Atur struktur';
+
+  @override
+  String get planMarkedSubmitted =>
+      'Rencana bantuan telah ditandai sebagai diajukan.';
+
+  @override
+  String get approvalDocumentFileType => 'PDF, JPG, atau PNG';
+
+  @override
+  String get dragRowsPriority => 'Seret baris untuk mengubah prioritas.';
+
+  @override
+  String zeroQuotaRulesWarning(Object rules) {
+    return 'Beberapa aturan terpilih memiliki kuota 0: $rules.\n\nJika dilanjutkan, aturan tersebut akan dihapus dari pengaturan periode bantuan ini.';
+  }
+
+  @override
+  String get approvalDocumentFileLabel => 'Dokumen persetujuan';
+
+  @override
+  String reviewExportSummary(
+    int target,
+    int selected,
+    int eligible,
+    int manual,
+    int auto,
+  ) {
+    return 'Tinjau & Ekspor\nTarget: $target | Terpilih: $selected | Memenuhi Syarat: $eligible | Manual: $manual | Otomatis: $auto';
+  }
+
+  @override
+  String candidateQuotaSummary(int quota, int selected, int remaining) {
+    return 'Kuota: $quota | Terpilih: $selected | Sisa: $remaining | Minimum kehadiran berlaku saat pembuatan target';
+  }
+
+  @override
+  String impactUnitsDeleted(int count) {
+    return '$count unit akan dihapus';
+  }
+
+  @override
+  String impactSyllabiDetached(int count) {
+    return '$count referensi silabus akan dilepas';
+  }
+
+  @override
+  String impactSchedulesDeleted(int count) {
+    return '$count jadwal mengajar akan dihapus';
+  }
+
+  @override
+  String impactAssessmentsDeleted(int count) {
+    return '$count penilaian akan dihapus';
+  }
+
+  @override
+  String impactCompetenciesDeleted(int count) {
+    return '$count data kompetensi akan dihapus';
+  }
+
+  @override
+  String impactStudentScoresDetached(int count) {
+    return '$count referensi nilai siswa akan dilepas';
+  }
+
+  @override
+  String selectField(Object field) {
+    return 'Pilih $field';
+  }
+
+  @override
+  String get orType => 'atau ketik';
+
+  @override
+  String get eventTypeExam => 'Ujian';
+
+  @override
+  String get eventTypeHoliday => 'Libur';
+
+  @override
+  String get eventTypeReportCard => 'Rapor';
+
+  @override
+  String get curriculumSectionDescription =>
+      'Kelola versi kurikulum, tahun berlaku, dan kerangka pembelajaran aktif.';
+
+  @override
+  String get subjectSectionDescription =>
+      'Kelola master mata pelajaran sebelum digunakan pada silabus dan jadwal.';
+
+  @override
+  String get syllabusSectionDescription =>
+      'Tentukan rencana pembelajaran berdasarkan kurikulum, jenis sekolah, level, dan semester.';
+
+  @override
+  String get unitSectionDescription =>
+      'Atur unit pembelajaran secara berurutan di bawah setiap mata pelajaran.';
+
+  @override
+  String get competencySectionDescription =>
+      'Kelola target kompetensi terukur untuk setiap unit pembelajaran.';
+
+  @override
+  String get strategySectionDescription =>
+      'Kelola strategi mengajar yang digunakan dalam jadwal dan perencanaan pembelajaran.';
+
+  @override
+  String get waitlist => 'Daftar Tunggu';
+
+  @override
+  String get pending => 'Menunggu';
+
+  @override
+  String get overridden => 'Dikecualikan';
+
+  @override
   String get aboutEdukita => 'Tentang Edukita';
 
   @override
@@ -3841,5 +4423,411 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String errorWithDetails(Object details) {
     return 'Kesalahan: $details';
+  }
+
+  @override
+  String get createSchoolBeforeAddingStudents =>
+      'Buat sekolah sebelum menambahkan siswa.';
+
+  @override
+  String get createClassBeforeAddingStudents =>
+      'Buat kelas sebelum menambahkan siswa.';
+
+  @override
+  String activityEndBeforeStart(int number) {
+    return 'Tanggal selesai aktivitas #$number tidak boleh sebelum tanggal mulai.';
+  }
+
+  @override
+  String get duplicateSibling =>
+      'Saudara yang sama tidak dapat ditambahkan lebih dari sekali.';
+
+  @override
+  String get birthDateAfterJoinDate =>
+      'Tanggal lahir tidak boleh setelah tanggal bergabung.';
+
+  @override
+  String get siblingGuardiansCopied =>
+      'Data wali saudara disalin ke bagian keluarga.';
+
+  @override
+  String get nisMaxTenCharacters => 'NIS maksimal 10 karakter.';
+
+  @override
+  String get fullNameMinimumThree => 'Nama lengkap minimal 3 karakter.';
+
+  @override
+  String get fullNameMaximumEighty => 'Nama lengkap maksimal 80 karakter.';
+
+  @override
+  String get selectSchoolRequired => 'Silakan pilih sekolah.';
+
+  @override
+  String get selectClassRequired => 'Silakan pilih kelas.';
+
+  @override
+  String get householdEducationProfile => 'Profil Rumah Tangga & Pendidikan';
+
+  @override
+  String get homeAddress => 'Alamat Rumah';
+
+  @override
+  String get homeAddressHint =>
+      'Jalan, RT/RW, nomor rumah, desa, dan kecamatan';
+
+  @override
+  String get dailySchoolTransportCost => 'Biaya Transportasi Sekolah Harian';
+
+  @override
+  String get housingStatus => 'Status Tempat Tinggal';
+
+  @override
+  String get selectHousingStatus => 'Pilih status tempat tinggal';
+
+  @override
+  String get housingStatusOwned => 'Milik sendiri';
+
+  @override
+  String get housingStatusRented => 'Sewa';
+
+  @override
+  String get housingStatusStayingWithFamily => 'Tinggal bersama keluarga';
+
+  @override
+  String get housingStatusOther => 'Lainnya';
+
+  @override
+  String get activityTypeSchoolExtracurricular => 'Ekstrakurikuler Sekolah';
+
+  @override
+  String get activityTypeMartialArts => 'Bela Diri';
+
+  @override
+  String get activityTypeArts => 'Seni';
+
+  @override
+  String get activityTypeRoboticsClub => 'Klub Robotika';
+
+  @override
+  String get activityTypeLanguageClub => 'Klub Bahasa';
+
+  @override
+  String get activityTypeCommunityService => 'Kegiatan Sosial';
+
+  @override
+  String get activityTypeCompetition => 'Kompetisi';
+
+  @override
+  String get activityTypeOtherActivity => 'Aktivitas Lainnya';
+
+  @override
+  String get familyRelationMother => 'Ibu';
+
+  @override
+  String get familyRelationFather => 'Ayah';
+
+  @override
+  String get familyRelationBrother => 'Saudara Laki-laki';
+
+  @override
+  String get familyRelationSister => 'Saudara Perempuan';
+
+  @override
+  String get familyRelationUncle => 'Paman';
+
+  @override
+  String get familyRelationAunt => 'Bibi';
+
+  @override
+  String get familyRelationGrandfather => 'Kakek';
+
+  @override
+  String get familyRelationGrandmother => 'Nenek';
+
+  @override
+  String get agePositionOlder => 'Lebih Tua';
+
+  @override
+  String get agePositionYounger => 'Lebih Muda';
+
+  @override
+  String get examSourceSchoolReport => 'Laporan Sekolah';
+
+  @override
+  String get examSourceTryout => 'Uji Coba';
+
+  @override
+  String get examSourceExternal => 'Eksternal';
+
+  @override
+  String get householdMemberCount => 'Jumlah Anggota Keluarga';
+
+  @override
+  String get fatherIncome => 'Penghasilan Ayah';
+
+  @override
+  String get motherIncome => 'Penghasilan Ibu';
+
+  @override
+  String get educationArrears => 'Tunggakan Pendidikan';
+
+  @override
+  String get academicAchievement => 'Prestasi Akademik';
+
+  @override
+  String get academicAchievementHint => 'Peringkat atau kompetisi akademik';
+
+  @override
+  String get nonAcademicAchievement => 'Prestasi Non-Akademik';
+
+  @override
+  String get nonAcademicAchievementHint => 'Prestasi olahraga atau seni';
+
+  @override
+  String fieldMustBeNumber(Object field) {
+    return '$field harus berupa angka.';
+  }
+
+  @override
+  String fieldMustBeAtLeastOne(Object field) {
+    return '$field minimal 1.';
+  }
+
+  @override
+  String get mustBeNumber => 'Harus berupa angka.';
+
+  @override
+  String get studentIdNoRequired => 'ID atau nomor siswa wajib diisi.';
+
+  @override
+  String get typeRequired => 'Tipe wajib diisi.';
+
+  @override
+  String get evidenceNotAttached => 'Tidak ada file bukti yang dilampirkan.';
+
+  @override
+  String get evidenceNotFound => 'File bukti tidak ditemukan di penyimpanan.';
+
+  @override
+  String get evidenceDownloaded => 'Bukti berhasil diunduh.';
+
+  @override
+  String get evidenceDownloadFailed => 'Gagal mengunduh bukti.';
+
+  @override
+  String evidenceRequiredForExamType(Object examType) {
+    return 'File bukti wajib untuk $examType.';
+  }
+
+  @override
+  String get examDateRequired => 'Tanggal ujian wajib diisi.';
+
+  @override
+  String get allowedPdfJpgPng =>
+      'Hanya file PDF, JPG, dan PNG yang diperbolehkan.';
+
+  @override
+  String get evidenceMaxTwentyMb => 'File bukti maksimal 20 MB.';
+
+  @override
+  String get inputAtLeastOneScore => 'Masukkan minimal satu nilai.';
+
+  @override
+  String fieldMustNotExceedMax(Object field) {
+    return '$field tidak boleh melebihi nilai maksimum.';
+  }
+
+  @override
+  String get studentPhotoUnavailable => 'Foto siswa tidak tersedia.';
+
+  @override
+  String get studentPhotoNotFound => 'File foto siswa tidak ditemukan.';
+
+  @override
+  String get studentPhotoDownloaded => 'Foto siswa berhasil diunduh.';
+
+  @override
+  String get studentPhotoDownloadFailed => 'Gagal mengunduh foto siswa.';
+
+  @override
+  String get attendanceSaved => 'Kehadiran berhasil disimpan.';
+
+  @override
+  String scoreRequiredFor(Object item) {
+    return 'Nilai $item wajib diisi.';
+  }
+
+  @override
+  String scoreMustBeZeroToHundred(Object item) {
+    return '$item harus antara 0-100.';
+  }
+
+  @override
+  String scoreMustBeHalfToFiveStars(Object item) {
+    return '$item harus antara 0,5-5 bintang.';
+  }
+
+  @override
+  String studentReportingSaved(Object student) {
+    return 'Laporan $student berhasil disimpan.';
+  }
+
+  @override
+  String get assessmentDeleted => 'Penilaian berhasil dihapus.';
+
+  @override
+  String get selectAtLeastOneStudent =>
+      'Pilih minimal satu siswa terlebih dahulu.';
+
+  @override
+  String assessmentRowsSaved(int count) {
+    return '$count baris penilaian berhasil disimpan.';
+  }
+
+  @override
+  String get sessionNotesSaved => 'Catatan sesi berhasil disimpan.';
+
+  @override
+  String get studentNoteDeleted => 'Catatan siswa berhasil dihapus.';
+
+  @override
+  String get commentRequired => 'Komentar wajib diisi.';
+
+  @override
+  String get studentNoteAdded => 'Catatan siswa berhasil ditambahkan.';
+
+  @override
+  String get studentNoteUpdated => 'Catatan siswa berhasil diperbarui.';
+
+  @override
+  String get enterLevel => 'Silakan masukkan level.';
+
+  @override
+  String levelMustMatch(Object hint) {
+    return 'Level harus $hint.';
+  }
+
+  @override
+  String get yearMustFourDigits => 'Tahun harus terdiri dari 4 digit.';
+
+  @override
+  String get schoolNameRequired => 'Nama sekolah wajib diisi.';
+
+  @override
+  String get schoolNameMinimumThree => 'Nama sekolah minimal 3 karakter.';
+
+  @override
+  String get schoolNameMaximumEighty => 'Nama sekolah maksimal 80 karakter.';
+
+  @override
+  String get addressRequired => 'Alamat wajib diisi.';
+
+  @override
+  String get addressMinimumFive => 'Alamat minimal 5 karakter.';
+
+  @override
+  String get addressMaximumOneSixty => 'Alamat maksimal 160 karakter.';
+
+  @override
+  String get curriculumNameRequired => 'Nama kurikulum wajib diisi.';
+
+  @override
+  String get syllabusTitleRequired => 'Judul silabus wajib diisi.';
+
+  @override
+  String get subjectNameRequired => 'Nama mata pelajaran wajib diisi.';
+
+  @override
+  String get unitNameRequired => 'Nama unit wajib diisi.';
+
+  @override
+  String get competencyDescriptionRequired =>
+      'Deskripsi kompetensi wajib diisi.';
+
+  @override
+  String get strategyNameRequired => 'Nama strategi wajib diisi.';
+
+  @override
+  String get sampleFileNotAttached =>
+      'Tidak ada file contoh yang dilampirkan pada strategi ini.';
+
+  @override
+  String get sampleFileNotFound =>
+      'File contoh tidak ditemukan di penyimpanan.';
+
+  @override
+  String get sampleFileDownloaded => 'File contoh berhasil diunduh.';
+
+  @override
+  String get sampleFileDownloadFailed => 'Gagal mengunduh file contoh.';
+
+  @override
+  String get minimumAttendanceRangeError =>
+      'Kehadiran minimum harus antara 0 dan 100.';
+
+  @override
+  String databaseBackupCreated(Object path) {
+    return 'Cadangan database berhasil dibuat: $path';
+  }
+
+  @override
+  String get applicationCacheCleared => 'Cache aplikasi berhasil dibersihkan.';
+
+  @override
+  String get selectOption => 'Pilih opsi';
+
+  @override
+  String get periodCreateDenied =>
+      'Anda tidak memiliki izin untuk membuat periode.';
+
+  @override
+  String get targetCandidateRemoved => 'Kandidat target berhasil dihapus.';
+
+  @override
+  String get targetCandidatesRemoved => 'Kandidat target berhasil dihapus.';
+
+  @override
+  String get manualTargetsSaved => 'Target manual berhasil disimpan.';
+
+  @override
+  String get allocatedQuotaMustEqualTargetQuota =>
+      'Kuota yang dialokasikan harus sama dengan target kuota.';
+
+  @override
+  String get assistancePeriodCreated => 'Periode bantuan berhasil dibuat.';
+
+  @override
+  String get approvalDocumentNotFound =>
+      'File dokumen persetujuan tidak ditemukan.';
+
+  @override
+  String get approvalDocumentDownloaded =>
+      'Dokumen persetujuan berhasil diunduh.';
+
+  @override
+  String get planExportedSubmitted =>
+      'Rencana berhasil diekspor dan ditandai sebagai diajukan.';
+
+  @override
+  String get planExported => 'Rencana berhasil diekspor.';
+
+  @override
+  String get recipientListExported => 'Daftar penerima berhasil diekspor.';
+
+  @override
+  String get filter => 'Filter';
+
+  @override
+  String get value => 'Nilai';
+
+  @override
+  String get done => 'Selesai';
+
+  @override
+  String get teachers => 'Pengajar';
+
+  @override
+  String confirmActionForSubject(Object action, Object subject) {
+    return '$action $subject?';
   }
 }

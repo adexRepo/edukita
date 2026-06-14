@@ -1,3 +1,4 @@
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:flutter/material.dart';
 import 'package:edukita/features/schools/presentation/classes_page.dart';
 import 'package:edukita/features/schools/presentation/schools_page.dart';
@@ -41,11 +42,11 @@ class _ManagementPageState extends State<ManagementPage>
               unselectedLabelColor: Theme.of(
                 context,
               ).colorScheme.onSurface.withAlpha(153),
-              tabs: const [
-                Tab(text: 'Classes'),
-                Tab(text: 'Teachers'),
-                Tab(text: 'Guardians'),
-                Tab(text: 'Schools'),
+              tabs: [
+                Tab(text: context.l10n.classes),
+                Tab(text: context.l10n.teachers),
+                Tab(text: context.l10n.guardians),
+                Tab(text: context.l10n.schools),
               ],
             ),
           ),

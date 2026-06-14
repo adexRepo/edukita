@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:edukita/core/helper/pageable.dart';
+import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 
@@ -31,7 +32,7 @@ class AppTable<T> extends StatefulWidget {
   final FutureOr<void> Function(T data)? onRowTap;
   final Pageable? pageable;
   final void Function(int page)? onPageChanged;
-  final String emptyMessage;
+  final String? emptyMessage;
   final bool deferRowTap;
 
   const AppTable({
@@ -42,7 +43,7 @@ class AppTable<T> extends StatefulWidget {
     this.onRowTap,
     this.onPageChanged,
     this.pageable = const Pageable(page: 0, size: 20, sorts: []),
-    this.emptyMessage = 'No data available',
+    this.emptyMessage,
     this.deferRowTap = true,
   });
 
@@ -398,9 +399,9 @@ class _AppTableState<T> extends State<AppTable<T>> {
     if (!isSortable) return title;
 
     final columnName = title.replaceAll('\n', ' ').toLowerCase();
-    if (!isActiveSort) return 'Sorting by $columnName descending';
-    if (!ascending) return 'Sorted by $columnName descending';
-    return 'Sorted by $columnName ascending';
+    if (!isActiveSort) return context.l10n.sortByDescending(columnName);
+    if (!ascending) return context.l10n.sortedByDescending(columnName);
+    return context.l10n.sortedByAscending(columnName);
   }
 
   // ================= BODY =================
@@ -409,7 +410,7 @@ class _AppTableState<T> extends State<AppTable<T>> {
     if (data.isEmpty) {
       return Center(
         child: Text(
-          widget.emptyMessage,
+          widget.emptyMessage ?? context.l10n.noDataAvailable,
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: AppColors.textSecondary,

@@ -16,16 +16,20 @@ class StudentInfoTile extends StatelessWidget {
 
   final StudentDetailData student;
 
-  Future<void> _downloadPhoto() async {
+  Future<void> _downloadPhoto(BuildContext context) async {
+    final unavailableMessage = context.l10n.studentPhotoUnavailable;
+    final notFoundMessage = context.l10n.studentPhotoNotFound;
+    final downloadedMessage = context.l10n.studentPhotoDownloaded;
+    final failedMessage = context.l10n.studentPhotoDownloadFailed;
     final sourcePath = student.photoPath?.trim();
     if (sourcePath == null || sourcePath.isEmpty) {
-      AppToast.showFailed('Student photo is not available.');
+      AppToast.showFailed(unavailableMessage);
       return;
     }
 
     final source = io.File(sourcePath);
     if (!await source.exists()) {
-      AppToast.showFailed('Student photo file was not found.');
+      AppToast.showFailed(notFoundMessage);
       return;
     }
 
@@ -41,9 +45,9 @@ class StudentInfoTile extends StatelessWidget {
       if (p.normalize(source.path) != p.normalize(location.path)) {
         await source.copy(location.path);
       }
-      AppToast.showSuccess('Student photo downloaded.');
+      AppToast.showSuccess(downloadedMessage);
     } catch (_) {
-      AppToast.showFailed('Failed to download student photo.');
+      AppToast.showFailed(failedMessage);
     }
   }
 
@@ -132,7 +136,9 @@ class StudentInfoTile extends StatelessWidget {
                 top: 0,
                 child: IconButton(
                   tooltip: context.l10n.download,
-                  onPressed: canDownloadPhoto ? _downloadPhoto : null,
+                  onPressed: canDownloadPhoto
+                      ? () => _downloadPhoto(context)
+                      : null,
                   constraints: const BoxConstraints.tightFor(
                     width: 32,
                     height: 32,

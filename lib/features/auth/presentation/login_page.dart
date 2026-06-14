@@ -111,13 +111,13 @@ class _LoginPageState extends State<LoginPage> {
       } else {
         if (!mounted) return;
         setState(() {
-          _errorMessage = 'Invalid username or password.';
+          _errorMessage = context.l10n.invalidUsernameOrPassword;
         });
       }
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Login failed. Please try again.';
+        _errorMessage = context.l10n.loginFailedTryAgain;
       });
     } finally {
       if (mounted) {

@@ -1,3 +1,5 @@
+import 'package:edukita/core/localization/localization_extension.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class AppFormValidation {
@@ -13,23 +15,25 @@ class AppFormValidation {
   ];
 
   static String? requiredText(
+    BuildContext context,
     String? value,
     String label, {
     int minLength = 1,
     int maxLength = 80,
   }) {
     final text = value?.trim() ?? '';
-    if (text.isEmpty) return '$label is required';
+    if (text.isEmpty) return context.l10n.fieldRequiredMessage(label);
     if (text.length < minLength) {
-      return '$label must be at least $minLength characters';
+      return context.l10n.fieldMinimumCharacters(label, minLength);
     }
     if (text.length > maxLength) {
-      return '$label must be at most $maxLength characters';
+      return context.l10n.fieldMaximumCharacters(label, maxLength);
     }
     return null;
   }
 
   static String? optionalText(
+    BuildContext context,
     String? value,
     String label, {
     int maxLength = 80,
@@ -37,47 +41,57 @@ class AppFormValidation {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return null;
     if (text.length > maxLength) {
-      return '$label must be at most $maxLength characters';
+      return context.l10n.fieldMaximumCharacters(label, maxLength);
     }
     return null;
   }
 
-  static String? requiredMobile(String? value) {
+  static String? requiredMobile(BuildContext context, String? value) {
     final text = value?.trim() ?? '';
-    if (text.isEmpty) return 'Mobile no is required';
+    if (text.isEmpty) return context.l10n.mobileNumberRequired;
     if (!RegExp(r'^\d{11,13}$').hasMatch(text)) {
-      return 'Mobile no must be 11 to 13 digits';
+      return context.l10n.mobileNumberLengthInvalid;
     }
     return null;
   }
 
-  static String? optionalMobile(String? value) {
+  static String? optionalMobile(BuildContext context, String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return null;
     if (!RegExp(r'^\d{11,13}$').hasMatch(text)) {
-      return 'Mobile no must be 11 to 13 digits';
+      return context.l10n.mobileNumberLengthInvalid;
     }
     return null;
   }
 
-  static String? requiredEmail(String? value) {
-    final textError = requiredText(value, 'Email', maxLength: 120);
+  static String? requiredEmail(BuildContext context, String? value) {
+    final textError = requiredText(
+      context,
+      value,
+      context.l10n.email,
+      maxLength: 120,
+    );
     if (textError != null) return textError;
-    return _validateEmail(value!.trim());
+    return _validateEmail(context, value!.trim());
   }
 
-  static String? optionalEmail(String? value) {
+  static String? optionalEmail(BuildContext context, String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return null;
-    final textError = optionalText(text, 'Email', maxLength: 120);
+    final textError = optionalText(
+      context,
+      text,
+      context.l10n.email,
+      maxLength: 120,
+    );
     if (textError != null) return textError;
-    return _validateEmail(text);
+    return _validateEmail(context, text);
   }
 
-  static String? _validateEmail(String value) {
+  static String? _validateEmail(BuildContext context, String value) {
     final emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
     if (!emailPattern.hasMatch(value)) {
-      return 'Email format is invalid';
+      return context.l10n.emailFormatInvalid;
     }
     return null;
   }
