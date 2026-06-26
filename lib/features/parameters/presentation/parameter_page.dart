@@ -4,6 +4,7 @@ import 'package:edukita/features/report_definitions/presentation/report_definiti
 import 'package:edukita/features/schools/presentation/schools_page.dart';
 import 'package:edukita/features/assistance/plans/presentation/assistance_rules_page.dart';
 import 'package:edukita/features/syllabus/presentation/syllabus_page.dart';
+import 'package:edukita/features/teaching_locations/presentation/teaching_locations_page.dart';
 import 'package:edukita/features/users/domain/user_authorization.dart';
 import 'package:edukita/features/users/presentation/authorization_helpers.dart';
 import 'package:edukita/theme/app_theme.dart';
@@ -35,6 +36,7 @@ class _ParameterPageState extends State<ParameterPage> {
       title: 'Teaching',
       icon: Icons.school_outlined,
       items: [
+        _ParameterMenuItem('Location Teaching', Icons.location_on_outlined),
         _ParameterMenuItem('Strategies', Icons.psychology_outlined),
       ],
     ),
@@ -56,6 +58,7 @@ class _ParameterPageState extends State<ParameterPage> {
   ];
 
   String _selectedTitle = 'Schools';
+  String _expandedSectionTitle = 'Academic';
   AppAuthorizationScope _authScope = AppAuthorizationScope(
     role: AppUserRole.admin,
     permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
@@ -122,9 +125,18 @@ class _ParameterPageState extends State<ParameterPage> {
                           _ParameterSectionTile(
                             section: section,
                             selectedTitle: _selectedTitle,
-                            initiallyExpanded: section.title == 'Academic',
+                            expanded: _expandedSectionTitle == section.title,
+                            onExpansionChanged: (expanded) {
+                              setState(() {
+                                _expandedSectionTitle =
+                                    expanded ? section.title : '';
+                              });
+                            },
                             onSelected: (title) {
-                              setState(() => _selectedTitle = title);
+                              setState(() {
+                                _selectedTitle = title;
+                                _expandedSectionTitle = section.title;
+                              });
                             },
                           ),
                       ],
@@ -154,6 +166,10 @@ class _ParameterPageState extends State<ParameterPage> {
 
     if (_selectedTitle == 'Programs') {
       return const AssistanceProgramsPage(embedded: true);
+    }
+
+    if (_selectedTitle == 'Location Teaching') {
+      return const TeachingLocationsPage(embedded: true);
     }
 
     if (_selectedTitle == 'Rules') {
@@ -218,6 +234,7 @@ class _ParameterPageState extends State<ParameterPage> {
       'Subjects' => context.l10n.subjects,
       'Units' => context.l10n.units,
       'Competencies' => context.l10n.competencies,
+      'Location Teaching' => context.l10n.locationTeaching,
       'Strategies' => context.l10n.strategies,
       'Programs' => context.l10n.programs,
       'Rules' => context.l10n.rules,
@@ -242,35 +259,84 @@ class _ParameterSectionTile extends StatelessWidget {
   const _ParameterSectionTile({
     required this.section,
     required this.selectedTitle,
-    required this.initiallyExpanded,
+    required this.expanded,
+    required this.onExpansionChanged,
     required this.onSelected,
   });
 
   final _ParameterSection section;
   final String selectedTitle;
-  final bool initiallyExpanded;
+  final bool expanded;
+  final ValueChanged<bool> onExpansionChanged;
   final ValueChanged<String> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: AppColors.transparent),
-      child: ExpansionTile(
-        initiallyExpanded: initiallyExpanded,
-        leading: Icon(section.icon, size: 18, color: AppColors.primaryDark),
-        title: Text(
-          _parameterSectionLabel(context, section.title),
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-        ),
-        tilePadding: const EdgeInsets.symmetric(horizontal: 14),
-        childrenPadding: const EdgeInsets.only(left: 12, right: 8, bottom: 6),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final item in section.items)
-            _ParameterMenuTile(
-              item: item,
-              selected: selectedTitle == item.title,
-              onTap: () => onSelected(item.title),
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => onExpansionChanged(!expanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
+              child: Row(
+                children: [
+                  Icon(
+                    section.icon,
+                    size: 18,
+                    color: AppColors.primaryDark,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _parameterSectionLabel(context, section.title),
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: expanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 140),
+                    curve: Curves.easeOut,
+                    child: const Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 19,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
             ),
+          ),
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 140),
+            firstCurve: Curves.easeOut,
+            secondCurve: Curves.easeOut,
+            sizeCurve: Curves.easeOut,
+            crossFadeState: expanded
+                ? CrossFadeState.showFirst
+                : CrossFadeState.showSecond,
+            firstChild: Padding(
+              padding: const EdgeInsets.only(left: 12, right: 2, bottom: 6),
+              child: Column(
+                children: [
+                  for (final item in section.items)
+                    _ParameterMenuTile(
+                      item: item,
+                      selected: selectedTitle == item.title,
+                      onTap: () => onSelected(item.title),
+                    ),
+                ],
+              ),
+            ),
+            secondChild: const SizedBox(width: double.infinity),
+          ),
         ],
       ),
     );
@@ -370,6 +436,7 @@ String _parameterMenuLabel(BuildContext context, String title) {
     'Subjects' => context.l10n.subjects,
     'Units' => context.l10n.units,
     'Competencies' => context.l10n.competencies,
+    'Location Teaching' => context.l10n.locationTeaching,
     'Strategies' => context.l10n.strategies,
     'Programs' => context.l10n.programs,
     'Rules' => context.l10n.rules,

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:edukita/core/localization/localization_extension.dart';
+import 'package:edukita/core/utils/thousands_separator_input_formatter.dart';
 import 'package:edukita/features/assistance/presentation/assistance_localized_display.dart';
 import 'package:edukita/features/assistance/programs/data/assistance_program_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
@@ -21,6 +22,12 @@ Widget _twoColumnFormRow(Widget first, Widget second) {
       Expanded(child: second),
     ],
   );
+}
+
+String _formatAmountInput(num? value) {
+  if (value == null) return '';
+  final text = value.round().toString();
+  return ThousandsSeparatorInputFormatter.format(text);
 }
 
 class AssistanceProgramFormDialog extends StatefulWidget {
@@ -176,14 +183,26 @@ class _AssistanceProgramFormDialogState
                     onSaved: (value) =>
                         frequency = value ?? AssistanceFrequency.asNeeded,
                   ),
-                  CommonFormWidgets.doubleField(
-                    label: context.l10n.defaultAmountRp,
-                    value: defaultAmount,
-                    onSaved: (value) => defaultAmount = value,
+                  TextFormField(
+                    initialValue: _formatAmountInput(defaultAmount),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      const ThousandsSeparatorInputFormatter(),
+                      LengthLimitingTextInputFormatter(15),
+                    ],
+                    decoration: InputDecoration(
+                      labelText: context.l10n.defaultAmountRp,
+                      hintText: context.l10n.enterAmountRupiah,
+                    ),
+                    onSaved: (value) => defaultAmount =
+                        ThousandsSeparatorInputFormatter.parseDouble(
+                      value ?? '',
+                    ),
                     validator: (value) {
                       final trimmed = value?.trim();
                       if (trimmed == null || trimmed.isEmpty) return null;
-                      final number = double.tryParse(trimmed);
+                      final number =
+                          ThousandsSeparatorInputFormatter.parseDouble(trimmed);
                       if (number == null) return context.l10n.amountMustBeNumber;
                       if (number < 0) return context.l10n.amountCannotBeNegative;
                       return null;
@@ -519,7 +538,7 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
     _schoolType = benefit?.schoolType ?? AssistanceBenefitSchoolType.all;
     _benefitType = benefit?.benefitType ?? widget.defaultBenefitType;
     _amountController = TextEditingController(
-      text: benefit?.amount?.toString() ?? '',
+      text: _formatAmountInput(benefit?.amount),
     );
     _descriptionController = TextEditingController(
       text: benefit?.description ?? '',
@@ -595,7 +614,8 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
                     controller: _amountController,
                     keyboardType: TextInputType.number,
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                      const ThousandsSeparatorInputFormatter(),
+                      LengthLimitingTextInputFormatter(15),
                     ],
                     decoration: InputDecoration(
                       labelText: context.l10n.amountRp,
@@ -606,7 +626,10 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
                           (value?.trim().isEmpty ?? true)) {
                         return null;
                       }
-                      final amount = double.tryParse(value?.trim() ?? '');
+                      final amount =
+                          ThousandsSeparatorInputFormatter.parseDouble(
+                        value?.trim() ?? '',
+                      );
                       if (amount == null) return context.l10n.amountRequired;
                       if (amount < 0) {
                         return context.l10n.amountCannotBeNegative;
@@ -767,7 +790,7 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
 
     final amountText = _amountController.text.trim();
     final amount = needsAmount && amountText.isNotEmpty
-        ? double.tryParse(amountText)
+        ? ThousandsSeparatorInputFormatter.parseDouble(amountText)
         : null;
     if (_benefitType == AssistanceBenefitType.mixed &&
         amount == null &&
@@ -825,7 +848,7 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
     );
     _unitController = TextEditingController(text: item?.unit ?? '');
     _valueController = TextEditingController(
-      text: item?.estimatedValue?.toString() ?? '',
+      text: _formatAmountInput(item?.estimatedValue),
     );
     _descriptionController = TextEditingController(
       text: item?.description ?? '',
@@ -892,7 +915,8 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
                 controller: _valueController,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                  const ThousandsSeparatorInputFormatter(),
+                  LengthLimitingTextInputFormatter(15),
                 ],
                 decoration: InputDecoration(
                   labelText: context.l10n.estimatedValueRp,
@@ -900,7 +924,8 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
                 validator: (value) {
                   final trimmed = value?.trim() ?? '';
                   if (trimmed.isEmpty) return null;
-                  final amount = double.tryParse(trimmed);
+                  final amount =
+                      ThousandsSeparatorInputFormatter.parseDouble(trimmed);
                   if (amount == null || amount < 0) {
                     return context.l10n.estimatedValueValid;
                   }
@@ -930,6 +955,9 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     final valueText = _valueController.text.trim();
+    final estimatedValue = ThousandsSeparatorInputFormatter.parseDouble(
+      valueText,
+    );
     Navigator.pop(
       context,
       AssistanceProgramBenefitItem(
@@ -940,7 +968,7 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
         unit: _unitController.text.trim().isEmpty
             ? null
             : _unitController.text.trim(),
-        estimatedValue: valueText.isEmpty ? null : double.parse(valueText),
+        estimatedValue: valueText.isEmpty ? null : estimatedValue,
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),

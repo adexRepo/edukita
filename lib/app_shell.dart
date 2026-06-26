@@ -133,6 +133,7 @@ class _AppShellState extends State<AppShell> {
 
     if (!context.mounted || confirmed != true) return;
     await AuthSessionCache.instance.clear();
+    clearAppMemoryCaches();
     if (!context.mounted) return;
     context.go('/login');
   }
@@ -184,7 +185,11 @@ class _AppShellState extends State<AppShell> {
     final session = await AuthSessionCache.instance.read();
     if (!mounted) return;
     if (session == null) {
-      setState(() => _authLoaded = true);
+      setState(() {
+        _allowedMenuCodes = const <String>{};
+        _authLoaded = true;
+      });
+      context.go('/login');
       return;
     }
 

@@ -95,7 +95,7 @@ class UserManagementCubit extends Cubit<UserManagementState> {
           : await _repository.getAuthorizationScopeForUser(currentUserId);
       final canViewUsers = scope.canView(AppMenuAccessRegistry.users.code);
       final users = canViewUsers
-          ? await _repository.getUsers(includeAdmin: currentRole.isAdmin)
+          ? await _repository.getUsers()
           : const <User>[];
       final canManageTeacherLinks =
           scope.canCreate(AppMenuAccessRegistry.users.code) ||

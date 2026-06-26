@@ -25,6 +25,7 @@ class DatabaseTables {
     await units(db);
     await competencies(db);
     await strategies(db);
+    await teachingLocations(db);
     await schedules(db);
     await scheduleEvents(db);
 
@@ -198,7 +199,8 @@ class DatabaseTables {
         mobile_no TEXT,
         email TEXT,
         occupation TEXT,
-        address TEXT
+        address TEXT,
+        income REAL
       )
     ''');
   }
@@ -220,6 +222,7 @@ class DatabaseTables {
         id TEXT PRIMARY KEY NOT NULL,
         student_no TEXT NOT NULL UNIQUE,
         class_id TEXT NOT NULL,
+        teaching_location_id TEXT,
         nick_name TEXT,
         full_name TEXT NOT NULL,
         join_at TEXT NOT NULL,
@@ -229,16 +232,17 @@ class DatabaseTables {
         gender TEXT,
         mobile_no TEXT,
         email_addr TEXT,
-        shoes_size INTEGER,
-        uniform_size INTEGER,
-        pants_size INTEGER,
+        shoes_size TEXT,
+        uniform_size TEXT,
+        pants_size TEXT,
         height REAL,
         weight REAL,
         photo_path TEXT,
         status TEXT NOT NULL DEFAULT 'active',
         created_at TEXT,
         updated_at TEXT,
-        FOREIGN KEY(class_id) REFERENCES classes(id)
+        FOREIGN KEY(class_id) REFERENCES classes(id),
+        FOREIGN KEY(teaching_location_id) REFERENCES teaching_locations(id)
       )
     ''');
   }
@@ -250,6 +254,7 @@ class DatabaseTables {
         guardian_id TEXT NOT NULL,
         relationship TEXT NOT NULL,
         is_primary INTEGER NOT NULL DEFAULT 0,
+        is_deceased INTEGER,
         PRIMARY KEY (student_id, guardian_id),
         FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
         FOREIGN KEY(guardian_id) REFERENCES guardians(id) ON DELETE CASCADE
@@ -393,6 +398,21 @@ class DatabaseTables {
         description TEXT,
         rule TEXT,
         sample_file_path TEXT
+      )
+    ''');
+  }
+
+  static Future<void> teachingLocations(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS teaching_locations(
+        id TEXT PRIMARY KEY NOT NULL,
+        code TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        address TEXT NOT NULL,
+        description TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
       )
     ''');
   }
@@ -1370,6 +1390,13 @@ class DatabaseTables {
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_students_class_id ON students(class_id)',
     );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'students',
+      columns: const ['teaching_location_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_students_teaching_location_id ON students(teaching_location_id)',
+    );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_classes_student_id ON student_classes(student_id)',
     );
@@ -2018,6 +2045,13 @@ class DatabaseTables {
       columns: const ['is_active'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_assistance_programs_active ON assistance_programs(is_active)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'teaching_locations',
+      columns: const ['is_active'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_teaching_locations_active ON teaching_locations(is_active)',
     );
     await _createIndexIfColumnsExist(
       db,

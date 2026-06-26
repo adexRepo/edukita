@@ -14,6 +14,7 @@ import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() async {
@@ -98,21 +99,31 @@ class _EdukitaAppState extends State<EdukitaApp> {
                   ),
                 );
               }
-              return MaterialApp.router(
-                scrollBehavior: const ScrollBehavior(),
-                debugShowCheckedModeBanner: false,
-                theme: AppTheme.theme,
-                locale: languageState.locale,
-                supportedLocales: AppLocalizations.supportedLocales,
-                localizationsDelegates: AppLocalizations.localizationsDelegates,
-                routerConfig: appRouter,
-                builder: (context, child) {
-                  final mediaQuery = MediaQuery.of(context);
-                  return MediaQuery(
-                    data: mediaQuery.copyWith(
-                      textScaler: TextScaler.linear(AppTypography.appTextScale),
-                    ),
-                    child: AppToastHost(child: child ?? const SizedBox.shrink()),
+              return ShadApp.custom(
+                appBuilder: (context) {
+                  return MaterialApp.router(
+                    scrollBehavior: const ScrollBehavior(),
+                    debugShowCheckedModeBanner: false,
+                    theme: AppTheme.theme,
+                    locale: languageState.locale,
+                    supportedLocales: AppLocalizations.supportedLocales,
+                    localizationsDelegates:
+                        AppLocalizations.localizationsDelegates,
+                    routerConfig: appRouter,
+                    builder: (context, child) {
+                      final mediaQuery = MediaQuery.of(context);
+                      return ShadAppBuilder(
+                        child: MediaQuery(
+                          data: mediaQuery.copyWith(
+                            textScaler:
+                                TextScaler.linear(AppTypography.appTextScale),
+                          ),
+                          child: AppToastHost(
+                            child: child ?? const SizedBox.shrink(),
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               );

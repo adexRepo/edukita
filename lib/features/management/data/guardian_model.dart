@@ -8,6 +8,7 @@ class Guardian {
     this.email,
     this.occupation,
     this.address,
+    this.income,
   }) : id = id ?? const Uuid().v4();
 
   final String id;
@@ -16,6 +17,7 @@ class Guardian {
   final String? email;
   final String? occupation;
   final String? address;
+  final double? income;
 
   Guardian copyWith({
     String? id,
@@ -24,6 +26,7 @@ class Guardian {
     String? email,
     String? occupation,
     String? address,
+    double? income,
   }) {
     return Guardian(
       id: id ?? this.id,
@@ -32,6 +35,7 @@ class Guardian {
       email: email ?? this.email,
       occupation: occupation ?? this.occupation,
       address: address ?? this.address,
+      income: income ?? this.income,
     );
   }
 
@@ -43,6 +47,7 @@ class Guardian {
       email: map['email'] as String?,
       occupation: map['occupation'] as String?,
       address: map['address'] as String?,
+      income: (map['income'] as num?)?.toDouble(),
     );
   }
 
@@ -54,12 +59,13 @@ class Guardian {
       'email': email,
       'occupation': occupation,
       'address': address,
+      'income': income,
     };
   }
 
   @override
   String toString() =>
-      'Guardian(id: $id, fullName: $fullName, mobileNo: $mobileNo, email: $email, occupation: $occupation, address: $address)';
+      'Guardian(id: $id, fullName: $fullName, mobileNo: $mobileNo, email: $email, occupation: $occupation, address: $address, income: $income)';
 
   @override
   bool operator ==(Object other) =>
@@ -71,7 +77,8 @@ class Guardian {
           mobileNo == other.mobileNo &&
           email == other.email &&
           occupation == other.occupation &&
-          address == other.address;
+          address == other.address &&
+          income == other.income;
 
   @override
   int get hashCode =>
@@ -80,7 +87,8 @@ class Guardian {
       mobileNo.hashCode ^
       email.hashCode ^
       occupation.hashCode ^
-      address.hashCode;
+      address.hashCode ^
+      income.hashCode;
 }
 
 class StudentGuardianFormData {
@@ -89,28 +97,38 @@ class StudentGuardianFormData {
     this.fullName,
     this.relationship,
     this.isPrimary = false,
+    this.isDeceased,
     this.mobileNo,
     this.email,
     this.occupation,
     this.address,
+    this.income,
   });
 
   final String? guardianId;
   final String? fullName;
   final String? relationship;
   final bool isPrimary;
+  final bool? isDeceased;
   final String? mobileNo;
   final String? email;
   final String? occupation;
   final String? address;
+  final double? income;
 
   bool get hasData {
+    if (isDeceased == true &&
+        relationship != null &&
+        relationship!.trim().isNotEmpty) {
+      return true;
+    }
     return [
       fullName,
       mobileNo,
       email,
       occupation,
       address,
+      income?.toString(),
     ].any((value) => value != null && value.trim().isNotEmpty);
   }
 }

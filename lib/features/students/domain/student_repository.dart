@@ -19,6 +19,7 @@ import 'package:edukita/features/students/data/student_table.dart';
 import 'package:edukita/features/students/domain/student_mapper.dart';
 import 'package:edukita/features/students/domain/sudent_filter.dart';
 import 'package:edukita/features/syllabus/data/subject_model.dart';
+import 'package:edukita/features/teaching_locations/data/teaching_location_model.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common/sqlite_api.dart';
@@ -29,6 +30,40 @@ class StudentRepository extends BaseRepository<Student> {
 
   StudentRepository(this._dbProvider)
     : super(table: 'students', mapper: StudentMapper());
+
+  String get _duafaStatusSql => '''
+    CASE
+      WHEN EXISTS (
+        SELECT 1
+        FROM student_guardians sg
+        WHERE sg.student_id = s.id
+          AND UPPER(COALESCE(sg.relationship, '')) = 'FATHER'
+          AND COALESCE(sg.is_deceased, 0) = 1
+      )
+      AND EXISTS (
+        SELECT 1
+        FROM student_guardians sg
+        WHERE sg.student_id = s.id
+          AND UPPER(COALESCE(sg.relationship, '')) = 'MOTHER'
+          AND COALESCE(sg.is_deceased, 0) = 1
+      ) THEN 'Yatim Piatu'
+      WHEN EXISTS (
+        SELECT 1
+        FROM student_guardians sg
+        WHERE sg.student_id = s.id
+          AND UPPER(COALESCE(sg.relationship, '')) = 'FATHER'
+          AND COALESCE(sg.is_deceased, 0) = 1
+      ) THEN 'Yatim'
+      WHEN EXISTS (
+        SELECT 1
+        FROM student_guardians sg
+        WHERE sg.student_id = s.id
+          AND UPPER(COALESCE(sg.relationship, '')) = 'MOTHER'
+          AND COALESCE(sg.is_deceased, 0) = 1
+      ) THEN 'Piatu'
+      ELSE 'Dhuafa'
+    END
+  ''';
 
   void _appendStudentIdentityFilters(
     List<String> where,
@@ -116,6 +151,20 @@ class StudentRepository extends BaseRepository<Student> {
     }
 
     // 📅 join date
+    if (filter.duafaStatuses.isNotEmpty) {
+      where.add(
+        '($_duafaStatusSql) IN (${placeholders(filter.duafaStatuses.length)})',
+      );
+      args.addAll(filter.duafaStatuses);
+    }
+
+    if (filter.duafaStatusesNot.isNotEmpty) {
+      where.add(
+        '($_duafaStatusSql) NOT IN (${placeholders(filter.duafaStatusesNot.length)})',
+      );
+      args.addAll(filter.duafaStatusesNot);
+    }
+
     if (filter.joinAt.isNotEmpty) {
       where.add('s.join_at IN (${placeholders(filter.joinAt.length)})');
       args.addAll(filter.joinAt);
@@ -198,6 +247,20 @@ class StudentRepository extends BaseRepository<Student> {
       args.addAll(filter.schoolNamesNot);
     }
 
+    if (filter.teachingLocations.isNotEmpty) {
+      where.add(
+        'tl.name IN (${placeholders(filter.teachingLocations.length)})',
+      );
+      args.addAll(filter.teachingLocations);
+    }
+
+    if (filter.teachingLocationsNot.isNotEmpty) {
+      where.add(
+        "COALESCE(tl.name, '') NOT IN (${placeholders(filter.teachingLocationsNot.length)})",
+      );
+      args.addAll(filter.teachingLocationsNot);
+    }
+
     final whereClause = where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}';
 
     final query =
@@ -210,9 +273,11 @@ class StudentRepository extends BaseRepository<Student> {
       s.photo_path,
       c.name as class_name,
       COALESCE(sc.name, '-') as school_name,
+      COALESCE(tl.name, '-') AS teaching_location_name,
       s.gender,
       s.status,
       s.join_at,
+      $_duafaStatusSql AS duafa_status,
       (
         SELECT AVG(COALESCE(ta.normalized_score, ta.score, ta.raw_score))
         FROM teaching_assessments ta
@@ -236,6 +301,7 @@ class StudentRepository extends BaseRepository<Student> {
       LIMIT 1
     )
     LEFT JOIN schools sc ON sc.id = ss.school_id
+    LEFT JOIN teaching_locations tl ON tl.id = s.teaching_location_id
     $whereClause
     ${pageable.buildOrderBy()}
     ${pageable.buildLimitOffset()}
@@ -273,6 +339,20 @@ class StudentRepository extends BaseRepository<Student> {
     if (filter.gendersNot.isNotEmpty) {
       where.add('s.gender NOT IN (${placeholders(filter.gendersNot.length)})');
       args.addAll(filter.gendersNot.map((value) => value.toLowerCase()));
+    }
+
+    if (filter.duafaStatuses.isNotEmpty) {
+      where.add(
+        '($_duafaStatusSql) IN (${placeholders(filter.duafaStatuses.length)})',
+      );
+      args.addAll(filter.duafaStatuses);
+    }
+
+    if (filter.duafaStatusesNot.isNotEmpty) {
+      where.add(
+        '($_duafaStatusSql) NOT IN (${placeholders(filter.duafaStatusesNot.length)})',
+      );
+      args.addAll(filter.duafaStatusesNot);
     }
 
     if (filter.joinAt.isNotEmpty) {
@@ -355,6 +435,20 @@ class StudentRepository extends BaseRepository<Student> {
       args.addAll(filter.schoolNamesNot);
     }
 
+    if (filter.teachingLocations.isNotEmpty) {
+      where.add(
+        'tl.name IN (${placeholders(filter.teachingLocations.length)})',
+      );
+      args.addAll(filter.teachingLocations);
+    }
+
+    if (filter.teachingLocationsNot.isNotEmpty) {
+      where.add(
+        "COALESCE(tl.name, '') NOT IN (${placeholders(filter.teachingLocationsNot.length)})",
+      );
+      args.addAll(filter.teachingLocationsNot);
+    }
+
     final whereClause = where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}';
 
     final result = await db.rawQuery('''
@@ -373,6 +467,7 @@ class StudentRepository extends BaseRepository<Student> {
           LIMIT 1
         )
         LEFT JOIN schools sc ON sc.id = ss.school_id
+        LEFT JOIN teaching_locations tl ON tl.id = s.teaching_location_id
         $whereClause;
       ''', args);
 
@@ -419,6 +514,17 @@ class StudentRepository extends BaseRepository<Student> {
     final db = await _dbProvider.database;
     final result = await db.query('schools', orderBy: 'name');
     return result.map(School.fromMap).toList();
+  }
+
+  Future<List<TeachingLocation>> loadAvailableTeachingLocations() async {
+    final db = await _dbProvider.database;
+    final result = await db.query(
+      'teaching_locations',
+      where: 'is_active = ?',
+      whereArgs: const [1],
+      orderBy: 'name COLLATE NOCASE',
+    );
+    return result.map(TeachingLocation.fromMap).toList();
   }
 
   Future<void> insertStudentWithSchool(
@@ -702,8 +808,10 @@ class StudentRepository extends BaseRepository<Student> {
           g.email,
           g.occupation,
           g.address,
+          g.income,
           sg.relationship,
-          sg.is_primary
+          sg.is_primary,
+          sg.is_deceased
         FROM student_guardians sg
         INNER JOIN guardians g ON g.id = sg.guardian_id
         WHERE sg.student_id = ?
@@ -718,10 +826,14 @@ class StudentRepository extends BaseRepository<Student> {
         fullName: row['full_name'] as String?,
         relationship: row['relationship'] as String?,
         isPrimary: (row['is_primary'] as num?)?.toInt() == 1,
+        isDeceased: row['is_deceased'] == null
+            ? null
+            : (row['is_deceased'] as num?)?.toInt() == 1,
         mobileNo: row['mobile_no'] as String?,
         email: row['email'] as String?,
         occupation: row['occupation'] as String?,
         address: row['address'] as String?,
+        income: (row['income'] as num?)?.toDouble(),
       );
     }).toList();
   }
@@ -751,6 +863,7 @@ class StudentRepository extends BaseRepository<Student> {
         email: _nullIfBlank(guardian.email),
         occupation: _nullIfBlank(guardian.occupation),
         address: _nullIfBlank(guardian.address),
+        income: guardian.income,
       ).toMap();
 
       final updated = await txn.update(
@@ -768,12 +881,18 @@ class StudentRepository extends BaseRepository<Student> {
         'guardian_id': guardianId,
         'relationship': _nullIfBlank(guardian.relationship) ?? '-',
         'is_primary': guardian.isPrimary ? 1 : 0,
+        'is_deceased': guardian.isDeceased == null
+            ? null
+            : guardian.isDeceased == true
+            ? 1
+            : 0,
       });
       savedGuardians.add(
         _SavedStudentGuardian(
           guardianId: guardianId,
           relationship: _nullIfBlank(guardian.relationship) ?? '-',
           isPrimary: guardian.isPrimary,
+          isDeceased: guardian.isDeceased,
         ),
       );
     }
@@ -1051,6 +1170,7 @@ class StudentRepository extends BaseRepository<Student> {
           'guardian_id': guardian['guardian_id'],
           'relationship': guardian['relationship'],
           'is_primary': guardian['is_primary'],
+          'is_deceased': guardian['is_deceased'],
         });
       }
       return;
@@ -1095,6 +1215,11 @@ class StudentRepository extends BaseRepository<Student> {
           'guardian_id': guardian.guardianId,
           'relationship': guardian.relationship,
           'is_primary': guardian.isPrimary ? 1 : 0,
+          'is_deceased': guardian.isDeceased == null
+              ? null
+              : guardian.isDeceased == true
+              ? 1
+              : 0,
         };
 
         if (existingLink.isNotEmpty) {
@@ -1517,6 +1642,7 @@ class StudentRepository extends BaseRepository<Student> {
             s.height ,
             s.weight ,
             s.photo_path ,
+            COALESCE(tl.name, '-') AS teaching_location_name,
             CASE
               WHEN LOWER(COALESCE(s.status, '')) IN ('active', 'warning', 'inactive')
                 THEN LOWER(s.status)
@@ -1531,6 +1657,7 @@ class StudentRepository extends BaseRepository<Student> {
           from
             students as s
             LEFT JOIN classes c ON c.id = s.class_id
+            LEFT JOIN teaching_locations tl ON tl.id = s.teaching_location_id
             LEFT JOIN student_schools ss ON ss.id = (
               SELECT active_school.id
               FROM student_schools active_school
@@ -2452,9 +2579,11 @@ class _SavedStudentGuardian {
     required this.guardianId,
     required this.relationship,
     required this.isPrimary,
+    this.isDeceased,
   });
 
   final String guardianId;
   final String relationship;
   final bool isPrimary;
+  final bool? isDeceased;
 }

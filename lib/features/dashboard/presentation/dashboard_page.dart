@@ -458,14 +458,12 @@ class _KpiStrip extends StatelessWidget {
     );
     final attendance = state.attendanceRate;
     final academic = state.averageAcademicScore;
-    final knownGenderCount = state.maleStudentCount + state.femaleStudentCount;
     final items = [
       _KpiItem(
         icon: Icons.groups_outlined,
         title: context.l10n.dashboardActiveStudents,
         value: _formatInt(state.studentCount),
-        note:
-            '${_formatInt(knownGenderCount)} ${context.l10n.dashboardWithGenderData}',
+        note: '',
         color: AppColors.primary,
       ),
       _KpiItem(
@@ -589,16 +587,18 @@ class _KpiCard extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  item.note,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: item.color,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
+                if (item.note.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    item.note,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: item.color,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -665,10 +665,6 @@ class _DashboardOverviewGrid extends StatelessWidget {
               ),
               const SizedBox(height: spacing),
               _TopLearnersPanel(state: state),
-              const SizedBox(height: spacing),
-              _AttentionPanel(state: state),
-              const SizedBox(height: spacing),
-              _RecentNotesPanel(state: state),
             ],
           );
         }
@@ -723,16 +719,7 @@ class _DashboardOverviewGrid extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: spacing),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _TopLearnersPanel(state: state)),
-                  const SizedBox(width: spacing),
-                  Expanded(child: _AttentionPanel(state: state)),
-                ],
-              ),
-              const SizedBox(height: spacing),
-              _RecentNotesPanel(state: state),
+              _TopLearnersPanel(state: state),
             ],
           );
         }
@@ -789,15 +776,6 @@ class _DashboardOverviewGrid extends StatelessWidget {
                 Expanded(child: _TopLearnersPanel(state: state)),
               ],
             ),
-            const SizedBox(height: spacing),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: _AttentionPanel(state: state)),
-                const SizedBox(width: spacing),
-                Expanded(child: _RecentNotesPanel(state: state)),
-              ],
-            ),
           ],
         );
       },
@@ -805,19 +783,71 @@ class _DashboardOverviewGrid extends StatelessWidget {
   }
 }
 
-class _StudentGenderCard extends StatelessWidget {
+enum _StudentCompositionMode { gender, status }
+
+class _StudentChartItem {
+  const _StudentChartItem({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final int value;
+  final Color color;
+}
+
+class _StudentGenderCard extends StatefulWidget {
   const _StudentGenderCard({required this.state});
 
   final DashboardStat state;
 
   @override
+  State<_StudentGenderCard> createState() => _StudentGenderCardState();
+}
+
+class _StudentGenderCardState extends State<_StudentGenderCard> {
+  _StudentCompositionMode _mode = _StudentCompositionMode.status;
+
+  @override
   Widget build(BuildContext context) {
-    final boys = state.maleStudentCount;
-    final girls = state.femaleStudentCount;
-    final knownTotal = boys + girls;
-    final total = knownTotal > 0 ? knownTotal : state.studentCount;
-    final boysPercent = total == 0 ? 0 : ((boys / total) * 100).round();
-    final girlsPercent = total == 0 ? 0 : ((girls / total) * 100).round();
+    final items = _mode == _StudentCompositionMode.gender
+        ? [
+            _StudentChartItem(
+              color: const Color(0xFFBDEEFF),
+              value: widget.state.maleStudentCount,
+              label: context.l10n.dashboardBoys,
+            ),
+            _StudentChartItem(
+              color: const Color(0xFFFFDF68),
+              value: widget.state.femaleStudentCount,
+              label: context.l10n.dashboardGirls,
+            ),
+          ]
+        : [
+            _StudentChartItem(
+              color: const Color(0xFF48CFCB),
+              value: widget.state.duafaStudentCount,
+              label: context.l10n.studentStatusDhuafa,
+            ),
+            _StudentChartItem(
+              color: const Color(0xFFF59E0B),
+              value: widget.state.yatimStudentCount,
+              label: context.l10n.studentStatusYatim,
+            ),
+            _StudentChartItem(
+              color: const Color(0xFF3B82F6),
+              value: widget.state.piatuStudentCount,
+              label: context.l10n.studentStatusPiatu,
+            ),
+            _StudentChartItem(
+              color: const Color(0xFF8B5CF6),
+              value: widget.state.yatimPiatuStudentCount,
+              label: context.l10n.studentStatusYatimPiatu,
+            ),
+          ];
+    final knownTotal = items.fold<int>(0, (total, item) => total + item.value);
+    final total = knownTotal > 0 ? knownTotal : widget.state.studentCount;
 
     return Container(
       width: double.infinity,
@@ -832,7 +862,37 @@ class _StudentGenderCard extends StatelessWidget {
               Expanded(
                 child: _MetricCardTitle(
                   title: context.l10n.dashboardStudentsTitle,
-                  description: context.l10n.dashboardStudentsDescription,
+                  description: _mode == _StudentCompositionMode.gender
+                      ? context.l10n.dashboardStudentsDescription
+                      : context.l10n.dashboardStudentsStatusDescription,
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 172,
+                child: SegmentedButton<_StudentCompositionMode>(
+                  showSelectedIcon: false,
+                  style: SegmentedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    textStyle: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  segments: [
+                    ButtonSegment(
+                      value: _StudentCompositionMode.gender,
+                      label: Text(context.l10n.gender),
+                    ),
+                    ButtonSegment(
+                      value: _StudentCompositionMode.status,
+                      label: Text(context.l10n.status),
+                    ),
+                  ],
+                  selected: {_mode},
+                  onSelectionChanged: (value) {
+                    setState(() => _mode = value.first);
+                  },
                 ),
               ),
             ],
@@ -842,16 +902,11 @@ class _StudentGenderCard extends StatelessWidget {
             child: Center(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final chartSize = math
-                      .min(
-                        math.min(
-                          constraints.maxWidth - 8,
-                          constraints.maxHeight,
-                        ),
-                        228.0,
-                      )
-                      .clamp(176.0, 228.0)
-                      .toDouble();
+                  final rawChartSize = math.min(
+                    math.min(constraints.maxWidth - 8, constraints.maxHeight),
+                    228.0,
+                  );
+                  final chartSize = rawChartSize.clamp(0.0, 228.0).toDouble();
                   return SizedBox(
                     width: chartSize,
                     height: chartSize,
@@ -873,22 +928,18 @@ class _StudentGenderCard extends StatelessWidget {
                                       showTitle: false,
                                     ),
                                   ]
-                                : [
-                                    PieChartSectionData(
-                                      value: boys.toDouble(),
-                                      color: const Color(0xFFBDEEFF),
-                                      title: '',
-                                      radius: chartSize * 0.20,
-                                      showTitle: false,
-                                    ),
-                                    PieChartSectionData(
-                                      value: girls.toDouble(),
-                                      color: const Color(0xFFFFDF68),
-                                      title: '',
-                                      radius: chartSize * 0.20,
-                                      showTitle: false,
-                                    ),
-                                  ],
+                                : items
+                                      .where((item) => item.value > 0)
+                                      .map(
+                                        (item) => PieChartSectionData(
+                                          value: item.value.toDouble(),
+                                          color: item.color,
+                                          title: '',
+                                          radius: chartSize * 0.20,
+                                          showTitle: false,
+                                        ),
+                                      )
+                                      .toList(),
                           ),
                         ),
                         Container(
@@ -907,22 +958,31 @@ class _StudentGenderCard extends StatelessWidget {
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
-                              Transform.translate(
-                                offset: Offset(-chartSize * 0.058, 0),
-                                child: Icon(
-                                  Icons.person,
-                                  color: const Color(0xFFBDEEFF),
-                                  size: chartSize * 0.17,
+                              if (_mode == _StudentCompositionMode.gender) ...[
+                                Transform.translate(
+                                  offset: Offset(-chartSize * 0.058, 0),
+                                  child: Icon(
+                                    Icons.person,
+                                    color: const Color(0xFFBDEEFF),
+                                    size: chartSize * 0.17,
+                                  ),
                                 ),
-                              ),
-                              Transform.translate(
-                                offset: Offset(chartSize * 0.058, 0),
-                                child: Icon(
-                                  Icons.person,
-                                  color: const Color(0xFFFFDF68),
-                                  size: chartSize * 0.17,
+                                Transform.translate(
+                                  offset: Offset(chartSize * 0.058, 0),
+                                  child: Icon(
+                                    Icons.person,
+                                    color: const Color(0xFFFFDF68),
+                                    size: chartSize * 0.17,
+                                  ),
                                 ),
-                              ),
+                              ] else
+                                Icon(
+                                  Icons.diversity_3,
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.78,
+                                  ),
+                                  size: chartSize * 0.18,
+                                ),
                             ],
                           ),
                         ),
@@ -936,30 +996,38 @@ class _StudentGenderCard extends StatelessWidget {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _StudentGenderLegend(
-                    color: const Color(0xFFBDEEFF),
-                    value: _formatInt(boys),
-                    label: context.l10n.dashboardBoys,
-                    percent: boysPercent,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _StudentGenderLegend(
-                    color: const Color(0xFFFFDF68),
-                    value: _formatInt(girls),
-                    label: context.l10n.dashboardGirls,
-                    percent: girlsPercent,
-                  ),
-                ),
-              ],
-            ),
+            child: _StudentCompositionLegend(items: items, total: total),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StudentCompositionLegend extends StatelessWidget {
+  const _StudentCompositionLegend({required this.items, required this.total});
+
+  final List<_StudentChartItem> items;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (var index = 0; index < items.length; index++) ...[
+          if (index > 0) const SizedBox(width: 6),
+          Expanded(
+            child: _StudentGenderLegend(
+              color: items[index].color,
+              value: _formatInt(items[index].value),
+              label: items[index].label,
+              percent: total == 0
+                  ? 0
+                  : ((items[index].value / total) * 100).round(),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -1021,24 +1089,25 @@ class _StudentGenderLegend extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          width: 12,
-          height: 12,
+          width: 11,
+          height: 11,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(height: 7),
+        const SizedBox(height: 6),
         Text(
-          value,
+          '$value ($percent%)',
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: AppColors.textPrimary,
-            fontSize: 18,
+            fontSize: 11,
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 3),
+        const SizedBox(height: 2),
         Text(
-          '$label ($percent%)',
+          label,
           textAlign: TextAlign.center,
+          maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: AppColors.textSecondary,
@@ -2184,41 +2253,6 @@ class _ScheduleItem extends StatelessWidget {
   }
 }
 
-class _AttentionPanel extends StatelessWidget {
-  const _AttentionPanel({required this.state});
-
-  final DashboardStat state;
-
-  @override
-  Widget build(BuildContext context) {
-    return _DashboardPanel(
-      title: context.l10n.dashboardStudentsNeedAttention,
-      subtitle: context.l10n.dashboardStudentsNeedAttentionSubtitle,
-      icon: Icons.flag_outlined,
-      child: state.attentionStudents.isEmpty
-          ? _EmptyPanelMessage(context.l10n.dashboardNoAttentionSignal)
-          : Column(
-              children: [
-                for (final item in state.attentionStudents)
-                  _ListTileShell(
-                    leading: Icons.person_search_outlined,
-                    title: item.studentName,
-                    subtitle: '${item.studentNo} | ${item.reason}',
-                    trailing: Text(
-                      item.value,
-                      style: const TextStyle(
-                        color: AppColors.error,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-    );
-  }
-}
-
 class _TopLearnersPanel extends StatelessWidget {
   const _TopLearnersPanel({required this.state});
 
@@ -2414,41 +2448,6 @@ class _LearnerAvatar extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _RecentNotesPanel extends StatelessWidget {
-  const _RecentNotesPanel({required this.state});
-
-  final DashboardStat state;
-
-  @override
-  Widget build(BuildContext context) {
-    return _DashboardPanel(
-      title: context.l10n.dashboardRecentTeacherNotes,
-      subtitle: _localizedRangeLabel(context, state.range),
-      icon: Icons.speaker_notes_outlined,
-      child: state.recentNotes.isEmpty
-          ? _EmptyPanelMessage(context.l10n.dashboardNoTeacherNotes)
-          : Column(
-              children: [
-                for (final note in state.recentNotes)
-                  _ListTileShell(
-                    leading: Icons.comment_outlined,
-                    title: '${note.studentName} - ${note.noteType}',
-                    subtitle: note.comment,
-                    trailing: Text(
-                      _shortDate(context, note.date),
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
     );
   }
 }

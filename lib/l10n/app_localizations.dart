@@ -1007,8 +1007,14 @@ abstract class AppLocalizations {
   /// No description provided for @dashboardStudentsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Active student composition by gender.'**
+  /// **'Composition by gender.'**
   String get dashboardStudentsDescription;
+
+  /// No description provided for @dashboardStudentsStatusDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Composition by support status.'**
+  String get dashboardStudentsStatusDescription;
 
   /// No description provided for @dashboardBoys.
   ///
@@ -1021,6 +1027,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Girls'**
   String get dashboardGirls;
+
+  /// No description provided for @duafaStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Dhuafa Status'**
+  String get duafaStatus;
+
+  /// No description provided for @studentStatusDhuafa.
+  ///
+  /// In en, this message translates to:
+  /// **'Dhuafa'**
+  String get studentStatusDhuafa;
+
+  /// No description provided for @studentStatusYatim.
+  ///
+  /// In en, this message translates to:
+  /// **'Yatim'**
+  String get studentStatusYatim;
+
+  /// No description provided for @studentStatusPiatu.
+  ///
+  /// In en, this message translates to:
+  /// **'Piatu'**
+  String get studentStatusPiatu;
+
+  /// No description provided for @studentStatusYatimPiatu.
+  ///
+  /// In en, this message translates to:
+  /// **'Yatim Piatu'**
+  String get studentStatusYatimPiatu;
 
   /// No description provided for @dashboardAttendanceTitle.
   ///
@@ -1146,24 +1182,6 @@ abstract class AppLocalizations {
   /// **'No upcoming teaching schedule this week.'**
   String get dashboardNoUpcomingSchedule;
 
-  /// No description provided for @dashboardStudentsNeedAttention.
-  ///
-  /// In en, this message translates to:
-  /// **'Students Need Attention'**
-  String get dashboardStudentsNeedAttention;
-
-  /// No description provided for @dashboardStudentsNeedAttentionSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Attendance, score, and follow-up signals'**
-  String get dashboardStudentsNeedAttentionSubtitle;
-
-  /// No description provided for @dashboardNoAttentionSignal.
-  ///
-  /// In en, this message translates to:
-  /// **'No attention signal in this range.'**
-  String get dashboardNoAttentionSignal;
-
   /// No description provided for @dashboardTopLearners.
   ///
   /// In en, this message translates to:
@@ -1193,18 +1211,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'pts'**
   String get dashboardPointsShort;
-
-  /// No description provided for @dashboardRecentTeacherNotes.
-  ///
-  /// In en, this message translates to:
-  /// **'Recent Teacher Notes'**
-  String get dashboardRecentTeacherNotes;
-
-  /// No description provided for @dashboardNoTeacherNotes.
-  ///
-  /// In en, this message translates to:
-  /// **'No teacher notes in this range.'**
-  String get dashboardNoTeacherNotes;
 
   /// No description provided for @rangeWeekly.
   ///
@@ -2406,6 +2412,12 @@ abstract class AppLocalizations {
   /// **'No photo selected'**
   String get noPhotoSelected;
 
+  /// No description provided for @dropPhotoHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop photo here'**
+  String get dropPhotoHere;
+
   /// No description provided for @noFileSelected.
   ///
   /// In en, this message translates to:
@@ -2484,11 +2496,29 @@ abstract class AppLocalizations {
   /// **'Student number is not ready yet.'**
   String get studentNumberNotReady;
 
+  /// No description provided for @unsupportedPhotoFileType.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo file must be JPG, PNG, or WEBP.'**
+  String get unsupportedPhotoFileType;
+
   /// No description provided for @photoSizeLimit.
   ///
   /// In en, this message translates to:
   /// **'Photo must be 20 MB or smaller.'**
   String get photoSizeLimit;
+
+  /// No description provided for @dropRegistrationFormHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop registration form here'**
+  String get dropRegistrationFormHere;
+
+  /// No description provided for @unsupportedRegistrationFormFileType.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration form must be PDF, JPG, or PNG.'**
+  String get unsupportedRegistrationFormFileType;
 
   /// No description provided for @registrationFormSizeLimit.
   ///
@@ -3281,6 +3311,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No hobby or cita-cita has been added yet.'**
   String get noGoals;
+
+  /// No description provided for @healthInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Health Information'**
+  String get healthInformation;
+
+  /// No description provided for @loadingHealthInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading health information...'**
+  String get loadingHealthInformation;
+
+  /// No description provided for @noHealthInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'No health information has been added yet.'**
+  String get noHealthInformation;
+
+  /// No description provided for @householdProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Household Profile'**
+  String get householdProfile;
+
+  /// No description provided for @loadingHouseholdProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading household profile...'**
+  String get loadingHouseholdProfile;
+
+  /// No description provided for @noHouseholdProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'No household profile has been added yet.'**
+  String get noHouseholdProfile;
 
   /// No description provided for @noStudentRelations.
   ///
@@ -8286,6 +8352,30 @@ abstract class AppLocalizations {
   /// **'Street, RT/RW, house number, village, and district'**
   String get homeAddressHint;
 
+  /// No description provided for @bloodType.
+  ///
+  /// In en, this message translates to:
+  /// **'Blood Type'**
+  String get bloodType;
+
+  /// No description provided for @allergies.
+  ///
+  /// In en, this message translates to:
+  /// **'Allergies'**
+  String get allergies;
+
+  /// No description provided for @medicalNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Medical Notes'**
+  String get medicalNotes;
+
+  /// No description provided for @disabilities.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabilities'**
+  String get disabilities;
+
   /// No description provided for @dailySchoolTransportCost.
   ///
   /// In en, this message translates to:
@@ -8423,6 +8513,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Grandmother'**
   String get familyRelationGrandmother;
+
+  /// No description provided for @guardianIncomeFor.
+  ///
+  /// In en, this message translates to:
+  /// **'{relation} Income'**
+  String guardianIncomeFor(Object relation);
+
+  /// No description provided for @income.
+  ///
+  /// In en, this message translates to:
+  /// **'Income'**
+  String get income;
 
   /// No description provided for @agePositionOlder.
   ///
@@ -8904,6 +9006,54 @@ abstract class AppLocalizations {
   /// **'Filter'**
   String get filter;
 
+  /// No description provided for @activeFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Active filters'**
+  String get activeFilters;
+
+  /// No description provided for @noFiltersYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No filters yet.'**
+  String get noFiltersYet;
+
+  /// No description provided for @addFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Filter'**
+  String get addFilter;
+
+  /// No description provided for @filterOperator.
+  ///
+  /// In en, this message translates to:
+  /// **'Operator'**
+  String get filterOperator;
+
+  /// No description provided for @filterIsEqual.
+  ///
+  /// In en, this message translates to:
+  /// **'Is Equal'**
+  String get filterIsEqual;
+
+  /// No description provided for @filterIsNot.
+  ///
+  /// In en, this message translates to:
+  /// **'Is Not'**
+  String get filterIsNot;
+
+  /// No description provided for @filterContains.
+  ///
+  /// In en, this message translates to:
+  /// **'Contains'**
+  String get filterContains;
+
+  /// No description provided for @filterHasAnyValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Has Any Value'**
+  String get filterHasAnyValue;
+
   /// No description provided for @value.
   ///
   /// In en, this message translates to:
@@ -8915,6 +9065,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Done'**
   String get done;
+
+  /// No description provided for @locationTeaching.
+  ///
+  /// In en, this message translates to:
+  /// **'Location Teaching'**
+  String get locationTeaching;
+
+  /// No description provided for @locationTeachingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage teaching locations used for schedules and teaching sessions.'**
+  String get locationTeachingDescription;
+
+  /// No description provided for @teachingLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Teaching location'**
+  String get teachingLocation;
+
+  /// No description provided for @addTeachingLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Location'**
+  String get addTeachingLocation;
+
+  /// No description provided for @editTeachingLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Location'**
+  String get editTeachingLocation;
+
+  /// No description provided for @locationType.
+  ///
+  /// In en, this message translates to:
+  /// **'Location Type'**
+  String get locationType;
+
+  /// No description provided for @locationTypeClassroom.
+  ///
+  /// In en, this message translates to:
+  /// **'Classroom'**
+  String get locationTypeClassroom;
+
+  /// No description provided for @locationTypeHall.
+  ///
+  /// In en, this message translates to:
+  /// **'Hall'**
+  String get locationTypeHall;
+
+  /// No description provided for @locationTypeMosque.
+  ///
+  /// In en, this message translates to:
+  /// **'Mosque'**
+  String get locationTypeMosque;
+
+  /// No description provided for @locationTypeOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'Online'**
+  String get locationTypeOnline;
+
+  /// No description provided for @locationTypeStudentHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Student Home'**
+  String get locationTypeStudentHome;
+
+  /// No description provided for @locationTypeOutdoor.
+  ///
+  /// In en, this message translates to:
+  /// **'Outdoor'**
+  String get locationTypeOutdoor;
+
+  /// No description provided for @locationTypeOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get locationTypeOther;
+
+  /// No description provided for @searchTeachingLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Search code, name, address...'**
+  String get searchTeachingLocation;
+
+  /// No description provided for @noTeachingLocations.
+  ///
+  /// In en, this message translates to:
+  /// **'No teaching locations yet.'**
+  String get noTeachingLocations;
+
+  /// No description provided for @teachingLocationNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Teaching location name is required.'**
+  String get teachingLocationNameRequired;
+
+  /// No description provided for @teachingLocationActivated.
+  ///
+  /// In en, this message translates to:
+  /// **'Teaching location activated.'**
+  String get teachingLocationActivated;
+
+  /// No description provided for @teachingLocationDeactivated.
+  ///
+  /// In en, this message translates to:
+  /// **'Teaching location deactivated.'**
+  String get teachingLocationDeactivated;
+
+  /// No description provided for @failedUpdateTeachingLocationStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to update teaching location status.'**
+  String get failedUpdateTeachingLocationStatus;
+
+  /// No description provided for @studentLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Student Location'**
+  String get studentLocation;
+
+  /// No description provided for @selectStudentLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Select student location'**
+  String get selectStudentLocation;
+
+  /// No description provided for @selectStudentLocationRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select student location.'**
+  String get selectStudentLocationRequired;
+
+  /// No description provided for @createTeachingLocationBeforeStudents.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a teaching location before adding students.'**
+  String get createTeachingLocationBeforeStudents;
+
+  /// No description provided for @deceased.
+  ///
+  /// In en, this message translates to:
+  /// **'Deceased'**
+  String get deceased;
+
+  /// No description provided for @parentDeceased.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent is deceased'**
+  String get parentDeceased;
+
+  /// No description provided for @parentDeceasedHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Used to identify orphan, fatherless, motherless, or both-parent deceased status.'**
+  String get parentDeceasedHelp;
+
+  /// No description provided for @atLeastOneGuardianRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'At least one guardian is required.'**
+  String get atLeastOneGuardianRequired;
+
+  /// No description provided for @onlyOnePrimaryGuardianPermitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Only one primary guardian is permitted.'**
+  String get onlyOnePrimaryGuardianPermitted;
 
   /// No description provided for @teachers.
   ///

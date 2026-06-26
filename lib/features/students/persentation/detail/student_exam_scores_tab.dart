@@ -47,11 +47,13 @@ class StudentExamScoresTab extends StatefulWidget {
     required this.student,
     required this.canUpdateStudent,
     required this.canDeleteStudent,
+    this.wrapWithScroll = true,
   });
 
   final StudentDetailData student;
   final bool canUpdateStudent;
   final bool canDeleteStudent;
+  final bool wrapWithScroll;
 
   @override
   State<StudentExamScoresTab> createState() => _StudentExamScoresTabState();
@@ -185,59 +187,56 @@ class _StudentExamScoresTabState extends State<StudentExamScoresTab> {
         final groups = data?.groups ?? const <StudentExamScoreGroup>[];
         final options = data?.options;
 
-        return DetailTabScroll(
+        final content = DetailSectionCard(
+          title: context.l10n.examScores,
+          icon: Icons.fact_check_outlined,
+          wrapChildren: false,
           children: [
-            DetailSectionCard(
-              title: context.l10n.examScores,
-              icon: Icons.fact_check_outlined,
-              wrapChildren: false,
+            Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        context.l10n.examScoresDescription,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
+                Expanded(
+                  child: Text(
+                    context.l10n.examScoresDescription,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
                     ),
-                    const SizedBox(width: 10),
-                    if (widget.canUpdateStudent)
-                      FilledButton.icon(
-                        onPressed:
-                            snapshot.connectionState ==
-                                    ConnectionState.waiting ||
-                                data == null
-                            ? null
-                            : () => _showAddScoreDialog(data.options),
-                        icon: const Icon(Icons.add),
-                        label: Text(context.l10n.addScoreExam),
-                      ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 12),
-                if (snapshot.hasError)
-                  DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
-                else if (snapshot.connectionState == ConnectionState.waiting)
-                  DetailEmptySectionText(context.l10n.loadingExamScores)
-                else if (groups.isEmpty)
-                  DetailEmptySectionText(context.l10n.noExamScores)
-                else
-                  _ExamScoreGroupTable(
-                    groups: groups,
-                    canEdit: widget.canUpdateStudent,
-                    canDelete: widget.canDeleteStudent,
-                    onEdit: options == null
-                        ? (_) async {}
-                        : (group) => _showEditScoreDialog(options, group),
-                    onDelete: _deleteScoreGroup,
+                const SizedBox(width: 10),
+                if (widget.canUpdateStudent)
+                  FilledButton.icon(
+                    onPressed:
+                        snapshot.connectionState == ConnectionState.waiting ||
+                            data == null
+                        ? null
+                        : () => _showAddScoreDialog(data.options),
+                    icon: const Icon(Icons.add),
+                    label: Text(context.l10n.addScoreExam),
                   ),
               ],
             ),
+            const SizedBox(height: 12),
+            if (snapshot.hasError)
+              DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
+            else if (snapshot.connectionState == ConnectionState.waiting)
+              DetailEmptySectionText(context.l10n.loadingExamScores)
+            else if (groups.isEmpty)
+              DetailEmptySectionText(context.l10n.noExamScores)
+            else
+              _ExamScoreGroupTable(
+                groups: groups,
+                canEdit: widget.canUpdateStudent,
+                canDelete: widget.canDeleteStudent,
+                onEdit: options == null
+                    ? (_) async {}
+                    : (group) => _showEditScoreDialog(options, group),
+                onDelete: _deleteScoreGroup,
+              ),
           ],
         );
+        if (!widget.wrapWithScroll) return content;
+        return DetailTabScroll(children: [content]);
       },
     );
   }

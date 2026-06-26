@@ -9,8 +9,21 @@ class AuthSessionCache {
 
   static final AuthSessionCache instance = AuthSessionCache._();
   static const Duration sessionTtl = Duration(minutes: 2);
+  AuthSession? _memorySession;
 
-  Future<AuthSession?> read() async {
+  Future<AuthSession?> read({bool refreshTtl = true}) async {
+    if (_memorySession != null) {
+      if (!refreshTtl) return _memorySession;
+      final refreshed = _memorySession!.copyWith(
+        expiresAt: DateTime.now().add(sessionTtl),
+      );
+      _memorySession = refreshed;
+      final file = await _sessionFile();
+      await file.parent.create(recursive: true);
+      await file.writeAsString(jsonEncode(refreshed.toJson()), flush: true);
+      return refreshed;
+    }
+
     final file = await _sessionFile();
     if (!await file.exists()) return null;
 
@@ -22,7 +35,14 @@ class AuthSessionCache {
         await clear();
         return null;
       }
-      return session;
+      if (!refreshTtl) return session;
+
+      final refreshed = session.copyWith(
+        expiresAt: DateTime.now().add(sessionTtl),
+      );
+      _memorySession = refreshed;
+      await file.writeAsString(jsonEncode(refreshed.toJson()), flush: true);
+      return refreshed;
     } catch (_) {
       await clear();
       return null;
@@ -50,10 +70,12 @@ class AuthSessionCache {
       mustChangePassword: mustChangePassword,
       expiresAt: DateTime.now().add(sessionTtl),
     );
+    _memorySession = session;
     await file.writeAsString(jsonEncode(session.toJson()), flush: true);
   }
 
   Future<void> clear() async {
+    _memorySession = null;
     final file = await _sessionFile();
     if (await file.exists()) {
       await file.delete();
@@ -90,6 +112,28 @@ class AuthSession {
   bool get isAdmin => role.toUpperCase() == 'ADMIN' || username == 'admin';
   bool get isStaff => role.toUpperCase() == 'STAFF';
   bool get isTeacher => role.toUpperCase() == 'TEACHER';
+
+  AuthSession copyWith({
+    String? userId,
+    String? username,
+    String? role,
+    String? fullName,
+    String? nickName,
+    String? teacherId,
+    bool? mustChangePassword,
+    DateTime? expiresAt,
+  }) {
+    return AuthSession(
+      userId: userId ?? this.userId,
+      username: username ?? this.username,
+      role: role ?? this.role,
+      fullName: fullName ?? this.fullName,
+      nickName: nickName ?? this.nickName,
+      teacherId: teacherId ?? this.teacherId,
+      mustChangePassword: mustChangePassword ?? this.mustChangePassword,
+      expiresAt: expiresAt ?? this.expiresAt,
+    );
+  }
 
   factory AuthSession.fromJson(Map<String, dynamic> json) {
     return AuthSession(

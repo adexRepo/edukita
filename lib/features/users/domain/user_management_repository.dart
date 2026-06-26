@@ -10,21 +10,15 @@ class UserManagementRepository {
 
   final DatabaseProvider _dbProvider;
 
-  Future<List<User>> getUsers({bool includeAdmin = false}) async {
+  Future<List<User>> getUsers() async {
     final db = await _db();
-    final whereClause = includeAdmin ? '' : "WHERE UPPER(u.role) != 'ADMIN'";
     final rows = await db.rawQuery('''
       SELECT u.*, teacher.full_name AS teacher_name
       FROM users u
       LEFT JOIN teachers teacher ON teacher.id = u.teacher_id
-      $whereClause
+      WHERE UPPER(u.role) != 'ADMIN'
       ORDER BY
-        CASE UPPER(u.role)
-          WHEN 'ADMIN' THEN 0
-          WHEN 'STAFF' THEN 1
-          WHEN 'TEACHER' THEN 2
-          ELSE 9
-        END,
+        CASE UPPER(u.role) WHEN 'STAFF' THEN 1 WHEN 'TEACHER' THEN 2 ELSE 9 END,
         u.full_name ASC
     ''');
     return rows.map(User.fromMap).toList();

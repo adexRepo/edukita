@@ -214,15 +214,12 @@ class _TeachersPageState extends State<TeachersPage> {
         _buildTableHeader(),
         const SizedBox(height: 12),
         Expanded(
-          child: teachers.isEmpty
-              ? Center(
-                  child: Text(
-                    state.teachers.isEmpty
-                        ? context.l10n.noTeachersYet
-                        : context.l10n.noTeachersMatch,
-                  ),
-                )
-              : _buildTeacherTable(teachers),
+          child: _buildTeacherTable(
+            teachers,
+            emptyMessage: state.teachers.isEmpty
+                ? context.l10n.noTeachersYet
+                : context.l10n.noTeachersMatch,
+          ),
         ),
       ],
     );
@@ -273,13 +270,17 @@ class _TeachersPageState extends State<TeachersPage> {
     );
   }
 
-  Widget _buildTeacherTable(List<Teacher> teachers) {
+  Widget _buildTeacherTable(
+    List<Teacher> teachers, {
+    required String emptyMessage,
+  }) {
     return AppTable<Teacher>(
       data: teachers,
+      emptyMessage: emptyMessage,
       pageable: Pageable(
         page: 0,
         size: teachers.length,
-        totalPages: 1,
+        totalPages: teachers.isEmpty ? 0 : 1,
         totalItems: teachers.length,
       ),
       onRowTap: (teacher) {

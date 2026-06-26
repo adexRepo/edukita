@@ -32,8 +32,10 @@ dependencies:
   carousel_slider: ^5.1.2
   fl_chart: ^1.2.0
   file_selector: ^1.0.4
+  desktop_drop: ^0.6.0
   crypto: ^3.0.6
   package_info_plus: ^8.3.1
+  shadcn_ui: ^0.55.0
 
 dev_dependencies:
   flutter_test:

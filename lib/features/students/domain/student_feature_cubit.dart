@@ -10,6 +10,7 @@ import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/data/student_page_data.dart';
 import 'package:edukita/features/students/domain/student_repository.dart';
 import 'package:edukita/features/students/domain/sudent_filter.dart';
+import 'package:edukita/features/teaching_locations/data/teaching_location_model.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
@@ -78,6 +79,10 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
 
   Future<List<School>> loadAvailableSchools() {
     return _repo.loadAvailableSchools();
+  }
+
+  Future<List<TeachingLocation>> loadAvailableTeachingLocations() {
+    return _repo.loadAvailableTeachingLocations();
   }
 
   Future<String> generateStudentNumber() {
@@ -183,6 +188,10 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
       _listKey(filter.agesNot.map((value) => value.toString())),
       _listKey(filter.genders),
       _listKey(filter.gendersNot),
+      _listKey(filter.duafaStatuses),
+      _listKey(filter.duafaStatusesNot),
+      _listKey(filter.teachingLocations),
+      _listKey(filter.teachingLocationsNot),
       pageable.page.toString(),
       pageable.size.toString(),
       pageable.sorts.map((sort) => sort.toSql()).join(','),

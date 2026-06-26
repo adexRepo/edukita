@@ -1,5 +1,6 @@
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/localization/localized_display.dart';
+import 'package:edukita/features/students/data/student_advanced_form_data.dart';
 import 'package:edukita/features/students/data/student_detail_data.dart';
 import 'package:edukita/features/students/data/student_detail_insight_data.dart';
 import 'package:edukita/features/students/domain/detail/student_detail_cubit.dart';
@@ -8,14 +9,22 @@ import 'package:edukita/features/students/persentation/detail/detail_empty_secti
 import 'package:edukita/features/students/persentation/detail/detail_info_pill.dart';
 import 'package:edukita/features/students/persentation/detail/detail_metric_summary.dart';
 import 'package:edukita/features/students/persentation/detail/detail_section_card.dart';
+import 'package:edukita/features/students/persentation/detail/student_exam_scores_tab.dart';
 import 'package:edukita/widgets/detail_tab_scroll.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class StudentAcademicTab extends StatelessWidget {
-  const StudentAcademicTab({super.key, required this.student});
+  const StudentAcademicTab({
+    super.key,
+    required this.student,
+    required this.canUpdateStudent,
+    required this.canDeleteStudent,
+  });
 
   final StudentDetailData student;
+  final bool canUpdateStudent;
+  final bool canDeleteStudent;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +60,13 @@ class StudentAcademicTab extends StatelessWidget {
                   ),
                 ],
               ],
+            ),
+            _AchievementsSection(studentId: student.id),
+            StudentExamScoresTab(
+              student: student,
+              canUpdateStudent: canUpdateStudent,
+              canDeleteStudent: canDeleteStudent,
+              wrapWithScroll: false,
             ),
             DetailSectionCard(
               title: context.l10n.competencyAverage,
@@ -123,9 +139,60 @@ class StudentAcademicTab extends StatelessWidget {
   }
 }
 
+class _AchievementsSection extends StatelessWidget {
+  const _AchievementsSection({required this.studentId});
+
+  final String studentId;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<StudentAdvancedFormData>(
+      future: context.read<StudentDetailCubit>().loadAdvancedFormData(
+        studentId,
+      ),
+      builder: (context, snapshot) {
+        final household =
+            snapshot.data?.householdProfile ??
+            const StudentHouseholdProfileFormData();
+        final rows = [
+          if (_hasText(household.academicAchievement))
+            [context.l10n.academicAchievement, household.academicAchievement!],
+          if (_hasText(household.nonAcademicAchievement))
+            [
+              context.l10n.nonAcademicAchievement,
+              household.nonAcademicAchievement!,
+            ],
+        ];
+
+        return DetailSectionCard(
+          title: context.l10n.achievement,
+          icon: Icons.emoji_events_outlined,
+          wrapChildren: false,
+          children: [
+            if (snapshot.hasError)
+              DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
+            else if (snapshot.connectionState == ConnectionState.waiting)
+              DetailEmptySectionText(context.l10n.loading)
+            else
+              DetailDataTable(
+                columns: [context.l10n.category, context.l10n.value],
+                rows: rows,
+                emptyText: context.l10n.emptyData,
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 String _scoreOrDash(double? value) {
   if (value == null) return '-';
   return value.toStringAsFixed(0);
+}
+
+bool _hasText(String? value) {
+  return value != null && value.trim().isNotEmpty;
 }
 
 String _textOrDash(String? value) {

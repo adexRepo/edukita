@@ -11,6 +11,8 @@ class StudentTable {
     required this.status,
     required this.joinAt,
     required this.age,
+    required this.duafaStatus,
+    required this.teachingLocationName,
     this.averageScore,
     this.nis,
     this.photoPath,
@@ -25,6 +27,8 @@ class StudentTable {
   final StudentStatus status;
   final String joinAt;
   final int age;
+  final String duafaStatus;
+  final String teachingLocationName;
   final double? averageScore;
   final String? nis;
   final String? photoPath;
@@ -40,6 +44,8 @@ class StudentTable {
       status: _statusFromValue(json['status']),
       joinAt: json['join_at']?.toString() ?? '',
       age: (json['age'] as num?)?.toInt() ?? 0,
+      duafaStatus: json['duafa_status']?.toString() ?? 'Dhuafa',
+      teachingLocationName: json['teaching_location_name']?.toString() ?? '-',
       averageScore: (json['average_score'] as num?)?.toDouble(),
       nis: json['nis']?.toString(),
       photoPath: json['photo_path']?.toString(),

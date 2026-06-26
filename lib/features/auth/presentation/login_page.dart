@@ -1,6 +1,7 @@
 import 'package:edukita/features/common/title_bar.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
+import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -55,6 +56,7 @@ class _LoginPageState extends State<LoginPage> {
       final user = await DatabaseProvider.instance.getUserById(session.userId);
       if (!mounted) return;
       if (user != null) {
+        clearAppMemoryCaches();
         await AuthSessionCache.instance.save(
           userId: user['id']?.toString() ?? '',
           username: user['username']?.toString() ?? '',
@@ -93,6 +95,7 @@ class _LoginPageState extends State<LoginPage> {
         _passwordController.text,
       );
       if (user != null) {
+        clearAppMemoryCaches();
         await AuthSessionCache.instance.save(
           userId: user['id']?.toString() ?? '',
           username: user['username']?.toString() ?? '',

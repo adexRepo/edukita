@@ -486,14 +486,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardStudentsTitle => 'Students';
 
   @override
-  String get dashboardStudentsDescription =>
-      'Active student composition by gender.';
+  String get dashboardStudentsDescription => 'Composition by gender.';
+
+  @override
+  String get dashboardStudentsStatusDescription =>
+      'Composition by support status.';
 
   @override
   String get dashboardBoys => 'Boys';
 
   @override
   String get dashboardGirls => 'Girls';
+
+  @override
+  String get duafaStatus => 'Dhuafa Status';
+
+  @override
+  String get studentStatusDhuafa => 'Dhuafa';
+
+  @override
+  String get studentStatusYatim => 'Yatim';
+
+  @override
+  String get studentStatusPiatu => 'Piatu';
+
+  @override
+  String get studentStatusYatimPiatu => 'Yatim Piatu';
 
   @override
   String get dashboardAttendanceTitle => 'Attendance';
@@ -566,16 +584,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'No upcoming teaching schedule this week.';
 
   @override
-  String get dashboardStudentsNeedAttention => 'Students Need Attention';
-
-  @override
-  String get dashboardStudentsNeedAttentionSubtitle =>
-      'Attendance, score, and follow-up signals';
-
-  @override
-  String get dashboardNoAttentionSignal => 'No attention signal in this range.';
-
-  @override
   String get dashboardTopLearners => 'Top Learners';
 
   @override
@@ -592,12 +600,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dashboardPointsShort => 'pts';
-
-  @override
-  String get dashboardRecentTeacherNotes => 'Recent Teacher Notes';
-
-  @override
-  String get dashboardNoTeacherNotes => 'No teacher notes in this range.';
 
   @override
   String get rangeWeekly => 'Weekly';
@@ -1231,6 +1233,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noPhotoSelected => 'No photo selected';
 
   @override
+  String get dropPhotoHere => 'Drop photo here';
+
+  @override
   String get noFileSelected => 'No file selected';
 
   @override
@@ -1271,7 +1276,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studentNumberNotReady => 'Student number is not ready yet.';
 
   @override
+  String get unsupportedPhotoFileType =>
+      'Photo file must be JPG, PNG, or WEBP.';
+
+  @override
   String get photoSizeLimit => 'Photo must be 20 MB or smaller.';
+
+  @override
+  String get dropRegistrationFormHere => 'Drop registration form here';
+
+  @override
+  String get unsupportedRegistrationFormFileType =>
+      'Registration form must be PDF, JPG, or PNG.';
 
   @override
   String get registrationFormSizeLimit =>
@@ -1689,6 +1705,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noGoals => 'No hobby or cita-cita has been added yet.';
+
+  @override
+  String get healthInformation => 'Health Information';
+
+  @override
+  String get loadingHealthInformation => 'Loading health information...';
+
+  @override
+  String get noHealthInformation => 'No health information has been added yet.';
+
+  @override
+  String get householdProfile => 'Household Profile';
+
+  @override
+  String get loadingHouseholdProfile => 'Loading household profile...';
+
+  @override
+  String get noHouseholdProfile => 'No household profile has been added yet.';
 
   @override
   String get noStudentRelations =>
@@ -4465,6 +4499,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'Street, RT/RW, house number, village, and district';
 
   @override
+  String get bloodType => 'Blood Type';
+
+  @override
+  String get allergies => 'Allergies';
+
+  @override
+  String get medicalNotes => 'Medical Notes';
+
+  @override
+  String get disabilities => 'Disabilities';
+
+  @override
   String get dailySchoolTransportCost => 'Daily School Transport Cost';
 
   @override
@@ -4532,6 +4578,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get familyRelationGrandmother => 'Grandmother';
+
+  @override
+  String guardianIncomeFor(Object relation) {
+    return '$relation Income';
+  }
+
+  @override
+  String get income => 'Income';
 
   @override
   String get agePositionOlder => 'Older';
@@ -4805,10 +4859,124 @@ class AppLocalizationsEn extends AppLocalizations {
   String get filter => 'Filter';
 
   @override
+  String get activeFilters => 'Active filters';
+
+  @override
+  String get noFiltersYet => 'No filters yet.';
+
+  @override
+  String get addFilter => 'Add Filter';
+
+  @override
+  String get filterOperator => 'Operator';
+
+  @override
+  String get filterIsEqual => 'Is Equal';
+
+  @override
+  String get filterIsNot => 'Is Not';
+
+  @override
+  String get filterContains => 'Contains';
+
+  @override
+  String get filterHasAnyValue => 'Has Any Value';
+
+  @override
   String get value => 'Value';
 
   @override
   String get done => 'Done';
+
+  @override
+  String get locationTeaching => 'Location Teaching';
+
+  @override
+  String get locationTeachingDescription =>
+      'Manage teaching locations used for schedules and teaching sessions.';
+
+  @override
+  String get teachingLocation => 'Teaching location';
+
+  @override
+  String get addTeachingLocation => 'Add Location';
+
+  @override
+  String get editTeachingLocation => 'Edit Location';
+
+  @override
+  String get locationType => 'Location Type';
+
+  @override
+  String get locationTypeClassroom => 'Classroom';
+
+  @override
+  String get locationTypeHall => 'Hall';
+
+  @override
+  String get locationTypeMosque => 'Mosque';
+
+  @override
+  String get locationTypeOnline => 'Online';
+
+  @override
+  String get locationTypeStudentHome => 'Student Home';
+
+  @override
+  String get locationTypeOutdoor => 'Outdoor';
+
+  @override
+  String get locationTypeOther => 'Other';
+
+  @override
+  String get searchTeachingLocation => 'Search code, name, address...';
+
+  @override
+  String get noTeachingLocations => 'No teaching locations yet.';
+
+  @override
+  String get teachingLocationNameRequired =>
+      'Teaching location name is required.';
+
+  @override
+  String get teachingLocationActivated => 'Teaching location activated.';
+
+  @override
+  String get teachingLocationDeactivated => 'Teaching location deactivated.';
+
+  @override
+  String get failedUpdateTeachingLocationStatus =>
+      'Failed to update teaching location status.';
+
+  @override
+  String get studentLocation => 'Student Location';
+
+  @override
+  String get selectStudentLocation => 'Select student location';
+
+  @override
+  String get selectStudentLocationRequired => 'Please select student location.';
+
+  @override
+  String get createTeachingLocationBeforeStudents =>
+      'Create a teaching location before adding students.';
+
+  @override
+  String get deceased => 'Deceased';
+
+  @override
+  String get parentDeceased => 'Parent is deceased';
+
+  @override
+  String get parentDeceasedHelp =>
+      'Used to identify orphan, fatherless, motherless, or both-parent deceased status.';
+
+  @override
+  String get atLeastOneGuardianRequired => 'At least one guardian is required.';
+
+  @override
+  String get onlyOnePrimaryGuardianPermitted =>
+      'Only one primary guardian is permitted.';
 
   @override
   String get teachers => 'Teachers';

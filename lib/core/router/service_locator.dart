@@ -24,6 +24,8 @@ import 'package:edukita/features/teachers/domain/teacher_repository.dart';
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_cubit.dart';
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_detail_cubit.dart';
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_repository.dart';
+import 'package:edukita/features/teaching_locations/domain/teaching_location_cubit.dart';
+import 'package:edukita/features/teaching_locations/domain/teaching_location_repository.dart';
 import 'package:edukita/features/users/domain/user_management_cubit.dart';
 import 'package:edukita/features/users/domain/user_management_repository.dart';
 import 'package:get_it/get_it.dart';
@@ -44,6 +46,9 @@ Future<void> setupLocator() async {
   getIt.registerLazySingleton<TeacherRepository>(() => TeacherRepository(db));
   getIt.registerLazySingleton<SubjectRepository>(() => SubjectRepository(db));
   getIt.registerLazySingleton<StrategyRepository>(() => StrategyRepository(db));
+  getIt.registerLazySingleton<TeachingLocationRepository>(
+    () => TeachingLocationRepository(db),
+  );
   getIt.registerLazySingleton<AssistanceProgramRepository>(
     () => AssistanceProgramRepository(db),
   );
@@ -89,6 +94,9 @@ Future<void> setupLocator() async {
   getIt.registerLazySingleton<SubjectCacheService>(() => SubjectCacheService());
   getIt.registerLazySingleton<StrategyCacheService>(
     () => StrategyCacheService(),
+  );
+  getIt.registerLazySingleton<TeachingLocationCacheService>(
+    () => TeachingLocationCacheService(),
   );
 
   // Cubits (factory = new instance each time)
@@ -145,6 +153,13 @@ Future<void> setupLocator() async {
     ),
   );
 
+  getIt.registerFactory<TeachingLocationCubit>(
+    () => TeachingLocationCubit(
+      getIt<TeachingLocationRepository>(),
+      getIt<TeachingLocationCacheService>(),
+    ),
+  );
+
   getIt.registerFactory<AssistanceProgramCubit>(
     () => AssistanceProgramCubit(
       getIt<AssistanceProgramRepository>(),
@@ -195,4 +210,46 @@ Future<void> setupLocator() async {
   getIt.registerFactory<UserManagementCubit>(
     () => UserManagementCubit(getIt<UserManagementRepository>()),
   );
+}
+
+void clearAppMemoryCaches() {
+  if (getIt.isRegistered<DashboardCacheService>()) {
+    getIt<DashboardCacheService>().clear();
+  }
+  if (getIt.isRegistered<ScheduleCacheService>()) {
+    getIt<ScheduleCacheService>().clear();
+  }
+  if (getIt.isRegistered<TeachingActivityCacheService>()) {
+    getIt<TeachingActivityCacheService>().clear();
+  }
+  if (getIt.isRegistered<StudentCacheService>()) {
+    getIt<StudentCacheService>().clear();
+  }
+  if (getIt.isRegistered<TeacherCacheService>()) {
+    getIt<TeacherCacheService>().clear();
+  }
+  if (getIt.isRegistered<AssistanceProgramCacheService>()) {
+    getIt<AssistanceProgramCacheService>().clear();
+  }
+  if (getIt.isRegistered<AssistancePlanCacheService>()) {
+    getIt<AssistancePlanCacheService>().clear();
+  }
+  if (getIt.isRegistered<ReportDefinitionCacheService>()) {
+    getIt<ReportDefinitionCacheService>().clear();
+  }
+  if (getIt.isRegistered<SchoolCacheService>()) {
+    getIt<SchoolCacheService>().clear();
+  }
+  if (getIt.isRegistered<ClassCacheService>()) {
+    getIt<ClassCacheService>().clear();
+  }
+  if (getIt.isRegistered<SubjectCacheService>()) {
+    getIt<SubjectCacheService>().clear();
+  }
+  if (getIt.isRegistered<StrategyCacheService>()) {
+    getIt<StrategyCacheService>().clear();
+  }
+  if (getIt.isRegistered<TeachingLocationCacheService>()) {
+    getIt<TeachingLocationCacheService>().clear();
+  }
 }

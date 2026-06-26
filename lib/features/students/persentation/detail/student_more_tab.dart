@@ -185,9 +185,9 @@ class _GoalsTable extends StatelessWidget {
       builder: (context, snapshot) {
         final advanced = snapshot.data ?? const StudentAdvancedFormData();
         final rows = <List<String>>[
-          if (_hasText(advanced.hobby)) ['HOBBY', advanced.hobby!],
+          if (_hasText(advanced.hobby)) [context.l10n.hobby, advanced.hobby!],
           if (_hasText(advanced.aspiration))
-            ['ASPIRATION', advanced.aspiration!],
+            [context.l10n.aspiration, advanced.aspiration!],
         ];
 
         return DetailSectionCard(
@@ -211,9 +211,10 @@ class _GoalsTable extends StatelessWidget {
     );
   }
 
-  bool _hasText(String? value) {
-    return value != null && value.trim().isNotEmpty;
-  }
+}
+
+bool _hasText(String? value) {
+  return value != null && value.trim().isNotEmpty;
 }
 
 String _textOrDash(String? value) {

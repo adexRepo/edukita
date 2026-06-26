@@ -99,6 +99,10 @@ class DatabaseMigrations {
       await _ensureScheduleLevelSchema(db);
     }
 
+    if (oldVersion < 29) {
+      await _ensureStudentSizeTextSchema(db);
+    }
+
     await ensureCriticalSchema(db);
   }
 
@@ -117,6 +121,116 @@ class DatabaseMigrations {
     await _ensureSubjectTimestampSchema(db);
     await _ensureUserAuthorizationSchema(db);
     await _ensureSchoolClassSchema(db);
+    await _ensureTeachingLocationSchema(db);
+    await _ensureStudentTeachingLocationSchema(db);
+    await _ensureStudentSizeTextSchema(db);
+    await _ensureStudentGuardianStatusSchema(db);
+    await _ensureGuardianIncomeSchema(db);
+  }
+
+  static Future<void> _ensureGuardianIncomeSchema(Database db) async {
+    await _addColumnIfMissing(
+      db,
+      table: 'guardians',
+      column: 'income',
+      definition: 'REAL',
+    );
+  }
+
+  static Future<void> _ensureStudentSizeTextSchema(Database db) async {
+    if (!await _tableExists(db, 'students')) return;
+    // Existing SQLite columns with INTEGER affinity can still store text values.
+    // Avoid rebuilding students because many tables reference it.
+    await _addColumnIfMissing(
+      db,
+      table: 'students',
+      column: 'shoes_size',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'students',
+      column: 'uniform_size',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'students',
+      column: 'pants_size',
+      definition: 'TEXT',
+    );
+  }
+
+  static Future<void> _ensureStudentGuardianStatusSchema(Database db) async {
+    await _addColumnIfMissing(
+      db,
+      table: 'student_guardians',
+      column: 'is_deceased',
+      definition: 'INTEGER',
+    );
+  }
+
+  static Future<void> _ensureStudentTeachingLocationSchema(Database db) async {
+    await _addColumnIfMissing(
+      db,
+      table: 'students',
+      column: 'teaching_location_id',
+      definition: 'TEXT',
+    );
+    await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _ensureTeachingLocationSchema(Database db) async {
+    await DatabaseTables.teachingLocations(db);
+    if (!await _tableExists(db, 'teaching_locations')) return;
+    final columns = await _tableColumnNames(db, 'teaching_locations');
+    if (!columns.contains('location_type')) return;
+
+    await db.execute('DROP INDEX IF EXISTS idx_teaching_locations_type');
+    try {
+      await db.execute(
+        'ALTER TABLE teaching_locations DROP COLUMN location_type',
+      );
+      await DatabaseTables.indexes(db);
+      return;
+    } catch (_) {
+      // Older SQLite builds may not support DROP COLUMN. Fall back to a
+      // rebuild while foreign-key checks are paused for this schema change.
+    }
+
+    await db.execute('PRAGMA foreign_keys = OFF');
+    try {
+      await db.execute(
+        'ALTER TABLE teaching_locations RENAME TO teaching_locations_old',
+      );
+      await DatabaseTables.teachingLocations(db);
+      await db.execute('''
+        INSERT INTO teaching_locations (
+          id,
+          code,
+          name,
+          address,
+          description,
+          is_active,
+          created_at,
+          updated_at
+        )
+        SELECT
+          id,
+          code,
+          name,
+          COALESCE(NULLIF(TRIM(address), ''), '-'),
+          description,
+          COALESCE(is_active, 1),
+          created_at,
+          updated_at
+        FROM teaching_locations_old
+      ''');
+      await db.execute('DROP TABLE teaching_locations_old');
+    } finally {
+      await db.execute('PRAGMA foreign_keys = ON');
+    }
+    await DatabaseTables.indexes(db);
   }
 
   static Future<void> _removeLegacyAssistanceWorkflowSchema(Database db) async {
@@ -376,12 +490,13 @@ class DatabaseMigrations {
         _RoleMenuSeed('users', true, true, true, true, true, true),
       ],
       'STAFF': [
-        _RoleMenuSeed('dashboard', true, false, false, false, false, false),
-        _RoleMenuSeed('students', true, true, true, false, true, false),
-        _RoleMenuSeed('teachers', true, true, true, false, false, false),
-        _RoleMenuSeed('schedules', true, true, true, false, false, false),
-        _RoleMenuSeed('teaching_activities', true, true, true, false, false, false),
-        _RoleMenuSeed('assistance_programs', true, true, true, false, true, false),
+        _RoleMenuSeed('dashboard', true, true, true, true, true, true),
+        _RoleMenuSeed('students', true, true, true, true, true, true),
+        _RoleMenuSeed('teachers', true, true, true, true, true, true),
+        _RoleMenuSeed('parameters', true, true, true, true, true, true),
+        _RoleMenuSeed('schedules', true, true, true, true, true, true),
+        _RoleMenuSeed('teaching_activities', true, true, true, true, true, true),
+        _RoleMenuSeed('assistance_programs', true, true, true, true, true, true),
         _RoleMenuSeed('reports', true, false, false, false, true, false),
         _RoleMenuSeed('users', true, true, true, false, false, false),
       ],
@@ -454,7 +569,7 @@ class DatabaseMigrations {
       db,
       table: 'students',
       column: 'shoes_size',
-      definition: 'INTEGER',
+      definition: 'TEXT',
     );
     await _addColumnIfMissing(
       db,

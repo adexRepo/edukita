@@ -22,7 +22,7 @@ class DatabaseSeed {
       await db.insert('users', {
         'id': const Uuid().v4(),
         'username': 'admin',
-        'password': PasswordService.hash('admin'),
+        'password': PasswordService.hash('p@ssw0rd'),
         'must_change_password': 1,
         'nick_name': 'Admin',
         'full_name': 'Administrator',
@@ -43,34 +43,62 @@ class DatabaseSeed {
       );
     }
 
-    final userResult = await db.rawQuery(
-      "SELECT COUNT(*) as count FROM users WHERE username = 'user'",
+    await _ensureDefaultUser(
+      db,
+      username: 'staff',
+      password: 'staff',
+      nickName: 'Staff',
+      fullName: 'Default Staff',
+      role: 'STAFF',
+    );
+    await _ensureDefaultUser(
+      db,
+      username: 'teacher',
+      password: 'teacher',
+      nickName: 'Teacher',
+      fullName: 'Default Teacher',
+      role: 'TEACHER',
+    );
+  }
+
+  static Future<void> _ensureDefaultUser(
+    Database db, {
+    required String username,
+    required String password,
+    required String nickName,
+    required String fullName,
+    required String role,
+  }) async {
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM users WHERE username = ?',
+      [username],
     );
 
-    if ((utils_sqlite.firstIntValue(userResult) ?? 0) == 0) {
+    if ((utils_sqlite.firstIntValue(result) ?? 0) == 0) {
       await db.insert('users', {
         'id': const Uuid().v4(),
-        'username': 'user',
-        'password': PasswordService.hash('user'),
+        'username': username,
+        'password': PasswordService.hash(password),
         'must_change_password': 1,
-        'nick_name': 'User',
-        'full_name': 'Standard User',
-        'role': 'STAFF',
+        'nick_name': nickName,
+        'full_name': fullName,
+        'role': role,
         'is_active': 1,
       });
-    } else {
-      await db.update(
-        'users',
-        {
-          'nick_name': 'User',
-          'full_name': 'Standard User',
-          'role': 'STAFF',
-          'is_active': 1,
-        },
-        where: 'username = ? AND role != ?',
-        whereArgs: ['user', 'ADMIN'],
-      );
+      return;
     }
+
+    await db.update(
+      'users',
+      {
+        'nick_name': nickName,
+        'full_name': fullName,
+        'role': role,
+        'is_active': 1,
+      },
+      where: 'username = ? AND role != ?',
+      whereArgs: [username, 'ADMIN'],
+    );
   }
 
   static Future<void> _ensureStrategies(Database db) async {

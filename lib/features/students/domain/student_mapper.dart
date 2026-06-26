@@ -8,6 +8,7 @@ class StudentMapper extends Mapper<Student> {
       ...map,
       'student_id': map['student_no'],
       'shoe_size': map['shoes_size'],
+      'teaching_location_id': map['teaching_location_id'],
     });
   }
 
@@ -19,6 +20,7 @@ class StudentMapper extends Mapper<Student> {
       'id': json['id'],
       'student_no': json['student_id'],
       'class_id': json['class_id'],
+      'teaching_location_id': json['teaching_location_id'],
       'nick_name': json['nick_name'],
       'full_name': json['full_name'],
       'join_at': json['join_at'],

@@ -25,6 +25,10 @@ class DashboardStat {
     this.studentCount = 0,
     this.maleStudentCount = 0,
     this.femaleStudentCount = 0,
+    this.duafaStudentCount = 0,
+    this.yatimStudentCount = 0,
+    this.piatuStudentCount = 0,
+    this.yatimPiatuStudentCount = 0,
     this.teacherCount = 0,
     this.syllabusCount = 0,
     this.strategyCount = 0,
@@ -45,8 +49,6 @@ class DashboardStat {
     this.sessionStatus = const <DashboardStatusCount>[],
     this.upcomingSchedules = const <DashboardUpcomingSchedule>[],
     this.assistancePeriods = const <DashboardAssistancePeriod>[],
-    this.attentionStudents = const <DashboardAttentionStudent>[],
-    this.recentNotes = const <DashboardRecentNote>[],
     this.topLearners = const <DashboardTopLearner>[],
   });
 
@@ -58,6 +60,10 @@ class DashboardStat {
   final int studentCount;
   final int maleStudentCount;
   final int femaleStudentCount;
+  final int duafaStudentCount;
+  final int yatimStudentCount;
+  final int piatuStudentCount;
+  final int yatimPiatuStudentCount;
   final int teacherCount;
   final int syllabusCount;
   final int strategyCount;
@@ -78,8 +84,6 @@ class DashboardStat {
   final List<DashboardStatusCount> sessionStatus;
   final List<DashboardUpcomingSchedule> upcomingSchedules;
   final List<DashboardAssistancePeriod> assistancePeriods;
-  final List<DashboardAttentionStudent> attentionStudents;
-  final List<DashboardRecentNote> recentNotes;
   final List<DashboardTopLearner> topLearners;
 
   DashboardStat copyWith({
@@ -93,6 +97,10 @@ class DashboardStat {
     int? studentCount,
     int? maleStudentCount,
     int? femaleStudentCount,
+    int? duafaStudentCount,
+    int? yatimStudentCount,
+    int? piatuStudentCount,
+    int? yatimPiatuStudentCount,
     int? teacherCount,
     int? syllabusCount,
     int? strategyCount,
@@ -116,8 +124,6 @@ class DashboardStat {
     List<DashboardStatusCount>? sessionStatus,
     List<DashboardUpcomingSchedule>? upcomingSchedules,
     List<DashboardAssistancePeriod>? assistancePeriods,
-    List<DashboardAttentionStudent>? attentionStudents,
-    List<DashboardRecentNote>? recentNotes,
     List<DashboardTopLearner>? topLearners,
   }) {
     return DashboardStat(
@@ -129,6 +135,11 @@ class DashboardStat {
       studentCount: studentCount ?? this.studentCount,
       maleStudentCount: maleStudentCount ?? this.maleStudentCount,
       femaleStudentCount: femaleStudentCount ?? this.femaleStudentCount,
+      duafaStudentCount: duafaStudentCount ?? this.duafaStudentCount,
+      yatimStudentCount: yatimStudentCount ?? this.yatimStudentCount,
+      piatuStudentCount: piatuStudentCount ?? this.piatuStudentCount,
+      yatimPiatuStudentCount:
+          yatimPiatuStudentCount ?? this.yatimPiatuStudentCount,
       teacherCount: teacherCount ?? this.teacherCount,
       syllabusCount: syllabusCount ?? this.syllabusCount,
       strategyCount: strategyCount ?? this.strategyCount,
@@ -155,8 +166,6 @@ class DashboardStat {
       sessionStatus: sessionStatus ?? this.sessionStatus,
       upcomingSchedules: upcomingSchedules ?? this.upcomingSchedules,
       assistancePeriods: assistancePeriods ?? this.assistancePeriods,
-      attentionStudents: attentionStudents ?? this.attentionStudents,
-      recentNotes: recentNotes ?? this.recentNotes,
       topLearners: topLearners ?? this.topLearners,
     );
   }
@@ -181,11 +190,19 @@ class DashboardStudentSummary {
     this.total = 0,
     this.male = 0,
     this.female = 0,
+    this.duafa = 0,
+    this.yatim = 0,
+    this.piatu = 0,
+    this.yatimPiatu = 0,
   });
 
   final int total;
   final int male;
   final int female;
+  final int duafa;
+  final int yatim;
+  final int piatu;
+  final int yatimPiatu;
 }
 
 class DashboardAttendanceSummary {
@@ -255,34 +272,6 @@ class DashboardAssistancePeriod {
   final int selectedCount;
   final int targetQuota;
   final String status;
-}
-
-class DashboardAttentionStudent {
-  const DashboardAttentionStudent({
-    required this.studentName,
-    required this.studentNo,
-    required this.reason,
-    required this.value,
-  });
-
-  final String studentName;
-  final String studentNo;
-  final String reason;
-  final String value;
-}
-
-class DashboardRecentNote {
-  const DashboardRecentNote({
-    required this.studentName,
-    required this.noteType,
-    required this.comment,
-    required this.date,
-  });
-
-  final String studentName;
-  final String noteType;
-  final String comment;
-  final String date;
 }
 
 class DashboardTopLearner {
@@ -410,16 +399,6 @@ class DashboardCubit extends Cubit<DashboardStat> {
         levels: levels,
       );
       final assistancePeriods = await _assistancePeriods();
-      final attentionStudents = await _attentionStudents(
-        start: range.start,
-        end: range.end,
-        levels: levels,
-      );
-      final recentNotes = await _recentNotes(
-        start: range.start,
-        end: range.end,
-        levels: levels,
-      );
       final topLearners = await _topLearners(
         start: range.start,
         end: range.end,
@@ -443,6 +422,10 @@ class DashboardCubit extends Cubit<DashboardStat> {
           studentCount: studentCount,
           maleStudentCount: studentSummary.male,
           femaleStudentCount: studentSummary.female,
+          duafaStudentCount: studentSummary.duafa,
+          yatimStudentCount: studentSummary.yatim,
+          piatuStudentCount: studentSummary.piatu,
+          yatimPiatuStudentCount: studentSummary.yatimPiatu,
           teacherCount: teacherCount,
           syllabusCount: syllabusCount,
           strategyCount: strategyCount,
@@ -466,8 +449,6 @@ class DashboardCubit extends Cubit<DashboardStat> {
           sessionStatus: sessionStatus,
           upcomingSchedules: upcomingSchedules,
           assistancePeriods: assistancePeriods,
-          attentionStudents: attentionStudents,
-          recentNotes: recentNotes,
           topLearners: topLearners,
           clearError: true,
       );
@@ -521,18 +502,67 @@ class DashboardCubit extends Cubit<DashboardStat> {
     final levelWhere = _studentLevelWhere(levels, args);
     final rows = await db.rawQuery(
       '''
+      WITH active_students AS (
+        SELECT
+          s.id,
+          s.gender,
+          CASE
+            WHEN EXISTS (
+              SELECT 1
+              FROM student_guardians sg
+              WHERE sg.student_id = s.id
+                AND UPPER(COALESCE(sg.relationship, '')) = 'FATHER'
+                AND COALESCE(sg.is_deceased, 0) = 1
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM student_guardians sg
+              WHERE sg.student_id = s.id
+                AND UPPER(COALESCE(sg.relationship, '')) = 'MOTHER'
+                AND COALESCE(sg.is_deceased, 0) = 1
+            ) THEN 'Yatim Piatu'
+            WHEN EXISTS (
+              SELECT 1
+              FROM student_guardians sg
+              WHERE sg.student_id = s.id
+                AND UPPER(COALESCE(sg.relationship, '')) = 'FATHER'
+                AND COALESCE(sg.is_deceased, 0) = 1
+            ) THEN 'Yatim'
+            WHEN EXISTS (
+              SELECT 1
+              FROM student_guardians sg
+              WHERE sg.student_id = s.id
+                AND UPPER(COALESCE(sg.relationship, '')) = 'MOTHER'
+                AND COALESCE(sg.is_deceased, 0) = 1
+            ) THEN 'Piatu'
+            ELSE 'Dhuafa'
+          END AS support_status
+        FROM students s
+        LEFT JOIN classes c ON c.id = s.class_id
+        WHERE s.status = 'active'
+        $levelWhere
+      )
       SELECT
         COUNT(*) AS total_count,
         SUM(
-          CASE WHEN LOWER(COALESCE(s.gender, '')) = 'male' THEN 1 ELSE 0 END
+          CASE WHEN LOWER(COALESCE(gender, '')) = 'male' THEN 1 ELSE 0 END
         ) AS male_count,
         SUM(
-          CASE WHEN LOWER(COALESCE(s.gender, '')) = 'female' THEN 1 ELSE 0 END
-        ) AS female_count
-      FROM students s
-      LEFT JOIN classes c ON c.id = s.class_id
-      WHERE s.status = 'active'
-      $levelWhere
+          CASE WHEN LOWER(COALESCE(gender, '')) = 'female' THEN 1 ELSE 0 END
+        ) AS female_count,
+        SUM(
+          CASE WHEN support_status = 'Dhuafa' THEN 1 ELSE 0 END
+        ) AS duafa_count,
+        SUM(
+          CASE WHEN support_status = 'Yatim' THEN 1 ELSE 0 END
+        ) AS yatim_count,
+        SUM(
+          CASE WHEN support_status = 'Piatu' THEN 1 ELSE 0 END
+        ) AS piatu_count,
+        SUM(
+          CASE WHEN support_status = 'Yatim Piatu' THEN 1 ELSE 0 END
+        ) AS yatim_piatu_count
+      FROM active_students
       ''',
       args,
     );
@@ -542,6 +572,10 @@ class DashboardCubit extends Cubit<DashboardStat> {
       total: (row['total_count'] as num?)?.toInt() ?? 0,
       male: (row['male_count'] as num?)?.toInt() ?? 0,
       female: (row['female_count'] as num?)?.toInt() ?? 0,
+      duafa: (row['duafa_count'] as num?)?.toInt() ?? 0,
+      yatim: (row['yatim_count'] as num?)?.toInt() ?? 0,
+      piatu: (row['piatu_count'] as num?)?.toInt() ?? 0,
+      yatimPiatu: (row['yatim_piatu_count'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -1067,131 +1101,6 @@ class DashboardCubit extends Cubit<DashboardStat> {
     }).toList();
   }
 
-  Future<List<DashboardAttentionStudent>> _attentionStudents({
-    required String start,
-    required String end,
-    required List<int> levels,
-  }) async {
-    final db = await databaseProvider.database;
-    final items = <DashboardAttentionStudent>[];
-    final attendanceArgs = <Object?>[start, end];
-    final attendanceLevelWhere = _studentLevelWhere(levels, attendanceArgs);
-    final attendanceRows = await db.rawQuery(
-      '''
-      SELECT
-        s.full_name,
-        s.student_no,
-        COUNT(*) AS total_count,
-        SUM(CASE WHEN attend.status IN ('present', 'late') THEN 1 ELSE 0 END)
-          AS attended_count
-      FROM teaching_attendances attend
-      INNER JOIN teaching_activities activity
-        ON activity.id = attend.teaching_activity_id
-      INNER JOIN students s ON s.id = attend.student_id
-      LEFT JOIN classes c ON c.id = s.class_id
-      WHERE activity.activity_date >= ?
-        AND activity.activity_date <= ?
-        AND activity.status <> 'cancelled'
-        $attendanceLevelWhere
-      GROUP BY s.id
-      HAVING total_count > 0
-        AND (attended_count * 100.0 / total_count) < 75
-      ORDER BY (attended_count * 100.0 / total_count) ASC, s.full_name ASC
-      LIMIT 4
-      ''',
-      attendanceArgs,
-    );
-    for (final row in attendanceRows) {
-      final total = (row['total_count'] as num?)?.toDouble() ?? 0;
-      final attended = (row['attended_count'] as num?)?.toDouble() ?? 0;
-      final rate = total <= 0 ? 0 : (attended / total) * 100;
-      items.add(
-        DashboardAttentionStudent(
-          studentName: row['full_name']?.toString() ?? '-',
-          studentNo: row['student_no']?.toString() ?? '-',
-          reason: 'Attendance below 75%',
-          value: '${rate.toStringAsFixed(0)}%',
-        ),
-      );
-    }
-
-    if (items.length < 6) {
-      final scoreArgs = <Object?>[start, end];
-      final scoreLevelWhere = _studentLevelWhere(levels, scoreArgs);
-      final scoreRows = await db.rawQuery(
-        '''
-        SELECT
-          s.full_name,
-          s.student_no,
-          AVG(COALESCE(score.normalized_score, score.score)) AS avg_score
-        FROM teaching_assessments score
-        INNER JOIN teaching_activities activity
-          ON activity.id = score.teaching_activity_id
-        INNER JOIN students s ON s.id = score.student_id
-        LEFT JOIN classes c ON c.id = s.class_id
-        WHERE activity.activity_date >= ?
-          AND activity.activity_date <= ?
-          AND activity.status <> 'cancelled'
-          AND COALESCE(score.normalized_score, score.score) IS NOT NULL
-          $scoreLevelWhere
-        GROUP BY s.id
-        HAVING avg_score < 70
-        ORDER BY avg_score ASC, s.full_name ASC
-        LIMIT 4
-        ''',
-        scoreArgs,
-      );
-      for (final row in scoreRows) {
-        if (items.length >= 6) break;
-        items.add(
-          DashboardAttentionStudent(
-            studentName: row['full_name']?.toString() ?? '-',
-            studentNo: row['student_no']?.toString() ?? '-',
-            reason: 'Academic score below 70',
-            value: ((row['avg_score'] as num?)?.toDouble() ?? 0)
-                .toStringAsFixed(0),
-          ),
-        );
-      }
-    }
-
-    if (items.length < 6) {
-      final noteArgs = <Object?>[start, end];
-      final noteLevelWhere = _studentLevelWhere(levels, noteArgs);
-      final noteRows = await db.rawQuery(
-        '''
-      SELECT DISTINCT s.full_name, s.student_no, note.note_type, note.created_at
-        FROM student_session_notes note
-        INNER JOIN teaching_activities activity
-          ON activity.id = note.teaching_activity_id
-        INNER JOIN students s ON s.id = note.student_id
-        LEFT JOIN classes c ON c.id = s.class_id
-        WHERE activity.activity_date >= ?
-          AND activity.activity_date <= ?
-          AND activity.status <> 'cancelled'
-          AND note.follow_up_needed = 1
-          $noteLevelWhere
-        ORDER BY note.created_at DESC
-        LIMIT 4
-        ''',
-        noteArgs,
-      );
-      for (final row in noteRows) {
-        if (items.length >= 6) break;
-        items.add(
-          DashboardAttentionStudent(
-            studentName: row['full_name']?.toString() ?? '-',
-            studentNo: row['student_no']?.toString() ?? '-',
-            reason: 'Teacher follow-up note',
-            value: _titleWords(row['note_type']?.toString() ?? '-'),
-          ),
-        );
-      }
-    }
-
-    return items;
-  }
-
   Future<List<DashboardTopLearner>> _topLearners({
     required String start,
     required String end,
@@ -1328,45 +1237,6 @@ class DashboardCubit extends Cubit<DashboardStat> {
         academicScore: academicScore,
         noteScore: noteScore,
         points: ((row['points'] as num?)?.toDouble() ?? 0).round(),
-      );
-    }).toList();
-  }
-
-  Future<List<DashboardRecentNote>> _recentNotes({
-    required String start,
-    required String end,
-    required List<int> levels,
-  }) async {
-    final db = await databaseProvider.database;
-    final args = <Object?>[start, end];
-    final levelWhere = _studentLevelWhere(levels, args);
-    final rows = await db.rawQuery(
-      '''
-      SELECT
-        s.full_name,
-        note.note_type,
-        note.comment,
-        COALESCE(note.created_at, activity.activity_date) AS note_date
-      FROM student_session_notes note
-      INNER JOIN teaching_activities activity
-        ON activity.id = note.teaching_activity_id
-      INNER JOIN students s ON s.id = note.student_id
-      LEFT JOIN classes c ON c.id = s.class_id
-      WHERE activity.activity_date >= ?
-        AND activity.activity_date <= ?
-        AND activity.status <> 'cancelled'
-        $levelWhere
-      ORDER BY COALESCE(note.created_at, activity.activity_date) DESC
-      LIMIT 6
-      ''',
-      args,
-    );
-    return rows.map((row) {
-      return DashboardRecentNote(
-        studentName: row['full_name']?.toString() ?? '-',
-        noteType: _titleWords(row['note_type']?.toString() ?? '-'),
-        comment: row['comment']?.toString() ?? '-',
-        date: row['note_date']?.toString() ?? '-',
       );
     }).toList();
   }

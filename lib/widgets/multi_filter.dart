@@ -2,6 +2,7 @@ import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 enum FilterOperator { isEqual, isNot, contains, hasAnyValue }
 
@@ -270,34 +271,29 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
       padding: const EdgeInsets.all(14),
       child: Column(
         children: [
-          AppDropdownButtonFormField<FilterField>(
+          ShadSelectFormField<FilterField>(
+            key: ValueKey('filter_field_${selectedField.code}'),
             initialValue: selectedField,
-            isExpanded: false,
-            items: widget.fields.map((f) {
-              return DropdownMenuItem(
-                value: f,
-                child: AppDropdownStyle.menuItemLabel(
-                  label: f.label,
-                  selected: f.code == selectedField.code,
+            label: Text(context.l10n.field),
+            selectedOptionBuilder: (context, field) => Text(
+              field.label,
+              overflow: TextOverflow.ellipsis,
+            ),
+            options: widget.fields.map((field) {
+              return ShadOption<FilterField>(
+                value: field,
+                child: Text(
+                  field.label,
+                  overflow: TextOverflow.ellipsis,
                 ),
               );
             }).toList(),
-            selectedItemBuilder: (context) {
-              return AppDropdownStyle.selectedLabels(
-                widget.fields.map((field) => field.label),
-              );
-            },
             onChanged: (val) => setState(() {
-              selectedField = val!;
+              if (val == null) return;
+              selectedField = val;
               controller.clear();
             }),
-            dropdownColor: AppColors.white,
-            focusColor: AppColors.transparent,
-            iconEnabledColor: AppColors.primary,
-            borderRadius: AppDropdownStyle.menuBorderRadius,
-            menuMaxHeight: AppDropdownStyle.menuMaxHeight,
-            style: AppDropdownStyle.textStyle,
-            decoration: InputDecoration(labelText: context.l10n.field),
+            maxHeight: AppDropdownStyle.menuMaxHeight,
           ),
           const SizedBox(height: 10),
           Flexible(
@@ -324,10 +320,15 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              TextButton(onPressed: clearAll, child: Text(context.l10n.clear)),
+              ShadButton.outline(
+                onPressed: clearAll,
+                child: Text(context.l10n.clear),
+              ),
               const SizedBox(width: 8),
-              ElevatedButton(
+              ShadButton(
                 onPressed: addFilter,
+                backgroundColor: AppColors.primary,
+                hoverBackgroundColor: AppColors.primaryDark,
                 child: Text(context.l10n.buttonAdd),
               ),
             ],
@@ -352,12 +353,17 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
                   style: AppTypography.sectionTitleStyle,
                 ),
               ),
-              TextButton(
+              ShadButton.ghost(
                 onPressed: () => Navigator.pop(context),
                 child: Text(context.l10n.buttonCancel),
               ),
               const SizedBox(width: 6),
-              ElevatedButton(onPressed: done, child: Text(context.l10n.done)),
+              ShadButton(
+                onPressed: done,
+                backgroundColor: AppColors.primary,
+                hoverBackgroundColor: AppColors.primaryDark,
+                child: Text(context.l10n.done),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -449,64 +455,55 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
   Widget _buildInputField() {
     switch (selectedField.inputType) {
       case FilterInputType.dropdown:
-        return AppDropdownButtonFormField<String>(
+        return ShadSelectFormField<String>(
+          key: ValueKey('filter_value_${selectedField.code}_${controller.text}'),
           initialValue: controller.text.isEmpty ? null : controller.text,
-          isExpanded: false,
-          items: selectedField.options!
+          label: Text(context.l10n.value),
+          placeholder: Text(context.l10n.value),
+          selectedOptionBuilder: (context, value) => Text(
+            value,
+            overflow: TextOverflow.ellipsis,
+          ),
+          options: selectedField.options!
               .map(
-                (e) => DropdownMenuItem(
+                (e) => ShadOption<String>(
                   value: e,
-                  child: AppDropdownStyle.menuItemLabel(
-                    label: e,
-                    selected: e == controller.text,
-                  ),
+                  child: Text(e, overflow: TextOverflow.ellipsis),
                 ),
               )
               .toList(),
-          selectedItemBuilder: (context) {
-            return AppDropdownStyle.selectedLabels(selectedField.options!);
-          },
           onChanged: (val) {
             setState(() {
               controller.text = val ?? "";
             });
           },
           validator: (val) => selectedField.validator?.call(val),
-          dropdownColor: AppColors.white,
-          focusColor: AppColors.transparent,
-          iconEnabledColor: AppColors.primary,
-          borderRadius: AppDropdownStyle.menuBorderRadius,
-          menuMaxHeight: AppDropdownStyle.menuMaxHeight,
-          style: AppDropdownStyle.textStyle,
-          decoration: InputDecoration(
-            labelText: context.l10n.value,
-            border: const OutlineInputBorder(),
-          ),
+          maxHeight: AppDropdownStyle.menuMaxHeight,
         );
 
       case FilterInputType.number:
-        return TextFormField(
+        return ShadInputFormField(
           controller: controller,
+          label: Text(context.l10n.value),
           keyboardType: TextInputType.number,
           validator: (val) => selectedField.validator?.call(val),
-          decoration: InputDecoration(
-            hintText: context.l10n.enterField(context.l10n.number),
-            border: const OutlineInputBorder(),
-          ),
+          placeholder: Text(context.l10n.enterField(context.l10n.number)),
         );
 
       case FilterInputType.date:
-        return TextFormField(
+        return ShadInputFormField(
           controller: controller,
+          label: Text(context.l10n.value),
           readOnly: true,
           keyboardType: TextInputType.datetime,
           validator: (val) => selectedField.validator?.call(val),
-          decoration: const InputDecoration(
-            hintText: AppFormFieldStyle.dateFormat,
-            border: OutlineInputBorder(),
-            suffixIcon: Icon(Icons.calendar_today),
+          placeholder: const Text(AppFormFieldStyle.dateFormat),
+          trailing: const Icon(
+            Icons.calendar_today,
+            size: 18,
+            color: AppColors.textSecondary,
           ),
-          onTap: () async {
+          onPressed: () async {
             final picked = await showDatePicker(
               context: context,
               firstDate: DateTime(2000),
@@ -523,14 +520,12 @@ class _MultiFilterDialogState extends State<MultiFilterDialog> {
         );
 
       case FilterInputType.text:
-        return TextFormField(
+        return ShadInputFormField(
           controller: controller,
+          label: Text(context.l10n.value),
           keyboardType: TextInputType.text,
           validator: (val) => selectedField.validator?.call(val),
-          decoration: InputDecoration(
-            hintText: context.l10n.enterField(context.l10n.value),
-            border: const OutlineInputBorder(),
-          ),
+          placeholder: Text(context.l10n.enterField(context.l10n.value)),
         );
     }
   }

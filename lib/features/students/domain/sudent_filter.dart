@@ -12,6 +12,8 @@ enum StudentFilterCodes {
   status,
   score,
   joinDate,
+  duafaStatus,
+  teachingLocation,
 }
 
 class StudentFilter {
@@ -35,6 +37,10 @@ class StudentFilter {
   final List<int> agesNot;
   final List<String> genders;
   final List<String> gendersNot;
+  final List<String> duafaStatuses;
+  final List<String> duafaStatusesNot;
+  final List<String> teachingLocations;
+  final List<String> teachingLocationsNot;
 
   const StudentFilter({
     this.namesEqual = const [],
@@ -57,6 +63,10 @@ class StudentFilter {
     this.agesNot = const [],
     this.genders = const [],
     this.gendersNot = const [],
+    this.duafaStatuses = const [],
+    this.duafaStatusesNot = const [],
+    this.teachingLocations = const [],
+    this.teachingLocationsNot = const [],
   });
 
   bool get isEmpty =>
@@ -79,7 +89,11 @@ class StudentFilter {
       ages.isEmpty &&
       agesNot.isEmpty &&
       genders.isEmpty &&
-      gendersNot.isEmpty;
+      gendersNot.isEmpty &&
+      duafaStatuses.isEmpty &&
+      duafaStatusesNot.isEmpty &&
+      teachingLocations.isEmpty &&
+      teachingLocationsNot.isEmpty;
 
   StudentFilter copyWith({
     List<String>? namesEqual,
@@ -102,6 +116,10 @@ class StudentFilter {
     List<int>? agesNot,
     List<String>? genders,
     List<String>? gendersNot,
+    List<String>? duafaStatuses,
+    List<String>? duafaStatusesNot,
+    List<String>? teachingLocations,
+    List<String>? teachingLocationsNot,
   }) {
     return StudentFilter(
       namesEqual: namesEqual ?? this.namesEqual,
@@ -124,6 +142,10 @@ class StudentFilter {
       agesNot: agesNot ?? this.agesNot,
       genders: genders ?? this.genders,
       gendersNot: gendersNot ?? this.gendersNot,
+      duafaStatuses: duafaStatuses ?? this.duafaStatuses,
+      duafaStatusesNot: duafaStatusesNot ?? this.duafaStatusesNot,
+      teachingLocations: teachingLocations ?? this.teachingLocations,
+      teachingLocationsNot: teachingLocationsNot ?? this.teachingLocationsNot,
     );
   }
 }
@@ -204,6 +226,22 @@ StudentFilter buildStudentFilter(List<MultiFilterItem> items) {
         .mapStringByOperator(StudentFilterCodes.gender, FilterOperator.isNot)
         .map((value) => value.toLowerCase())
         .toList(),
+    duafaStatuses: items.mapStringByOperator(
+      StudentFilterCodes.duafaStatus,
+      FilterOperator.isEqual,
+    ),
+    duafaStatusesNot: items.mapStringByOperator(
+      StudentFilterCodes.duafaStatus,
+      FilterOperator.isNot,
+    ),
+    teachingLocations: items.mapStringByOperator(
+      StudentFilterCodes.teachingLocation,
+      FilterOperator.isEqual,
+    ),
+    teachingLocationsNot: items.mapStringByOperator(
+      StudentFilterCodes.teachingLocation,
+      FilterOperator.isNot,
+    ),
   );
 }
 
@@ -308,6 +346,19 @@ final List<FilterField> studentFilterFields = [
   ),
 
   // ✅ DATE PICKER
+  FilterField(
+    code: StudentFilterCodes.duafaStatus.name,
+    label: "Status Dhuafa",
+    inputType: FilterInputType.dropdown,
+    options: ["Dhuafa", "Yatim", "Piatu", "Yatim Piatu"],
+  ),
+
+  FilterField(
+    code: StudentFilterCodes.teachingLocation.name,
+    label: "Student Location",
+    inputType: FilterInputType.dropdown,
+  ),
+
   FilterField(
     code: StudentFilterCodes.joinDate.name,
     label: "Join Date",

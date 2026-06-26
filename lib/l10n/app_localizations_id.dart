@@ -487,14 +487,31 @@ class AppLocalizationsId extends AppLocalizations {
   String get dashboardStudentsTitle => 'Siswa';
 
   @override
-  String get dashboardStudentsDescription =>
-      'Komposisi siswa aktif berdasarkan gender.';
+  String get dashboardStudentsDescription => 'Komposisi gender.';
+
+  @override
+  String get dashboardStudentsStatusDescription => 'Komposisi status bantuan.';
 
   @override
   String get dashboardBoys => 'Laki-laki';
 
   @override
   String get dashboardGirls => 'Perempuan';
+
+  @override
+  String get duafaStatus => 'Status Dhuafa';
+
+  @override
+  String get studentStatusDhuafa => 'Dhuafa';
+
+  @override
+  String get studentStatusYatim => 'Yatim';
+
+  @override
+  String get studentStatusPiatu => 'Piatu';
+
+  @override
+  String get studentStatusYatimPiatu => 'Yatim Piatu';
 
   @override
   String get dashboardAttendanceTitle => 'Kehadiran';
@@ -567,17 +584,6 @@ class AppLocalizationsId extends AppLocalizations {
       'Tidak ada jadwal mengajar minggu ini.';
 
   @override
-  String get dashboardStudentsNeedAttention => 'Siswa Perlu Perhatian';
-
-  @override
-  String get dashboardStudentsNeedAttentionSubtitle =>
-      'Sinyal kehadiran, nilai, dan tindak lanjut';
-
-  @override
-  String get dashboardNoAttentionSignal =>
-      'Tidak ada sinyal perhatian pada rentang ini.';
-
-  @override
   String get dashboardTopLearners => 'Siswa Terbaik';
 
   @override
@@ -594,13 +600,6 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get dashboardPointsShort => 'poin';
-
-  @override
-  String get dashboardRecentTeacherNotes => 'Catatan Guru Terbaru';
-
-  @override
-  String get dashboardNoTeacherNotes =>
-      'Tidak ada catatan guru pada rentang ini.';
 
   @override
   String get rangeWeekly => 'Mingguan';
@@ -1234,6 +1233,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get noPhotoSelected => 'Belum ada foto dipilih';
 
   @override
+  String get dropPhotoHere => 'Lepaskan foto di sini';
+
+  @override
   String get noFileSelected => 'Belum ada file dipilih';
 
   @override
@@ -1247,7 +1249,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get removeFile => 'Hapus file';
 
   @override
-  String get generatedNo => 'Nomor Otomatis';
+  String get generatedNo => 'Student No. Dibuat otomatis';
 
   @override
   String get selectSchool => 'Pilih sekolah';
@@ -1274,7 +1276,18 @@ class AppLocalizationsId extends AppLocalizations {
   String get studentNumberNotReady => 'Nomor siswa belum siap.';
 
   @override
+  String get unsupportedPhotoFileType => 'File foto harus JPG, PNG, atau WEBP.';
+
+  @override
   String get photoSizeLimit => 'Foto harus 20 MB atau lebih kecil.';
+
+  @override
+  String get dropRegistrationFormHere =>
+      'Lepaskan formulir pendaftaran di sini';
+
+  @override
+  String get unsupportedRegistrationFormFileType =>
+      'Formulir pendaftaran harus PDF, JPG, atau PNG.';
 
   @override
   String get registrationFormSizeLimit =>
@@ -1690,6 +1703,24 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get noGoals => 'Belum ada hobi atau cita-cita.';
+
+  @override
+  String get healthInformation => 'Informasi Kesehatan';
+
+  @override
+  String get loadingHealthInformation => 'Memuat informasi kesehatan...';
+
+  @override
+  String get noHealthInformation => 'Belum ada informasi kesehatan.';
+
+  @override
+  String get householdProfile => 'Profil Keluarga';
+
+  @override
+  String get loadingHouseholdProfile => 'Memuat profil keluarga...';
+
+  @override
+  String get noHouseholdProfile => 'Belum ada profil keluarga.';
 
   @override
   String get noStudentRelations =>
@@ -4476,6 +4507,18 @@ class AppLocalizationsId extends AppLocalizations {
       'Jalan, RT/RW, nomor rumah, desa, dan kecamatan';
 
   @override
+  String get bloodType => 'Golongan Darah';
+
+  @override
+  String get allergies => 'Alergi';
+
+  @override
+  String get medicalNotes => 'Catatan Medis';
+
+  @override
+  String get disabilities => 'Disabilitas';
+
+  @override
   String get dailySchoolTransportCost => 'Biaya Transportasi Sekolah Harian';
 
   @override
@@ -4543,6 +4586,14 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get familyRelationGrandmother => 'Nenek';
+
+  @override
+  String guardianIncomeFor(Object relation) {
+    return 'Penghasilan $relation';
+  }
+
+  @override
+  String get income => 'Penghasilan';
 
   @override
   String get agePositionOlder => 'Lebih Tua';
@@ -4818,10 +4869,124 @@ class AppLocalizationsId extends AppLocalizations {
   String get filter => 'Filter';
 
   @override
+  String get activeFilters => 'Filter aktif';
+
+  @override
+  String get noFiltersYet => 'Belum ada filter.';
+
+  @override
+  String get addFilter => 'Tambah Filter';
+
+  @override
+  String get filterOperator => 'Operator';
+
+  @override
+  String get filterIsEqual => 'Sama dengan';
+
+  @override
+  String get filterIsNot => 'Tidak sama dengan';
+
+  @override
+  String get filterContains => 'Memuat';
+
+  @override
+  String get filterHasAnyValue => 'Memiliki nilai';
+
+  @override
   String get value => 'Nilai';
 
   @override
   String get done => 'Selesai';
+
+  @override
+  String get locationTeaching => 'Lokasi Pengajaran';
+
+  @override
+  String get locationTeachingDescription =>
+      'Kelola lokasi pengajaran yang digunakan untuk jadwal dan sesi mengajar.';
+
+  @override
+  String get teachingLocation => 'Lokasi pengajaran';
+
+  @override
+  String get addTeachingLocation => 'Tambah Lokasi';
+
+  @override
+  String get editTeachingLocation => 'Ubah Lokasi';
+
+  @override
+  String get locationType => 'Tipe Lokasi';
+
+  @override
+  String get locationTypeClassroom => 'Ruang Kelas';
+
+  @override
+  String get locationTypeHall => 'Aula';
+
+  @override
+  String get locationTypeMosque => 'Masjid';
+
+  @override
+  String get locationTypeOnline => 'Online';
+
+  @override
+  String get locationTypeStudentHome => 'Rumah Siswa';
+
+  @override
+  String get locationTypeOutdoor => 'Luar Ruangan';
+
+  @override
+  String get locationTypeOther => 'Lainnya';
+
+  @override
+  String get searchTeachingLocation => 'Cari kode, nama, alamat...';
+
+  @override
+  String get noTeachingLocations => 'Belum ada lokasi pengajaran.';
+
+  @override
+  String get teachingLocationNameRequired =>
+      'Nama lokasi pengajaran wajib diisi.';
+
+  @override
+  String get teachingLocationActivated => 'Lokasi pengajaran diaktifkan.';
+
+  @override
+  String get teachingLocationDeactivated => 'Lokasi pengajaran dinonaktifkan.';
+
+  @override
+  String get failedUpdateTeachingLocationStatus =>
+      'Gagal memperbarui status lokasi pengajaran.';
+
+  @override
+  String get studentLocation => 'Lokasi Binaan';
+
+  @override
+  String get selectStudentLocation => 'Pilih lokasi siswa';
+
+  @override
+  String get selectStudentLocationRequired => 'Silakan pilih lokasi siswa.';
+
+  @override
+  String get createTeachingLocationBeforeStudents =>
+      'Buat lokasi pengajaran sebelum menambahkan siswa.';
+
+  @override
+  String get deceased => 'Almarhum';
+
+  @override
+  String get parentDeceased => 'Orang tua sudah almarhum';
+
+  @override
+  String get parentDeceasedHelp =>
+      'Digunakan untuk mengidentifikasi status yatim, piatu, atau yatim piatu.';
+
+  @override
+  String get atLeastOneGuardianRequired => 'Minimal satu wali wajib diisi.';
+
+  @override
+  String get onlyOnePrimaryGuardianPermitted =>
+      'Hanya satu wali utama yang diperbolehkan.';
 
   @override
   String get teachers => 'Pengajar';

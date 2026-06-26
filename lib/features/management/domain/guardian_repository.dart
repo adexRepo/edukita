@@ -30,9 +30,13 @@ class GuardianRepository {
 
   Future<int> updateGuardian(Guardian guardian) async {
     final db = await _dbProvider.database;
+    final values = guardian.toMap();
+    if (guardian.income == null) {
+      values.remove('income');
+    }
     return db.update(
       'guardians',
-      guardian.toMap(),
+      values,
       where: 'id = ?',
       whereArgs: [guardian.id],
     );

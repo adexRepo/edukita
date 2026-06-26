@@ -30,15 +30,15 @@ class StudentPersonalTab extends StatelessWidget {
             ),
             DetailInfoPill(
               label: context.l10n.uniform,
-              value: _intOrDash(student.uniformSize),
+              value: _textOrDash(student.uniformSize),
             ),
             DetailInfoPill(
               label: context.l10n.pants,
-              value: _intOrDash(student.pantsSize),
+              value: _textOrDash(student.pantsSize),
             ),
             DetailInfoPill(
               label: context.l10n.shoes,
-              value: _intOrDash(student.shoesSize),
+              value: _textOrDash(student.shoesSize),
             ),
           ],
         ),
@@ -54,8 +54,9 @@ class StudentPersonalTab extends StatelessWidget {
     return '$text $suffix';
   }
 
-  String _intOrDash(int? value) {
-    if (value == null) return '-';
-    return value.toString();
+  String _textOrDash(String? value) {
+    final text = value?.trim();
+    if (text == null || text.isEmpty) return '-';
+    return text;
   }
 }

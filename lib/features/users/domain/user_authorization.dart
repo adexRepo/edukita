@@ -252,6 +252,7 @@ class AppMenuAccessRegistry {
       'dashboard',
       'students',
       'teachers',
+      'parameters',
       'schedules',
       'teaching_activities',
       'assistance_programs',
@@ -291,17 +292,7 @@ class AppMenuAccessRegistry {
     if (menuCode == reports.code) {
       return AppMenuPermission.viewOnly(menuCode).copyWith(canExport: true);
     }
-    if (menuCode == assistancePrograms.code) {
-      return AppMenuPermission.viewOnly(menuCode).copyWith(
-        canCreate: true,
-        canUpdate: true,
-        canExport: true,
-      );
-    }
-    return AppMenuPermission.viewOnly(menuCode).copyWith(
-      canCreate: true,
-      canUpdate: true,
-    );
+    return AppMenuPermission.manage(menuCode);
   }
 
   static AppMenuPermission _teacherPermission(String menuCode) {

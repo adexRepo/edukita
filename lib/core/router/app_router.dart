@@ -30,6 +30,7 @@ import 'package:edukita/features/teachers/presentation/teacher_detail_page.dart'
 import 'package:edukita/features/teachers/presentation/teachers_page.dart';
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_cubit.dart';
 import 'package:edukita/features/teaching_activity/domain/teaching_activity_detail_cubit.dart';
+import 'package:edukita/features/teaching_locations/domain/teaching_location_cubit.dart';
 import 'package:edukita/features/teaching_activity/presentation/teaching_activity_detail_page.dart';
 import 'package:edukita/features/teaching_activity/presentation/teaching_activity_page.dart';
 import 'package:edukita/features/users/domain/user_management_cubit.dart';
@@ -155,6 +156,9 @@ final GoRouter appRouter = GoRouter(
                 ),
                 BlocProvider<StrategyCubit>(
                   create: (_) => getIt<StrategyCubit>(),
+                ),
+                BlocProvider<TeachingLocationCubit>(
+                  create: (_) => getIt<TeachingLocationCubit>(),
                 ),
                 BlocProvider<AssistancePlanCubit>(
                   create: (_) => getIt<AssistancePlanCubit>(),

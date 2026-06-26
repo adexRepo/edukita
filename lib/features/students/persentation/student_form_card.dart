@@ -5,21 +5,25 @@ import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
 import 'package:edukita/core/helper/com_enum.dart';
 import 'package:edukita/core/helper/validation_helper.dart';
+import 'package:edukita/core/utils/thousands_separator_input_formatter.dart';
 import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/students/data/student_advanced_form_data.dart';
+import 'package:edukita/features/teaching_locations/data/teaching_location_model.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/editable_dropdown_field.dart';
 import 'package:edukita/widgets/form_validation.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 typedef StudentFormSubmit =
     FutureOr<void> Function(
@@ -37,6 +41,7 @@ class StudentFormCard extends StatefulWidget {
     super.key,
     required this.availableSchools,
     required this.availableClasses,
+    required this.availableTeachingLocations,
     required this.generatedStudentNo,
     required this.onSubmit,
     this.initialStudent,
@@ -48,6 +53,7 @@ class StudentFormCard extends StatefulWidget {
 
   final List<School> availableSchools;
   final List<SchoolClass> availableClasses;
+  final List<TeachingLocation> availableTeachingLocations;
   final String generatedStudentNo;
   final Student? initialStudent;
   final List<StudentGuardianFormData> initialGuardians;
@@ -61,8 +67,6 @@ class StudentFormCard extends StatefulWidget {
 }
 
 class _StudentFormCardState extends State<StudentFormCard> {
-  static const double _singleLineFieldHeight = 52;
-
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _studentNoController;
   late final TextEditingController _fullNameController;
@@ -96,6 +100,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
   final List<_ActivityDraft> _activityDrafts = [];
   String? _selectedSchoolId;
   String? _selectedClassId;
+  String? _selectedTeachingLocationId;
   String? _selectedPhotoSourcePath;
   String? _selectedPhotoFileName;
   bool _photoChanged = false;
@@ -166,19 +171,19 @@ class _StudentFormCardState extends State<StudentFormCard> {
       text: household.homeAddress ?? '',
     );
     _dailyTransportCostController = TextEditingController(
-      text: _plainNumber(household.dailySchoolTransportCost),
+      text: _formatMoney(household.dailySchoolTransportCost),
     );
     _fatherIncomeController = TextEditingController(
-      text: _plainNumber(household.fatherIncome),
+      text: _formatMoney(household.fatherIncome),
     );
     _motherIncomeController = TextEditingController(
-      text: _plainNumber(household.motherIncome),
+      text: _formatMoney(household.motherIncome),
     );
     _householdMemberCountController = TextEditingController(
       text: household.householdMemberCount?.toString() ?? '',
     );
     _educationArrearsController = TextEditingController(
-      text: _plainNumber(household.educationArrears),
+      text: _formatMoney(household.educationArrears),
     );
     _academicAchievementController = TextEditingController(
       text: household.academicAchievement ?? '',
@@ -228,6 +233,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
             : p.basename(registrationForm.filePath!));
     _registrationFormUploadedAt = registrationForm.uploadedAt;
     _selectedClassId = student?.classId;
+    _selectedTeachingLocationId = student?.teachingLocationId;
     _selectedSchoolId = _schoolIdForClass(_selectedClassId);
     _selectedGender = student?.gender ?? Gender.male;
   }
@@ -273,10 +279,9 @@ class _StudentFormCardState extends State<StudentFormCard> {
     super.dispose();
   }
 
-  Future<void> _pickPhoto() async {
+  Future<void> _pickPhoto(FormFieldState<String> field) async {
     final studentNumberNotReady = context.l10n.studentNumberNotReady;
     final photosLabel = context.l10n.photos;
-    final photoSizeLimit = context.l10n.photoSizeLimit;
     if (_studentNoController.text.trim().isEmpty) {
       _showMessage(studentNumberNotReady);
       return;
@@ -288,12 +293,31 @@ class _StudentFormCardState extends State<StudentFormCard> {
     );
     final file = await openFile(acceptedTypeGroups: [photoGroup]);
     if (file == null) return;
+    await _applyPhotoFile(file, field);
+  }
+
+  Future<void> _applyPhotoFile(
+    XFile file,
+    FormFieldState<String> field,
+  ) async {
+    final studentNumberNotReady = context.l10n.studentNumberNotReady;
+    if (_studentNoController.text.trim().isEmpty) {
+      _showMessage(studentNumberNotReady);
+      return;
+    }
+
+    final extension = p.extension(file.path).toLowerCase().replaceFirst('.', '');
+    if (!const {'jpg', 'jpeg', 'png', 'webp'}.contains(extension)) {
+      _showMessage(context.l10n.unsupportedPhotoFileType);
+      return;
+    }
 
     final sourceFile = File(file.path);
     final size = await sourceFile.length();
+    if (!mounted) return;
     const maxPhotoSize = 20 * 1024 * 1024;
     if (size > maxPhotoSize) {
-      _showMessage(photoSizeLimit);
+      _showMessage(context.l10n.photoSizeLimit);
       return;
     }
 
@@ -302,6 +326,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
       _selectedPhotoFileName = file.name;
       _photoChanged = true;
     });
+    field.didChange(file.path);
   }
 
   Future<String?> _saveSelectedPhoto() async {
@@ -333,19 +358,31 @@ class _StudentFormCardState extends State<StudentFormCard> {
 
   Future<void> _pickRegistrationForm(FormFieldState<String> field) async {
     final registrationFormLabel = context.l10n.registrationForm;
-    final registrationFormSizeLimit = context.l10n.registrationFormSizeLimit;
     final documentGroup = XTypeGroup(
       label: registrationFormLabel,
       extensions: ['pdf', 'jpg', 'jpeg', 'png'],
     );
     final file = await openFile(acceptedTypeGroups: [documentGroup]);
     if (file == null) return;
+    await _applyRegistrationFormFile(file, field);
+  }
+
+  Future<void> _applyRegistrationFormFile(
+    XFile file,
+    FormFieldState<String> field,
+  ) async {
+    final extension = p.extension(file.path).toLowerCase().replaceFirst('.', '');
+    if (!const {'pdf', 'jpg', 'jpeg', 'png'}.contains(extension)) {
+      _showMessage(context.l10n.unsupportedRegistrationFormFileType);
+      return;
+    }
 
     final sourceFile = File(file.path);
     final size = await sourceFile.length();
+    if (!mounted) return;
     const maxDocumentSize = 20 * 1024 * 1024;
     if (size > maxDocumentSize) {
-      _showMessage(registrationFormSizeLimit);
+      _showMessage(context.l10n.registrationFormSizeLimit);
       return;
     }
 
@@ -399,7 +436,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
         .where((guardian) => guardian.isPrimary)
         .length;
     if (guardians.isEmpty) {
-      _showMessage('At least one guardian is required.');
+      _showMessage(context.l10n.atLeastOneGuardianRequired);
       return;
     }
     if (primaryGuardianCount == 0) {
@@ -407,7 +444,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
       return;
     }
     if (primaryGuardianCount > 1) {
-      _showMessage('Only one primary guardian is permitted.');
+      _showMessage(context.l10n.onlyOnePrimaryGuardianPermitted);
       return;
     }
 
@@ -422,6 +459,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
     String? copiedPhotoPath;
     try {
       final photoPath = await _saveSelectedPhoto();
+      if (!mounted) return;
       if (_photoChanged &&
           photoPath != null &&
           p.normalize(photoPath) !=
@@ -441,6 +479,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
               .copyWith(
                 studentId: _studentNoController.text.trim(),
                 classId: _selectedClassId!,
+                teachingLocationId: _selectedTeachingLocationId!,
                 gender: _selectedGender,
                 status: widget.initialStudent?.status ?? StudentStatus.active,
                 fullName: _fullNameController.text.trim(),
@@ -450,9 +489,9 @@ class _StudentFormCardState extends State<StudentFormCard> {
                 birthDate: nullIfEmpty(_birthDateController.text),
                 mobileNo: nullIfEmpty(_mobileNoController.text),
                 emailAddr: nullIfEmpty(_emailAddrController.text),
-                shoeSize: int.tryParse(_shoeSizeController.text),
-                uniformSize: int.tryParse(_uniformSizeController.text),
-                pantsSize: int.tryParse(_pantsSizeController.text),
+                shoeSize: nullIfEmpty(_shoeSizeController.text),
+                uniformSize: nullIfEmpty(_uniformSizeController.text),
+                pantsSize: nullIfEmpty(_pantsSizeController.text),
                 height: double.tryParse(_heightController.text),
                 weight: double.tryParse(_weightController.text),
                 photoPath: photoPath,
@@ -464,8 +503,9 @@ class _StudentFormCardState extends State<StudentFormCard> {
         guardians,
         advancedData,
       );
+      if (!mounted) return;
       AppToast.showSubmissionSuccess(action: action, subject: 'student');
-      if (mounted) Navigator.of(context).pop();
+      Navigator.of(context).pop();
     } catch (error) {
       if (copiedPhotoPath != null) {
         try {
@@ -521,16 +561,22 @@ class _StudentFormCardState extends State<StudentFormCard> {
       householdProfile: StudentHouseholdProfileFormData(
         id: widget.initialAdvancedData.householdProfile.id,
         homeAddress: nullIfEmpty(_homeAddressController.text),
-        dailySchoolTransportCost: double.tryParse(
+        dailySchoolTransportCost: ThousandsSeparatorInputFormatter.parseDouble(
           _dailyTransportCostController.text,
         ),
-        fatherIncome: double.tryParse(_fatherIncomeController.text),
-        motherIncome: double.tryParse(_motherIncomeController.text),
+        fatherIncome: ThousandsSeparatorInputFormatter.parseDouble(
+          _fatherIncomeController.text,
+        ),
+        motherIncome: ThousandsSeparatorInputFormatter.parseDouble(
+          _motherIncomeController.text,
+        ),
         housingStatus: _selectedHousingStatus,
         householdMemberCount: int.tryParse(
           _householdMemberCountController.text,
         ),
-        educationArrears: double.tryParse(_educationArrearsController.text),
+        educationArrears: ThousandsSeparatorInputFormatter.parseDouble(
+          _educationArrearsController.text,
+        ),
         academicAchievement: nullIfEmpty(_academicAchievementController.text),
         nonAcademicAchievement: nullIfEmpty(
           _nonAcademicAchievementController.text,
@@ -555,9 +601,24 @@ class _StudentFormCardState extends State<StudentFormCard> {
 
   String? _validateGuardianDrafts() {
     final entries = _visibleGuardianEntries();
+    final hasFather = entries.any((entry) => entry.value.relationship == 'FATHER');
+    final hasMother = entries.any((entry) => entry.value.relationship == 'MOTHER');
+    if (!hasFather) {
+      return context.l10n.fieldRequiredMessage(
+        _familyRelationLabel(context, 'FATHER'),
+      );
+    }
+    if (!hasMother) {
+      return context.l10n.fieldRequiredMessage(
+        _familyRelationLabel(context, 'MOTHER'),
+      );
+    }
+
     for (var displayIndex = 0; displayIndex < entries.length; displayIndex++) {
       final draft = entries[displayIndex].value;
       final number = displayIndex + 1;
+      final isDeceasedParent =
+          _isParentRelationship(draft.relationship) && draft.isDeceased == true;
       final nameError = AppFormValidation.requiredText(
         context,
         draft.nameController.text,
@@ -567,12 +628,14 @@ class _StudentFormCardState extends State<StudentFormCard> {
       );
       if (nameError != null) return nameError;
 
-      final mobileError = AppFormValidation.requiredMobile(
-        context,
-        draft.mobileController.text,
-      );
-      if (mobileError != null) {
-        return context.l10n.guardianNumberError(number, mobileError);
+      if (!isDeceasedParent) {
+        final mobileError = AppFormValidation.requiredMobile(
+          context,
+          draft.mobileController.text,
+        );
+        if (mobileError != null) {
+          return context.l10n.guardianNumberError(number, mobileError);
+        }
       }
 
       final emailError = AppFormValidation.optionalEmail(
@@ -581,6 +644,19 @@ class _StudentFormCardState extends State<StudentFormCard> {
       );
       if (emailError != null) {
         return context.l10n.guardianNumberError(number, emailError);
+      }
+
+      if (draft.relationship == 'FATHER' || draft.relationship == 'MOTHER') {
+        final incomeLabel = context.l10n.guardianIncomeFor(
+          _familyRelationLabel(context, draft.relationship),
+        );
+        if (draft.incomeText.trim().isEmpty) {
+          return context.l10n.fieldRequiredMessage(incomeLabel);
+        }
+        if (ThousandsSeparatorInputFormatter.parseDouble(draft.incomeText) ==
+            null) {
+          return context.l10n.fieldMustBeNumber(incomeLabel);
+        }
       }
     }
     return null;
@@ -622,7 +698,9 @@ class _StudentFormCardState extends State<StudentFormCard> {
       if (endDateError != null) {
         return context.l10n.activityNumberEndDateError(number, endDateError);
       }
-      final startDate = DateTime.tryParse(draft.startDateController.text.trim());
+      final startDate = DateTime.tryParse(
+        draft.startDateController.text.trim(),
+      );
       final endDate = DateTime.tryParse(draft.endDateController.text.trim());
       if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
         return context.l10n.activityEndBeforeStart(number);
@@ -661,11 +739,19 @@ class _StudentFormCardState extends State<StudentFormCard> {
   }
 
   Future<void> _showGuardianDraftDialog({int? index}) async {
+    final initialDraft = index == null ? null : _guardianDrafts[index];
+    if (initialDraft != null && initialDraft.incomeText.trim().isEmpty) {
+      if (initialDraft.relationship == 'FATHER') {
+        initialDraft.incomeText = _fatherIncomeController.text.trim();
+      } else if (initialDraft.relationship == 'MOTHER') {
+        initialDraft.incomeText = _motherIncomeController.text.trim();
+      }
+    }
     final result = await showGuardedDialog<_GuardianDraft>(
       context: context,
       guardKey: 'student_guardian_draft_${index ?? 'new'}',
       builder: (dialogContext) => _GuardianDraftDialog(
-        initialDraft: index == null ? null : _guardianDrafts[index],
+        initialDraft: initialDraft,
         defaultPrimary: _visibleGuardianEntries().isEmpty,
       ),
     );
@@ -685,6 +771,16 @@ class _StudentFormCardState extends State<StudentFormCard> {
         final oldDraft = _guardianDrafts[index];
         _guardianDrafts[index] = result;
         oldDraft.dispose();
+      }
+
+      // Move father/mother income from guardian dialog into household controllers
+      if (result.relationship == 'FATHER' &&
+          result.incomeText.trim().isNotEmpty) {
+        _fatherIncomeController.text = result.incomeText.trim();
+      }
+      if (result.relationship == 'MOTHER' &&
+          result.incomeText.trim().isNotEmpty) {
+        _motherIncomeController.text = result.incomeText.trim();
       }
 
       _ensureOnePrimaryGuardian();
@@ -829,17 +925,38 @@ class _StudentFormCardState extends State<StudentFormCard> {
       return;
     }
 
+    for (final entry in entries) {
+      final draft = entry.value;
+      if (_isParentRelationship(draft.relationship) &&
+          draft.isDeceased == true) {
+        draft.isPrimary = false;
+      }
+    }
+
     int? primaryIndex;
     for (final entry in entries) {
-      if (entry.value.isPrimary) {
+      final draft = entry.value;
+      if (draft.isPrimary &&
+          !(_isParentRelationship(draft.relationship) &&
+              draft.isDeceased == true)) {
         primaryIndex = entry.key;
         break;
       }
     }
-    primaryIndex ??= entries.first.key;
+    if (primaryIndex == null) {
+      for (final entry in entries) {
+        final draft = entry.value;
+        if (!(_isParentRelationship(draft.relationship) &&
+            draft.isDeceased == true)) {
+          primaryIndex = entry.key;
+          break;
+        }
+      }
+    }
 
     for (var index = 0; index < _guardianDrafts.length; index++) {
-      _guardianDrafts[index].isPrimary = index == primaryIndex;
+      _guardianDrafts[index].isPrimary =
+          primaryIndex != null && index == primaryIndex;
     }
   }
 
@@ -868,9 +985,10 @@ class _StudentFormCardState extends State<StudentFormCard> {
     return text;
   }
 
-  String _plainNumber(num? value) {
+  String _formatMoney(num? value) {
     if (value == null) return '';
-    return value % 1 == 0 ? value.toInt().toString() : value.toString();
+    final text = value.round().toString();
+    return ThousandsSeparatorInputFormatter.format(text);
   }
 
   String? _schoolIdForClass(String? classId) {
@@ -895,334 +1013,354 @@ class _StudentFormCardState extends State<StudentFormCard> {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Theme(
-        data: theme.copyWith(
-          inputDecorationTheme: theme.inputDecorationTheme.copyWith(
-            constraints: const BoxConstraints(
-              minHeight: _singleLineFieldHeight,
-            ),
-          ),
-        ),
+        data: theme,
         child: Form(
           key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-            _FormSection(
-              title: context.l10n.basicInfo,
-              isRequired: true,
-              initiallyExpanded: true,
-              children: [
-                _fieldGrid([
-                  _generatedStudentNoDisplay(),
-                  TextFormField(
-                    controller: _nisController,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.nis,
+              _FormSection(
+                title: context.l10n.basicInfo,
+                isRequired: true,
+                initiallyExpanded: true,
+                children: [
+                  _fieldGrid([
+                    _generatedStudentNoDisplay(),
+                    _shadInputField(
+                      label: context.l10n.fullName,
+                      isRequired: true,
+                      controller: _fullNameController,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return context.l10n.fieldRequiredMessage(
+                            context.l10n.fullName,
+                          );
+                        }
+                        if (value.trim().length < 3) {
+                          return context.l10n.fullNameMinimumThree;
+                        }
+                        if (value.trim().length > 80) {
+                          return context.l10n.fullNameMaximumEighty;
+                        }
+                        return null;
+                      },
+                      inputFormatters: [LengthLimitingTextInputFormatter(80)],
                     ),
-                    validator: (value) {
-                      final text = value?.trim() ?? '';
-                      if (text.length > 10) {
-                        return context.l10n.nisMaxTenCharacters;
-                      }
-                      return null;
-                    },
-                    inputFormatters: [LengthLimitingTextInputFormatter(10)],
-                  ),
-                  TextFormField(
-                    controller: _fullNameController,
-                    decoration: InputDecoration(
-                      label: _requiredLabel(context.l10n.fullName),
+                    _shadInputField(
+                      label: context.l10n.nickName,
+                      controller: _nickNameController,
+                      inputFormatters: [LengthLimitingTextInputFormatter(40)],
+                      validator: (value) => AppFormValidation.optionalText(
+                        context,
+                        value,
+                        context.l10n.nickName,
+                        maxLength: 40,
+                      ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return context.l10n.fieldRequiredMessage(
-                          context.l10n.fullName,
+                    _shadInputField(
+                      label: context.l10n.nis,
+                      controller: _nisController,
+                      validator: (value) {
+                        final text = value?.trim() ?? '';
+                        if (text.length > 10) {
+                          return context.l10n.nisMaxTenCharacters;
+                        }
+                        return null;
+                      },
+                      inputFormatters: [LengthLimitingTextInputFormatter(10)],
+                    ),
+                    _dateField(
+                      context.l10n.birthDate,
+                      _birthDateController,
+                      firstDate: DateTime(1900),
+                    ),
+                    _dateField(
+                      context.l10n.joinDate,
+                      _joinAtController,
+                      firstDate: DateTime(1900),
+                    ),
+                    _shadSelectField<Gender>(
+                      label: context.l10n.gender,
+                      isRequired: true,
+                      value: _selectedGender,
+                      values: Gender.values,
+                      optionLabel: _genderLabel,
+                      onChanged: (gender) {
+                        if (gender != null) {
+                          setState(() => _selectedGender = gender);
+                        }
+                      },
+                    ),
+                    _shadSelectField<String>(
+                      label: context.l10n.studentLocation,
+                      isRequired: true,
+                      value: _selectedTeachingLocationId,
+                      values: widget.availableTeachingLocations
+                          .map((location) => location.id)
+                          .toList(),
+                      optionLabel: (id) {
+                        final location = widget.availableTeachingLocations
+                            .firstWhere((location) => location.id == id);
+                        return '${location.code} - ${location.name}';
+                      },
+                      placeholder: context.l10n.selectStudentLocation,
+                      onChanged: (value) =>
+                          setState(() => _selectedTeachingLocationId = value),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return context.l10n.selectStudentLocationRequired;
+                        }
+                        return null;
+                      },
+                    ),
+                  ], maxColumns: 3),
+                  const Divider(thickness: 1, height: 14),
+                  _fieldGrid([
+                    _shadSelectField<String>(
+                      label: context.l10n.housingStatus,
+                      isRequired: true,
+                      value: _selectedHousingStatus,
+                      values: StudentHousingStatusOptions.values,
+                      optionLabel: (status) =>
+                          _housingStatusLabel(context, status),
+                      placeholder: context.l10n.selectHousingStatus,
+                      onChanged: (value) =>
+                          setState(() => _selectedHousingStatus = value),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return context.l10n.fieldRequiredMessage(
+                            context.l10n.housingStatus,
+                          );
+                        }
+                        return null;
+                      },
+                    ),
+                    _shadInputField(
+                      label: context.l10n.householdMemberCount,
+                      isRequired: true,
+                      controller: _householdMemberCountController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(2),
+                      ],
+                      validator: (value) => _requiredPositiveInteger(
+                        value,
+                        context.l10n.householdMemberCount,
+                      ),
+                    ),
+                  ], maxColumns: 3),
+                  const SizedBox(height: 12),
+                  _fieldGrid([
+                    _shadInputField(
+                      label: context.l10n.homeAddress,
+                      isRequired: true,
+                      controller: _homeAddressController,
+                      minLines: 2,
+                      maxLines: 3,
+                      placeholder: context.l10n.homeAddressHint,
+                      inputFormatters: [LengthLimitingTextInputFormatter(240)],
+                      validator: (value) => AppFormValidation.requiredText(
+                        context,
+                        value,
+                        context.l10n.homeAddress,
+                        minLength: 5,
+                        maxLength: 240,
+                      ),
+                    ),
+                  ], maxColumns: 1),
+                  const Divider(thickness: 1, height: 14),
+                  _fieldGrid([
+                    _photoPicker(),
+                    _registrationFormPicker(),
+                  ], maxColumns: 2),
+                ],
+              ),
+              const SizedBox(height: 18),
+              _FormSection(
+                title: context.l10n.contact,
+                initiallyExpanded: false,
+                children: [
+                  _fieldGrid([
+                    _shadInputField(
+                      label: context.l10n.mobileNo,
+                      controller: _mobileNoController,
+                      placeholder: AppFormValidation.mobilePlaceholder,
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: AppFormValidation.mobileInputFormatters,
+                      validator: (value) =>
+                          AppFormValidation.optionalMobile(context, value),
+                    ),
+                    _shadInputField(
+                      label: context.l10n.email,
+                      controller: _emailAddrController,
+                      validator: (value) =>
+                          AppFormValidation.optionalEmail(context, value),
+                      inputFormatters: [LengthLimitingTextInputFormatter(120)],
+                    ),
+                  ], maxColumns: 2),
+                ],
+              ),
+              const SizedBox(height: 18),
+              _FormSection(
+                title: context.l10n.school,
+                isRequired: true,
+                initiallyExpanded: true,
+                children: [
+                  _fieldGrid([
+                    _shadSelectField<String>(
+                      label: context.l10n.school,
+                      isRequired: true,
+                      value: _selectedSchoolId,
+                      values: widget.availableSchools
+                          .map((school) => school.id)
+                          .toList(),
+                      optionLabel: (id) {
+                        final school = widget.availableSchools.firstWhere(
+                          (school) => school.id == id,
                         );
-                      }
-                      if (value.trim().length < 3) {
-                        return context.l10n.fullNameMinimumThree;
-                      }
-                      if (value.trim().length > 80) {
-                        return context.l10n.fullNameMaximumEighty;
-                      }
-                      return null;
-                    },
-                    inputFormatters: [LengthLimitingTextInputFormatter(80)],
-                  ),
-                  TextFormField(
-                    controller: _nickNameController,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.nickName,
+                        return '${school.name ?? '-'} (${school.type?.label ?? '-'})';
+                      },
+                      placeholder: context.l10n.selectSchool,
+                      onChanged: (value) => setState(() {
+                        _selectedSchoolId = value;
+                        _selectedClassId = null;
+                      }),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return context.l10n.selectSchoolRequired;
+                        }
+                        return null;
+                      },
                     ),
-                    inputFormatters: [LengthLimitingTextInputFormatter(40)],
-                    validator: (value) => AppFormValidation.optionalText(
-                      context,
-                      value,
-                      context.l10n.nickName,
-                      maxLength: 40,
-                    ),
-                  ),
-                  _dateField(
-                    context.l10n.birthDate,
-                    _birthDateController,
-                    firstDate: DateTime(1900),
-                  ),
-                  AppDropdownButtonFormField<Gender>(
-                    initialValue: _selectedGender,
-                    isExpanded: false,
-                    decoration: InputDecoration(
-                      label: _requiredLabel(context.l10n.gender),
-                    ),
-                    items: Gender.values
-                        .map(
-                          (gender) => DropdownMenuItem<Gender>(
-                            value: gender,
-                            child: AppDropdownStyle.menuItemLabel(
-                              label: _genderLabel(gender),
-                              selected: gender == _selectedGender,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    selectedItemBuilder: (context) =>
-                        AppDropdownStyle.selectedLabels(
-                          Gender.values.map(_genderLabel),
-                        ),
-                    dropdownColor: AppColors.white,
-                    focusColor: AppColors.transparent,
-                    iconEnabledColor: AppColors.primary,
-                    borderRadius: AppDropdownStyle.menuBorderRadius,
-                    menuMaxHeight: AppDropdownStyle.menuMaxHeight,
-                    style: AppDropdownStyle.textStyle,
-                    onChanged: (gender) {
-                      if (gender != null) {
-                        setState(() => _selectedGender = gender);
-                      }
-                    },
-                  ),
-                  _dateField(
-                    context.l10n.joinDate,
-                    _joinAtController,
-                    firstDate: DateTime(1900),
-                  ),
-                ], maxColumns: 3),
-                const SizedBox(height: 12),
-                _registrationFormPicker(),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _FormSection(
-              title: context.l10n.school,
-              isRequired: true,
-              initiallyExpanded: true,
-              children: [
-                _fieldGrid([
-                  AppDropdownButtonFormField<String>(
-                    initialValue: _selectedSchoolId,
-                    isExpanded: false,
-                    items: widget.availableSchools
-                        .map(
-                          (school) => DropdownMenuItem(
-                            value: school.id,
-                            child: AppDropdownStyle.menuItemLabel(
-                              label:
-                                  '${school.name ?? '-'} (${school.type?.label ?? '-'})',
-                              selected: school.id == _selectedSchoolId,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    selectedItemBuilder: (context) =>
-                        AppDropdownStyle.selectedLabels(
-                          widget.availableSchools.map(
-                            (school) =>
-                                '${school.name ?? '-'} (${school.type?.label ?? '-'})',
-                          ),
-                        ),
-                    dropdownColor: AppColors.white,
-                    focusColor: AppColors.transparent,
-                    iconEnabledColor: AppColors.primary,
-                    borderRadius: AppDropdownStyle.menuBorderRadius,
-                    menuMaxHeight: AppDropdownStyle.menuMaxHeight,
-                    style: AppDropdownStyle.textStyle,
-                    decoration: InputDecoration(
-                      label: _requiredLabel(context.l10n.school),
-                      hintText: context.l10n.selectSchool,
-                    ),
-                    hint: Text(
-                      context.l10n.selectSchool,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onChanged: (value) => setState(() {
-                      _selectedSchoolId = value;
-                      _selectedClassId = null;
-                    }),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return context.l10n.selectSchoolRequired;
-                      }
-                      return null;
-                    },
-                  ),
-                  AppDropdownButtonFormField<String>(
-                    initialValue: _selectedClassId,
-                    isExpanded: false,
-                    items: _classesForSelectedSchool
-                        .map(
-                          (schoolClass) => DropdownMenuItem(
-                            value: schoolClass.id,
-                            child: AppDropdownStyle.menuItemLabel(
-                              label:
-                                  '${schoolClass.className} (${schoolClass.year})',
-                              selected: schoolClass.id == _selectedClassId,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    selectedItemBuilder: (context) =>
-                        AppDropdownStyle.selectedLabels(
-                          _classesForSelectedSchool.map(
-                            (schoolClass) =>
-                                '${schoolClass.className} (${schoolClass.year})',
-                          ),
-                        ),
-                    dropdownColor: AppColors.white,
-                    focusColor: AppColors.transparent,
-                    iconEnabledColor: AppColors.primary,
-                    borderRadius: AppDropdownStyle.menuBorderRadius,
-                    menuMaxHeight: AppDropdownStyle.menuMaxHeight,
-                    style: AppDropdownStyle.textStyle,
-                    decoration: InputDecoration(
-                      label: _requiredLabel(context.l10n.className),
-                      hintText: _selectedSchoolId == null
+                    _shadSelectField<String>(
+                      label: context.l10n.className,
+                      isRequired: true,
+                      value: _selectedClassId,
+                      values: _classesForSelectedSchool
+                          .map((schoolClass) => schoolClass.id)
+                          .toList(),
+                      optionLabel: (id) {
+                        final schoolClass = _classesForSelectedSchool
+                            .firstWhere((schoolClass) => schoolClass.id == id);
+                        return '${schoolClass.className} (${schoolClass.year})';
+                      },
+                      placeholder: _selectedSchoolId == null
                           ? context.l10n.selectSchoolFirst
                           : context.l10n.selectClass,
+                      enabled: _selectedSchoolId != null,
+                      onChanged: _selectedSchoolId == null
+                          ? null
+                          : (value) => setState(() => _selectedClassId = value),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return context.l10n.selectClassRequired;
+                        }
+                        return null;
+                      },
                     ),
-                    onChanged: _selectedSchoolId == null
+                  ], maxColumns: 2),
+                  const SizedBox(height: 12),
+                  _fieldGrid([
+                    _requiredMoneyField(
+                      controller: _dailyTransportCostController,
+                      label: context.l10n.dailySchoolTransportCost,
+                    ),
+                    _requiredMoneyField(
+                      controller: _educationArrearsController,
+                      label: context.l10n.educationArrears,
+                    ),
+                  ], maxColumns: 2),
+                  const SizedBox(height: 12),
+                  _fieldGrid([
+                    _shadInputField(
+                      label: context.l10n.academicAchievement,
+                      controller: _academicAchievementController,
+                      minLines: 2,
+                      maxLines: 4,
+                      placeholder: context.l10n.academicAchievementHint,
+                      inputFormatters: [LengthLimitingTextInputFormatter(300)],
+                      validator: (value) => AppFormValidation.optionalText(
+                        context,
+                        value,
+                        context.l10n.academicAchievement,
+                        maxLength: 300,
+                      ),
+                    ),
+                    _shadInputField(
+                      label: context.l10n.nonAcademicAchievement,
+                      controller: _nonAcademicAchievementController,
+                      minLines: 2,
+                      maxLines: 4,
+                      placeholder: context.l10n.nonAcademicAchievementHint,
+                      inputFormatters: [LengthLimitingTextInputFormatter(300)],
+                      validator: (value) => AppFormValidation.optionalText(
+                        context,
+                        value,
+                        context.l10n.nonAcademicAchievement,
+                        maxLength: 300,
+                      ),
+                    ),
+                  ], maxColumns: 2),
+                ],
+              ),
+              const SizedBox(height: 18),
+              _familySection(),
+              const SizedBox(height: 18),
+              _FormSection(
+                title: context.l10n.physical,
+                initiallyExpanded: false,
+                children: [
+                  _fieldGrid([
+                    _shoeSizeField(),
+                    _uniformSizeField(),
+                    _pantsSizeField(),
+                    _heightField(),
+                    _weightField(),
+                  ], maxColumns: 3),
+                ],
+              ),
+              const SizedBox(height: 18),
+              _activitySection(),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  ShadButton.outline(
+                    onPressed: _isSaving
                         ? null
-                        : (value) => setState(() => _selectedClassId = value),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return context.l10n.selectClassRequired;
-                      }
-                      return null;
-                    },
+                        : () => Navigator.of(context).pop(),
+                    child: Text(context.l10n.buttonCancel),
                   ),
-                ], maxColumns: 2),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _FormSection(
-              title: context.l10n.contact,
-              initiallyExpanded: false,
-              children: [
-                _fieldGrid([
-                  TextFormField(
-                    controller: _mobileNoController,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.mobileNo,
-                      hintText: AppFormValidation.mobilePlaceholder,
+                  const SizedBox(width: 12),
+                  ShadButton(
+                    onPressed: _isSaving ? null : _submit,
+                    backgroundColor: AppColors.primary,
+                    hoverBackgroundColor: AppColors.primaryDark,
+                    leading: _isSaving
+                        ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: ShadTheme.of(
+                                context,
+                              ).colorScheme.primaryForeground,
+                            ),
+                          )
+                        : null,
+                    child: Text(
+                      widget.isEditing
+                          ? context.l10n.updateStudent
+                          : context.l10n.createStudent,
                     ),
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: AppFormValidation.mobileInputFormatters,
-                    validator: (value) =>
-                        AppFormValidation.optionalMobile(context, value),
                   ),
-                  TextFormField(
-                    controller: _emailAddrController,
-                    decoration: InputDecoration(labelText: context.l10n.email),
-                    validator: (value) =>
-                        AppFormValidation.optionalEmail(context, value),
-                    inputFormatters: [LengthLimitingTextInputFormatter(120)],
-                  ),
-                ], maxColumns: 2),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _familySection(),
-            const SizedBox(height: 18),
-            _householdProfileSection(),
-            const SizedBox(height: 18),
-            _FormSection(
-              title: context.l10n.physical,
-              initiallyExpanded: false,
-              children: [
-                _fieldGrid([
-                  _shoeSizeField(),
-                  _uniformSizeField(),
-                  _pantsSizeField(),
-                  _heightField(),
-                  _weightField(),
-                ], maxColumns: 3),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _FormSection(
-              title: context.l10n.photo,
-              initiallyExpanded: false,
-              children: [_photoPicker()],
-            ),
-            const SizedBox(height: 18),
-            _activitySection(),
-            const SizedBox(height: 18),
-            _goalsSection(),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: _isSaving
-                      ? null
-                      : () => Navigator.of(context).pop(),
-                  child: Text(context.l10n.buttonCancel),
-                ),
-                const SizedBox(width: 12),
-                FilledButton(
-                  onPressed: _isSaving ? null : _submit,
-                  child: _isSaving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          widget.isEditing
-                              ? context.l10n.updateStudent
-                              : context.l10n.createStudent,
-                        ),
-                ),
-              ],
-            ),
+                ],
+              ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _fieldGrid(List<Widget> children, {int maxColumns = 3}) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final columns = width >= 760
-            ? maxColumns
-            : width >= 520
-            ? maxColumns.clamp(1, 2).toInt()
-            : 1;
-        const spacing = 12.0;
-        final itemWidth = columns == 1
-            ? width
-            : (width - (spacing * (columns - 1))) / columns;
-
-        return Wrap(
-          spacing: spacing,
-          runSpacing: 12,
-          children: [
-            for (final child in children)
-              SizedBox(width: itemWidth, child: child),
-          ],
-        );
-      },
     );
   }
 
@@ -1253,12 +1391,12 @@ class _StudentFormCardState extends State<StudentFormCard> {
         ],
         Align(
           alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
+          child: ShadButton.outline(
             onPressed: () => setState(() {
               _relationDrafts.add(_SiblingRelationDraft());
             }),
-            icon: const Icon(Icons.add),
-            label: Text(context.l10n.addSiblingRelation),
+            leading: const Icon(Icons.add, size: 18),
+            child: Text(context.l10n.addSiblingRelation),
           ),
         ),
         const SizedBox(height: 18),
@@ -1284,12 +1422,28 @@ class _StudentFormCardState extends State<StudentFormCard> {
 
   Widget _activitySection() {
     return _FormSection(
-      title: context.l10n.extracurricularActivity,
+      title:
+          '${context.l10n.hobbyAspiration} / ${context.l10n.extracurricularActivity}',
       initiallyExpanded:
+          (widget.initialAdvancedData.hobby?.trim().isNotEmpty ?? false) ||
+          (widget.initialAdvancedData.aspiration?.trim().isNotEmpty ?? false) ||
           widget.initialAdvancedData.activities.any(
             (activity) => activity.hasData,
           ),
       children: [
+        _fieldGrid([
+          _shadInputField(
+            label: context.l10n.hobby,
+            controller: _hobbyController,
+            inputFormatters: [LengthLimitingTextInputFormatter(120)],
+          ),
+          _shadInputField(
+            label: context.l10n.citaCita,
+            controller: _aspirationController,
+            inputFormatters: [LengthLimitingTextInputFormatter(120)],
+          ),
+        ], maxColumns: 2),
+        const SizedBox(height: 16),
         _DraftTableToolbar(
           title:
               '${context.l10n.activities} (${_visibleActivityEntries().length})',
@@ -1308,161 +1462,24 @@ class _StudentFormCardState extends State<StudentFormCard> {
     );
   }
 
-  Widget _householdProfileSection() {
-    return _FormSection(
-      title: context.l10n.householdEducationProfile,
-      isRequired: true,
-      initiallyExpanded: true,
-      children: [
-        TextFormField(
-          controller: _homeAddressController,
-          minLines: 2,
-          maxLines: 3,
-          decoration: InputDecoration(
-            label: _requiredLabel(context.l10n.homeAddress),
-            hintText: context.l10n.homeAddressHint,
-          ),
-          inputFormatters: [LengthLimitingTextInputFormatter(240)],
-          validator: (value) => AppFormValidation.requiredText(
-            context,
-            value,
-            context.l10n.homeAddress,
-            minLength: 5,
-            maxLength: 240,
-          ),
-        ),
-        const SizedBox(height: 12),
-        _fieldGrid([
-          _requiredMoneyField(
-            controller: _dailyTransportCostController,
-            label: context.l10n.dailySchoolTransportCost,
-          ),
-          AppDropdownButtonFormField<String>(
-            initialValue: _selectedHousingStatus,
-            isExpanded: false,
-            items: StudentHousingStatusOptions.values
-                .map(
-                  (status) => DropdownMenuItem<String>(
-                    value: status,
-                    child: AppDropdownStyle.menuItemLabel(
-                      label: _housingStatusLabel(context, status),
-                      selected: status == _selectedHousingStatus,
-                    ),
-                  ),
-                )
-                .toList(),
-            selectedItemBuilder: (context) => AppDropdownStyle.selectedLabels(
-              StudentHousingStatusOptions.values.map(
-                (status) => _housingStatusLabel(context, status),
-              ),
-            ),
-            decoration: InputDecoration(
-              label: _requiredLabel(context.l10n.housingStatus),
-              hintText: context.l10n.selectHousingStatus,
-            ),
-            dropdownColor: AppColors.white,
-            focusColor: AppColors.transparent,
-            iconEnabledColor: AppColors.primary,
-            borderRadius: AppDropdownStyle.menuBorderRadius,
-            menuMaxHeight: AppDropdownStyle.menuMaxHeight,
-            style: AppDropdownStyle.textStyle,
-            onChanged: (value) =>
-                setState(() => _selectedHousingStatus = value),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return context.l10n.fieldRequiredMessage(
-                  context.l10n.housingStatus,
-                );
-              }
-              return null;
-            },
-          ),
-          TextFormField(
-            controller: _householdMemberCountController,
-            decoration: InputDecoration(
-              label: _requiredLabel(context.l10n.householdMemberCount),
-            ),
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(2),
-            ],
-            validator: (value) => _requiredPositiveInteger(
-              value,
-              context.l10n.householdMemberCount,
-            ),
-          ),
-          _requiredMoneyField(
-            controller: _fatherIncomeController,
-            label: context.l10n.fatherIncome,
-          ),
-          _requiredMoneyField(
-            controller: _motherIncomeController,
-            label: context.l10n.motherIncome,
-          ),
-          _requiredMoneyField(
-            controller: _educationArrearsController,
-            label: context.l10n.educationArrears,
-          ),
-        ], maxColumns: 3),
-        const SizedBox(height: 12),
-        _fieldGrid([
-          TextFormField(
-            controller: _academicAchievementController,
-            minLines: 2,
-            maxLines: 4,
-            decoration: InputDecoration(
-              labelText: context.l10n.academicAchievement,
-              hintText: context.l10n.academicAchievementHint,
-            ),
-            inputFormatters: [LengthLimitingTextInputFormatter(300)],
-            validator: (value) => AppFormValidation.optionalText(
-              context,
-              value,
-              context.l10n.academicAchievement,
-              maxLength: 300,
-            ),
-          ),
-          TextFormField(
-            controller: _nonAcademicAchievementController,
-            minLines: 2,
-            maxLines: 4,
-            decoration: InputDecoration(
-              labelText: context.l10n.nonAcademicAchievement,
-              hintText: context.l10n.nonAcademicAchievementHint,
-            ),
-            inputFormatters: [LengthLimitingTextInputFormatter(300)],
-            validator: (value) => AppFormValidation.optionalText(
-              context,
-              value,
-              context.l10n.nonAcademicAchievement,
-              maxLength: 300,
-            ),
-          ),
-        ], maxColumns: 2),
-      ],
-    );
-  }
-
-  TextFormField _requiredMoneyField({
+  Widget _requiredMoneyField({
     required TextEditingController controller,
     required String label,
   }) {
-    return TextFormField(
+    return _shadInputField(
+      label: label,
+      isRequired: true,
       controller: controller,
-      decoration: InputDecoration(
-        label: _requiredLabel(label),
-        prefixText: 'Rp ',
-      ),
+      prefixText: 'Rp',
       keyboardType: TextInputType.number,
       inputFormatters: [
-        FilteringTextInputFormatter.digitsOnly,
+        const ThousandsSeparatorInputFormatter(),
         LengthLimitingTextInputFormatter(15),
       ],
       validator: (value) {
         final text = value?.trim() ?? '';
         if (text.isEmpty) return context.l10n.fieldRequiredMessage(label);
-        if (double.tryParse(text) == null) {
+        if (ThousandsSeparatorInputFormatter.parseDouble(text) == null) {
           return context.l10n.fieldMustBeNumber(label);
         }
         return null;
@@ -1480,44 +1497,11 @@ class _StudentFormCardState extends State<StudentFormCard> {
     return null;
   }
 
-  Widget _goalsSection() {
-    return _FormSection(
-      title: context.l10n.hobbyAspiration,
-      initiallyExpanded:
-          (widget.initialAdvancedData.hobby?.trim().isNotEmpty ?? false) ||
-          (widget.initialAdvancedData.aspiration?.trim().isNotEmpty ?? false),
-      children: [
-        _fieldGrid([
-          TextFormField(
-            controller: _hobbyController,
-            decoration: InputDecoration(labelText: context.l10n.hobby),
-            inputFormatters: [LengthLimitingTextInputFormatter(120)],
-          ),
-          TextFormField(
-            controller: _aspirationController,
-            decoration: InputDecoration(labelText: context.l10n.citaCita),
-            inputFormatters: [LengthLimitingTextInputFormatter(120)],
-          ),
-        ], maxColumns: 2),
-      ],
-    );
-  }
-
   Widget _generatedStudentNoDisplay() {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: _singleLineFieldHeight),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: context.l10n.generatedNo,
-          border: const OutlineInputBorder(),
-        ),
-        child: Text(
-          _studentNoController.text,
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-        ),
-      ),
+    return _shadInputField(
+      label: context.l10n.generatedNo,
+      controller: _studentNoController,
+      readOnly: true,
     );
   }
 
@@ -1528,26 +1512,136 @@ class _StudentFormCardState extends State<StudentFormCard> {
     };
   }
 
-  TextFormField _dateField(
+  Widget _shadFieldLabel(String label, {bool isRequired = false}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        if (isRequired) ...[
+          const SizedBox(width: 4),
+          const Text(
+            '*',
+            style: TextStyle(
+              color: AppColors.errorDark,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _shadInputField({
+    required String label,
+    required TextEditingController controller,
+    bool isRequired = false,
+    String? placeholder,
+    String? prefixText,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+    FormFieldValidator<String>? validator,
+    int? minLines,
+    int? maxLines = 1,
+    bool readOnly = false,
+    bool enabled = true,
+    Widget? trailing,
+    VoidCallback? onPressed,
+  }) {
+    return ShadInputFormField(
+      controller: controller,
+      label: _shadFieldLabel(label, isRequired: isRequired),
+      placeholder: placeholder == null ? null : Text(placeholder),
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      validator: validator,
+      minLines: minLines,
+      maxLines: maxLines,
+      readOnly: readOnly,
+      enabled: enabled,
+      leading: prefixText == null
+          ? null
+          : Text(
+              prefixText,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+      trailing: trailing,
+      onPressed: onPressed,
+    );
+  }
+
+  Widget _shadSelectField<T>({
+    required String label,
+    required T? value,
+    required Iterable<T> values,
+    required String Function(T value) optionLabel,
+    required ValueChanged<T?>? onChanged,
+    bool isRequired = false,
+    String? placeholder,
+    bool enabled = true,
+    FormFieldValidator<T>? validator,
+  }) {
+    final optionValues = values.toList();
+    final selectedValue = optionValues.contains(value) ? value : null;
+    return ShadSelectFormField<T>(
+      key: ValueKey(
+        '${label}_${selectedValue}_${optionValues.length}_$enabled',
+      ),
+      label: _shadFieldLabel(label, isRequired: isRequired),
+      initialValue: selectedValue,
+      enabled: enabled,
+      placeholder: Text(
+        placeholder ?? AppFormFieldStyle.select(label),
+        overflow: TextOverflow.ellipsis,
+      ),
+      selectedOptionBuilder: (context, selected) =>
+          Text(optionLabel(selected), overflow: TextOverflow.ellipsis),
+      options: optionValues
+          .map(
+            (option) => ShadOption<T>(
+              value: option,
+              child: Text(optionLabel(option), overflow: TextOverflow.ellipsis),
+            ),
+          )
+          .toList(),
+      maxHeight: AppDropdownStyle.menuMaxHeight,
+      onChanged: onChanged,
+      validator: validator,
+    );
+  }
+
+  Widget _dateField(
     String label,
     TextEditingController controller, {
     required DateTime firstDate,
   }) {
-    return TextFormField(
+    return _shadInputField(
+      label: label,
       controller: controller,
+      isRequired: true,
       readOnly: true,
-      decoration: InputDecoration(
-        label: _requiredLabel(label),
-        hintText: AppFormFieldStyle.dateFormat,
-        suffixIcon: const Icon(Icons.calendar_today_outlined),
-      ),
+      placeholder: AppFormFieldStyle.dateFormat,
+      trailing: const Icon(Icons.calendar_today_outlined, size: 18),
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
           return context.l10n.fieldRequiredMessage(label);
         }
         return null;
       },
-      onTap: () async {
+      onPressed: () async {
         final lastDate = DateTime.now();
         final parsedDate = DateTime.tryParse(controller.text);
         final initialDate = parsedDate == null
@@ -1563,6 +1657,7 @@ class _StudentFormCardState extends State<StudentFormCard> {
           firstDate: firstDate,
           lastDate: lastDate,
         );
+        if (!mounted) return;
 
         if (date != null) {
           controller.text = date.toString().split(' ')[0];
@@ -1571,45 +1666,98 @@ class _StudentFormCardState extends State<StudentFormCard> {
     );
   }
 
-  Widget _requiredLabel(String label) {
-    return RichText(
-      text: TextSpan(
-        text: label,
-        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-        children: const [
-          TextSpan(
-            text: ' *',
-            style: TextStyle(color: AppColors.errorDark),
+  Widget _photoPicker() {
+    final initialValue = _selectedPhotoSourcePath;
+    return FormField<String>(
+      initialValue: initialValue,
+      builder: (field) {
+        return _StudentDropTarget(
+          hint: context.l10n.dropPhotoHere,
+          onFilesDropped: (files) async {
+            if (files.isEmpty) return;
+            await _applyPhotoFile(files.first, field);
+          },
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: context.l10n.studentPhoto,
+              border: const OutlineInputBorder(),
+              contentPadding: const EdgeInsets.all(12),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 460;
+                final fileLabel = Row(
+                  children: [
+                    const Icon(Icons.photo_outlined, color: AppColors.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _selectedPhotoFileName ?? context.l10n.noPhotoSelected,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: _selectedPhotoFileName == null
+                              ? AppColors.textHint
+                              : AppColors.textPrimary,
+                          fontWeight: _selectedPhotoFileName == null
+                              ? FontWeight.w400
+                              : FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+
+                final actions = Row(
+                  mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
+                  mainAxisAlignment: compact
+                      ? MainAxisAlignment.end
+                      : MainAxisAlignment.start,
+                  children: [
+                    if (_selectedPhotoFileName != null)
+                      IconButton(
+                        tooltip: context.l10n.removeFile,
+                        onPressed: () => _clearSelectedPhoto(field),
+                        icon: const Icon(Icons.delete_outline),
+                        color: AppColors.error,
+                      ),
+                    const SizedBox(width: 8),
+                    ShadButton.outline(
+                      onPressed: () => _pickPhoto(field),
+                      leading: const Icon(Icons.upload_file, size: 18),
+                      child: Text(context.l10n.upload),
+                    ),
+                  ],
+                );
+
+                if (compact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [fileLabel, const SizedBox(height: 10), actions],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: fileLabel),
+                    const SizedBox(width: 12),
+                    actions,
+                  ],
+                );
+              },
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _photoPicker() {
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: context.l10n.studentPhoto,
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.all(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              _selectedPhotoFileName ?? context.l10n.noPhotoSelected,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: 12),
-          OutlinedButton.icon(
-            onPressed: _pickPhoto,
-            icon: const Icon(Icons.upload_file),
-            label: Text(context.l10n.upload),
-          ),
-        ],
-      ),
-    );
+  void _clearSelectedPhoto(FormFieldState<String> field) {
+    setState(() {
+      _selectedPhotoSourcePath = null;
+      _selectedPhotoFileName = null;
+      _photoChanged = false;
+    });
+    field.didChange(null);
   }
 
   Widget _registrationFormPicker() {
@@ -1618,125 +1766,130 @@ class _StudentFormCardState extends State<StudentFormCard> {
     return FormField<String>(
       initialValue: initialValue,
       builder: (field) {
-        return InputDecorator(
-          decoration: InputDecoration(
-            labelText: context.l10n.registrationForm,
-            helperText:
-                '${context.l10n.uploadRegistrationFormHelp} (${context.l10n.optional})',
-            border: const OutlineInputBorder(),
-            contentPadding: const EdgeInsets.all(12),
-          ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final compact = constraints.maxWidth < 460;
-              final fileLabel = Row(
-                children: [
-                  const Icon(
-                    Icons.description_outlined,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _registrationFormFileName ?? context.l10n.noFileSelected,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: _registrationFormFileName == null
-                            ? AppColors.textHint
-                            : AppColors.textPrimary,
-                        fontWeight: _registrationFormFileName == null
-                            ? FontWeight.w400
-                            : FontWeight.w600,
+        return _StudentDropTarget(
+          hint: context.l10n.dropRegistrationFormHere,
+          onFilesDropped: (files) async {
+            if (files.isEmpty) return;
+            await _applyRegistrationFormFile(files.first, field);
+          },
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: context.l10n.registrationForm,
+              // helperText:
+              //     '${context.l10n.uploadRegistrationFormHelp} (${context.l10n.optional})',
+              border: const OutlineInputBorder(),
+              contentPadding: const EdgeInsets.all(12),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 460;
+                final fileLabel = Row(
+                  children: [
+                    const Icon(
+                      Icons.description_outlined,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _registrationFormFileName ??
+                            context.l10n.noFileSelected,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: _registrationFormFileName == null
+                              ? AppColors.textHint
+                              : AppColors.textPrimary,
+                          fontWeight: _registrationFormFileName == null
+                              ? FontWeight.w400
+                              : FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              );
-              final actions = Row(
-                mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
-                mainAxisAlignment: compact
-                    ? MainAxisAlignment.end
-                    : MainAxisAlignment.start,
-                children: [
-                  if (_registrationFormFileName != null)
-                    IconButton(
-                      tooltip: context.l10n.removeFile,
-                      onPressed: () => _clearRegistrationForm(field),
-                      icon: const Icon(Icons.delete_outline),
-                      color: AppColors.error,
-                    ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: () => _pickRegistrationForm(field),
-                    icon: const Icon(Icons.upload_file),
-                    label: Text(context.l10n.upload),
-                  ),
-                ],
-              );
-
-              if (compact) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [fileLabel, const SizedBox(height: 10), actions],
+                  ],
                 );
-              }
+                final actions = Row(
+                  mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
+                  mainAxisAlignment: compact
+                      ? MainAxisAlignment.end
+                      : MainAxisAlignment.start,
+                  children: [
+                    if (_registrationFormFileName != null)
+                      IconButton(
+                        tooltip: context.l10n.removeFile,
+                        onPressed: () => _clearRegistrationForm(field),
+                        icon: const Icon(Icons.delete_outline),
+                        color: AppColors.error,
+                      ),
+                    const SizedBox(width: 8),
+                    ShadButton.outline(
+                      onPressed: () => _pickRegistrationForm(field),
+                      leading: const Icon(Icons.upload_file, size: 18),
+                      child: Text(context.l10n.upload),
+                    ),
+                  ],
+                );
 
-              return Row(
-                children: [
-                  Expanded(child: fileLabel),
-                  const SizedBox(width: 12),
-                  actions,
-                ],
-              );
-            },
+                if (compact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [fileLabel, const SizedBox(height: 10), actions],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: fileLabel),
+                    const SizedBox(width: 12),
+                    actions,
+                  ],
+                );
+              },
+            ),
           ),
         );
       },
     );
   }
 
-  TextFormField _shoeSizeField() => TextFormField(
+  Widget _shoeSizeField() => _shadInputField(
+    label: context.l10n.shoeSize,
     controller: _shoeSizeController,
-    decoration: InputDecoration(labelText: context.l10n.shoeSize),
-    keyboardType: TextInputType.number,
-    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-    validator: (value) {
-      if (value == null || value.isEmpty) return null;
-      final number = int.tryParse(value);
-      if (number == null) return context.l10n.mustBeNumber;
-      return null;
-    },
+    inputFormatters: [LengthLimitingTextInputFormatter(3)],
+    validator: (value) => AppFormValidation.optionalText(
+      context,
+      value,
+      context.l10n.shoeSize,
+      maxLength: 3,
+    ),
   );
 
-  TextFormField _uniformSizeField() => TextFormField(
+  Widget _uniformSizeField() => _shadInputField(
+    label: context.l10n.uniformSize,
     controller: _uniformSizeController,
-    decoration: InputDecoration(labelText: context.l10n.uniformSize),
-    keyboardType: TextInputType.number,
-    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-    validator: (value) {
-      if (value == null || value.isEmpty) return null;
-      final number = int.tryParse(value);
-      if (number == null) return context.l10n.mustBeNumber;
-      return null;
-    },
+    inputFormatters: [LengthLimitingTextInputFormatter(3)],
+    validator: (value) => AppFormValidation.optionalText(
+      context,
+      value,
+      context.l10n.uniformSize,
+      maxLength: 3,
+    ),
   );
 
-  TextFormField _pantsSizeField() => TextFormField(
+  Widget _pantsSizeField() => _shadInputField(
+    label: context.l10n.pantsSize,
     controller: _pantsSizeController,
-    decoration: InputDecoration(labelText: context.l10n.pantsSize),
-    keyboardType: TextInputType.number,
-    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-    validator: (value) {
-      if (value == null || value.isEmpty) return null;
-      final number = int.tryParse(value);
-      if (number == null) return context.l10n.mustBeNumber;
-      return null;
-    },
+    inputFormatters: [LengthLimitingTextInputFormatter(3)],
+    validator: (value) => AppFormValidation.optionalText(
+      context,
+      value,
+      context.l10n.pantsSize,
+      maxLength: 3,
+    ),
   );
 
-  TextFormField _heightField() => TextFormField(
+  Widget _heightField() => _shadInputField(
+    label: context.l10n.height,
     controller: _heightController,
-    decoration: InputDecoration(labelText: context.l10n.height),
     keyboardType: const TextInputType.numberWithOptions(decimal: true),
     inputFormatters: [
       FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
@@ -1749,9 +1902,9 @@ class _StudentFormCardState extends State<StudentFormCard> {
     },
   );
 
-  TextFormField _weightField() => TextFormField(
+  Widget _weightField() => _shadInputField(
+    label: context.l10n.weight,
     controller: _weightController,
-    decoration: InputDecoration(labelText: context.l10n.weight),
     keyboardType: const TextInputType.numberWithOptions(decimal: true),
     inputFormatters: [
       FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
@@ -1908,6 +2061,101 @@ class _InlineSectionTitle extends StatelessWidget {
   }
 }
 
+class _StudentDropTarget extends StatefulWidget {
+  const _StudentDropTarget({
+    required this.child,
+    required this.hint,
+    required this.onFilesDropped,
+  });
+
+  final Widget child;
+  final String hint;
+  final FutureOr<void> Function(List<XFile> files) onFilesDropped;
+
+  @override
+  State<_StudentDropTarget> createState() => _StudentDropTargetState();
+}
+
+class _StudentDropTargetState extends State<_StudentDropTarget> {
+  bool _dragging = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropTarget(
+      onDragEntered: (_) => setState(() => _dragging = true),
+      onDragExited: (_) => setState(() => _dragging = false),
+      onDragDone: (detail) async {
+        setState(() => _dragging = false);
+        await widget.onFilesDropped(detail.files);
+      },
+      child: Stack(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: _dragging
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.18),
+                        blurRadius: 12,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: widget.child,
+          ),
+          if (_dragging)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primary, width: 1.5),
+                  ),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: AppColors.primaryLight),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.file_upload_outlined,
+                            size: 17,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            widget.hint,
+                            style: const TextStyle(
+                              color: AppColors.primaryDark,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 Widget _requiredFieldLabel(BuildContext context, String label) {
   return RichText(
     text: TextSpan(
@@ -1923,6 +2171,40 @@ Widget _requiredFieldLabel(BuildContext context, String label) {
   );
 }
 
+Widget _shadStandaloneFieldLabel(
+  BuildContext context,
+  String label, {
+  bool isRequired = false,
+}) {
+  return Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Flexible(
+        child: Text(
+          label,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      if (isRequired) ...[
+        const SizedBox(width: 4),
+        const Text(
+          '*',
+          style: TextStyle(
+            color: AppColors.errorDark,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    ],
+  );
+}
+
 class _GuardianDraft {
   _GuardianDraft({String? relationship, this.isPrimary = false})
     : relationship = relationship ?? GuardianRelationshipOptions.values.first;
@@ -1931,22 +2213,34 @@ class _GuardianDraft {
     this.guardianId,
     required this.relationship,
     required this.isPrimary,
+    this.isDeceased,
     required String fullName,
     required String mobileNo,
     required String email,
     required String occupation,
     required String address,
+    String? income,
+    String? fatherIncome,
+    String? motherIncome,
   }) {
     nameController.text = fullName;
     mobileController.text = mobileNo;
     emailController.text = email;
     occupationController.text = occupation;
     addressController.text = address;
+    incomeText =
+        income ??
+        switch (relationship) {
+          'FATHER' => fatherIncome ?? '',
+          'MOTHER' => motherIncome ?? '',
+          _ => '',
+        };
   }
 
   _GuardianDraft.fromData(StudentGuardianFormData data)
     : guardianId = data.guardianId,
       isPrimary = data.isPrimary,
+      isDeceased = data.isDeceased,
       relationship =
           GuardianRelationshipOptions.values.contains(data.relationship)
           ? data.relationship!
@@ -1956,6 +2250,11 @@ class _GuardianDraft {
     emailController.text = data.email ?? '';
     occupationController.text = data.occupation ?? '';
     addressController.text = data.address ?? '';
+    incomeText = data.income == null
+        ? ''
+        : ThousandsSeparatorInputFormatter.format(
+            data.income!.round().toString(),
+          );
   }
 
   final nameController = TextEditingController();
@@ -1963,19 +2262,25 @@ class _GuardianDraft {
   final emailController = TextEditingController();
   final occupationController = TextEditingController();
   final addressController = TextEditingController();
+  String incomeText = '';
 
   String? guardianId;
   String relationship;
   bool isPrimary;
+  bool? isDeceased;
 
   bool get hasInput {
+    if (_isParentRelationship(relationship) && isDeceased == true) {
+      return true;
+    }
     return [
       nameController,
       mobileController,
       emailController,
       occupationController,
       addressController,
-    ].any((controller) => controller.text.trim().isNotEmpty);
+    ].any((controller) => controller.text.trim().isNotEmpty) ||
+        incomeText.trim().isNotEmpty;
   }
 
   StudentGuardianFormData toData() {
@@ -1984,10 +2289,12 @@ class _GuardianDraft {
       fullName: nullIfEmpty(nameController.text),
       relationship: relationship,
       isPrimary: isPrimary,
+      isDeceased: _isParentRelationship(relationship) ? isDeceased : null,
       mobileNo: nullIfEmpty(mobileController.text),
       email: nullIfEmpty(emailController.text),
       occupation: nullIfEmpty(occupationController.text),
       address: nullIfEmpty(addressController.text),
+      income: ThousandsSeparatorInputFormatter.parseDouble(incomeText),
     );
   }
 
@@ -1998,6 +2305,10 @@ class _GuardianDraft {
     occupationController.dispose();
     addressController.dispose();
   }
+}
+
+bool _isParentRelationship(String? relationship) {
+  return relationship == 'FATHER' || relationship == 'MOTHER';
 }
 
 class _SiblingRelationDraft {
@@ -2180,25 +2491,31 @@ class _SiblingRelationDraftCard extends StatelessWidget {
             children: [
               Expanded(
                 flex: 2,
-                child: TextFormField(
+                child: ShadInputFormField(
                   controller: draft.studentLookupController,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.studentIdNo,
-                    suffixIcon: IconButton(
-                      onPressed: draft.isSearching ? null : onLookup,
-                      tooltip: context.l10n.searchSibling,
-                      icon: draft.isSearching
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.search),
+                  label: _shadStandaloneFieldLabel(
+                    context,
+                    context.l10n.studentIdNo,
+                  ),
+                  trailing: IconButton(
+                    onPressed: draft.isSearching ? null : onLookup,
+                    tooltip: context.l10n.searchSibling,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 32,
+                      height: 32,
                     ),
+                    padding: EdgeInsets.zero,
+                    icon: draft.isSearching
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.search, size: 18),
                   ),
                   validator: (value) {
                     if (!draft.hasInput) return null;
-                    if (value == null || value.trim().isEmpty) {
+                    if (value.trim().isEmpty) {
                       return context.l10n.studentIdNoRequired;
                     }
                     return null;
@@ -2209,35 +2526,30 @@ class _SiblingRelationDraftCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: AppDropdownButtonFormField<String>(
+                child: ShadSelectFormField<String>(
+                  key: ValueKey('relation_${draft.relationType}'),
                   initialValue: draft.relationType,
-                  isExpanded: false,
-                  decoration: InputDecoration(
-                    label: _requiredFieldLabel(context, context.l10n.relation),
+                  label: _shadStandaloneFieldLabel(
+                    context,
+                    context.l10n.relation,
+                    isRequired: true,
                   ),
-                  items: StudentRelationOptions.relationTypes
+                  selectedOptionBuilder: (context, value) => Text(
+                    _familyRelationLabel(context, value),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  options: StudentRelationOptions.relationTypes
                       .map(
-                        (value) => DropdownMenuItem(
+                        (value) => ShadOption<String>(
                           value: value,
-                          child: AppDropdownStyle.menuItemLabel(
-                            label: _familyRelationLabel(context, value),
-                            selected: value == draft.relationType,
+                          child: Text(
+                            _familyRelationLabel(context, value),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       )
                       .toList(),
-                  selectedItemBuilder: (context) =>
-                      AppDropdownStyle.selectedLabels(
-                        StudentRelationOptions.relationTypes.map(
-                          (value) => _familyRelationLabel(context, value),
-                        ),
-                      ),
-                  dropdownColor: AppColors.white,
-                  focusColor: AppColors.transparent,
-                  iconEnabledColor: AppColors.primary,
-                  borderRadius: AppDropdownStyle.menuBorderRadius,
-                  menuMaxHeight: AppDropdownStyle.menuMaxHeight,
-                  style: AppDropdownStyle.textStyle,
+                  maxHeight: AppDropdownStyle.menuMaxHeight,
                   onChanged: (value) {
                     if (value != null) draft.relationType = value;
                   },
@@ -2245,38 +2557,30 @@ class _SiblingRelationDraftCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: AppDropdownButtonFormField<String>(
+                child: ShadSelectFormField<String>(
+                  key: ValueKey('age_${draft.agePosition}'),
                   initialValue: draft.agePosition,
-                  isExpanded: false,
-                  decoration: InputDecoration(
-                    label: _requiredFieldLabel(
-                      context,
-                      context.l10n.agePosition,
-                    ),
+                  label: _shadStandaloneFieldLabel(
+                    context,
+                    context.l10n.agePosition,
+                    isRequired: true,
                   ),
-                  items: StudentRelationOptions.agePositions
+                  selectedOptionBuilder: (context, value) => Text(
+                    _agePositionLabel(context, value),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  options: StudentRelationOptions.agePositions
                       .map(
-                        (value) => DropdownMenuItem(
+                        (value) => ShadOption<String>(
                           value: value,
-                          child: AppDropdownStyle.menuItemLabel(
-                            label: _agePositionLabel(context, value),
-                            selected: value == draft.agePosition,
+                          child: Text(
+                            _agePositionLabel(context, value),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       )
                       .toList(),
-                  selectedItemBuilder: (context) =>
-                      AppDropdownStyle.selectedLabels(
-                        StudentRelationOptions.agePositions.map(
-                          (value) => _agePositionLabel(context, value),
-                        ),
-                      ),
-                  dropdownColor: AppColors.white,
-                  focusColor: AppColors.transparent,
-                  iconEnabledColor: AppColors.primary,
-                  borderRadius: AppDropdownStyle.menuBorderRadius,
-                  menuMaxHeight: AppDropdownStyle.menuMaxHeight,
-                  style: AppDropdownStyle.textStyle,
+                  maxHeight: AppDropdownStyle.menuMaxHeight,
                   onChanged: (value) {
                     if (value != null) draft.agePosition = value;
                   },
@@ -2425,15 +2729,19 @@ class _GuardianDraftTable extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: Row(
             children: [
-              SizedBox(
-                width: 42,
-                child: _DraftHeaderText(context.l10n.number),
+              SizedBox(width: 42, child: _DraftHeaderText(context.l10n.number)),
+              Expanded(
+                flex: 2,
+                child: _DraftHeaderText(context.l10n.relationship),
               ),
-              Expanded(flex: 2, child: _DraftHeaderText(context.l10n.relationship)),
               Expanded(flex: 3, child: _DraftHeaderText(context.l10n.name)),
               Expanded(flex: 2, child: _DraftHeaderText(context.l10n.mobile)),
               Expanded(child: _DraftHeaderText(context.l10n.primary)),
-              SizedBox(width: 74, child: _DraftHeaderText(context.l10n.actions)),
+              Expanded(child: _DraftHeaderText(context.l10n.deceased)),
+              SizedBox(
+                width: 74,
+                child: _DraftHeaderText(context.l10n.actions),
+              ),
             ],
           ),
         ),
@@ -2518,6 +2826,16 @@ class _GuardianDraftTableRow extends StatelessWidget {
                   highlight: draft.isPrimary,
                 ),
               ),
+              Expanded(
+                child: _DraftCellText(
+                  _isParentRelationship(draft.relationship)
+                      ? draft.isDeceased == true
+                            ? context.l10n.yes
+                            : context.l10n.no
+                      : '-',
+                  highlight: draft.isDeceased == true,
+                ),
+              ),
               SizedBox(
                 width: 74,
                 child: Row(
@@ -2576,15 +2894,15 @@ class _ActivityDraftTable extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: Row(
             children: [
-              SizedBox(
-                width: 42,
-                child: _DraftHeaderText(context.l10n.number),
-              ),
+              SizedBox(width: 42, child: _DraftHeaderText(context.l10n.number)),
               Expanded(flex: 2, child: _DraftHeaderText(context.l10n.type)),
               Expanded(flex: 3, child: _DraftHeaderText(context.l10n.activity)),
               Expanded(flex: 2, child: _DraftHeaderText(context.l10n.role)),
               Expanded(flex: 2, child: _DraftHeaderText(context.l10n.period)),
-              SizedBox(width: 74, child: _DraftHeaderText(context.l10n.actions)),
+              SizedBox(
+                width: 74,
+                child: _DraftHeaderText(context.l10n.actions),
+              ),
             ],
           ),
         ),
@@ -2757,8 +3075,10 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
   late final TextEditingController _emailController;
   late final TextEditingController _occupationController;
   late final TextEditingController _addressController;
+  late final TextEditingController _incomeControllerDialog;
   late String _relationship;
   late bool _isPrimary;
+  late bool? _isDeceased;
 
   @override
   void initState() {
@@ -2767,6 +3087,12 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
     _relationship =
         draft?.relationship ?? GuardianRelationshipOptions.values.first;
     _isPrimary = draft?.isPrimary ?? widget.defaultPrimary;
+    _isDeceased = _isParentRelationship(_relationship)
+        ? draft?.isDeceased ?? false
+        : null;
+    if (_isDeceased == true) {
+      _isPrimary = false;
+    }
     _nameController = TextEditingController(
       text: draft?.nameController.text ?? '',
     );
@@ -2782,6 +3108,9 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
     _addressController = TextEditingController(
       text: draft?.addressController.text ?? '',
     );
+    _incomeControllerDialog = TextEditingController(
+      text: draft?.incomeText.isNotEmpty == true ? draft!.incomeText : '0',
+    );
   }
 
   @override
@@ -2791,29 +3120,46 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
     _emailController.dispose();
     _occupationController.dispose();
     _addressController.dispose();
+    _incomeControllerDialog.dispose();
     super.dispose();
   }
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
-
+    final isDeceasedParent =
+        _isParentRelationship(_relationship) && _isDeceased == true;
     Navigator.of(context).pop(
       _GuardianDraft.fromValues(
         guardianId: widget.initialDraft?.guardianId,
         relationship: _relationship,
-        isPrimary: _isPrimary,
+        isPrimary: isDeceasedParent ? false : _isPrimary,
+        isDeceased: _isParentRelationship(_relationship) ? _isDeceased : null,
         fullName: _nameController.text.trim(),
         mobileNo: _mobileController.text.trim(),
         email: _emailController.text.trim(),
         occupation: _occupationController.text.trim(),
         address: _addressController.text.trim(),
+        income: _incomeControllerDialog.text.trim(),
+        fatherIncome: _relationship == 'FATHER'
+            ? _incomeControllerDialog.text.trim()
+            : null,
+        motherIncome: _relationship == 'MOTHER'
+            ? _incomeControllerDialog.text.trim()
+            : null,
       ),
     );
+  }
+
+  String _incomeLabel(BuildContext context) {
+    final relationshipLabel = _familyRelationLabel(context, _relationship);
+    return context.l10n.guardianIncomeFor(relationshipLabel);
   }
 
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.initialDraft != null;
+    final isDeceasedParent =
+        _isParentRelationship(_relationship) && _isDeceased == true;
 
     return AlertDialog(
       title: AppDialogTitle(
@@ -2828,116 +3174,146 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                AppDropdownButtonFormField<String>(
-                  initialValue: _relationship,
-                  isExpanded: false,
-                  items: GuardianRelationshipOptions.values
-                      .map(
-                        (relationship) => DropdownMenuItem(
-                          value: relationship,
-                          child: AppDropdownStyle.menuItemLabel(
-                            label: _familyRelationLabel(context, relationship),
-                            selected: relationship == _relationship,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  selectedItemBuilder: (context) =>
-                      AppDropdownStyle.selectedLabels(
-                        GuardianRelationshipOptions.values.map(
-                          (value) => _familyRelationLabel(context, value),
-                        ),
-                      ),
-                  dropdownColor: AppColors.white,
-                  focusColor: AppColors.transparent,
-                  iconEnabledColor: AppColors.primary,
-                  borderRadius: AppDropdownStyle.menuBorderRadius,
-                  menuMaxHeight: AppDropdownStyle.menuMaxHeight,
-                  style: AppDropdownStyle.textStyle,
-                  decoration: InputDecoration(
-                    label: _requiredFieldLabel(
+                _fieldGrid([
+                  ShadSelectFormField<String>(
+                    initialValue: _relationship,
+                    label: _shadStandaloneFieldLabel(
                       context,
                       context.l10n.relationship,
+                      isRequired: true,
+                    ),
+                    selectedOptionBuilder: (context, value) => Text(
+                      _familyRelationLabel(context, value),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    options: GuardianRelationshipOptions.values
+                        .map(
+                          (relationship) => ShadOption<String>(
+                            value: relationship,
+                            child: Text(
+                              _familyRelationLabel(context, relationship),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    maxHeight: AppDropdownStyle.menuMaxHeight,
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _relationship = value;
+                        _isDeceased = _isParentRelationship(value)
+                            ? _isDeceased ?? false
+                            : null;
+                        if (_isDeceased == true) {
+                          _isPrimary = false;
+                        }
+                      });
+                    },
+                  ),
+                  _StandaloneSegmentedField(
+                    label: _shadStandaloneFieldLabel(
+                      context,
+                      context.l10n.primaryGuardian,
+                      isRequired: !isDeceasedParent,
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<bool>(
+                        expandedInsets: EdgeInsets.zero,
+                        style: _compactSegmentedButtonStyle(),
+                        showSelectedIcon: false,
+                        segments: [
+                          ButtonSegment(
+                            value: true,
+                            label: Text(context.l10n.primary),
+                          ),
+                          ButtonSegment(
+                            value: false,
+                            label: Text(context.l10n.notPrimary),
+                          ),
+                        ],
+                        selected: {_isPrimary},
+                        onSelectionChanged: _isDeceased == true
+                            ? null
+                            : (selection) {
+                                setState(() => _isPrimary = selection.first);
+                              },
+                      ),
                     ),
                   ),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _relationship = value);
-                  },
-                ),
+                ], maxColumns: 2),
                 const SizedBox(height: 14),
-                _StandaloneSegmentedField(
-                  label: _requiredFieldLabel(
-                    context,
-                    context.l10n.primaryGuardian,
-                  ),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: SegmentedButton<bool>(
-                      expandedInsets: EdgeInsets.zero,
-                      style: _compactSegmentedButtonStyle(),
-                      showSelectedIcon: false,
-                      segments: [
-                        ButtonSegment(
-                          value: true,
-                          label: Text(context.l10n.primary),
-                        ),
-                        ButtonSegment(
-                          value: false,
-                          label: Text(context.l10n.notPrimary),
-                        ),
-                      ],
-                      selected: {_isPrimary},
-                      onSelectionChanged: (selection) {
-                        setState(() => _isPrimary = selection.first);
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    label: _requiredFieldLabel(
+                _fieldGrid([
+                  ShadInputFormField(
+                    controller: _nameController,
+                    label: _shadStandaloneFieldLabel(
                       context,
                       context.l10n.parentGuardianName,
+                      isRequired: true,
                     ),
+                    validator: (value) => AppFormValidation.requiredText(
+                      context,
+                      value,
+                      context.l10n.parentGuardianName,
+                      minLength: 3,
+                      maxLength: 80,
+                    ),
+                    inputFormatters: [LengthLimitingTextInputFormatter(80)],
                   ),
-                  validator: (value) => AppFormValidation.requiredText(
-                    context,
-                    value,
-                    context.l10n.parentGuardianName,
-                    minLength: 3,
-                    maxLength: 80,
-                  ),
-                  inputFormatters: [LengthLimitingTextInputFormatter(80)],
-                ),
-                const SizedBox(height: 14),
+                  if (_isParentRelationship(_relationship)) ...[
+                    ListTile(
+                      contentPadding: const EdgeInsets.only(top: 18),
+                      leading: Checkbox(
+                        value: _isDeceased ?? false,
+                        onChanged: (value) {
+                          setState(() {
+                            _isDeceased = value ?? false;
+                            if (_isDeceased == true) {
+                              _isPrimary = false;
+                            }
+                          });
+                        },
+                      ),
+                      title: Text(
+                        context.l10n.parentDeceased,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+                ], maxColumns: _isParentRelationship(_relationship) ? 2 : 1),
                 Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
+                      child: ShadInputFormField(
                         controller: _mobileController,
-                        decoration: InputDecoration(
-                          label: _requiredFieldLabel(
-                            context,
-                            context.l10n.mobileNo,
-                          ),
-                          hintText: AppFormValidation.mobilePlaceholder,
+                        label: _shadStandaloneFieldLabel(
+                          context,
+                          context.l10n.mobileNo,
+                          isRequired: !isDeceasedParent,
+                        ),
+                        placeholder: const Text(
+                          AppFormValidation.mobilePlaceholder,
                         ),
                         keyboardType: TextInputType.phone,
                         inputFormatters:
                             AppFormValidation.mobileInputFormatters,
-                        validator: (value) =>
-                            AppFormValidation.requiredMobile(context, value),
+                        validator: (value) => isDeceasedParent
+                            ? AppFormValidation.optionalMobile(context, value)
+                            : AppFormValidation.requiredMobile(context, value),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: TextFormField(
+                      child: ShadInputFormField(
                         controller: _emailController,
-                        decoration: InputDecoration(
-                          labelText: context.l10n.email,
+                        label: _shadStandaloneFieldLabel(
+                          context,
+                          context.l10n.email,
                         ),
                         validator: (value) =>
                             AppFormValidation.optionalEmail(context, value),
@@ -2952,10 +3328,11 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
+                      child: ShadInputFormField(
                         controller: _occupationController,
-                        decoration: InputDecoration(
-                          labelText: context.l10n.occupation,
+                        label: _shadStandaloneFieldLabel(
+                          context,
+                          context.l10n.occupation,
                         ),
                         validator: (value) => AppFormValidation.optionalText(
                           context,
@@ -2968,10 +3345,11 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: TextFormField(
+                      child: ShadInputFormField(
                         controller: _addressController,
-                        decoration: InputDecoration(
-                          labelText: context.l10n.address,
+                        label: _shadStandaloneFieldLabel(
+                          context,
+                          context.l10n.address,
                         ),
                         validator: (value) => AppFormValidation.optionalText(
                           context,
@@ -2986,17 +3364,49 @@ class _GuardianDraftDialogState extends State<_GuardianDraftDialog> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 14),
+                ShadInputFormField(
+                  controller: _incomeControllerDialog,
+                  label: _shadStandaloneFieldLabel(
+                    context,
+                    _incomeLabel(context),
+                    isRequired: !isDeceasedParent,
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    const ThousandsSeparatorInputFormatter(),
+                    LengthLimitingTextInputFormatter(15),
+                  ],
+                  validator: (value) {
+                    final text = value.trim();
+                    final label = _incomeLabel(context);
+                    if (isDeceasedParent && text.isEmpty) return null;
+                    if (text.isEmpty) {
+                      return context.l10n.fieldRequiredMessage(label);
+                    }
+                    if (ThousandsSeparatorInputFormatter.parseDouble(text) ==
+                        null) {
+                      return context.l10n.fieldMustBeNumber(label);
+                    }
+                    return null;
+                  },
+                ),
               ],
             ),
           ),
         ),
       ),
       actions: [
-        TextButton(
+        ShadButton.outline(
           onPressed: () => Navigator.of(context).pop(),
           child: Text(context.l10n.buttonCancel),
         ),
-        FilledButton(onPressed: _submit, child: Text(context.l10n.buttonSave)),
+        ShadButton(
+          onPressed: _submit,
+          backgroundColor: AppColors.primary,
+          hoverBackgroundColor: AppColors.primaryDark,
+          child: Text(context.l10n.buttonSave),
+        ),
       ],
     );
   }
@@ -3107,13 +3517,12 @@ class _ActivityDraftDialogState extends State<_ActivityDraftDialog> {
                   },
                 ),
                 const SizedBox(height: 14),
-                TextFormField(
+                ShadInputFormField(
                   controller: _nameController,
-                  decoration: InputDecoration(
-                    label: _requiredFieldLabel(
-                      context,
-                      context.l10n.activityName,
-                    ),
+                  label: _shadStandaloneFieldLabel(
+                    context,
+                    context.l10n.activityName,
+                    isRequired: true,
                   ),
                   validator: (value) => AppFormValidation.requiredText(
                     context,
@@ -3128,20 +3537,22 @@ class _ActivityDraftDialogState extends State<_ActivityDraftDialog> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
+                      child: ShadInputFormField(
                         controller: _roleController,
-                        decoration: InputDecoration(
-                          labelText: context.l10n.role,
+                        label: _shadStandaloneFieldLabel(
+                          context,
+                          context.l10n.role,
                         ),
                         inputFormatters: [LengthLimitingTextInputFormatter(60)],
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: TextFormField(
+                      child: ShadInputFormField(
                         controller: _achievementController,
-                        decoration: InputDecoration(
-                          labelText: context.l10n.achievement,
+                        label: _shadStandaloneFieldLabel(
+                          context,
+                          context.l10n.achievement,
                         ),
                         inputFormatters: [
                           LengthLimitingTextInputFormatter(120),
@@ -3174,11 +3585,11 @@ class _ActivityDraftDialogState extends State<_ActivityDraftDialog> {
         ),
       ),
       actions: [
-        TextButton(
+        ShadButton.outline(
           onPressed: () => Navigator.of(context).pop(),
           child: Text(context.l10n.buttonCancel),
         ),
-        FilledButton(onPressed: _submit, child: Text(context.l10n.buttonSave)),
+        ShadButton(onPressed: _submit, child: Text(context.l10n.buttonSave)),
       ],
     );
   }
@@ -3226,6 +3637,7 @@ class _OptionalDateTextFieldState extends State<_OptionalDateTextField> {
       firstDate: firstDate,
       lastDate: lastDate,
     );
+    if (!mounted) return;
     if (selectedDate == null) return;
 
     widget.controller.text = _formatDate(selectedDate);
@@ -3245,32 +3657,38 @@ class _OptionalDateTextFieldState extends State<_OptionalDateTextField> {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    return ShadInputFormField(
       controller: widget.controller,
       readOnly: true,
-      decoration: InputDecoration(
-        labelText: widget.label,
-        hintText: AppFormFieldStyle.dateFormat,
-        suffixIcon: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (widget.controller.text.isNotEmpty)
-              IconButton(
-                tooltip: context.l10n.clearDate,
-                icon: const Icon(Icons.close, size: 18),
-                onPressed: () => widget.controller.clear(),
-              ),
-            IconButton(
-              tooltip: context.l10n.chooseDate,
-              icon: const Icon(Icons.calendar_today_outlined, size: 18),
-              onPressed: _pickDate,
-            ),
-          ],
+      label: Text(
+        widget.label,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
         ),
       ),
-      onTap: _pickDate,
+      placeholder: const Text(AppFormFieldStyle.dateFormat),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (widget.controller.text.isNotEmpty)
+            IconButton(
+              tooltip: context.l10n.clearDate,
+              icon: const Icon(Icons.close, size: 18),
+              onPressed: () => widget.controller.clear(),
+            ),
+          IconButton(
+            tooltip: context.l10n.chooseDate,
+            icon: const Icon(Icons.calendar_today_outlined, size: 18),
+            onPressed: _pickDate,
+          ),
+        ],
+      ),
+      onPressed: _pickDate,
       validator: (value) {
-        final text = value?.trim() ?? '';
+        final text = value.trim();
         if (text.isEmpty) return null;
         if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text)) {
           return context.l10n.useDateFormat;
@@ -3282,10 +3700,7 @@ class _OptionalDateTextFieldState extends State<_OptionalDateTextField> {
 }
 
 class _StandaloneSegmentedField extends StatelessWidget {
-  const _StandaloneSegmentedField({
-    required this.label,
-    required this.child,
-  });
+  const _StandaloneSegmentedField({required this.label, required this.child});
 
   final Widget label;
   final Widget child;
@@ -3358,6 +3773,32 @@ String _familyRelationLabel(BuildContext context, String value) {
     'GRANDMA' => context.l10n.familyRelationGrandmother,
     _ => value,
   };
+}
+
+Widget _fieldGrid(List<Widget> children, {int maxColumns = 3}) {
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final width = constraints.maxWidth;
+      final columns = width >= 760
+          ? maxColumns
+          : width >= 520
+          ? maxColumns.clamp(1, 2).toInt()
+          : 1;
+      const spacing = 12.0;
+      final itemWidth = columns == 1
+          ? width
+          : (width - (spacing * (columns - 1))) / columns;
+
+      return Wrap(
+        spacing: spacing,
+        runSpacing: 12,
+        children: [
+          for (final child in children)
+            SizedBox(width: itemWidth, child: child),
+        ],
+      );
+    },
+  );
 }
 
 String _agePositionLabel(BuildContext context, String value) {

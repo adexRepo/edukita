@@ -15,7 +15,7 @@ import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 class DatabaseProvider {
   DatabaseProvider._();
   static final instance = DatabaseProvider._();
-  static const schemaVersion = 28;
+  static const schemaVersion = 29;
 
   Database? _db;
 

@@ -20,8 +20,73 @@ class StudentFamilyTab extends StatelessWidget {
     return DetailTabScroll(
       children: [
         _GuardianTable(studentId: student.id),
+        _HouseholdProfileSection(studentId: student.id),
         _RelationsTable(studentId: student.id),
       ],
+    );
+  }
+}
+
+class _HouseholdProfileSection extends StatelessWidget {
+  const _HouseholdProfileSection({required this.studentId});
+
+  final String studentId;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<StudentAdvancedFormData>(
+      future: context.read<StudentDetailCubit>().loadAdvancedFormData(studentId),
+      builder: (context, snapshot) {
+        final household =
+            snapshot.data?.householdProfile ??
+            const StudentHouseholdProfileFormData();
+        final rows = [
+          if (_hasText(household.homeAddress))
+            [context.l10n.homeAddress, household.homeAddress!],
+          if (_hasText(household.housingStatus))
+            [
+              context.l10n.housingStatus,
+              _housingStatusLabel(context, household.housingStatus!),
+            ],
+          if (household.householdMemberCount != null)
+            [
+              context.l10n.householdMemberCount,
+              household.householdMemberCount.toString(),
+            ],
+          if (household.dailySchoolTransportCost != null)
+            [
+              context.l10n.dailySchoolTransportCost,
+              _formatCurrency(household.dailySchoolTransportCost),
+            ],
+          if (household.fatherIncome != null)
+            [context.l10n.fatherIncome, _formatCurrency(household.fatherIncome)],
+          if (household.motherIncome != null)
+            [context.l10n.motherIncome, _formatCurrency(household.motherIncome)],
+          if (household.educationArrears != null)
+            [
+              context.l10n.educationArrears,
+              _formatCurrency(household.educationArrears),
+            ],
+        ];
+
+        return DetailSectionCard(
+          title: context.l10n.householdProfile,
+          icon: Icons.home_work_outlined,
+          wrapChildren: false,
+          children: [
+            if (snapshot.hasError)
+              DetailEmptySectionText(context.l10n.errorSomethingWentWrong)
+            else if (snapshot.connectionState == ConnectionState.waiting)
+              DetailEmptySectionText(context.l10n.loadingHouseholdProfile)
+            else
+              DetailDataTable(
+                columns: [context.l10n.field, context.l10n.value],
+                rows: rows,
+                emptyText: context.l10n.noHouseholdProfile,
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -110,6 +175,7 @@ class _GuardianTable extends StatelessWidget {
                   context.l10n.mobile,
                   context.l10n.email,
                   context.l10n.occupation,
+                  context.l10n.income,
                   context.l10n.address,
                 ],
                 rows: guardians
@@ -124,6 +190,7 @@ class _GuardianTable extends StatelessWidget {
                         _textOrDash(guardian.mobileNo),
                         _textOrDash(guardian.email),
                         _textOrDash(guardian.occupation),
+                        _formatCurrency(guardian.income),
                         _textOrDash(guardian.address),
                       ],
                     )
@@ -155,4 +222,33 @@ class _GuardianTable extends StatelessWidget {
       _ => _textOrDash(value),
     };
   }
+}
+
+bool _hasText(String? value) {
+  return value != null && value.trim().isNotEmpty;
+}
+
+String _formatCurrency(num? value) {
+  if (value == null) return '-';
+  final digits = value.round().toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    final remaining = digits.length - i;
+    buffer.write(digits[i]);
+    if (remaining > 1 && remaining % 3 == 1) {
+      buffer.write('.');
+    }
+  }
+  return 'Rp ${buffer.toString()}';
+}
+
+String _housingStatusLabel(BuildContext context, String value) {
+  return switch (value) {
+    StudentHousingStatusOptions.owned => context.l10n.housingStatusOwned,
+    StudentHousingStatusOptions.rented => context.l10n.housingStatusRented,
+    StudentHousingStatusOptions.stayingWithFamily =>
+      context.l10n.housingStatusStayingWithFamily,
+    StudentHousingStatusOptions.other => context.l10n.housingStatusOther,
+    _ => value,
+  };
 }

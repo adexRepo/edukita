@@ -7,7 +7,13 @@ import 'package:flutter/material.dart';
 
 Future<AppAuthorizationScope> loadCurrentAuthorizationScope() async {
   final session = await AuthSessionCache.instance.read();
-  if (session == null || session.isAdmin) {
+  if (session == null) {
+    return AppAuthorizationScope(
+      role: AppUserRole.teacher,
+      permissions: const {},
+    );
+  }
+  if (session.isAdmin) {
     return AppAuthorizationScope(
       role: AppUserRole.admin,
       permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
