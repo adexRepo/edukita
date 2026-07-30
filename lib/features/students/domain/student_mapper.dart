@@ -36,6 +36,7 @@ class StudentMapper extends Mapper<Student> {
       'weight': json['weight'],
       'photo_path': json['photo_path'],
       'status': json['status'],
+      'profile_status': json['profile_status'],
     };
   }
 }

@@ -239,6 +239,7 @@ class DatabaseTables {
         weight REAL,
         photo_path TEXT,
         status TEXT NOT NULL DEFAULT 'active',
+        profile_status TEXT NOT NULL DEFAULT 'complete',
         created_at TEXT,
         updated_at TEXT,
         FOREIGN KEY(class_id) REFERENCES classes(id),

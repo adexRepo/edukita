@@ -1956,6 +1956,36 @@ abstract class AppLocalizations {
   /// **'Add Student'**
   String get addStudent;
 
+  /// No description provided for @addFullStudent.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Full Student'**
+  String get addFullStudent;
+
+  /// No description provided for @quickRegisterStudent.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Register'**
+  String get quickRegisterStudent;
+
+  /// No description provided for @chooseStudentCreationMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how you want to add this student.'**
+  String get chooseStudentCreationMode;
+
+  /// No description provided for @quickRegisterStudentDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use minimum information so the student can join teaching targets immediately.'**
+  String get quickRegisterStudentDescription;
+
+  /// No description provided for @fullStudentDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the complete student form with family, school, and supporting documents.'**
+  String get fullStudentDescription;
+
   /// No description provided for @addTeacher.
   ///
   /// In en, this message translates to:
@@ -2267,6 +2297,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Student Profile'**
   String get studentProfile;
+
+  /// No description provided for @profileStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile Status'**
+  String get profileStatus;
+
+  /// No description provided for @profileComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete'**
+  String get profileComplete;
+
+  /// No description provided for @profileIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Incomplete'**
+  String get profileIncomplete;
 
   /// No description provided for @classSchool.
   ///

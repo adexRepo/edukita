@@ -14,6 +14,7 @@ enum StudentFilterCodes {
   joinDate,
   duafaStatus,
   teachingLocation,
+  profileStatus,
 }
 
 class StudentFilter {
@@ -41,6 +42,8 @@ class StudentFilter {
   final List<String> duafaStatusesNot;
   final List<String> teachingLocations;
   final List<String> teachingLocationsNot;
+  final List<String> profileStatuses;
+  final List<String> profileStatusesNot;
 
   const StudentFilter({
     this.namesEqual = const [],
@@ -67,6 +70,8 @@ class StudentFilter {
     this.duafaStatusesNot = const [],
     this.teachingLocations = const [],
     this.teachingLocationsNot = const [],
+    this.profileStatuses = const [],
+    this.profileStatusesNot = const [],
   });
 
   bool get isEmpty =>
@@ -93,7 +98,9 @@ class StudentFilter {
       duafaStatuses.isEmpty &&
       duafaStatusesNot.isEmpty &&
       teachingLocations.isEmpty &&
-      teachingLocationsNot.isEmpty;
+      teachingLocationsNot.isEmpty &&
+      profileStatuses.isEmpty &&
+      profileStatusesNot.isEmpty;
 
   StudentFilter copyWith({
     List<String>? namesEqual,
@@ -120,6 +127,8 @@ class StudentFilter {
     List<String>? duafaStatusesNot,
     List<String>? teachingLocations,
     List<String>? teachingLocationsNot,
+    List<String>? profileStatuses,
+    List<String>? profileStatusesNot,
   }) {
     return StudentFilter(
       namesEqual: namesEqual ?? this.namesEqual,
@@ -146,6 +155,8 @@ class StudentFilter {
       duafaStatusesNot: duafaStatusesNot ?? this.duafaStatusesNot,
       teachingLocations: teachingLocations ?? this.teachingLocations,
       teachingLocationsNot: teachingLocationsNot ?? this.teachingLocationsNot,
+      profileStatuses: profileStatuses ?? this.profileStatuses,
+      profileStatusesNot: profileStatusesNot ?? this.profileStatusesNot,
     );
   }
 }
@@ -240,6 +251,14 @@ StudentFilter buildStudentFilter(List<MultiFilterItem> items) {
     ),
     teachingLocationsNot: items.mapStringByOperator(
       StudentFilterCodes.teachingLocation,
+      FilterOperator.isNot,
+    ),
+    profileStatuses: items.mapStringByOperator(
+      StudentFilterCodes.profileStatus,
+      FilterOperator.isEqual,
+    ),
+    profileStatusesNot: items.mapStringByOperator(
+      StudentFilterCodes.profileStatus,
       FilterOperator.isNot,
     ),
   );
@@ -357,6 +376,13 @@ final List<FilterField> studentFilterFields = [
     code: StudentFilterCodes.teachingLocation.name,
     label: "Student Location",
     inputType: FilterInputType.dropdown,
+  ),
+
+  FilterField(
+    code: StudentFilterCodes.profileStatus.name,
+    label: "Profile Status",
+    inputType: FilterInputType.dropdown,
+    options: ["complete", "quick_registered"],
   ),
 
   FilterField(

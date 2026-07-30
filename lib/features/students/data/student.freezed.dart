@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Student {
 
- String get id; String get studentId; String get classId; String? get teachingLocationId; String? get nickName; String get fullName; String get joinAt; String? get nis; String? get birthDate; Gender? get gender; String? get mobileNo; String? get emailAddr; String? get shoeSize; String? get uniformSize; String? get pantsSize; double? get height; double? get weight; String? get photoPath; StudentStatus get status;
+ String get id; String get studentId; String get classId; String? get teachingLocationId; String? get nickName; String get fullName; String get joinAt; String? get nis; String? get birthDate; Gender? get gender; String? get mobileNo; String? get emailAddr; String? get shoeSize; String? get uniformSize; String? get pantsSize; double? get height; double? get weight; String? get photoPath; StudentStatus get status; String get profileStatus;
 /// Create a copy of Student
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $StudentCopyWith<Student> get copyWith => _$StudentCopyWithImpl<Student>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Student&&(identical(other.id, id) || other.id == id)&&(identical(other.studentId, studentId) || other.studentId == studentId)&&(identical(other.classId, classId) || other.classId == classId)&&(identical(other.teachingLocationId, teachingLocationId) || other.teachingLocationId == teachingLocationId)&&(identical(other.nickName, nickName) || other.nickName == nickName)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.joinAt, joinAt) || other.joinAt == joinAt)&&(identical(other.nis, nis) || other.nis == nis)&&(identical(other.birthDate, birthDate) || other.birthDate == birthDate)&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.mobileNo, mobileNo) || other.mobileNo == mobileNo)&&(identical(other.emailAddr, emailAddr) || other.emailAddr == emailAddr)&&(identical(other.shoeSize, shoeSize) || other.shoeSize == shoeSize)&&(identical(other.uniformSize, uniformSize) || other.uniformSize == uniformSize)&&(identical(other.pantsSize, pantsSize) || other.pantsSize == pantsSize)&&(identical(other.height, height) || other.height == height)&&(identical(other.weight, weight) || other.weight == weight)&&(identical(other.photoPath, photoPath) || other.photoPath == photoPath)&&(identical(other.status, status) || other.status == status));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Student&&(identical(other.id, id) || other.id == id)&&(identical(other.studentId, studentId) || other.studentId == studentId)&&(identical(other.classId, classId) || other.classId == classId)&&(identical(other.teachingLocationId, teachingLocationId) || other.teachingLocationId == teachingLocationId)&&(identical(other.nickName, nickName) || other.nickName == nickName)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.joinAt, joinAt) || other.joinAt == joinAt)&&(identical(other.nis, nis) || other.nis == nis)&&(identical(other.birthDate, birthDate) || other.birthDate == birthDate)&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.mobileNo, mobileNo) || other.mobileNo == mobileNo)&&(identical(other.emailAddr, emailAddr) || other.emailAddr == emailAddr)&&(identical(other.shoeSize, shoeSize) || other.shoeSize == shoeSize)&&(identical(other.uniformSize, uniformSize) || other.uniformSize == uniformSize)&&(identical(other.pantsSize, pantsSize) || other.pantsSize == pantsSize)&&(identical(other.height, height) || other.height == height)&&(identical(other.weight, weight) || other.weight == weight)&&(identical(other.photoPath, photoPath) || other.photoPath == photoPath)&&(identical(other.status, status) || other.status == status)&&(identical(other.profileStatus, profileStatus) || other.profileStatus == profileStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,studentId,classId,teachingLocationId,nickName,fullName,joinAt,nis,birthDate,gender,mobileNo,emailAddr,shoeSize,uniformSize,pantsSize,height,weight,photoPath,status]);
+int get hashCode => Object.hashAll([runtimeType,id,studentId,classId,teachingLocationId,nickName,fullName,joinAt,nis,birthDate,gender,mobileNo,emailAddr,shoeSize,uniformSize,pantsSize,height,weight,photoPath,status,profileStatus]);
 
 @override
 String toString() {
-  return 'Student(id: $id, studentId: $studentId, classId: $classId, teachingLocationId: $teachingLocationId, nickName: $nickName, fullName: $fullName, joinAt: $joinAt, nis: $nis, birthDate: $birthDate, gender: $gender, mobileNo: $mobileNo, emailAddr: $emailAddr, shoeSize: $shoeSize, uniformSize: $uniformSize, pantsSize: $pantsSize, height: $height, weight: $weight, photoPath: $photoPath, status: $status)';
+  return 'Student(id: $id, studentId: $studentId, classId: $classId, teachingLocationId: $teachingLocationId, nickName: $nickName, fullName: $fullName, joinAt: $joinAt, nis: $nis, birthDate: $birthDate, gender: $gender, mobileNo: $mobileNo, emailAddr: $emailAddr, shoeSize: $shoeSize, uniformSize: $uniformSize, pantsSize: $pantsSize, height: $height, weight: $weight, photoPath: $photoPath, status: $status, profileStatus: $profileStatus)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $StudentCopyWith<$Res>  {
   factory $StudentCopyWith(Student value, $Res Function(Student) _then) = _$StudentCopyWithImpl;
 @useResult
 $Res call({
- String id, String studentId, String classId, String? teachingLocationId, String? nickName, String fullName, String joinAt, String? nis, String? birthDate, Gender? gender, String? mobileNo, String? emailAddr, String? shoeSize, String? uniformSize, String? pantsSize, double? height, double? weight, String? photoPath, StudentStatus status
+ String id, String studentId, String classId, String? teachingLocationId, String? nickName, String fullName, String joinAt, String? nis, String? birthDate, Gender? gender, String? mobileNo, String? emailAddr, String? shoeSize, String? uniformSize, String? pantsSize, double? height, double? weight, String? photoPath, StudentStatus status, String profileStatus
 });
 
 
@@ -65,7 +65,7 @@ class _$StudentCopyWithImpl<$Res>
 
 /// Create a copy of Student
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? studentId = null,Object? classId = null,Object? teachingLocationId = freezed,Object? nickName = freezed,Object? fullName = null,Object? joinAt = null,Object? nis = freezed,Object? birthDate = freezed,Object? gender = freezed,Object? mobileNo = freezed,Object? emailAddr = freezed,Object? shoeSize = freezed,Object? uniformSize = freezed,Object? pantsSize = freezed,Object? height = freezed,Object? weight = freezed,Object? photoPath = freezed,Object? status = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? studentId = null,Object? classId = null,Object? teachingLocationId = freezed,Object? nickName = freezed,Object? fullName = null,Object? joinAt = null,Object? nis = freezed,Object? birthDate = freezed,Object? gender = freezed,Object? mobileNo = freezed,Object? emailAddr = freezed,Object? shoeSize = freezed,Object? uniformSize = freezed,Object? pantsSize = freezed,Object? height = freezed,Object? weight = freezed,Object? photoPath = freezed,Object? status = null,Object? profileStatus = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,studentId: null == studentId ? _self.studentId : studentId // ignore: cast_nullable_to_non_nullable
@@ -86,7 +86,8 @@ as String?,height: freezed == height ? _self.height : height // ignore: cast_nul
 as double?,weight: freezed == weight ? _self.weight : weight // ignore: cast_nullable_to_non_nullable
 as double?,photoPath: freezed == photoPath ? _self.photoPath : photoPath // ignore: cast_nullable_to_non_nullable
 as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as StudentStatus,
+as StudentStatus,profileStatus: null == profileStatus ? _self.profileStatus : profileStatus // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -171,10 +172,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String studentId,  String classId,  String? teachingLocationId,  String? nickName,  String fullName,  String joinAt,  String? nis,  String? birthDate,  Gender? gender,  String? mobileNo,  String? emailAddr,  String? shoeSize,  String? uniformSize,  String? pantsSize,  double? height,  double? weight,  String? photoPath,  StudentStatus status)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String studentId,  String classId,  String? teachingLocationId,  String? nickName,  String fullName,  String joinAt,  String? nis,  String? birthDate,  Gender? gender,  String? mobileNo,  String? emailAddr,  String? shoeSize,  String? uniformSize,  String? pantsSize,  double? height,  double? weight,  String? photoPath,  StudentStatus status,  String profileStatus)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Student() when $default != null:
-return $default(_that.id,_that.studentId,_that.classId,_that.teachingLocationId,_that.nickName,_that.fullName,_that.joinAt,_that.nis,_that.birthDate,_that.gender,_that.mobileNo,_that.emailAddr,_that.shoeSize,_that.uniformSize,_that.pantsSize,_that.height,_that.weight,_that.photoPath,_that.status);case _:
+return $default(_that.id,_that.studentId,_that.classId,_that.teachingLocationId,_that.nickName,_that.fullName,_that.joinAt,_that.nis,_that.birthDate,_that.gender,_that.mobileNo,_that.emailAddr,_that.shoeSize,_that.uniformSize,_that.pantsSize,_that.height,_that.weight,_that.photoPath,_that.status,_that.profileStatus);case _:
   return orElse();
 
 }
@@ -192,10 +193,10 @@ return $default(_that.id,_that.studentId,_that.classId,_that.teachingLocationId,
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String studentId,  String classId,  String? teachingLocationId,  String? nickName,  String fullName,  String joinAt,  String? nis,  String? birthDate,  Gender? gender,  String? mobileNo,  String? emailAddr,  String? shoeSize,  String? uniformSize,  String? pantsSize,  double? height,  double? weight,  String? photoPath,  StudentStatus status)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String studentId,  String classId,  String? teachingLocationId,  String? nickName,  String fullName,  String joinAt,  String? nis,  String? birthDate,  Gender? gender,  String? mobileNo,  String? emailAddr,  String? shoeSize,  String? uniformSize,  String? pantsSize,  double? height,  double? weight,  String? photoPath,  StudentStatus status,  String profileStatus)  $default,) {final _that = this;
 switch (_that) {
 case _Student():
-return $default(_that.id,_that.studentId,_that.classId,_that.teachingLocationId,_that.nickName,_that.fullName,_that.joinAt,_that.nis,_that.birthDate,_that.gender,_that.mobileNo,_that.emailAddr,_that.shoeSize,_that.uniformSize,_that.pantsSize,_that.height,_that.weight,_that.photoPath,_that.status);case _:
+return $default(_that.id,_that.studentId,_that.classId,_that.teachingLocationId,_that.nickName,_that.fullName,_that.joinAt,_that.nis,_that.birthDate,_that.gender,_that.mobileNo,_that.emailAddr,_that.shoeSize,_that.uniformSize,_that.pantsSize,_that.height,_that.weight,_that.photoPath,_that.status,_that.profileStatus);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -212,10 +213,10 @@ return $default(_that.id,_that.studentId,_that.classId,_that.teachingLocationId,
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String studentId,  String classId,  String? teachingLocationId,  String? nickName,  String fullName,  String joinAt,  String? nis,  String? birthDate,  Gender? gender,  String? mobileNo,  String? emailAddr,  String? shoeSize,  String? uniformSize,  String? pantsSize,  double? height,  double? weight,  String? photoPath,  StudentStatus status)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String studentId,  String classId,  String? teachingLocationId,  String? nickName,  String fullName,  String joinAt,  String? nis,  String? birthDate,  Gender? gender,  String? mobileNo,  String? emailAddr,  String? shoeSize,  String? uniformSize,  String? pantsSize,  double? height,  double? weight,  String? photoPath,  StudentStatus status,  String profileStatus)?  $default,) {final _that = this;
 switch (_that) {
 case _Student() when $default != null:
-return $default(_that.id,_that.studentId,_that.classId,_that.teachingLocationId,_that.nickName,_that.fullName,_that.joinAt,_that.nis,_that.birthDate,_that.gender,_that.mobileNo,_that.emailAddr,_that.shoeSize,_that.uniformSize,_that.pantsSize,_that.height,_that.weight,_that.photoPath,_that.status);case _:
+return $default(_that.id,_that.studentId,_that.classId,_that.teachingLocationId,_that.nickName,_that.fullName,_that.joinAt,_that.nis,_that.birthDate,_that.gender,_that.mobileNo,_that.emailAddr,_that.shoeSize,_that.uniformSize,_that.pantsSize,_that.height,_that.weight,_that.photoPath,_that.status,_that.profileStatus);case _:
   return null;
 
 }
@@ -227,7 +228,7 @@ return $default(_that.id,_that.studentId,_that.classId,_that.teachingLocationId,
 @JsonSerializable()
 
 class _Student implements Student {
-  const _Student({required this.id, required this.studentId, required this.classId, this.teachingLocationId, this.nickName, required this.fullName, required this.joinAt, this.nis, this.birthDate, this.gender, this.mobileNo, this.emailAddr, this.shoeSize, this.uniformSize, this.pantsSize, this.height, this.weight, this.photoPath, required this.status});
+  const _Student({required this.id, required this.studentId, required this.classId, this.teachingLocationId, this.nickName, required this.fullName, required this.joinAt, this.nis, this.birthDate, this.gender, this.mobileNo, this.emailAddr, this.shoeSize, this.uniformSize, this.pantsSize, this.height, this.weight, this.photoPath, required this.status, this.profileStatus = 'complete'});
   factory _Student.fromJson(Map<String, dynamic> json) => _$StudentFromJson(json);
 
 @override final  String id;
@@ -249,6 +250,7 @@ class _Student implements Student {
 @override final  double? weight;
 @override final  String? photoPath;
 @override final  StudentStatus status;
+@override@JsonKey() final  String profileStatus;
 
 /// Create a copy of Student
 /// with the given fields replaced by the non-null parameter values.
@@ -263,16 +265,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Student&&(identical(other.id, id) || other.id == id)&&(identical(other.studentId, studentId) || other.studentId == studentId)&&(identical(other.classId, classId) || other.classId == classId)&&(identical(other.teachingLocationId, teachingLocationId) || other.teachingLocationId == teachingLocationId)&&(identical(other.nickName, nickName) || other.nickName == nickName)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.joinAt, joinAt) || other.joinAt == joinAt)&&(identical(other.nis, nis) || other.nis == nis)&&(identical(other.birthDate, birthDate) || other.birthDate == birthDate)&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.mobileNo, mobileNo) || other.mobileNo == mobileNo)&&(identical(other.emailAddr, emailAddr) || other.emailAddr == emailAddr)&&(identical(other.shoeSize, shoeSize) || other.shoeSize == shoeSize)&&(identical(other.uniformSize, uniformSize) || other.uniformSize == uniformSize)&&(identical(other.pantsSize, pantsSize) || other.pantsSize == pantsSize)&&(identical(other.height, height) || other.height == height)&&(identical(other.weight, weight) || other.weight == weight)&&(identical(other.photoPath, photoPath) || other.photoPath == photoPath)&&(identical(other.status, status) || other.status == status));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Student&&(identical(other.id, id) || other.id == id)&&(identical(other.studentId, studentId) || other.studentId == studentId)&&(identical(other.classId, classId) || other.classId == classId)&&(identical(other.teachingLocationId, teachingLocationId) || other.teachingLocationId == teachingLocationId)&&(identical(other.nickName, nickName) || other.nickName == nickName)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.joinAt, joinAt) || other.joinAt == joinAt)&&(identical(other.nis, nis) || other.nis == nis)&&(identical(other.birthDate, birthDate) || other.birthDate == birthDate)&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.mobileNo, mobileNo) || other.mobileNo == mobileNo)&&(identical(other.emailAddr, emailAddr) || other.emailAddr == emailAddr)&&(identical(other.shoeSize, shoeSize) || other.shoeSize == shoeSize)&&(identical(other.uniformSize, uniformSize) || other.uniformSize == uniformSize)&&(identical(other.pantsSize, pantsSize) || other.pantsSize == pantsSize)&&(identical(other.height, height) || other.height == height)&&(identical(other.weight, weight) || other.weight == weight)&&(identical(other.photoPath, photoPath) || other.photoPath == photoPath)&&(identical(other.status, status) || other.status == status)&&(identical(other.profileStatus, profileStatus) || other.profileStatus == profileStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,studentId,classId,teachingLocationId,nickName,fullName,joinAt,nis,birthDate,gender,mobileNo,emailAddr,shoeSize,uniformSize,pantsSize,height,weight,photoPath,status]);
+int get hashCode => Object.hashAll([runtimeType,id,studentId,classId,teachingLocationId,nickName,fullName,joinAt,nis,birthDate,gender,mobileNo,emailAddr,shoeSize,uniformSize,pantsSize,height,weight,photoPath,status,profileStatus]);
 
 @override
 String toString() {
-  return 'Student(id: $id, studentId: $studentId, classId: $classId, teachingLocationId: $teachingLocationId, nickName: $nickName, fullName: $fullName, joinAt: $joinAt, nis: $nis, birthDate: $birthDate, gender: $gender, mobileNo: $mobileNo, emailAddr: $emailAddr, shoeSize: $shoeSize, uniformSize: $uniformSize, pantsSize: $pantsSize, height: $height, weight: $weight, photoPath: $photoPath, status: $status)';
+  return 'Student(id: $id, studentId: $studentId, classId: $classId, teachingLocationId: $teachingLocationId, nickName: $nickName, fullName: $fullName, joinAt: $joinAt, nis: $nis, birthDate: $birthDate, gender: $gender, mobileNo: $mobileNo, emailAddr: $emailAddr, shoeSize: $shoeSize, uniformSize: $uniformSize, pantsSize: $pantsSize, height: $height, weight: $weight, photoPath: $photoPath, status: $status, profileStatus: $profileStatus)';
 }
 
 
@@ -283,7 +285,7 @@ abstract mixin class _$StudentCopyWith<$Res> implements $StudentCopyWith<$Res> {
   factory _$StudentCopyWith(_Student value, $Res Function(_Student) _then) = __$StudentCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String studentId, String classId, String? teachingLocationId, String? nickName, String fullName, String joinAt, String? nis, String? birthDate, Gender? gender, String? mobileNo, String? emailAddr, String? shoeSize, String? uniformSize, String? pantsSize, double? height, double? weight, String? photoPath, StudentStatus status
+ String id, String studentId, String classId, String? teachingLocationId, String? nickName, String fullName, String joinAt, String? nis, String? birthDate, Gender? gender, String? mobileNo, String? emailAddr, String? shoeSize, String? uniformSize, String? pantsSize, double? height, double? weight, String? photoPath, StudentStatus status, String profileStatus
 });
 
 
@@ -300,7 +302,7 @@ class __$StudentCopyWithImpl<$Res>
 
 /// Create a copy of Student
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? studentId = null,Object? classId = null,Object? teachingLocationId = freezed,Object? nickName = freezed,Object? fullName = null,Object? joinAt = null,Object? nis = freezed,Object? birthDate = freezed,Object? gender = freezed,Object? mobileNo = freezed,Object? emailAddr = freezed,Object? shoeSize = freezed,Object? uniformSize = freezed,Object? pantsSize = freezed,Object? height = freezed,Object? weight = freezed,Object? photoPath = freezed,Object? status = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? studentId = null,Object? classId = null,Object? teachingLocationId = freezed,Object? nickName = freezed,Object? fullName = null,Object? joinAt = null,Object? nis = freezed,Object? birthDate = freezed,Object? gender = freezed,Object? mobileNo = freezed,Object? emailAddr = freezed,Object? shoeSize = freezed,Object? uniformSize = freezed,Object? pantsSize = freezed,Object? height = freezed,Object? weight = freezed,Object? photoPath = freezed,Object? status = null,Object? profileStatus = null,}) {
   return _then(_Student(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,studentId: null == studentId ? _self.studentId : studentId // ignore: cast_nullable_to_non_nullable
@@ -321,7 +323,8 @@ as String?,height: freezed == height ? _self.height : height // ignore: cast_nul
 as double?,weight: freezed == weight ? _self.weight : weight // ignore: cast_nullable_to_non_nullable
 as double?,photoPath: freezed == photoPath ? _self.photoPath : photoPath // ignore: cast_nullable_to_non_nullable
 as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as StudentStatus,
+as StudentStatus,profileStatus: null == profileStatus ? _self.profileStatus : profileStatus // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

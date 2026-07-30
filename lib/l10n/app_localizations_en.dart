@@ -997,6 +997,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addStudent => 'Add Student';
 
   @override
+  String get addFullStudent => 'Add Full Student';
+
+  @override
+  String get quickRegisterStudent => 'Quick Register';
+
+  @override
+  String get chooseStudentCreationMode =>
+      'Choose how you want to add this student.';
+
+  @override
+  String get quickRegisterStudentDescription =>
+      'Use minimum information so the student can join teaching targets immediately.';
+
+  @override
+  String get fullStudentDescription =>
+      'Use the complete student form with family, school, and supporting documents.';
+
+  @override
   String get addTeacher => 'Add Teacher';
 
   @override
@@ -1159,6 +1177,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get studentProfile => 'Student Profile';
+
+  @override
+  String get profileStatus => 'Profile Status';
+
+  @override
+  String get profileComplete => 'Complete';
+
+  @override
+  String get profileIncomplete => 'Incomplete';
 
   @override
   String get classSchool => 'Class\nSchool';

@@ -997,6 +997,23 @@ class AppLocalizationsId extends AppLocalizations {
   String get addStudent => 'Tambah Siswa';
 
   @override
+  String get addFullStudent => 'Tambah Siswa Lengkap';
+
+  @override
+  String get quickRegisterStudent => 'Daftar Cepat';
+
+  @override
+  String get chooseStudentCreationMode => 'Pilih cara menambahkan siswa.';
+
+  @override
+  String get quickRegisterStudentDescription =>
+      'Gunakan informasi minimum agar siswa bisa langsung masuk target mengajar.';
+
+  @override
+  String get fullStudentDescription =>
+      'Gunakan form siswa lengkap dengan keluarga, sekolah, dan dokumen pendukung.';
+
+  @override
   String get addTeacher => 'Tambah Guru';
 
   @override
@@ -1159,6 +1176,15 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get studentProfile => 'Profil Siswa';
+
+  @override
+  String get profileStatus => 'Status Profil';
+
+  @override
+  String get profileComplete => 'Lengkap';
+
+  @override
+  String get profileIncomplete => 'Belum Lengkap';
 
   @override
   String get classSchool => 'Kelas\nSekolah';

@@ -26,6 +26,7 @@ abstract class Student with _$Student {
     double? weight,
     String? photoPath,
     required StudentStatus status,
+    @Default('complete') String profileStatus,
   }) = _Student;
 
   factory Student.fromJson(Map<String, dynamic> json) =>

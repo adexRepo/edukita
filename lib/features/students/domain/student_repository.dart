@@ -261,6 +261,20 @@ class StudentRepository extends BaseRepository<Student> {
       args.addAll(filter.teachingLocationsNot);
     }
 
+    if (filter.profileStatuses.isNotEmpty) {
+      where.add(
+        "COALESCE(s.profile_status, 'complete') IN (${placeholders(filter.profileStatuses.length)})",
+      );
+      args.addAll(filter.profileStatuses);
+    }
+
+    if (filter.profileStatusesNot.isNotEmpty) {
+      where.add(
+        "COALESCE(s.profile_status, 'complete') NOT IN (${placeholders(filter.profileStatusesNot.length)})",
+      );
+      args.addAll(filter.profileStatusesNot);
+    }
+
     final whereClause = where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}';
 
     final query =
@@ -276,6 +290,7 @@ class StudentRepository extends BaseRepository<Student> {
       COALESCE(tl.name, '-') AS teaching_location_name,
       s.gender,
       s.status,
+      COALESCE(s.profile_status, 'complete') AS profile_status,
       s.join_at,
       $_duafaStatusSql AS duafa_status,
       (
@@ -449,6 +464,20 @@ class StudentRepository extends BaseRepository<Student> {
       args.addAll(filter.teachingLocationsNot);
     }
 
+    if (filter.profileStatuses.isNotEmpty) {
+      where.add(
+        "COALESCE(s.profile_status, 'complete') IN (${placeholders(filter.profileStatuses.length)})",
+      );
+      args.addAll(filter.profileStatuses);
+    }
+
+    if (filter.profileStatusesNot.isNotEmpty) {
+      where.add(
+        "COALESCE(s.profile_status, 'complete') NOT IN (${placeholders(filter.profileStatusesNot.length)})",
+      );
+      args.addAll(filter.profileStatusesNot);
+    }
+
     final whereClause = where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}';
 
     final result = await db.rawQuery('''
@@ -572,6 +601,27 @@ class StudentRepository extends BaseRepository<Student> {
       await _deleteFileQuietly(prepared.$2);
       rethrow;
     }
+  }
+
+  Future<void> insertQuickStudentWithSchool(
+    Student student,
+    String schoolId,
+  ) async {
+    final db = await _dbProvider.database;
+    final now = DateTime.now().toIso8601String();
+    await db.transaction((txn) async {
+      await txn.insert(table, {
+        ...mapper.toMap(student),
+        'created_at': now,
+        'updated_at': now,
+      });
+      await txn.insert('student_schools', {
+        'id': const Uuid().v4(),
+        'student_id': student.id,
+        'school_id': schoolId,
+        'status': 1,
+      });
+    });
   }
 
   Future<void> updateStudentWithSchool(
@@ -1643,6 +1693,7 @@ class StudentRepository extends BaseRepository<Student> {
             s.weight ,
             s.photo_path ,
             COALESCE(tl.name, '-') AS teaching_location_name,
+            COALESCE(s.profile_status, 'complete') AS profile_status,
             CASE
               WHEN LOWER(COALESCE(s.status, '')) IN ('active', 'warning', 'inactive')
                 THEN LOWER(s.status)
@@ -1676,8 +1727,56 @@ class StudentRepository extends BaseRepository<Student> {
       throw Exception('Student not found');
     }
 
-    // print(result.first);
-    return StudentDetailData.fromJson(result.first);
+    return _studentDetailFromRow(result.first);
+  }
+
+  StudentDetailData _studentDetailFromRow(Map<String, Object?> row) {
+    return StudentDetailData(
+      id: row['id']?.toString() ?? '',
+      studentNo: row['student_no']?.toString() ?? '',
+      classId: row['class_id']?.toString() ?? '',
+      nickName: row['nick_name']?.toString() ?? '',
+      fullName: row['full_name']?.toString() ?? '',
+      joinAt: row['join_at']?.toString() ?? '',
+      gender: _detailGenderFromValue(row['gender']),
+      status: _detailStatusFromValue(row['status']),
+      className: row['class_name']?.toString() ?? '-',
+      schoolName: row['school_name']?.toString() ?? '-',
+      age: (row['age'] as num?)?.toInt() ?? 0,
+      birthDate: row['birth_date']?.toString() ?? '',
+      nis: _blankToNull(row['nis']?.toString()),
+      mobileNo: _blankToNull(row['mobile_no']?.toString()),
+      emailAddr: _blankToNull(row['email_addr']?.toString()),
+      shoesSize: _blankToNull(row['shoes_size']?.toString()),
+      uniformSize: _blankToNull(row['uniform_size']?.toString()),
+      pantsSize: _blankToNull(row['pants_size']?.toString()),
+      teachingLocationName: row['teaching_location_name']?.toString() ?? '-',
+      profileStatus: row['profile_status']?.toString() ?? 'complete',
+      height: (row['height'] as num?)?.toDouble(),
+      weight: (row['weight'] as num?)?.toDouble(),
+      photoPath: _blankToNull(row['photo_path']?.toString()),
+    );
+  }
+
+  Gender _detailGenderFromValue(Object? value) {
+    final normalized = value?.toString().toLowerCase();
+    return Gender.values.firstWhere(
+      (gender) => gender.name == normalized,
+      orElse: () => Gender.male,
+    );
+  }
+
+  StudentStatus _detailStatusFromValue(Object? value) {
+    final normalized = value?.toString().toLowerCase();
+    return StudentStatus.values.firstWhere(
+      (status) => status.name == normalized,
+      orElse: () => StudentStatus.inactive,
+    );
+  }
+
+  String? _blankToNull(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 
   Future<StudentDetailInsights> loadDetailInsights(String studentId) async {

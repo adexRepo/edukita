@@ -26,6 +26,7 @@ abstract class StudentDetailData with _$StudentDetailData {
     String? uniformSize,
     String? pantsSize,
     String? teachingLocationName,
+    @Default('complete') String profileStatus,
     double? height,
     double? weight,
     String? photoPath,

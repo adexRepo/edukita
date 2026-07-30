@@ -13,6 +13,7 @@ class StudentTable {
     required this.age,
     required this.duafaStatus,
     required this.teachingLocationName,
+    required this.profileStatus,
     this.averageScore,
     this.nis,
     this.photoPath,
@@ -29,6 +30,7 @@ class StudentTable {
   final int age;
   final String duafaStatus;
   final String teachingLocationName;
+  final String profileStatus;
   final double? averageScore;
   final String? nis;
   final String? photoPath;
@@ -46,6 +48,7 @@ class StudentTable {
       age: (json['age'] as num?)?.toInt() ?? 0,
       duafaStatus: json['duafa_status']?.toString() ?? 'Dhuafa',
       teachingLocationName: json['teaching_location_name']?.toString() ?? '-',
+      profileStatus: json['profile_status']?.toString() ?? 'complete',
       averageScore: (json['average_score'] as num?)?.toDouble(),
       nis: json['nis']?.toString(),
       photoPath: json['photo_path']?.toString(),

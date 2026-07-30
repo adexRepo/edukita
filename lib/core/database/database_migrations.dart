@@ -123,6 +123,7 @@ class DatabaseMigrations {
     await _ensureSchoolClassSchema(db);
     await _ensureTeachingLocationSchema(db);
     await _ensureStudentTeachingLocationSchema(db);
+    await _ensureStudentProfileStatusSchema(db);
     await _ensureStudentSizeTextSchema(db);
     await _ensureStudentGuardianStatusSchema(db);
     await _ensureGuardianIncomeSchema(db);
@@ -134,6 +135,20 @@ class DatabaseMigrations {
       table: 'guardians',
       column: 'income',
       definition: 'REAL',
+    );
+  }
+
+  static Future<void> _ensureStudentProfileStatusSchema(Database db) async {
+    if (!await _tableExists(db, 'students')) return;
+    await _addColumnIfMissing(
+      db,
+      table: 'students',
+      column: 'profile_status',
+      definition: "TEXT NOT NULL DEFAULT 'complete'",
+    );
+    await db.execute(
+      "UPDATE students SET profile_status = 'complete' "
+      "WHERE profile_status IS NULL OR TRIM(profile_status) = ''",
     );
   }
 

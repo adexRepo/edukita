@@ -8,6 +8,7 @@ import 'package:edukita/features/students/data/student_page_data.dart';
 import 'package:edukita/features/students/data/student_table.dart';
 import 'package:edukita/features/students/domain/student_feature_cubit.dart';
 import 'package:edukita/features/students/domain/sudent_filter.dart';
+import 'package:edukita/features/students/persentation/quick_student_form_dialog.dart';
 import 'package:edukita/features/students/persentation/student_form_dialog.dart';
 import 'package:edukita/features/students/persentation/student_profile_cell.dart';
 import 'package:edukita/features/teaching_locations/data/teaching_location_model.dart';
@@ -582,7 +583,10 @@ class _StudentFilterDialogV2State extends State<StudentFilterDialogV2> {
             items: (selectedField.options ?? []).map((option) {
               return DropdownMenuItem<String>(
                 value: option,
-                child: Text(option, overflow: TextOverflow.ellipsis),
+                child: Text(
+                  _displayFilterValue(selectedField.code, option),
+                  overflow: TextOverflow.ellipsis,
+                ),
               );
             }).toList(),
             onChanged: (value) {
@@ -685,7 +689,7 @@ class _StudentFilterDialogV2State extends State<StudentFilterDialogV2> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  '${filter.label} ${_operatorLabel(filter.operator)} ${filter.value ?? "-"}',
+                                  '${filter.label} ${_operatorLabel(filter.operator)} ${_displayFilterValue(filter.fieldCode, filter.value)}',
                                   overflow: TextOverflow.ellipsis,
                                   maxLines: 2,
                                   style: const TextStyle(
@@ -731,6 +735,22 @@ class _StudentFilterDialogV2State extends State<StudentFilterDialogV2> {
     };
   }
 
+  String _displayFilterValue(String fieldCode, String? value) {
+    if (value == null || value.isEmpty) return '-';
+    if (fieldCode == StudentFilterCodes.profileStatus.name) {
+      return value == 'complete'
+          ? context.l10n.profileComplete
+          : context.l10n.profileIncomplete;
+    }
+    if (fieldCode == StudentFilterCodes.gender.name) {
+      return translateGender(context, value);
+    }
+    if (fieldCode == StudentFilterCodes.status.name) {
+      return translateStudentStatus(context, value);
+    }
+    return value;
+  }
+
   Widget _operatorButton(
     String label,
     String description,
@@ -753,6 +773,169 @@ class _StudentFilterDialogV2State extends State<StudentFilterDialogV2> {
         child: Text(
           label,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+}
+
+enum _StudentCreationMode { full, quick }
+
+class _StudentCreationModeDialog extends StatelessWidget {
+  const _StudentCreationModeDialog({required this.onSelected});
+
+  final ValueChanged<_StudentCreationMode> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: SizedBox(
+        width: 620,
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.l10n.addStudent,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          context.l10n.chooseStudentCreationMode,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: context.l10n.buttonClose,
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 170,
+                      child: _CreationModeCard(
+                        icon: Icons.person_add_alt_1_outlined,
+                        title: context.l10n.addFullStudent,
+                        description: context.l10n.fullStudentDescription,
+                        onTap: () => onSelected(_StudentCreationMode.full),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: SizedBox(
+                      height: 170,
+                      child: _CreationModeCard(
+                        icon: Icons.flash_on_outlined,
+                        title: context.l10n.quickRegisterStudent,
+                        description: context.l10n.quickRegisterStudentDescription,
+                        onTap: () => onSelected(_StudentCreationMode.quick),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CreationModeCard extends StatefulWidget {
+  const _CreationModeCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final VoidCallback onTap;
+
+  @override
+  State<_CreationModeCard> createState() => _CreationModeCardState();
+}
+
+class _CreationModeCardState extends State<_CreationModeCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _hovered
+                ? AppColors.primary.withValues(alpha: 0.08)
+                : AppColors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _hovered ? AppColors.primary : AppColors.border,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(widget.icon, color: AppColors.primary),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                widget.title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                widget.description,
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.35,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -831,6 +1014,23 @@ class _StudentsPageState extends State<StudentsPage> {
       AppToast.showFailed(context.l10n.studentCreateDenied);
       return;
     }
+    final mode = await showGuardedDialog<_StudentCreationMode>(
+      context: context,
+      guardKey: 'student_creation_mode',
+      builder: (dialogContext) => _StudentCreationModeDialog(
+        onSelected: (mode) => Navigator.of(dialogContext).pop(mode),
+      ),
+    );
+
+    if (!mounted || mode == null) return;
+    if (mode == _StudentCreationMode.quick) {
+      await _showQuickStudentDialog();
+      return;
+    }
+    await _showFullStudentDialog();
+  }
+
+  Future<void> _showFullStudentDialog() async {
     await AppActionGuard.run('student_form_load_new', () async {
       final cubit = context.read<StudentPageCubit>();
       final schools = await cubit.loadAvailableSchools();
@@ -866,6 +1066,47 @@ class _StudentsPageState extends State<StudentsPage> {
           onSiblingLookup: cubit.lookupSiblingFamily,
           onSubmit: (student, schoolId, guardians, advanced) async {
             await cubit.addStudent(student, schoolId, guardians, advanced);
+          },
+        ),
+      );
+    });
+  }
+
+  Future<void> _showQuickStudentDialog() async {
+    await AppActionGuard.run('student_quick_form_load_new', () async {
+      final cubit = context.read<StudentPageCubit>();
+      final schools = await cubit.loadAvailableSchools();
+      final classes = await cubit.loadAvailableClasses();
+      final teachingLocations = await cubit.loadAvailableTeachingLocations();
+      final studentNo = await cubit.generateStudentNumber();
+
+      if (!mounted) return;
+
+      if (schools.isEmpty) {
+        AppToast.showFailed(context.l10n.createSchoolBeforeAddingStudents);
+        return;
+      }
+
+      if (classes.isEmpty) {
+        AppToast.showFailed(context.l10n.createClassBeforeAddingStudents);
+        return;
+      }
+
+      if (teachingLocations.isEmpty) {
+        AppToast.showFailed(context.l10n.createTeachingLocationBeforeStudents);
+        return;
+      }
+
+      await showGuardedDialog<void>(
+        context: context,
+        guardKey: 'student_quick_form_new',
+        builder: (dialogContext) => QuickStudentFormDialog(
+          availableSchools: schools,
+          availableClasses: classes,
+          availableTeachingLocations: teachingLocations,
+          generatedStudentNo: studentNo,
+          onSubmit: (student, schoolId) async {
+            await cubit.addQuickStudent(student, schoolId);
           },
         ),
       );
@@ -1126,7 +1367,7 @@ class _StudentsPageState extends State<StudentsPage> {
       columns: [
         AppTableColumn(
           title: context.l10n.studentProfile,
-          flex: 4,
+          flex: 5,
           sortValue: (data) => data.fullName.isEmpty
               ? 0
               : data.fullName.toLowerCase().codeUnitAt(0),
@@ -1153,8 +1394,8 @@ class _StudentsPageState extends State<StudentsPage> {
           ),
         ),
         AppTableColumn(
-          title: context.l10n.duafaStatus,
-          flex: 2,
+          title: '${context.l10n.duafaStatus}\n${context.l10n.studentLocation}',
+          flex: 3,
           sortValue: (data) => switch (data.duafaStatus) {
             'Yatim Piatu' => 0,
             'Yatim' => 1,
@@ -1162,20 +1403,15 @@ class _StudentsPageState extends State<StudentsPage> {
             _ => 3,
           },
           cell: (s) => Text(
-            s.duafaStatus,
+            '${s.duafaStatus}\n${s.teachingLocationName}',
             style: const TextStyle(fontSize: 12, height: 1.2),
           ),
         ),
         AppTableColumn(
-          title: context.l10n.studentLocation,
+          title: context.l10n.profileStatus,
           flex: 2,
-          sortValue: (data) => data.teachingLocationName.isEmpty
-              ? 0
-              : data.teachingLocationName.toLowerCase().codeUnitAt(0),
-          cell: (s) => Text(
-            s.teachingLocationName,
-            style: const TextStyle(fontSize: 12, height: 1.2),
-          ),
+          sortValue: (data) => data.profileStatus == 'complete' ? 0 : 1,
+          cell: (s) => _profileStatusPill(s.profileStatus),
         ),
         AppTableColumn(
           title: context.l10n.scoreStatus,
@@ -1240,6 +1476,38 @@ class _StudentsPageState extends State<StudentsPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _profileStatusPill(String status) {
+    final complete = status == 'complete';
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: complete
+              ? AppColors.success.withValues(alpha: 0.10)
+              : AppColors.warning.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: complete
+                ? AppColors.success.withValues(alpha: 0.40)
+                : AppColors.warning.withValues(alpha: 0.45),
+          ),
+        ),
+        child: Text(
+          complete
+              ? context.l10n.profileComplete
+              : context.l10n.profileIncomplete,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: complete ? AppColors.success : AppColors.warning,
+          ),
+        ),
+      ),
     );
   }
 
@@ -1318,6 +1586,12 @@ class _StudentsPageState extends State<StudentsPage> {
             ? FilterInputType.text
             : FilterInputType.dropdown,
         options: locationNames.isEmpty ? null : locationNames,
+      ),
+      FilterField(
+        code: StudentFilterCodes.profileStatus.name,
+        label: context.l10n.profileStatus,
+        inputType: FilterInputType.dropdown,
+        options: const ['complete', 'quick_registered'],
       ),
       FilterField(
         code: StudentFilterCodes.joinDate.name,

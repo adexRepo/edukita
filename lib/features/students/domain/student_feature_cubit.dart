@@ -129,13 +129,29 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
     await _fetch(forceRefresh: true);
   }
 
+  Future<void> addQuickStudent(Student student, String schoolId) async {
+    final studentToSave = student.copyWith(
+      id: student.id.isEmpty ? const Uuid().v4() : student.id,
+      profileStatus: 'quick_registered',
+    );
+
+    await _repo.insertQuickStudentWithSchool(studentToSave, schoolId);
+    _cacheService.clear();
+    await _fetch(forceRefresh: true);
+  }
+
   Future<void> updateStudent(
     Student student,
     String schoolId, [
     List<StudentGuardianFormData> guardians = const [],
     StudentAdvancedFormData advanced = const StudentAdvancedFormData(),
   ]) async {
-    await _repo.updateStudentWithSchool(student, schoolId, guardians, advanced);
+    await _repo.updateStudentWithSchool(
+      student.copyWith(profileStatus: 'complete'),
+      schoolId,
+      guardians,
+      advanced,
+    );
     _cacheService.clear();
     await _fetch(forceRefresh: true);
   }
@@ -192,6 +208,8 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
       _listKey(filter.duafaStatusesNot),
       _listKey(filter.teachingLocations),
       _listKey(filter.teachingLocationsNot),
+      _listKey(filter.profileStatuses),
+      _listKey(filter.profileStatusesNot),
       pageable.page.toString(),
       pageable.size.toString(),
       pageable.sorts.map((sort) => sort.toSql()).join(','),

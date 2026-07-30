@@ -19,13 +19,14 @@ _Student _$StudentFromJson(Map<String, dynamic> json) => _Student(
   gender: $enumDecodeNullable(_$GenderEnumMap, json['gender']),
   mobileNo: json['mobile_no'] as String?,
   emailAddr: json['email_addr'] as String?,
-  shoeSize: json['shoe_size']?.toString(),
-  uniformSize: json['uniform_size']?.toString(),
-  pantsSize: json['pants_size']?.toString(),
+  shoeSize: json['shoe_size'] as String?,
+  uniformSize: json['uniform_size'] as String?,
+  pantsSize: json['pants_size'] as String?,
   height: (json['height'] as num?)?.toDouble(),
   weight: (json['weight'] as num?)?.toDouble(),
   photoPath: json['photo_path'] as String?,
   status: $enumDecode(_$StudentStatusEnumMap, json['status']),
+  profileStatus: json['profile_status'] as String? ?? 'complete',
 );
 
 Map<String, dynamic> _$StudentToJson(_Student instance) => <String, dynamic>{
@@ -48,6 +49,7 @@ Map<String, dynamic> _$StudentToJson(_Student instance) => <String, dynamic>{
   'weight': instance.weight,
   'photo_path': instance.photoPath,
   'status': _$StudentStatusEnumMap[instance.status]!,
+  'profile_status': instance.profileStatus,
 };
 
 const _$GenderEnumMap = {Gender.male: 'male', Gender.female: 'female'};
