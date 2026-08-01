@@ -235,6 +235,9 @@ class _StudentFormCardState extends State<StudentFormCard> {
     _selectedClassId = student?.classId;
     _selectedTeachingLocationId = student?.teachingLocationId;
     _selectedSchoolId = _schoolIdForClass(_selectedClassId);
+    if (_selectedSchoolId == null) {
+      _selectedClassId = null;
+    }
     _selectedGender = student?.gender ?? Gender.male;
   }
 

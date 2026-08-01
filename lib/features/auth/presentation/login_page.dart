@@ -135,7 +135,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     if (_checkingSession) {
       return Scaffold(
-        backgroundColor: AppColors.surface,
+        backgroundColor: AppColors.surfaceSoft,
         body: Column(
           children: [
             buildTitleBar(-1, context),
@@ -154,7 +154,7 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.surfaceSoft,
       body: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth < 120 || constraints.maxHeight < 80) {
@@ -169,113 +169,171 @@ class _LoginPageState extends State<LoginPage> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: SizedBox(
-                      width: 420,
-                      child: Card(
-                        elevation: 8,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                      width: 440,
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Image.asset(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 72,
+                                  height: 72,
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.10,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Image.asset(
                                     'assets/images/logo.webp',
-                                    height: 128,
                                     fit: BoxFit.contain,
-                                    errorBuilder: (_, _, _) => Text(
+                                    errorBuilder: (_, _, _) => Center(
+                                      child: Text(
+                                        'E',
+                                        textAlign: TextAlign.center,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineMedium
+                                            ?.copyWith(
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.primaryDark,
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
                                       'Edukita',
                                       textAlign: TextAlign.center,
                                       style: Theme.of(context)
                                           .textTheme
                                           .headlineMedium
                                           ?.copyWith(
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.w600,
-                                            letterSpacing: 0.5,
+                                            fontSize: 26,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 0,
                                             color: AppColors.textPrimary,
                                           ),
                                     ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Foundation Education System',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: AppColors.textSecondary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 22),
+                            Container(
+                              height: 1,
+                              color: AppColors.border,
+                            ),
+                            const SizedBox(height: 18),
+                            Text(
+                              'Ilmu yang Tertata, Generasi Bermakna',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0,
+                                    height: 1.5,
+                                    color: AppColors.textSecondary,
                                   ),
-                                  SizedBox(width: 20),
-                                  Text(
-                                    'Edukita',
-                                    textAlign: TextAlign.center,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineMedium
-                                        ?.copyWith(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.w600,
-                                          letterSpacing: 0.5,
-                                          color: AppColors.textPrimary,
-                                        ),
+                            ),
+                            const SizedBox(height: 24),
+                            TextField(
+                              controller: _usernameController,
+                              focusNode: _usernameFocusNode,
+                              autofocus: true,
+                              textInputAction: TextInputAction.next,
+                              onSubmitted: (_) =>
+                                  _passwordFocusNode.requestFocus(),
+                              decoration: InputDecoration(
+                                labelText: context.l10n.username,
+                                prefixIcon: const Icon(Icons.person_outline),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            TextField(
+                              controller: _passwordController,
+                              focusNode: _passwordFocusNode,
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) {
+                                if (!_loading) _login();
+                              },
+                              decoration: InputDecoration(
+                                labelText: context.l10n.password,
+                                prefixIcon: const Icon(Icons.lock_outline),
+                              ),
+                              obscureText: true,
+                            ),
+                            const SizedBox(height: 18),
+                            if (_errorMessage != null) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.error.withValues(
+                                    alpha: 0.08,
                                   ),
-                                ],
-                              ),
-                              const Divider(height: 13, thickness: 3),
-                              const SizedBox(height: 8),
-                              Center(
-                                child: Text(
-                                  "Ilmu yang Tertata, Generasi Bermakna",
-                                  textAlign: TextAlign.center,
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(
-                                        fontSize: AppTypography.bodyLarge,
-                                        fontWeight: FontWeight.w400,
-                                        letterSpacing: 0.3,
-                                        height: 1.5,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                              TextField(
-                                controller: _usernameController,
-                                focusNode: _usernameFocusNode,
-                                autofocus: true,
-                                textInputAction: TextInputAction.next,
-                                onSubmitted: (_) =>
-                                    _passwordFocusNode.requestFocus(),
-                                decoration: InputDecoration(
-                                  labelText: context.l10n.username,
-                                  border: const OutlineInputBorder(),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              TextField(
-                                controller: _passwordController,
-                                focusNode: _passwordFocusNode,
-                                textInputAction: TextInputAction.done,
-                                onSubmitted: (_) {
-                                  if (!_loading) _login();
-                                },
-                                decoration: InputDecoration(
-                                  labelText: context.l10n.password,
-                                  border: const OutlineInputBorder(),
-                                ),
-                                obscureText: true,
-                              ),
-                              const SizedBox(height: 24),
-                              if (_errorMessage != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 16.0),
-                                  child: Text(
-                                    _errorMessage!,
-                                    style: TextStyle(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.error,
-                                      fontWeight: FontWeight.w600,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: AppColors.error.withValues(
+                                      alpha: 0.32,
                                     ),
                                   ),
                                 ),
-                              FilledButton(
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.error_outline,
+                                      color: AppColors.error,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _errorMessage!,
+                                        style: const TextStyle(
+                                          color: AppColors.errorDark,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                            ],
+                            SizedBox(
+                              height: 44,
+                              child: FilledButton(
                                 onPressed: _loading ? null : _login,
                                 child: _loading
                                     ? const SizedBox(
@@ -283,12 +341,18 @@ class _LoginPageState extends State<LoginPage> {
                                         width: 18,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
+                                          color: AppColors.white,
                                         ),
                                       )
-                                    : Text(context.l10n.login),
+                                    : Text(
+                                        context.l10n.login,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

@@ -265,45 +265,49 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: AppPageHeaderStyle.pagePadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppPageHeader(
-            title: context.l10n.settingsTitle,
-            subtitle: context.l10n.settingsSubtitle,
-          ),
-          const SizedBox(height: AppPageHeaderStyle.bottomGap),
-          Expanded(
-            child: _checkingAuthorization || _loading
-                ? const Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (_isAdmin || _isStaff) ...[
-                          _generalPanel(),
+    return ColoredBox(
+      color: AppColors.surfaceSoft,
+      child: Padding(
+        padding: AppPageHeaderStyle.pagePadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppPageHeader(
+              title: context.l10n.settingsTitle,
+              subtitle: context.l10n.settingsSubtitle,
+            ),
+            const SizedBox(height: AppPageHeaderStyle.bottomGap),
+            Expanded(
+              child: _checkingAuthorization || _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.only(bottom: 18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (_isAdmin || _isStaff) ...[
+                            _generalPanel(),
+                            const SizedBox(height: 14),
+                          ],
+                          _personalizationPanel(),
                           const SizedBox(height: 14),
+                          _accountPanel(),
+                          const SizedBox(height: 14),
+                          if (_isAdmin) ...[
+                            _technicalNoticePanel(),
+                            const SizedBox(height: 14),
+                            _pathsPanel(),
+                            const SizedBox(height: 14),
+                            _toolsPanel(),
+                            const SizedBox(height: 14),
+                          ],
+                          _aboutPanel(),
                         ],
-                        _personalizationPanel(),
-                        const SizedBox(height: 14),
-                        _accountPanel(),
-                        const SizedBox(height: 14),
-                        if (_isAdmin) ...[
-                          _technicalNoticePanel(),
-                          const SizedBox(height: 14),
-                          _pathsPanel(),
-                          const SizedBox(height: 14),
-                          _toolsPanel(),
-                          const SizedBox(height: 14),
-                        ],
-                        _aboutPanel(),
-                      ],
+                      ),
                     ),
-                  ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -354,16 +358,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
               onChanged: (value) => _changeLanguage(value),
             ),
-            _settingsDropdown(
-              label: context.l10n.themeMode,
-              value: _themeMode,
-              items: [
-                _SettingsOption('light', context.l10n.light),
-                _SettingsOption('dark', context.l10n.dark),
-                _SettingsOption('system', context.l10n.followSystem),
-              ],
-              onChanged: (value) => setState(() => _themeMode = value),
-            ),
           ]),
         ],
       ),
@@ -376,7 +370,7 @@ class _SettingsPageState extends State<SettingsPage> {
       decoration: BoxDecoration(
         color: AppColors.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.primaryLight),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.24)),
       ),
       child: Row(
         children: [
@@ -704,7 +698,7 @@ class _SettingsPanel extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
       child: Column(

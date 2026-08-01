@@ -66,25 +66,34 @@ extension SchoolTypeLabel on SchoolType {
 }
 
 class School {
-  School({String? id, this.type, this.name, this.address})
+  School({
+    String? id,
+    this.type,
+    this.name,
+    this.address,
+    this.isSystemDefault = false,
+  })
     : id = id ?? const Uuid().v4();
 
   final String id;
   final SchoolType? type;
   final String? name;
   final String? address;
+  final bool isSystemDefault;
 
   School copyWith({
     String? id,
     SchoolType? type,
     String? name,
     String? address,
+    bool? isSystemDefault,
   }) {
     return School(
       id: id ?? this.id,
       type: type ?? this.type,
       name: name ?? this.name,
       address: address ?? this.address,
+      isSystemDefault: isSystemDefault ?? this.isSystemDefault,
     );
   }
 
@@ -100,6 +109,7 @@ class School {
             ),
       name: map['name'] as String?,
       address: map['address'] as String?,
+      isSystemDefault: (map['is_system_default'] as num?)?.toInt() == 1,
     );
   }
 
@@ -109,12 +119,13 @@ class School {
       'type': type?.storageValue,
       'name': name,
       'address': address,
+      'is_system_default': isSystemDefault ? 1 : 0,
     };
   }
 
   @override
   String toString() =>
-      'School(id: $id, type: $type, name: $name, address: $address)';
+      'School(id: $id, type: $type, name: $name, address: $address, isSystemDefault: $isSystemDefault)';
 
   @override
   bool operator ==(Object other) =>
@@ -124,11 +135,16 @@ class School {
           id == other.id &&
           type == other.type &&
           name == other.name &&
-          address == other.address;
+          address == other.address &&
+          isSystemDefault == other.isSystemDefault;
 
   @override
   int get hashCode =>
-      id.hashCode ^ type.hashCode ^ name.hashCode ^ address.hashCode;
+      id.hashCode ^
+      type.hashCode ^
+      name.hashCode ^
+      address.hashCode ^
+      isSystemDefault.hashCode;
 }
 
 class StudentSchool {

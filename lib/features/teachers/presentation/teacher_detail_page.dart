@@ -87,6 +87,7 @@ class _TeacherDetailPageState extends State<TeacherDetailPage> {
   Widget build(BuildContext context) {
     if (!_authorizationLoaded) {
       return Scaffold(
+        backgroundColor: AppColors.surfaceSoft,
         appBar: _appBar(widget.teacher.fullName),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -94,6 +95,7 @@ class _TeacherDetailPageState extends State<TeacherDetailPage> {
 
     if (!_canViewTeachers) {
       return Scaffold(
+        backgroundColor: AppColors.surfaceSoft,
         appBar: _appBar(widget.teacher.fullName),
         body: Center(
           child: Text(
@@ -110,6 +112,7 @@ class _TeacherDetailPageState extends State<TeacherDetailPage> {
     final detailFuture = _detailFuture;
     if (detailFuture == null) {
       return Scaffold(
+        backgroundColor: AppColors.surfaceSoft,
         appBar: _appBar(widget.teacher.fullName),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -120,6 +123,7 @@ class _TeacherDetailPageState extends State<TeacherDetailPage> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
+            backgroundColor: AppColors.surfaceSoft,
             appBar: _appBar(widget.teacher.fullName),
             body: const Center(child: CircularProgressIndicator()),
           );
@@ -127,6 +131,7 @@ class _TeacherDetailPageState extends State<TeacherDetailPage> {
 
         if (snapshot.hasError || snapshot.data == null) {
           return Scaffold(
+            backgroundColor: AppColors.surfaceSoft,
             appBar: _appBar(widget.teacher.fullName),
             body: Center(
               child: Text(
@@ -138,15 +143,17 @@ class _TeacherDetailPageState extends State<TeacherDetailPage> {
 
         final data = snapshot.data!;
         return Scaffold(
+          backgroundColor: AppColors.surfaceSoft,
           appBar: _appBar(data.teacher.fullName),
           body: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             child: DefaultTabController(
               length: 4,
               child: Column(
                 children: [
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   DetailTabBar(
+                    filledStyle: true,
                     tabs: [
                       context.l10n.overview,
                       context.l10n.impact,
@@ -189,14 +196,24 @@ class _TeacherHeader extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: AppColors.primary.withValues(alpha: 0.14),
-              child: Text(
-                _initials(data.teacher.fullName),
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w800,
+            Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.18),
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  _initials(data.teacher.fullName),
+                  style: const TextStyle(
+                    color: AppColors.primaryDark,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),
@@ -208,7 +225,7 @@ class _TeacherHeader extends StatelessWidget {
                   Text(
                     data.teacher.fullName,
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 17,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -220,6 +237,7 @@ class _TeacherHeader extends StatelessWidget {
                     style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,
+                      height: 1.3,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -228,6 +246,7 @@ class _TeacherHeader extends StatelessWidget {
                     style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,
+                      height: 1.3,
                     ),
                   ),
                 ],
@@ -482,10 +501,11 @@ class _MetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 132,
-      padding: const EdgeInsets.all(12),
+      width: 136,
+      constraints: const BoxConstraints(minHeight: 76),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
@@ -497,17 +517,17 @@ class _MetricTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppColors.textSecondary,
-              fontSize: 11,
+              fontSize: 10.5,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 6),
           Text(
             value,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppColors.textPrimary,
-              fontSize: 18,
+              fontSize: 17,
               fontWeight: FontWeight.w800,
             ),
           ),

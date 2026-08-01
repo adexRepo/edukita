@@ -129,88 +129,91 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
         final id = state.openActivityId;
         if (id != null && id.isNotEmpty) context.go('/teaching-activities/$id');
       },
-      child: Padding(
-        padding: AppPageHeaderStyle.pagePadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AppPageHeader(
-              title: context.l10n.teachingActivityTitle,
-              subtitle: context.l10n.teachingActivitySubtitle,
-              trailing: IconButton(
-                tooltip: context.l10n.refresh,
-                onPressed: () => _loadScopedActivities(forceRefresh: true),
-                icon: const Icon(Icons.refresh),
+      child: ColoredBox(
+        color: AppColors.surfaceSoft,
+        child: Padding(
+          padding: AppPageHeaderStyle.pagePadding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppPageHeader(
+                title: context.l10n.teachingActivityTitle,
+                subtitle: context.l10n.teachingActivitySubtitle,
+                trailing: IconButton(
+                  tooltip: context.l10n.refresh,
+                  onPressed: () => _loadScopedActivities(forceRefresh: true),
+                  icon: const Icon(Icons.refresh),
+                ),
               ),
-            ),
-            BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
-              builder: (context, state) =>
-                  AppLoadingStrip(isLoading: state.isLoading),
-            ),
-            const SizedBox(height: AppPageHeaderStyle.bottomGap),
-            Expanded(
-              child: BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
-                builder: (context, state) {
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      final compact = constraints.maxWidth < 920;
-                      final leftPanel = _TeachingActivityDatePanel(
-                        focusedMonth: _focusedMonth,
-                        selectedDate: _parseDate(state.date),
-                        activities: state.activities,
-                        sessionDateKeys: state.sessionDateKeys,
-                        onPreviousMonth: () {
-                          final newMonth = DateTime(
-                            _focusedMonth.year,
-                            _focusedMonth.month - 1,
-                          );
-                          setState(() => _focusedMonth = newMonth);
-                          _loadScopedActivities(date: _dateKey(newMonth));
-                        },
-                        onNextMonth: () {
-                          final newMonth = DateTime(
-                            _focusedMonth.year,
-                            _focusedMonth.month + 1,
-                          );
-                          setState(() => _focusedMonth = newMonth);
-                          _loadScopedActivities(date: _dateKey(newMonth));
-                        },
-                        onDateSelected: (date) {
-                          setState(() {
-                            _focusedMonth = DateTime(date.year, date.month);
-                          });
-                          _loadScopedActivities(date: _dateKey(date));
-                        },
-                      );
-                      final rightPanel = _TeachingActivityTablePanel(
-                        authScope: _authScope,
-                        canManageReports: _canManageReports,
-                      );
+              BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
+                builder: (context, state) =>
+                    AppLoadingStrip(isLoading: state.isLoading),
+              ),
+              const SizedBox(height: AppPageHeaderStyle.bottomGap),
+              Expanded(
+                child: BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
+                  builder: (context, state) {
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final compact = constraints.maxWidth < 920;
+                        final leftPanel = _TeachingActivityDatePanel(
+                          focusedMonth: _focusedMonth,
+                          selectedDate: _parseDate(state.date),
+                          activities: state.activities,
+                          sessionDateKeys: state.sessionDateKeys,
+                          onPreviousMonth: () {
+                            final newMonth = DateTime(
+                              _focusedMonth.year,
+                              _focusedMonth.month - 1,
+                            );
+                            setState(() => _focusedMonth = newMonth);
+                            _loadScopedActivities(date: _dateKey(newMonth));
+                          },
+                          onNextMonth: () {
+                            final newMonth = DateTime(
+                              _focusedMonth.year,
+                              _focusedMonth.month + 1,
+                            );
+                            setState(() => _focusedMonth = newMonth);
+                            _loadScopedActivities(date: _dateKey(newMonth));
+                          },
+                          onDateSelected: (date) {
+                            setState(() {
+                              _focusedMonth = DateTime(date.year, date.month);
+                            });
+                            _loadScopedActivities(date: _dateKey(date));
+                          },
+                        );
+                        final rightPanel = _TeachingActivityTablePanel(
+                          authScope: _authScope,
+                          canManageReports: _canManageReports,
+                        );
 
-                      if (compact) {
-                        return ListView(
+                        if (compact) {
+                          return ListView(
+                            children: [
+                              leftPanel,
+                              const SizedBox(height: 12),
+                              SizedBox(height: 560, child: rightPanel),
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            leftPanel,
-                            const SizedBox(height: 12),
-                            SizedBox(height: 560, child: rightPanel),
+                            SizedBox(width: 286, child: leftPanel),
+                            const SizedBox(width: 14),
+                            Expanded(child: rightPanel),
                           ],
                         );
-                      }
-
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(width: 286, child: leftPanel),
-                          const SizedBox(width: 14),
-                          Expanded(child: rightPanel),
-                        ],
-                      );
-                    },
-                  );
-                },
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

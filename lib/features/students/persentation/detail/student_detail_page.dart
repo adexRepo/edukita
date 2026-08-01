@@ -75,6 +75,7 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.surfaceSoft,
       appBar: AppBar(
         leadingWidth: 40,
         leading: const DetailAppBarBackButton(fallbackRoute: '/students'),
@@ -128,14 +129,15 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
 
   Widget _buildContent(StudentDetailData student) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       child: DefaultTabController(
         initialIndex: 0,
         length: 7,
         child: Column(
           children: <Widget>[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             DetailTabBar(
+              filledStyle: true,
               tabs: [
                 context.l10n.overview,
                 context.l10n.personal,
@@ -149,7 +151,10 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
             Expanded(
               child: TabBarView(
                 children: [
-                  StudentOverviewTab(student: student),
+                  StudentOverviewTab(
+                    student: student,
+                    canUpdateStudent: _canUpdateStudents,
+                  ),
                   StudentPersonalTab(student: student),
                   StudentFamilyTab(student: student),
                   StudentAcademicTab(

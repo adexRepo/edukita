@@ -155,6 +155,70 @@ class StudentDocumentTypeOptions {
   StudentDocumentTypeOptions._();
 
   static const registrationForm = 'REGISTRATION_FORM';
+  static const studentStoryReport = 'STUDENT_STORY_REPORT';
+}
+
+class StudentGeneratedReportFile {
+  const StudentGeneratedReportFile({
+    required this.id,
+    required this.fileName,
+    required this.filePath,
+    this.fileType,
+    this.fileSize = 0,
+    this.generatedBy,
+    required this.generatedAt,
+    this.remarks,
+  });
+
+  final String id;
+  final String fileName;
+  final String filePath;
+  final String? fileType;
+  final int fileSize;
+  final String? generatedBy;
+  final String generatedAt;
+  final String? remarks;
+
+  String get versionNote {
+    final note = _extractRemarkValue('note');
+    if (note == null || note.isEmpty) return '-';
+    return note;
+  }
+
+  String get completenessSnapshot {
+    final value = _extractRemarkValue('completeness');
+    if (value == null || value.isEmpty) return '-';
+    return value;
+  }
+
+  String? _extractRemarkValue(String key) {
+    final source = remarks;
+    if (source == null || source.trim().isEmpty) return null;
+    final prefix = '$key=';
+    for (final part in source.split('|')) {
+      final trimmed = part.trim();
+      if (trimmed.startsWith(prefix)) {
+        return trimmed.substring(prefix.length).trim();
+      }
+    }
+    return null;
+  }
+
+  factory StudentGeneratedReportFile.fromMap(Map<String, Object?> map) {
+    return StudentGeneratedReportFile(
+      id: map['id']?.toString() ?? '',
+      fileName:
+          map['original_file_name']?.toString() ??
+          map['stored_file_name']?.toString() ??
+          'student-story.pdf',
+      filePath: map['file_path']?.toString() ?? '',
+      fileType: map['file_type']?.toString(),
+      fileSize: (map['file_size'] as num?)?.toInt() ?? 0,
+      generatedBy: map['uploaded_by']?.toString(),
+      generatedAt: map['uploaded_at']?.toString() ?? '',
+      remarks: map['remarks']?.toString(),
+    );
+  }
 }
 
 class StudentHealthFormData {

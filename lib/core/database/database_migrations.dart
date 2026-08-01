@@ -127,6 +127,16 @@ class DatabaseMigrations {
     await _ensureStudentSizeTextSchema(db);
     await _ensureStudentGuardianStatusSchema(db);
     await _ensureGuardianIncomeSchema(db);
+    await _ensureSystemDefaultSchoolSchema(db);
+  }
+
+  static Future<void> _ensureSystemDefaultSchoolSchema(Database db) async {
+    await _addColumnIfMissing(
+      db,
+      table: 'schools',
+      column: 'is_system_default',
+      definition: 'INTEGER NOT NULL DEFAULT 0',
+    );
   }
 
   static Future<void> _ensureGuardianIncomeSchema(Database db) async {

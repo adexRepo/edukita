@@ -137,6 +137,7 @@ class _UsersPageState extends State<UsersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.surfaceSoft,
       body: BlocBuilder<UserManagementCubit, UserManagementState>(
         builder: (context, state) {
           final users = _filteredUsers(state.users);
@@ -204,12 +205,23 @@ class _UsersPageState extends State<UsersPage> {
                             )
                           : Column(
                               children: [
-                                TextField(
-                                  onChanged: (value) =>
-                                      setState(() => _query = value),
-                                  decoration: InputDecoration(
-                                    prefixIcon: const Icon(Icons.search),
-                                    hintText: context.l10n.searchUsersHint,
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: AppColors.border,
+                                    ),
+                                  ),
+                                  child: TextField(
+                                    onChanged: (value) =>
+                                        setState(() => _query = value),
+                                    decoration: InputDecoration(
+                                      prefixIcon: const Icon(Icons.search),
+                                      hintText: context.l10n.searchUsersHint,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 12),
@@ -237,15 +249,23 @@ class _UsersPageState extends State<UsersPage> {
   }
 
   Widget _buildTable(List<User> users, UserManagementState state) {
-    return AppTable<User>(
-      data: users,
-      pageable: Pageable(
-        page: 0,
-        size: users.length,
-        totalPages: 1,
-        totalItems: users.length,
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
       ),
-      columns: [
+      clipBehavior: Clip.antiAlias,
+      child: AppTable<User>(
+        data: users,
+        pageable: Pageable(
+          page: 0,
+          size: users.length,
+          totalPages: 1,
+          totalItems: users.length,
+        ),
+        columns: [
         AppTableColumn(
           title: context.l10n.user,
           flex: 4,
@@ -344,7 +364,8 @@ class _UsersPageState extends State<UsersPage> {
             );
           },
         ),
-      ],
+        ],
+      ),
     );
   }
 

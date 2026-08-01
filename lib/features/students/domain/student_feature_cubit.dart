@@ -34,6 +34,12 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
     await _fetch();
   }
 
+  int get cacheRevision => _cacheService.revision;
+
+  Future<void> refreshAfterExternalChange() async {
+    await _fetch(forceRefresh: true);
+  }
+
   Future<void> _fetch({bool forceRefresh = false}) async {
     final requestRevision = ++_requestRevision;
     final filter = _filter;
@@ -75,6 +81,10 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
 
   Future<List<SchoolClass>> loadAvailableClasses() {
     return _repo.loadAvailableClasses();
+  }
+
+  Future<List<SchoolClass>> loadQuickRegisterClasses() {
+    return _repo.loadQuickRegisterClasses();
   }
 
   Future<List<School>> loadAvailableSchools() {
@@ -129,7 +139,7 @@ class StudentPageCubit extends Cubit<FeatureState<StudentPageData>> {
     await _fetch(forceRefresh: true);
   }
 
-  Future<void> addQuickStudent(Student student, String schoolId) async {
+  Future<void> addQuickStudent(Student student, String? schoolId) async {
     final studentToSave = student.copyWith(
       id: student.id.isEmpty ? const Uuid().v4() : student.id,
       profileStatus: 'quick_registered',
@@ -235,6 +245,9 @@ class StudentCacheService {
 
   final AppMemoryCache<StudentPageData> _pages;
   final AppMemoryCache<StudentDetailData> _details;
+  int _revision = 0;
+
+  int get revision => _revision;
 
   StudentPageData? getPage(String key) => _pages.get(key);
 
@@ -249,5 +262,6 @@ class StudentCacheService {
   void clear() {
     _pages.clear();
     _details.clear();
+    _revision++;
   }
 }

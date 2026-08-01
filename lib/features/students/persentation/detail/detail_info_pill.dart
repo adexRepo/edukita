@@ -14,11 +14,11 @@ class DetailInfoPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 54),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      constraints: const BoxConstraints(minHeight: 58),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
-        borderRadius: BorderRadius.circular(10),
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -30,8 +30,8 @@ class DetailInfoPill extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppColors.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 4),
@@ -41,7 +41,7 @@ class DetailInfoPill extends StatelessWidget {
             maxLines: 2,
             style: const TextStyle(
               color: AppColors.textPrimary,
-              fontSize: 12,
+              fontSize: 12.5,
               fontWeight: FontWeight.w700,
             ),
           ),

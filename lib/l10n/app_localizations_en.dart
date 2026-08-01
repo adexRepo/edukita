@@ -1559,10 +1559,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get physicalAttributes => 'Physical Attributes';
 
   @override
-  String get height => 'Height';
+  String get height => 'Height (cm)';
 
   @override
-  String get weight => 'Weight';
+  String get weight => 'Weight (kg)';
 
   @override
   String get uniform => 'Uniform';
@@ -4538,7 +4538,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get disabilities => 'Disabilities';
 
   @override
-  String get dailySchoolTransportCost => 'Daily School Transport Cost';
+  String get dailySchoolTransportCost => 'Daily School Transport Cost (Rp/day)';
 
   @override
   String get housingStatus => 'Housing Status';
@@ -4608,11 +4608,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String guardianIncomeFor(Object relation) {
-    return '$relation Income';
+    return '$relation Income (Rp/month)';
   }
 
   @override
-  String get income => 'Income';
+  String get income => 'Income (Rp/month)';
 
   @override
   String get agePositionOlder => 'Older';
@@ -4630,16 +4630,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get examSourceExternal => 'External';
 
   @override
-  String get householdMemberCount => 'Household Member Count';
+  String get householdMemberCount => 'Household Member Count (people)';
 
   @override
-  String get fatherIncome => 'Father Income';
+  String get fatherIncome => 'Father Income (Rp/month)';
 
   @override
-  String get motherIncome => 'Mother Income';
+  String get motherIncome => 'Mother Income (Rp/month)';
 
   @override
-  String get educationArrears => 'Education Arrears';
+  String get educationArrears => 'Education Arrears (Rp)';
 
   @override
   String get academicAchievement => 'Academic Achievement';
@@ -5007,6 +5007,168 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get teachers => 'Teachers';
+
+  @override
+  String get specialNotes => 'Special Notes';
+
+  @override
+  String get specialNotesDescription =>
+      'Interview, survey, home visit, or management observation history.';
+
+  @override
+  String get addSpecialNote => 'Add Note';
+
+  @override
+  String get loadingSpecialNotes => 'Loading special notes...';
+
+  @override
+  String get failedLoadSpecialNotes => 'Failed to load special notes.';
+
+  @override
+  String get noSpecialNotes =>
+      'No special management notes have been recorded.';
+
+  @override
+  String get addedBy => 'Added By';
+
+  @override
+  String get archiveNote => 'Archive note';
+
+  @override
+  String get archiveSpecialNoteTitle => 'Archive special note?';
+
+  @override
+  String get archiveSpecialNoteMessage =>
+      'This note will be hidden from active history and not used in Student Story.';
+
+  @override
+  String get specialNoteArchived => 'Special note archived.';
+
+  @override
+  String get failedArchiveSpecialNote => 'Failed to archive special note.';
+
+  @override
+  String get addSpecialNoteTitle => 'Add Special Note';
+
+  @override
+  String get noteDate => 'Note Date';
+
+  @override
+  String get noteType => 'Note Type';
+
+  @override
+  String get specialNote => 'Special Note';
+
+  @override
+  String get needsFollowUp => 'Needs follow up';
+
+  @override
+  String get followUpNote => 'Follow Up Note';
+
+  @override
+  String get saveNote => 'Save Note';
+
+  @override
+  String get specialNoteRequired => 'Special note is required.';
+
+  @override
+  String get followUpNoteRequired =>
+      'Follow up note is required when follow up is marked.';
+
+  @override
+  String get specialNoteSaved => 'Special note saved.';
+
+  @override
+  String get failedSaveSpecialNote => 'Failed to save special note.';
+
+  @override
+  String get noFollowUpMarked => 'No follow up marked';
+
+  @override
+  String get specialNoteTypeInterview => 'Interview';
+
+  @override
+  String get specialNoteTypeParentSurvey => 'Parent Survey';
+
+  @override
+  String get specialNoteTypeStudentSurvey => 'Student Survey';
+
+  @override
+  String get specialNoteTypeHomeVisit => 'Home Visit';
+
+  @override
+  String get specialNoteTypeManagementObservation => 'Management Observation';
+
+  @override
+  String get specialNoteTypeOther => 'Other';
+
+  @override
+  String get studentStoryReportTitle => 'Student Story & Development Report';
+
+  @override
+  String get studentStoryExecutiveSummary => 'Executive Summary';
+
+  @override
+  String get downloadPdf => 'Download PDF';
+
+  @override
+  String get studentStoryLoadFailed => 'Student Story failed to load';
+
+  @override
+  String get generatingStudentStory => 'Generating latest student story';
+
+  @override
+  String get generatingStudentStoryDescription =>
+      'Loading the latest profile, family, scores, attendance, teacher notes, and assistance data.';
+
+  @override
+  String get dataCompleteness => 'Data Completeness';
+
+  @override
+  String get documentNo => 'Document No';
+
+  @override
+  String get generatedBy => 'Generated By';
+
+  @override
+  String get parentGuardian => 'Parent / Guardian';
+
+  @override
+  String get nameSignature => 'Name / Signature';
+
+  @override
+  String get generated => 'Generated';
+
+  @override
+  String get studentStoryPdfDisclaimer =>
+      'Note: This report summarizes observation and administrative data recorded in Edukita. It does not add diagnoses or facts outside the application data.';
+
+  @override
+  String get studentStoryDefaultDraftNote => 'Draft from quick registration';
+
+  @override
+  String get studentStoryDefaultGeneratedNote =>
+      'Generated from latest student data';
+
+  @override
+  String get reportVersionNoteTitle => 'Report version note';
+
+  @override
+  String get versionNote => 'Version note';
+
+  @override
+  String get versionNoteHint =>
+      'Example: Monthly review, draft for parent meeting';
+
+  @override
+  String get reportDataIncompleteTitle => 'Report data is incomplete';
+
+  @override
+  String get reportDataIncompleteMessage =>
+      'PDF can still be created, but it is better to use it as a draft until the student data is complete.';
+
+  @override
+  String get downloadDraftPdf => 'Download Draft PDF';
 
   @override
   String confirmActionForSubject(Object action, Object subject) {

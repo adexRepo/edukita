@@ -168,6 +168,7 @@ class _TeachersPageState extends State<TeachersPage> {
     }
 
     return Scaffold(
+      backgroundColor: AppColors.surfaceSoft,
       body: BlocBuilder<TeacherCubit, TeacherState>(
         builder: (context, state) {
           return Column(
@@ -249,22 +250,40 @@ class _TeachersPageState extends State<TeachersPage> {
             : const SizedBox.shrink();
 
         if (compact) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              search,
-              const SizedBox(height: 10),
-              Align(alignment: Alignment.centerRight, child: addButton),
-            ],
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                search,
+                const SizedBox(height: 10),
+                Align(alignment: Alignment.centerRight, child: addButton),
+              ],
+            ),
           );
         }
 
-        return Row(
-          children: [
-            Expanded(child: search),
-            const SizedBox(width: 12),
-            addButton,
-          ],
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Expanded(child: search),
+              const SizedBox(width: 12),
+              addButton,
+            ],
+          ),
         );
       },
     );
@@ -274,154 +293,170 @@ class _TeachersPageState extends State<TeachersPage> {
     List<Teacher> teachers, {
     required String emptyMessage,
   }) {
-    return AppTable<Teacher>(
-      data: teachers,
-      emptyMessage: emptyMessage,
-      pageable: Pageable(
-        page: 0,
-        size: teachers.length,
-        totalPages: teachers.isEmpty ? 0 : 1,
-        totalItems: teachers.length,
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
       ),
-      onRowTap: (teacher) {
-        context.push('/teachers/${teacher.id}', extra: teacher);
-      },
-      columns: [
-        AppTableColumn(
-          title: context.l10n.teacher,
-          flex: 4,
-          sortValue: (teacher) =>
-              teacher.fullName.isEmpty ? 0 : teacher.fullName.codeUnitAt(0),
-          cell: (teacher) => Text(
-            teacher.nickName == null || teacher.nickName!.trim().isEmpty
-                ? teacher.fullName
-                : '${teacher.fullName}\n${teacher.nickName}',
-            overflow: TextOverflow.ellipsis,
-            maxLines: 2,
-            style: const TextStyle(fontSize: 12, height: 1.2),
-          ),
+      clipBehavior: Clip.antiAlias,
+      child: AppTable<Teacher>(
+        data: teachers,
+        emptyMessage: emptyMessage,
+        pageable: Pageable(
+          page: 0,
+          size: teachers.length,
+          totalPages: teachers.isEmpty ? 0 : 1,
+          totalItems: teachers.length,
         ),
-        AppTableColumn(
-          title: context.l10n.education,
-          flex: 2,
-          sortValue: (teacher) => teacher.lastEducationType?.codeUnitAt(0) ?? 0,
-          cell: (teacher) => Text(
-            teacher.lastEducationType ?? '-',
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12),
-          ),
-        ),
-        AppTableColumn(
-          title: context.l10n.gender,
-          flex: 2,
-          sortValue: (teacher) => teacher.gender?.codeUnitAt(0) ?? 0,
-          cell: (teacher) => Text(
-            _genderLabel(teacher.gender),
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12),
-          ),
-        ),
-        AppTableColumn(
-          title: context.l10n.contact,
-          flex: 4,
-          sortValue: (teacher) {
-            final contact = teacher.email ?? teacher.mobileNo ?? '';
-            return contact.isEmpty ? 0 : contact.codeUnitAt(0);
-          },
-          cell: (teacher) => Text(
-            '${teacher.email ?? '-'}\n${teacher.mobileNo ?? '-'}',
-            overflow: TextOverflow.ellipsis,
-            maxLines: 2,
-            style: const TextStyle(fontSize: 12, height: 1.2),
-          ),
-        ),
-        AppTableColumn(
-          title: context.l10n.appUser,
-          flex: 2,
-          minWidth: 120,
-          cell: (teacher) {
-            final hasUser = teacher.appUserId != null;
-            return Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: hasUser
-                      ? AppColors.primary.withValues(alpha: 0.12)
-                      : AppColors.surface,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  hasUser ? context.l10n.linked : context.l10n.noUser,
-                  style: TextStyle(
-                    color: hasUser
-                        ? AppColors.primaryDark
-                        : AppColors.textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-        AppTableColumn(
-          title: context.l10n.actions,
-          flex: 3,
-          minWidth: 140,
-          cell: (teacher) => Align(
-            alignment: Alignment.centerLeft,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: context.l10n.editTeacherTooltip,
-                  onPressed: _canUpdateTeachers
-                      ? () => _showTeacherFormDialog(existingTeacher: teacher)
-                      : null,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 28,
-                    height: 28,
-                  ),
-                  padding: EdgeInsets.zero,
-                  icon: const Icon(Icons.edit, size: 16),
-                ),
-                IconButton(
-                  tooltip: teacher.appUserId == null
-                      ? context.l10n.createAppUser
-                      : context.l10n.teacherAlreadyHasAppUser,
-                  onPressed: teacher.appUserId == null && _canCreateUsers
-                      ? () => context.push('/users', extra: teacher)
-                      : null,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 28,
-                    height: 28,
-                  ),
-                  padding: EdgeInsets.zero,
-                  icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
-                ),
-                IconButton(
-                  tooltip: context.l10n.deleteTeacherTooltip,
-                  onPressed: _canDeleteTeachers
-                      ? () => _confirmDelete(teacher)
-                      : null,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 28,
-                    height: 28,
-                  ),
-                  padding: EdgeInsets.zero,
-                  color: AppColors.errorDark,
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    size: 16,
-                    color: AppColors.error,
-                  ),
-                ),
-              ],
+        onRowTap: (teacher) {
+          context.push('/teachers/${teacher.id}', extra: teacher);
+        },
+        columns: [
+          AppTableColumn(
+            title: context.l10n.teacher,
+            flex: 4,
+            sortValue: (teacher) =>
+                teacher.fullName.isEmpty ? 0 : teacher.fullName.codeUnitAt(0),
+            cell: (teacher) => Text(
+              teacher.nickName == null || teacher.nickName!.trim().isEmpty
+                  ? teacher.fullName
+                  : '${teacher.fullName}\n${teacher.nickName}',
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+              style: const TextStyle(fontSize: 12, height: 1.2),
             ),
           ),
-        ),
-      ],
+          AppTableColumn(
+            title: context.l10n.education,
+            flex: 2,
+            sortValue: (teacher) =>
+                teacher.lastEducationType?.codeUnitAt(0) ?? 0,
+            cell: (teacher) => Text(
+              teacher.lastEducationType ?? '-',
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+          AppTableColumn(
+            title: context.l10n.gender,
+            flex: 2,
+            sortValue: (teacher) => teacher.gender?.codeUnitAt(0) ?? 0,
+            cell: (teacher) => Text(
+              _genderLabel(teacher.gender),
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+          AppTableColumn(
+            title: context.l10n.contact,
+            flex: 4,
+            sortValue: (teacher) {
+              final contact = teacher.email ?? teacher.mobileNo ?? '';
+              return contact.isEmpty ? 0 : contact.codeUnitAt(0);
+            },
+            cell: (teacher) => Text(
+              '${teacher.email ?? '-'}\n${teacher.mobileNo ?? '-'}',
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+              style: const TextStyle(fontSize: 12, height: 1.2),
+            ),
+          ),
+          AppTableColumn(
+            title: context.l10n.appUser,
+            flex: 2,
+            minWidth: 120,
+            cell: (teacher) {
+              final hasUser = teacher.appUserId != null;
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: hasUser
+                        ? AppColors.primary.withValues(alpha: 0.12)
+                        : AppColors.surface,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    hasUser ? context.l10n.linked : context.l10n.noUser,
+                    style: TextStyle(
+                      color: hasUser
+                          ? AppColors.primaryDark
+                          : AppColors.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          AppTableColumn(
+            title: context.l10n.actions,
+            flex: 3,
+            minWidth: 140,
+            cell: (teacher) => Align(
+              alignment: Alignment.centerLeft,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: context.l10n.editTeacherTooltip,
+                    onPressed: _canUpdateTeachers
+                        ? () => _showTeacherFormDialog(existingTeacher: teacher)
+                        : null,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 28,
+                      height: 28,
+                    ),
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(Icons.edit, size: 16),
+                  ),
+                  IconButton(
+                    tooltip: teacher.appUserId == null
+                        ? context.l10n.createAppUser
+                        : context.l10n.teacherAlreadyHasAppUser,
+                    onPressed: teacher.appUserId == null && _canCreateUsers
+                        ? () => context.push('/users', extra: teacher)
+                        : null,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 28,
+                      height: 28,
+                    ),
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(
+                      Icons.person_add_alt_1_outlined,
+                      size: 16,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: context.l10n.deleteTeacherTooltip,
+                    onPressed: _canDeleteTeachers
+                        ? () => _confirmDelete(teacher)
+                        : null,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 28,
+                      height: 28,
+                    ),
+                    padding: EdgeInsets.zero,
+                    color: AppColors.errorDark,
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      size: 16,
+                      color: AppColors.error,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:edukita/features/schools/presentation/classes_page.dart';
 import 'package:edukita/features/schools/presentation/schools_page.dart';
 import 'package:edukita/features/teachers/presentation/teachers_page.dart';
+import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/detail_tab_bar.dart';
 
 import 'guardians_page.dart';
 
@@ -32,36 +34,34 @@ class _ManagementPageState extends State<ManagementPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          Material(
-            color: Theme.of(context).colorScheme.surface,
-            child: TabBar(
+      backgroundColor: AppColors.surfaceSoft,
+      body: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            DetailTabBar(
               controller: _tabController,
-              labelColor: Theme.of(context).colorScheme.primary,
-              unselectedLabelColor: Theme.of(
-                context,
-              ).colorScheme.onSurface.withAlpha(153),
               tabs: [
-                Tab(text: context.l10n.classes),
-                Tab(text: context.l10n.teachers),
-                Tab(text: context.l10n.guardians),
-                Tab(text: context.l10n.schools),
+                context.l10n.classes,
+                context.l10n.teachers,
+                context.l10n.guardians,
+                context.l10n.schools,
               ],
             ),
-          ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: const [
-                ClassesPage(),
-                TeachersPage(),
-                GuardiansPage(),
-                SchoolsPage(),
-              ],
+            const SizedBox(height: 12),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: const [
+                  ClassesPage(),
+                  TeachersPage(),
+                  GuardiansPage(),
+                  SchoolsPage(),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -21,6 +21,7 @@ import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/app_error_dialog.dart';
+import 'package:edukita/widgets/detail_tab_bar.dart';
 import 'package:edukita/widgets/step_process.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
@@ -128,38 +129,41 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
       );
     }
 
-    return Padding(
-      padding: AppPageHeaderStyle.pagePadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppPageHeader(
-            title: context.l10n.assistancePeriodsTitle,
-            subtitle: context.l10n.assistancePeriodsSubtitle,
-            trailing: ElevatedButton.icon(
-              onPressed: programs.isEmpty || !_canCreate
-                  ? null
-                  : () => _showCreatePeriodDialog(context, programs),
-              icon: const Icon(Icons.add),
-              label: Text(context.l10n.create),
+    return ColoredBox(
+      color: AppColors.surfaceSoft,
+      child: Padding(
+        padding: AppPageHeaderStyle.pagePadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppPageHeader(
+              title: context.l10n.assistancePeriodsTitle,
+              subtitle: context.l10n.assistancePeriodsSubtitle,
+              trailing: FilledButton.icon(
+                onPressed: programs.isEmpty || !_canCreate
+                    ? null
+                    : () => _showCreatePeriodDialog(context, programs),
+                icon: const Icon(Icons.add),
+                label: Text(context.l10n.create),
+              ),
             ),
-          ),
-          AppLoadingStrip(
-            isLoading: programState.isLoading || planState.isLoading,
-          ),
-          const SizedBox(height: AppPageHeaderStyle.bottomGap),
-          _buildSummaryCards(planState.periods),
-          const SizedBox(height: 12),
-          _buildFilters(programs),
-          const SizedBox(height: 12),
-          Expanded(
-            child: _buildPeriodTable(
-              context,
-              periods: _filteredPeriods(planState.periods, programs),
-              programs: programs,
+            AppLoadingStrip(
+              isLoading: programState.isLoading || planState.isLoading,
             ),
-          ),
-        ],
+            const SizedBox(height: AppPageHeaderStyle.bottomGap),
+            _buildSummaryCards(planState.periods),
+            const SizedBox(height: 12),
+            _buildFilters(programs),
+            const SizedBox(height: 12),
+            Expanded(
+              child: _buildPeriodTable(
+                context,
+                periods: _filteredPeriods(planState.periods, programs),
+                programs: programs,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -634,9 +638,11 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
         .length;
     final remaining = (widget.period.targetQuota - selected).clamp(0, 999999);
 
-    return Padding(
-      padding: AppPageHeaderStyle.pagePadding,
-      child: Column(
+    return ColoredBox(
+      color: AppColors.surfaceSoft,
+      child: Padding(
+        padding: AppPageHeaderStyle.pagePadding,
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
@@ -718,14 +724,13 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
             ],
           ),
           const SizedBox(height: 12),
-          TabBar(
+          DetailTabBar(
             controller: _tabController,
-            isScrollable: true,
             tabs: [
-              Tab(text: context.l10n.setup),
-              Tab(text: context.l10n.targetCandidates),
-              Tab(text: context.l10n.reviewApproval),
-              Tab(text: context.l10n.report),
+              context.l10n.setup,
+              context.l10n.targetCandidates,
+              context.l10n.reviewApproval,
+              context.l10n.report,
             ],
           ),
           const SizedBox(height: 12),
@@ -763,6 +768,7 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
             ),
           ),
         ],
+        ),
       ),
     );
   }

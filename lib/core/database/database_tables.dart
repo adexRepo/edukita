@@ -45,11 +45,13 @@ class DatabaseTables {
     await teachingAttendances(db);
     await teachingAssessments(db);
     await studentSessionNotes(db);
+    await studentManualTeacherNotes(db);
 
     await studentHealth(db);
     await studentHouseholdProfiles(db);
     await studentBehavior(db);
     await studentSocialNotes(db);
+    await studentSpecialNotes(db);
     await activities(db);
     await studentActivities(db);
     await extraActivities(db);
@@ -211,7 +213,8 @@ class DatabaseTables {
         id TEXT PRIMARY KEY NOT NULL,
         type TEXT,
         name TEXT,
-        address TEXT
+        address TEXT,
+        is_system_default INTEGER NOT NULL DEFAULT 0
       )
     ''');
   }
@@ -853,6 +856,30 @@ class DatabaseTables {
     ''');
   }
 
+  static Future<void> studentManualTeacherNotes(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS student_manual_teacher_notes(
+        id TEXT PRIMARY KEY NOT NULL,
+        student_id TEXT NOT NULL,
+        note_date TEXT NOT NULL,
+        note_type TEXT NOT NULL,
+        comment TEXT NOT NULL,
+        score_mode TEXT,
+        raw_score REAL,
+        normalized_score REAL,
+        follow_up_needed INTEGER NOT NULL DEFAULT 0,
+        follow_up_notes TEXT,
+        created_by_teacher_id TEXT,
+        created_by_username TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by_teacher_id) REFERENCES teachers(id) ON DELETE SET NULL
+      )
+    ''');
+  }
+
   static Future<void> studentHealth(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS student_health(
@@ -1003,6 +1030,25 @@ class DatabaseTables {
         document_type TEXT,
         file_url TEXT,
         uploaded_at TEXT,
+        FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
+      )
+    ''');
+  }
+
+  static Future<void> studentSpecialNotes(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS student_special_notes(
+        id TEXT PRIMARY KEY NOT NULL,
+        student_id TEXT NOT NULL,
+        note_date TEXT NOT NULL,
+        note_type TEXT NOT NULL,
+        note TEXT NOT NULL,
+        follow_up_needed INTEGER NOT NULL DEFAULT 0,
+        follow_up_note TEXT,
+        created_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        is_active INTEGER NOT NULL DEFAULT 1,
         FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
       )
     ''');
@@ -1892,6 +1938,20 @@ class DatabaseTables {
       sql:
           'CREATE INDEX IF NOT EXISTS idx_student_session_notes_teacher_created ON student_session_notes(created_by_teacher_id, created_at)',
     );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_manual_teacher_notes',
+      columns: const ['student_id', 'note_date', 'is_active'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_manual_teacher_notes_student_date_active ON student_manual_teacher_notes(student_id, note_date, is_active)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_manual_teacher_notes',
+      columns: const ['created_by_teacher_id', 'created_at'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_manual_teacher_notes_teacher_created ON student_manual_teacher_notes(created_by_teacher_id, created_at)',
+    );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_activities_student_id ON student_activities(student_id)',
     );
@@ -1939,6 +1999,13 @@ class DatabaseTables {
       columns: const ['student_id', 'recorded_at'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_student_behavior_student_recorded ON student_behavior(student_id, recorded_at)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'student_special_notes',
+      columns: const ['student_id', 'note_date', 'is_active'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_student_special_notes_student_date_active ON student_special_notes(student_id, note_date, is_active)',
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_student_risks_student_id ON student_risks(student_id)',

@@ -1,11 +1,13 @@
 import 'dart:io' as io;
 
 import 'package:edukita/core/database/base_repository.dart';
+import 'package:edukita/core/database/database_seed.dart';
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/core/helper/com_enum.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
 import 'package:edukita/core/storage/uploaded_file_repository.dart';
+import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
@@ -236,13 +238,25 @@ class StudentRepository extends BaseRepository<Student> {
 
     // 🏫 school
     if (filter.schoolNames.isNotEmpty) {
-      where.add('sc.name IN (${placeholders(filter.schoolNames.length)})');
+      where.add(
+        '''
+        CASE
+          WHEN COALESCE(sc.is_system_default, 0) = 1 THEN ''
+          ELSE COALESCE(sc.name, '')
+        END IN (${placeholders(filter.schoolNames.length)})
+        ''',
+      );
       args.addAll(filter.schoolNames);
     }
 
     if (filter.schoolNamesNot.isNotEmpty) {
       where.add(
-        "COALESCE(sc.name, '') NOT IN (${placeholders(filter.schoolNamesNot.length)})",
+        '''
+        CASE
+          WHEN COALESCE(sc.is_system_default, 0) = 1 THEN ''
+          ELSE COALESCE(sc.name, '')
+        END NOT IN (${placeholders(filter.schoolNamesNot.length)})
+        ''',
       );
       args.addAll(filter.schoolNamesNot);
     }
@@ -286,7 +300,10 @@ class StudentRepository extends BaseRepository<Student> {
       s.full_name,
       s.photo_path,
       c.name as class_name,
-      COALESCE(sc.name, '-') as school_name,
+      CASE
+        WHEN COALESCE(sc.is_system_default, 0) = 1 THEN '-'
+        ELSE COALESCE(sc.name, '-')
+      END as school_name,
       COALESCE(tl.name, '-') AS teaching_location_name,
       s.gender,
       s.status,
@@ -439,13 +456,25 @@ class StudentRepository extends BaseRepository<Student> {
     }
 
     if (filter.schoolNames.isNotEmpty) {
-      where.add('sc.name IN (${placeholders(filter.schoolNames.length)})');
+      where.add(
+        '''
+        CASE
+          WHEN COALESCE(sc.is_system_default, 0) = 1 THEN ''
+          ELSE COALESCE(sc.name, '')
+        END IN (${placeholders(filter.schoolNames.length)})
+        ''',
+      );
       args.addAll(filter.schoolNames);
     }
 
     if (filter.schoolNamesNot.isNotEmpty) {
       where.add(
-        "COALESCE(sc.name, '') NOT IN (${placeholders(filter.schoolNamesNot.length)})",
+        '''
+        CASE
+          WHEN COALESCE(sc.is_system_default, 0) = 1 THEN ''
+          ELSE COALESCE(sc.name, '')
+        END NOT IN (${placeholders(filter.schoolNamesNot.length)})
+        ''',
       );
       args.addAll(filter.schoolNamesNot);
     }
@@ -535,13 +564,37 @@ class StudentRepository extends BaseRepository<Student> {
 
   Future<List<SchoolClass>> loadAvailableClasses() async {
     final db = await _dbProvider.database;
-    final result = await db.query('classes', orderBy: 'level, section, name');
+    final result = await db.rawQuery('''
+      SELECT c.*
+      FROM classes c
+      LEFT JOIN schools sc ON sc.id = c.school_id
+      WHERE COALESCE(sc.is_system_default, 0) = 0
+      ORDER BY c.level, c.section, c.name
+    ''');
+    return result.map(SchoolClass.fromMap).toList();
+  }
+
+  Future<List<SchoolClass>> loadQuickRegisterClasses() async {
+    final db = await _dbProvider.database;
+    await DatabaseSeed.ensureQuickRegisterDefaultSchools(db);
+    final result = await db.rawQuery('''
+      SELECT c.*
+      FROM classes c
+      INNER JOIN schools sc ON sc.id = c.school_id
+      WHERE COALESCE(sc.is_system_default, 0) = 1
+        AND c.level BETWEEN 1 AND 12
+      ORDER BY c.level
+    ''');
     return result.map(SchoolClass.fromMap).toList();
   }
 
   Future<List<School>> loadAvailableSchools() async {
     final db = await _dbProvider.database;
-    final result = await db.query('schools', orderBy: 'name');
+    final result = await db.query(
+      'schools',
+      where: 'COALESCE(is_system_default, 0) = 0',
+      orderBy: 'name',
+    );
     return result.map(School.fromMap).toList();
   }
 
@@ -605,7 +658,7 @@ class StudentRepository extends BaseRepository<Student> {
 
   Future<void> insertQuickStudentWithSchool(
     Student student,
-    String schoolId,
+    String? schoolId,
   ) async {
     final db = await _dbProvider.database;
     final now = DateTime.now().toIso8601String();
@@ -615,12 +668,27 @@ class StudentRepository extends BaseRepository<Student> {
         'created_at': now,
         'updated_at': now,
       });
-      await txn.insert('student_schools', {
-        'id': const Uuid().v4(),
-        'student_id': student.id,
-        'school_id': schoolId,
-        'status': 1,
-      });
+      var normalizedSchoolId = schoolId?.trim();
+      if (normalizedSchoolId == null || normalizedSchoolId.isEmpty) {
+        final classRows = await txn.query(
+          'classes',
+          columns: const ['school_id'],
+          where: 'id = ?',
+          whereArgs: [student.classId],
+          limit: 1,
+        );
+        normalizedSchoolId = classRows.isEmpty
+            ? null
+            : classRows.first['school_id']?.toString().trim();
+      }
+      if (normalizedSchoolId != null && normalizedSchoolId.isNotEmpty) {
+        await txn.insert('student_schools', {
+          'id': const Uuid().v4(),
+          'student_id': student.id,
+          'school_id': normalizedSchoolId,
+          'status': 1,
+        });
+      }
     });
   }
 
@@ -1699,7 +1767,10 @@ class StudentRepository extends BaseRepository<Student> {
                 THEN LOWER(s.status)
               ELSE 'inactive'
             END AS status,
-            COALESCE(sc.name, '-') as school_name,
+            CASE
+              WHEN COALESCE(sc.is_system_default, 0) = 1 THEN '-'
+              ELSE COALESCE(sc.name, '-')
+            END as school_name,
             COALESCE(
               (strftime('%Y', 'now') - strftime('%Y', s.birth_date)) -
               (strftime('%m-%d', 'now') < strftime('%m-%d', s.birth_date)),
@@ -1906,6 +1977,160 @@ class StudentRepository extends BaseRepository<Student> {
         if (dateCompare != 0) return dateCompare;
         return b.createdAt.compareTo(a.createdAt);
       });
+  }
+
+  Future<void> registerStudentStoryReport({
+    required String studentId,
+    required String filePath,
+    String? fileName,
+    String? remarks,
+  }) async {
+    final db = await _dbProvider.database;
+    await UploadedFileRepository.register(
+      db,
+      entityType: 'student',
+      entityId: studentId,
+      documentType: StudentDocumentTypeOptions.studentStoryReport,
+      filePath: filePath,
+      originalFileName: fileName,
+      remarks: remarks ?? 'Generated Student Story & Development Report',
+      replaceExisting: false,
+    );
+  }
+
+  Future<void> archiveGeneratedReport({
+    required String studentId,
+    required String reportId,
+  }) async {
+    final db = await _dbProvider.database;
+    await db.update(
+      'uploaded_files',
+      {
+        'is_active': 0,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where:
+          'id = ? AND entity_type = ? AND entity_id = ? AND document_type = ?',
+      whereArgs: [
+        reportId,
+        'student',
+        studentId,
+        StudentDocumentTypeOptions.studentStoryReport,
+      ],
+    );
+  }
+
+  Future<List<StudentGeneratedReportFile>> loadGeneratedReports(
+    String studentId,
+  ) async {
+    final db = await _dbProvider.database;
+    final rows = await db.query(
+      'uploaded_files',
+      where:
+          'entity_type = ? AND entity_id = ? AND document_type = ? '
+          'AND is_active = 1',
+      whereArgs: [
+        'student',
+        studentId,
+        StudentDocumentTypeOptions.studentStoryReport,
+      ],
+      orderBy: 'uploaded_at DESC',
+    );
+    return rows.map(StudentGeneratedReportFile.fromMap).toList();
+  }
+
+  Future<List<StudentSpecialNote>> loadSpecialNotes(String studentId) async {
+    final db = await _dbProvider.database;
+    final rows = await db.query(
+      'student_special_notes',
+      where: 'student_id = ? AND is_active = 1',
+      whereArgs: [studentId],
+      orderBy: 'note_date DESC, created_at DESC',
+    );
+    return rows.map(StudentSpecialNote.fromMap).toList();
+  }
+
+  Future<StudentSpecialNote?> loadLatestSpecialNote(String studentId) async {
+    final db = await _dbProvider.database;
+    final rows = await db.query(
+      'student_special_notes',
+      where: 'student_id = ? AND is_active = 1',
+      whereArgs: [studentId],
+      orderBy: 'note_date DESC, created_at DESC',
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return StudentSpecialNote.fromMap(rows.first);
+  }
+
+  Future<void> addSpecialNote({
+    required String studentId,
+    required String noteDate,
+    required String noteType,
+    required String note,
+    required bool followUpNeeded,
+    String? followUpNote,
+  }) async {
+    final db = await _dbProvider.database;
+    final session = await AuthSessionCache.instance.read();
+    final now = DateTime.now().toIso8601String();
+    final model = StudentSpecialNote(
+      id: const Uuid().v4(),
+      studentId: studentId,
+      noteDate: noteDate,
+      noteType: noteType,
+      note: note,
+      followUpNeeded: followUpNeeded,
+      followUpNote: followUpNote,
+      createdBy: session?.username,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await db.insert('student_special_notes', model.toMap());
+  }
+
+  Future<void> archiveSpecialNote(String noteId) async {
+    final db = await _dbProvider.database;
+    await db.update(
+      'student_special_notes',
+      {
+        'is_active': 0,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [noteId],
+    );
+  }
+
+  Future<void> addManualTeacherNote({
+    required String studentId,
+    required String noteDate,
+    required String noteType,
+    required String comment,
+    required double rawScore,
+    bool followUpNeeded = false,
+    String? followUpNotes,
+  }) async {
+    final db = await _dbProvider.database;
+    final session = await AuthSessionCache.instance.read();
+    final now = DateTime.now().toIso8601String();
+    await db.insert('student_manual_teacher_notes', {
+      'id': const Uuid().v4(),
+      'student_id': studentId,
+      'note_date': noteDate,
+      'note_type': noteType,
+      'comment': comment,
+      'score_mode': 'star',
+      'raw_score': rawScore,
+      'normalized_score': rawScore * 20,
+      'follow_up_needed': followUpNeeded ? 1 : 0,
+      'follow_up_notes': followUpNotes,
+      'created_by_teacher_id': session?.teacherId,
+      'created_by_username': session?.username,
+      'created_at': now,
+      'updated_at': now,
+      'is_active': 1,
+    });
   }
 
   Future<List<StudentExamScoreGroup>> _loadLegacyStudentExamScores(
@@ -2555,20 +2780,44 @@ class StudentRepository extends BaseRepository<Student> {
     final rows = await db.rawQuery(
       '''
       SELECT
-        ssn.note_type,
-        ssn.comment,
-        ssn.raw_score,
-        COALESCE(ssn.created_at, act.activity_date) AS note_date,
-        COALESCE(created_teacher.full_name, activity_teacher.full_name) AS teacher_name
-      FROM student_session_notes ssn
-      LEFT JOIN teaching_activities act ON act.id = ssn.teaching_activity_id
-      LEFT JOIN teachers created_teacher ON created_teacher.id = ssn.created_by_teacher_id
-      LEFT JOIN teachers activity_teacher ON activity_teacher.id = act.teacher_id
-      WHERE ssn.student_id = ?
-      ORDER BY COALESCE(act.activity_date, ssn.created_at) DESC, ssn.created_at DESC
+        note_type,
+        comment,
+        raw_score,
+        note_date,
+        teacher_name,
+        note_source
+      FROM (
+        SELECT
+          ssn.note_type,
+          ssn.comment,
+          ssn.raw_score,
+          COALESCE(ssn.created_at, act.activity_date) AS note_date,
+          COALESCE(created_teacher.full_name, activity_teacher.full_name) AS teacher_name,
+          'session' AS note_source
+        FROM student_session_notes ssn
+        LEFT JOIN teaching_activities act ON act.id = ssn.teaching_activity_id
+        LEFT JOIN teachers created_teacher ON created_teacher.id = ssn.created_by_teacher_id
+        LEFT JOIN teachers activity_teacher ON activity_teacher.id = act.teacher_id
+        WHERE ssn.student_id = ?
+
+        UNION ALL
+
+        SELECT
+          manual.note_type,
+          manual.comment,
+          manual.raw_score,
+          COALESCE(manual.note_date, manual.created_at) AS note_date,
+          COALESCE(manual_teacher.full_name, manual.created_by_username) AS teacher_name,
+          'manual' AS note_source
+        FROM student_manual_teacher_notes manual
+        LEFT JOIN teachers manual_teacher ON manual_teacher.id = manual.created_by_teacher_id
+        WHERE manual.student_id = ?
+          AND COALESCE(manual.is_active, 1) = 1
+      )
+      ORDER BY note_date DESC
       LIMIT 8
       ''',
-      [studentId],
+      [studentId, studentId],
     );
 
     return rows.map((row) {
@@ -2576,6 +2825,7 @@ class StudentRepository extends BaseRepository<Student> {
         date: row['note_date']?.toString() ?? '-',
         type: row['note_type']?.toString() ?? '-',
         comment: row['comment']?.toString() ?? '-',
+        source: row['note_source']?.toString() ?? 'session',
         rawScore: (row['raw_score'] as num?)?.toDouble(),
         teacherName: row['teacher_name']?.toString(),
       );
@@ -2589,12 +2839,22 @@ class StudentRepository extends BaseRepository<Student> {
     final rows = await db.rawQuery(
       '''
       SELECT note_type, COUNT(*) AS count
-      FROM student_session_notes
-      WHERE student_id = ?
+      FROM (
+        SELECT note_type
+        FROM student_session_notes
+        WHERE student_id = ?
+
+        UNION ALL
+
+        SELECT note_type
+        FROM student_manual_teacher_notes
+        WHERE student_id = ?
+          AND COALESCE(is_active, 1) = 1
+      )
       GROUP BY note_type
       ORDER BY count DESC, note_type COLLATE NOCASE
       ''',
-      [studentId],
+      [studentId, studentId],
     );
 
     return rows.map((row) {

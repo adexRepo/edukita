@@ -9,7 +9,11 @@ class SchoolRepository {
 
   Future<List<School>> getAllSchools() async {
     final db = await _dbProvider.database;
-    final maps = await db.query('schools');
+    final maps = await db.query(
+      'schools',
+      where: 'COALESCE(is_system_default, 0) = 0',
+      orderBy: 'name COLLATE NOCASE',
+    );
     return maps.map((map) => School.fromMap(map)).toList();
   }
 
@@ -113,7 +117,7 @@ class SchoolRepository {
     final db = await _dbProvider.database;
     final maps = await db.query(
       'schools',
-      where: 'type = ?',
+      where: 'type = ? AND COALESCE(is_system_default, 0) = 0',
       whereArgs: [type],
     );
     return maps.map((map) => School.fromMap(map)).toList();

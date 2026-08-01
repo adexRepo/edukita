@@ -27,6 +27,7 @@ class _DashboardPageState extends State<DashboardPage> {
       builder: (context, state) {
         final cubit = context.read<DashboardCubit>();
         return Scaffold(
+          backgroundColor: AppColors.surfaceSoft,
           body: Padding(
             padding: AppPageHeaderStyle.pagePadding,
             child: Column(
@@ -73,7 +74,9 @@ class _DashboardPageState extends State<DashboardPage> {
                           child: IgnorePointer(
                             child: DecoratedBox(
                               decoration: BoxDecoration(
-                                color: AppColors.white.withValues(alpha: 0.46),
+                                color: AppColors.surfaceSoft.withValues(
+                                  alpha: 0.58,
+                                ),
                               ),
                               child: const Center(
                                 child: CircularProgressIndicator(),
@@ -193,7 +196,7 @@ class _LevelFilterButton extends StatelessWidget {
               backgroundColor: AppColors.white,
               surfaceTintColor: AppColors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
@@ -379,16 +382,24 @@ class _FilterBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(minHeight: 40),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: AppColors.primary),
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Icon(icon, size: 15, color: AppColors.primaryDark),
+          ),
           const SizedBox(width: 8),
           Text(
             '$label:',
@@ -418,7 +429,7 @@ class _DashboardErrorBanner extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.error.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.error.withValues(alpha: 0.28)),
       ),
       child: Row(
@@ -548,19 +559,19 @@ class _KpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 96,
-      padding: const EdgeInsets.all(14),
+      height: 92,
+      padding: const EdgeInsets.all(12),
       decoration: _panelDecoration(),
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: item.color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(item.icon, color: item.color, size: 20),
+            child: Icon(item.icon, color: item.color, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -573,7 +584,7 @@ class _KpiCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 11,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -583,7 +594,7 @@ class _KpiCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 22,
+                    fontSize: 21,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -942,19 +953,9 @@ class _StudentGenderCardState extends State<_StudentGenderCard> {
                                       .toList(),
                           ),
                         ),
-                        Container(
+                        SizedBox(
                           width: chartSize * 0.30,
                           height: chartSize * 0.30,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.black.withValues(alpha: 0.035),
-                                blurRadius: 14,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
@@ -1049,7 +1050,7 @@ class _MetricCardTitle extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: AppColors.textPrimary,
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -1061,7 +1062,7 @@ class _MetricCardTitle extends StatelessWidget {
           style: const TextStyle(
             color: AppColors.textSecondary,
             fontSize: 11,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -1744,9 +1745,9 @@ class _MetricRangeFilter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 34,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 9),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
@@ -2324,8 +2325,8 @@ class _TopLearnerItem extends StatelessWidget {
           decoration: BoxDecoration(
             color: rank == 1
                 ? AppColors.primary.withValues(alpha: 0.08)
-                : AppColors.surfaceSoft,
-            borderRadius: BorderRadius.circular(10),
+                : AppColors.white,
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: rank == 1
                   ? AppColors.primary.withValues(alpha: 0.26)
@@ -2428,15 +2429,8 @@ class _LearnerAvatar extends StatelessWidget {
       height: 34,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.white, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.14),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
       child: Center(
         child: Text(
@@ -2482,10 +2476,10 @@ class _DashboardPanel extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(9),
+                  color: AppColors.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, color: AppColors.primary, size: 17),
+                child: Icon(icon, color: AppColors.primaryDark, size: 16),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -2508,7 +2502,7 @@ class _DashboardPanel extends StatelessWidget {
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -2548,8 +2542,8 @@ class _ListTileShell extends StatelessWidget {
       margin: margin,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
-        borderRadius: BorderRadius.circular(10),
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
@@ -2558,11 +2552,10 @@ class _ListTileShell extends StatelessWidget {
             width: 30,
             height: 30,
             decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border),
+              color: AppColors.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(7),
             ),
-            child: Icon(leading, color: AppColors.primary, size: 16),
+            child: Icon(leading, color: AppColors.primaryDark, size: 15),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -2585,7 +2578,7 @@ class _ListTileShell extends StatelessWidget {
                   maxLines: 2,
                   style: const TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 11,
+                    fontSize: 10.5,
                     height: 1.3,
                   ),
                 ),
@@ -2625,8 +2618,8 @@ class _EmptyPanelMessage extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
-        borderRadius: BorderRadius.circular(10),
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
       child: Text(
@@ -2719,7 +2712,7 @@ String _localizedStatusLabel(BuildContext context, String status) {
 BoxDecoration _panelDecoration() {
   return BoxDecoration(
     color: AppColors.white,
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(8),
     border: Border.all(color: AppColors.border),
   );
 }

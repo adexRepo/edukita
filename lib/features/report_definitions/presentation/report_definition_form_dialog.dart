@@ -7,6 +7,7 @@ import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_error_dialog.dart';
 import 'package:edukita/widgets/app_toast.dart';
+import 'package:edukita/widgets/detail_tab_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -240,27 +241,13 @@ class _ReportDefinitionFormDialogState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              height: 42,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(color: AppColors.border)),
-              ),
-              child: TabBar(
-                labelColor: AppColors.primaryDark,
-                unselectedLabelColor: AppColors.textSecondary,
-                indicatorColor: AppColors.primary,
-                labelStyle: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-                unselectedLabelStyle: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: DetailTabBar(
+                height: 32,
                 tabs: [
-                  Tab(text: context.l10n.querySql),
-                  Tab(text: context.l10n.columnSettings),
+                  context.l10n.querySql,
+                  context.l10n.columnSettings,
                 ],
               ),
             ),

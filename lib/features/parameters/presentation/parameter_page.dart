@@ -96,61 +96,64 @@ class _ParameterPageState extends State<ParameterPage> {
       );
     }
 
-    return Padding(
-      padding: AppPageHeaderStyle.pagePadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppPageHeader(
-            title: context.l10n.menuParameter,
-            subtitle: context.l10n.parameterSubtitle,
-          ),
-          const SizedBox(height: AppPageHeaderStyle.bottomGap),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  width: 260,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      border: Border.all(color: AppColors.border),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: ListView(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      children: [
-                        for (final section in _sections)
-                          _ParameterSectionTile(
-                            section: section,
-                            selectedTitle: _selectedTitle,
-                            expanded: _expandedSectionTitle == section.title,
-                            onExpansionChanged: (expanded) {
-                              setState(() {
-                                _expandedSectionTitle =
-                                    expanded ? section.title : '';
-                              });
-                            },
-                            onSelected: (title) {
-                              setState(() {
-                                _selectedTitle = title;
-                                _expandedSectionTitle = section.title;
-                              });
-                            },
-                          ),
-                      ],
+    return ColoredBox(
+      color: AppColors.surfaceSoft,
+      child: Padding(
+        padding: AppPageHeaderStyle.pagePadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppPageHeader(
+              title: context.l10n.menuParameter,
+              subtitle: context.l10n.parameterSubtitle,
+            ),
+            const SizedBox(height: AppPageHeaderStyle.bottomGap),
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: 260,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        border: Border.all(color: AppColors.border),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ListView(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        children: [
+                          for (final section in _sections)
+                            _ParameterSectionTile(
+                              section: section,
+                              selectedTitle: _selectedTitle,
+                              expanded: _expandedSectionTitle == section.title,
+                              onExpansionChanged: (expanded) {
+                                setState(() {
+                                  _expandedSectionTitle =
+                                      expanded ? section.title : '';
+                                });
+                              },
+                              onSelected: (title) {
+                                setState(() {
+                                  _selectedTitle = title;
+                                  _expandedSectionTitle = section.title;
+                                });
+                              },
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildSelectedContent(context),
-                ),
-              ],
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildSelectedContent(context),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

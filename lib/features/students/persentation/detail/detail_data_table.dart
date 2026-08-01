@@ -21,11 +21,12 @@ class DetailDataTable extends StatelessWidget {
     }
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       child: DecoratedBox(
         decoration: BoxDecoration(
           border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
+          color: AppColors.white,
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -42,6 +43,7 @@ class DetailDataTable extends StatelessWidget {
                   defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                   border: const TableBorder(
                     horizontalInside: BorderSide(color: AppColors.divider),
+                    verticalInside: BorderSide(color: AppColors.divider),
                   ),
                   columnWidths: {
                     for (var index = 0; index < columns.length; index++)
@@ -49,7 +51,9 @@ class DetailDataTable extends StatelessWidget {
                   },
                   children: [
                     TableRow(
-                      decoration: const BoxDecoration(color: AppColors.surface),
+                      decoration: const BoxDecoration(
+                        color: AppColors.surfaceSoft,
+                      ),
                       children: columns.map(_headerCell).toList(),
                     ),
                     for (final row in rows)
@@ -72,14 +76,14 @@ class DetailDataTable extends StatelessWidget {
 
   Widget _headerCell(String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Text(
         value,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
           color: AppColors.textSecondary,
           fontSize: 11,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
@@ -87,7 +91,7 @@ class DetailDataTable extends StatelessWidget {
 
   Widget _bodyCell(String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Text(
         value,
         overflow: TextOverflow.ellipsis,

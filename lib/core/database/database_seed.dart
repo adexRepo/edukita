@@ -8,9 +8,97 @@ import 'package:uuid/uuid.dart';
 class DatabaseSeed {
   static Future<void> seed(Database db) async {
     await ensureAdmin(db);
+    await ensureQuickRegisterDefaultSchools(db);
     await _ensureStrategies(db);
     await ensureAssistancePrograms(db);
     await ensureReportDefinitions(db);
+  }
+
+  static Future<void> ensureQuickRegisterDefaultSchools(Database db) async {
+    final schoolTable = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'schools'",
+    );
+    final classTable = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'classes'",
+    );
+    if (schoolTable.isEmpty || classTable.isEmpty) return;
+
+    final schoolColumns = await db.rawQuery('PRAGMA table_info(schools)');
+    final schoolColumnNames = schoolColumns.map((row) => row['name']).toSet();
+    final hasSystemDefault = schoolColumnNames.contains('is_system_default');
+
+    final classColumns = await db.rawQuery('PRAGMA table_info(classes)');
+    final classColumnNames = classColumns.map((row) => row['name']).toSet();
+
+    const defaultSchools = [
+      (id: 'system-default-school-sd', type: 'SD', name: 'Default SD'),
+      (id: 'system-default-school-smp', type: 'SMP', name: 'Default SMP'),
+      (id: 'system-default-school-sma', type: 'SMA', name: 'Default SMA'),
+    ];
+
+    for (final school in defaultSchools) {
+      final values = <String, Object?>{
+        'id': school.id,
+        'type': school.type,
+        'name': school.name,
+        'address': 'System default school for quick register',
+        if (hasSystemDefault) 'is_system_default': 1,
+      };
+      values.removeWhere((key, value) => !schoolColumnNames.contains(key));
+      await db.insert(
+        'schools',
+        values,
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+      if (hasSystemDefault) {
+        await db.update(
+          'schools',
+          {'is_system_default': 1},
+          where: 'id = ?',
+          whereArgs: [school.id],
+        );
+      }
+    }
+
+    String defaultSchoolIdForLevel(int level) {
+      if (level >= 1 && level <= 6) return 'system-default-school-sd';
+      if (level >= 7 && level <= 9) return 'system-default-school-smp';
+      return 'system-default-school-sma';
+    }
+
+    for (var level = 1; level <= 12; level += 1) {
+      final schoolId = defaultSchoolIdForLevel(level);
+      final values = <String, Object?>{
+        'id': 'system-default-class-$level',
+        'name': '$level',
+        'school_id': schoolId,
+        'level': level,
+        'section': null,
+        'year': 'DEFAULT',
+        if (classColumnNames.contains('class_name'))
+          'class_name': '$schoolId-$level',
+      };
+      values.removeWhere((key, value) => !classColumnNames.contains(key));
+      await db.insert(
+        'classes',
+        values,
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+      await db.update(
+        'classes',
+        {
+          if (classColumnNames.contains('name')) 'name': '$level',
+          if (classColumnNames.contains('school_id')) 'school_id': schoolId,
+          if (classColumnNames.contains('level')) 'level': level,
+          if (classColumnNames.contains('section')) 'section': null,
+          if (classColumnNames.contains('year')) 'year': 'DEFAULT',
+          if (classColumnNames.contains('class_name'))
+            'class_name': '$schoolId-$level',
+        },
+        where: 'id = ?',
+        whereArgs: ['system-default-class-$level'],
+      );
+    }
   }
 
   static Future<void> ensureAdmin(Database db) async {

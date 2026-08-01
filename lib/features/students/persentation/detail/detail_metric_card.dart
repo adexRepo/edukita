@@ -16,11 +16,11 @@ class DetailMetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 78),
+      constraints: const BoxConstraints(minHeight: 76),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
@@ -29,10 +29,10 @@ class DetailMetricCard extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.primaryLight.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: AppColors.primary, size: 19),
+            child: Icon(icon, color: AppColors.primaryDark, size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -45,8 +45,8 @@ class DetailMetricCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -56,7 +56,7 @@ class DetailMetricCard extends StatelessWidget {
                   maxLines: 2,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 13,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

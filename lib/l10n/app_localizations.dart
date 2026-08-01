@@ -3021,13 +3021,13 @@ abstract class AppLocalizations {
   /// No description provided for @height.
   ///
   /// In en, this message translates to:
-  /// **'Height'**
+  /// **'Height (cm)'**
   String get height;
 
   /// No description provided for @weight.
   ///
   /// In en, this message translates to:
-  /// **'Weight'**
+  /// **'Weight (kg)'**
   String get weight;
 
   /// No description provided for @uniform.
@@ -8427,7 +8427,7 @@ abstract class AppLocalizations {
   /// No description provided for @dailySchoolTransportCost.
   ///
   /// In en, this message translates to:
-  /// **'Daily School Transport Cost'**
+  /// **'Daily School Transport Cost (Rp/day)'**
   String get dailySchoolTransportCost;
 
   /// No description provided for @housingStatus.
@@ -8565,13 +8565,13 @@ abstract class AppLocalizations {
   /// No description provided for @guardianIncomeFor.
   ///
   /// In en, this message translates to:
-  /// **'{relation} Income'**
+  /// **'{relation} Income (Rp/month)'**
   String guardianIncomeFor(Object relation);
 
   /// No description provided for @income.
   ///
   /// In en, this message translates to:
-  /// **'Income'**
+  /// **'Income (Rp/month)'**
   String get income;
 
   /// No description provided for @agePositionOlder.
@@ -8607,25 +8607,25 @@ abstract class AppLocalizations {
   /// No description provided for @householdMemberCount.
   ///
   /// In en, this message translates to:
-  /// **'Household Member Count'**
+  /// **'Household Member Count (people)'**
   String get householdMemberCount;
 
   /// No description provided for @fatherIncome.
   ///
   /// In en, this message translates to:
-  /// **'Father Income'**
+  /// **'Father Income (Rp/month)'**
   String get fatherIncome;
 
   /// No description provided for @motherIncome.
   ///
   /// In en, this message translates to:
-  /// **'Mother Income'**
+  /// **'Mother Income (Rp/month)'**
   String get motherIncome;
 
   /// No description provided for @educationArrears.
   ///
   /// In en, this message translates to:
-  /// **'Education Arrears'**
+  /// **'Education Arrears (Rp)'**
   String get educationArrears;
 
   /// No description provided for @academicAchievement.
@@ -9287,6 +9287,312 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Teachers'**
   String get teachers;
+
+  /// No description provided for @specialNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Special Notes'**
+  String get specialNotes;
+
+  /// No description provided for @specialNotesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Interview, survey, home visit, or management observation history.'**
+  String get specialNotesDescription;
+
+  /// No description provided for @addSpecialNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Note'**
+  String get addSpecialNote;
+
+  /// No description provided for @loadingSpecialNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading special notes...'**
+  String get loadingSpecialNotes;
+
+  /// No description provided for @failedLoadSpecialNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load special notes.'**
+  String get failedLoadSpecialNotes;
+
+  /// No description provided for @noSpecialNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'No special management notes have been recorded.'**
+  String get noSpecialNotes;
+
+  /// No description provided for @addedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Added By'**
+  String get addedBy;
+
+  /// No description provided for @archiveNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive note'**
+  String get archiveNote;
+
+  /// No description provided for @archiveSpecialNoteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive special note?'**
+  String get archiveSpecialNoteTitle;
+
+  /// No description provided for @archiveSpecialNoteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This note will be hidden from active history and not used in Student Story.'**
+  String get archiveSpecialNoteMessage;
+
+  /// No description provided for @specialNoteArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'Special note archived.'**
+  String get specialNoteArchived;
+
+  /// No description provided for @failedArchiveSpecialNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to archive special note.'**
+  String get failedArchiveSpecialNote;
+
+  /// No description provided for @addSpecialNoteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Special Note'**
+  String get addSpecialNoteTitle;
+
+  /// No description provided for @noteDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Note Date'**
+  String get noteDate;
+
+  /// No description provided for @noteType.
+  ///
+  /// In en, this message translates to:
+  /// **'Note Type'**
+  String get noteType;
+
+  /// No description provided for @specialNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Special Note'**
+  String get specialNote;
+
+  /// No description provided for @needsFollowUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs follow up'**
+  String get needsFollowUp;
+
+  /// No description provided for @followUpNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow Up Note'**
+  String get followUpNote;
+
+  /// No description provided for @saveNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Note'**
+  String get saveNote;
+
+  /// No description provided for @specialNoteRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Special note is required.'**
+  String get specialNoteRequired;
+
+  /// No description provided for @followUpNoteRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow up note is required when follow up is marked.'**
+  String get followUpNoteRequired;
+
+  /// No description provided for @specialNoteSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Special note saved.'**
+  String get specialNoteSaved;
+
+  /// No description provided for @failedSaveSpecialNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save special note.'**
+  String get failedSaveSpecialNote;
+
+  /// No description provided for @noFollowUpMarked.
+  ///
+  /// In en, this message translates to:
+  /// **'No follow up marked'**
+  String get noFollowUpMarked;
+
+  /// No description provided for @specialNoteTypeInterview.
+  ///
+  /// In en, this message translates to:
+  /// **'Interview'**
+  String get specialNoteTypeInterview;
+
+  /// No description provided for @specialNoteTypeParentSurvey.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent Survey'**
+  String get specialNoteTypeParentSurvey;
+
+  /// No description provided for @specialNoteTypeStudentSurvey.
+  ///
+  /// In en, this message translates to:
+  /// **'Student Survey'**
+  String get specialNoteTypeStudentSurvey;
+
+  /// No description provided for @specialNoteTypeHomeVisit.
+  ///
+  /// In en, this message translates to:
+  /// **'Home Visit'**
+  String get specialNoteTypeHomeVisit;
+
+  /// No description provided for @specialNoteTypeManagementObservation.
+  ///
+  /// In en, this message translates to:
+  /// **'Management Observation'**
+  String get specialNoteTypeManagementObservation;
+
+  /// No description provided for @specialNoteTypeOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get specialNoteTypeOther;
+
+  /// No description provided for @studentStoryReportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Student Story & Development Report'**
+  String get studentStoryReportTitle;
+
+  /// No description provided for @studentStoryExecutiveSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Executive Summary'**
+  String get studentStoryExecutiveSummary;
+
+  /// No description provided for @downloadPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Download PDF'**
+  String get downloadPdf;
+
+  /// No description provided for @studentStoryLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Student Story failed to load'**
+  String get studentStoryLoadFailed;
+
+  /// No description provided for @generatingStudentStory.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating latest student story'**
+  String get generatingStudentStory;
+
+  /// No description provided for @generatingStudentStoryDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the latest profile, family, scores, attendance, teacher notes, and assistance data.'**
+  String get generatingStudentStoryDescription;
+
+  /// No description provided for @dataCompleteness.
+  ///
+  /// In en, this message translates to:
+  /// **'Data Completeness'**
+  String get dataCompleteness;
+
+  /// No description provided for @documentNo.
+  ///
+  /// In en, this message translates to:
+  /// **'Document No'**
+  String get documentNo;
+
+  /// No description provided for @generatedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated By'**
+  String get generatedBy;
+
+  /// No description provided for @parentGuardian.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent / Guardian'**
+  String get parentGuardian;
+
+  /// No description provided for @nameSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Name / Signature'**
+  String get nameSignature;
+
+  /// No description provided for @generated.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated'**
+  String get generated;
+
+  /// No description provided for @studentStoryPdfDisclaimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Note: This report summarizes observation and administrative data recorded in Edukita. It does not add diagnoses or facts outside the application data.'**
+  String get studentStoryPdfDisclaimer;
+
+  /// No description provided for @studentStoryDefaultDraftNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft from quick registration'**
+  String get studentStoryDefaultDraftNote;
+
+  /// No description provided for @studentStoryDefaultGeneratedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated from latest student data'**
+  String get studentStoryDefaultGeneratedNote;
+
+  /// No description provided for @reportVersionNoteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Report version note'**
+  String get reportVersionNoteTitle;
+
+  /// No description provided for @versionNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Version note'**
+  String get versionNote;
+
+  /// No description provided for @versionNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Example: Monthly review, draft for parent meeting'**
+  String get versionNoteHint;
+
+  /// No description provided for @reportDataIncompleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Report data is incomplete'**
+  String get reportDataIncompleteTitle;
+
+  /// No description provided for @reportDataIncompleteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF can still be created, but it is better to use it as a draft until the student data is complete.'**
+  String get reportDataIncompleteMessage;
+
+  /// No description provided for @downloadDraftPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Draft PDF'**
+  String get downloadDraftPdf;
 
   /// No description provided for @confirmActionForSubject.
   ///

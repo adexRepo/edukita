@@ -21,7 +21,6 @@ import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
-import 'package:edukita/widgets/clay_card.dart';
 import 'package:edukita/widgets/multi_filter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -954,6 +953,8 @@ class _StudentsPageState extends State<StudentsPage> {
   StudentFilter _filter = const StudentFilter();
   List<TeachingLocation> _teachingLocations = const [];
   bool isAscending = true;
+  int? _observedCacheRevision;
+  bool _externalRefreshScheduled = false;
   AppAuthorizationScope _authScope = AppAuthorizationScope(
     role: AppUserRole.admin,
     permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
@@ -999,9 +1000,34 @@ class _StudentsPageState extends State<StudentsPage> {
     if (!scope.canView(AppMenuAccessRegistry.students.code)) return;
     final cubit = context.read<StudentPageCubit>();
     await cubit.init();
+    _observedCacheRevision = cubit.cacheRevision;
     final teachingLocations = await cubit.loadAvailableTeachingLocations();
     if (!mounted) return;
     setState(() => _teachingLocations = teachingLocations);
+  }
+
+  void _refreshIfStudentCacheChanged() {
+    if (!_authorizationLoaded || !_canViewStudents || _externalRefreshScheduled) {
+      return;
+    }
+    final cubit = context.read<StudentPageCubit>();
+    final revision = cubit.cacheRevision;
+    if (_observedCacheRevision == null) {
+      _observedCacheRevision = revision;
+      return;
+    }
+    if (_observedCacheRevision == revision) return;
+
+    _externalRefreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await cubit.refreshAfterExternalChange();
+      if (!mounted) return;
+      setState(() {
+        _observedCacheRevision = cubit.cacheRevision;
+        _externalRefreshScheduled = false;
+      });
+    });
   }
 
   void _inquiry() {
@@ -1075,17 +1101,11 @@ class _StudentsPageState extends State<StudentsPage> {
   Future<void> _showQuickStudentDialog() async {
     await AppActionGuard.run('student_quick_form_load_new', () async {
       final cubit = context.read<StudentPageCubit>();
-      final schools = await cubit.loadAvailableSchools();
-      final classes = await cubit.loadAvailableClasses();
+      final classes = await cubit.loadQuickRegisterClasses();
       final teachingLocations = await cubit.loadAvailableTeachingLocations();
       final studentNo = await cubit.generateStudentNumber();
 
       if (!mounted) return;
-
-      if (schools.isEmpty) {
-        AppToast.showFailed(context.l10n.createSchoolBeforeAddingStudents);
-        return;
-      }
 
       if (classes.isEmpty) {
         AppToast.showFailed(context.l10n.createClassBeforeAddingStudents);
@@ -1101,7 +1121,6 @@ class _StudentsPageState extends State<StudentsPage> {
         context: context,
         guardKey: 'student_quick_form_new',
         builder: (dialogContext) => QuickStudentFormDialog(
-          availableSchools: schools,
           availableClasses: classes,
           availableTeachingLocations: teachingLocations,
           generatedStudentNo: studentNo,
@@ -1206,6 +1225,7 @@ class _StudentsPageState extends State<StudentsPage> {
   // ================= BUILD =================
   @override
   Widget build(BuildContext context) {
+    _refreshIfStudentCacheChanged();
     if (!_authorizationLoaded) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -1225,6 +1245,7 @@ class _StudentsPageState extends State<StudentsPage> {
     }
 
     return Scaffold(
+      backgroundColor: AppColors.surfaceSoft,
       body: BlocBuilder<StudentPageCubit, FeatureState<StudentPageData>>(
         builder: (context, state) {
           return Column(
@@ -1265,23 +1286,53 @@ class _StudentsPageState extends State<StudentsPage> {
   }
 
   Widget _buildCard(String title, String value) {
-    return ClayCard(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return Container(
+      constraints: const BoxConstraints(minHeight: 76),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
         children: [
-          Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.people_alt_outlined,
+              color: AppColors.primaryDark,
+              size: 18,
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontSize: AppTypography.sectionTitle,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primary, // highlight number
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontSize: AppTypography.sectionTitle,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1323,159 +1374,176 @@ class _StudentsPageState extends State<StudentsPage> {
 
   // ================= SEARCH =================
   Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        if (_canCreateStudents)
-          ElevatedButton.icon(
-            onPressed: _showAddStudentDialog,
-            icon: const Icon(Icons.add),
-            label: Text(context.l10n.addStudent),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          if (_canCreateStudents)
+            FilledButton.icon(
+              onPressed: _showAddStudentDialog,
+              icon: const Icon(Icons.add),
+              label: Text(context.l10n.addStudent),
+            )
+          else
+            const SizedBox.shrink(),
+          const Spacer(),
+          StudentFilterButton(
+            title: context.l10n.filterStudents,
+            fields: _studentFilterFields(),
+            onApply: (filters) {
+              setState(() {
+                _filter = buildStudentFilter(filters);
+              });
+            },
           ),
-
-        const SizedBox(width: 8),
-        Row(
-          children: [
-            StudentFilterButton(
-              title: context.l10n.filterStudents,
-              fields: _studentFilterFields(),
-              onApply: (filters) {
-                setState(() {
-                  _filter = buildStudentFilter(filters);
-                });
-              },
-            ),
-            const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: _inquiry,
-              icon: Icon(Icons.search, color: AppColors.card),
-            ),
-          ],
-        ),
-      ],
+          const SizedBox(width: 8),
+          IconButton.filled(
+            tooltip: context.l10n.searchStudent,
+            onPressed: _inquiry,
+            icon: const Icon(Icons.search, color: AppColors.white),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildTableSection(FeatureState<StudentPageData> state) {
-    return AppTable<StudentTable>(
-      data: state.data?.students ?? [],
-      pageable: state.data?.pageable,
-      onRowTap: (item) {
-        context.push('/students/${item.id}');
-      },
-      onPageChanged: (page) => context.read<StudentPageCubit>().goToPage(page),
-      columns: [
-        AppTableColumn(
-          title: context.l10n.studentProfile,
-          flex: 5,
-          sortValue: (data) => data.fullName.isEmpty
-              ? 0
-              : data.fullName.toLowerCase().codeUnitAt(0),
-          cell: (s) => StudentProfileCell(student: s),
-        ),
-        AppTableColumn(
-          title: context.l10n.classSchool,
-          flex: 3,
-          sortValue: (data) => data.className.isEmpty
-              ? 0
-              : data.className.toLowerCase().codeUnitAt(0),
-          cell: (s) => Text(
-            '${s.className}\n${s.schoolName}',
-            style: const TextStyle(fontSize: 12, height: 1.2),
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: AppTable<StudentTable>(
+        data: state.data?.students ?? [],
+        pageable: state.data?.pageable,
+        onRowTap: (item) {
+          context.push('/students/${item.id}');
+        },
+        onPageChanged: (page) =>
+            context.read<StudentPageCubit>().goToPage(page),
+        columns: [
+          AppTableColumn(
+            title: context.l10n.studentProfile,
+            flex: 5,
+            sortValue: (data) => data.fullName.isEmpty
+                ? 0
+                : data.fullName.toLowerCase().codeUnitAt(0),
+            cell: (s) => StudentProfileCell(student: s),
           ),
-        ),
-        AppTableColumn(
-          title: context.l10n.ageGender,
-          flex: 2,
-          sortValue: (data) => data.age,
-          cell: (s) => Text(
-            '${s.age} ${context.l10n.years}\n${translateGender(context, s.gender.name)}',
-            style: const TextStyle(fontSize: 12, height: 1.2),
-          ),
-        ),
-        AppTableColumn(
-          title: '${context.l10n.duafaStatus}\n${context.l10n.studentLocation}',
-          flex: 3,
-          sortValue: (data) => switch (data.duafaStatus) {
-            'Yatim Piatu' => 0,
-            'Yatim' => 1,
-            'Piatu' => 2,
-            _ => 3,
-          },
-          cell: (s) => Text(
-            '${s.duafaStatus}\n${s.teachingLocationName}',
-            style: const TextStyle(fontSize: 12, height: 1.2),
-          ),
-        ),
-        AppTableColumn(
-          title: context.l10n.profileStatus,
-          flex: 2,
-          sortValue: (data) => data.profileStatus == 'complete' ? 0 : 1,
-          cell: (s) => _profileStatusPill(s.profileStatus),
-        ),
-        AppTableColumn(
-          title: context.l10n.scoreStatus,
-          flex: 2,
-          sortValue: (data) => data.averageScore?.round() ?? -1,
-          cell: (s) => Text(
-            '${s.averageScore?.toStringAsFixed(0) ?? '-'}/100\n${translateStudentStatus(context, s.status.name)}',
-            style: const TextStyle(fontSize: 12, height: 1.2),
-          ),
-        ),
-        AppTableColumn(
-          title: context.l10n.joinDate,
-          flex: 2,
-          sortValue: (data) =>
-              DateTime.tryParse(data.joinAt)?.millisecondsSinceEpoch ?? 0,
-          cell: (s) => Text(s.joinAt, style: const TextStyle(fontSize: 12)),
-        ),
-        AppTableColumn(
-          title: context.l10n.actions,
-          flex: 2,
-          cell: (s) => Align(
-            alignment: Alignment.centerLeft,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: context.l10n.editStudentTooltip,
-                  onPressed: _canUpdateStudents
-                      ? () => _showEditStudentDialog(s)
-                      : null,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 28,
-                    height: 28,
-                  ),
-                  padding: EdgeInsets.zero,
-                  icon: const Icon(Icons.edit, size: 16),
-                ),
-                IconButton(
-                  tooltip: s.status == StudentStatus.inactive
-                      ? context.l10n.activate
-                      : context.l10n.deactivate,
-                  onPressed: _canDeleteStudents
-                      ? () => _confirmToggleStudentStatus(s)
-                      : null,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 28,
-                    height: 28,
-                  ),
-                  padding: EdgeInsets.zero,
-                  icon: Icon(
-                    s.status == StudentStatus.inactive
-                        ? Icons.person_add_alt_outlined
-                        : Icons.person_off_outlined,
-                    size: 16,
-                    color: s.status == StudentStatus.inactive
-                        ? AppColors.primary
-                        : AppColors.error,
-                  ),
-                ),
-              ],
+          AppTableColumn(
+            title: context.l10n.classSchool,
+            flex: 3,
+            sortValue: (data) => data.className.isEmpty
+                ? 0
+                : data.className.toLowerCase().codeUnitAt(0),
+            cell: (s) => Text(
+              '${s.className}\n${s.schoolName}',
+              style: const TextStyle(fontSize: 12, height: 1.2),
             ),
           ),
-        ),
-      ],
+          AppTableColumn(
+            title: context.l10n.ageGender,
+            flex: 2,
+            sortValue: (data) => data.age,
+            cell: (s) => Text(
+              '${s.age} ${context.l10n.years}\n${translateGender(context, s.gender.name)}',
+              style: const TextStyle(fontSize: 12, height: 1.2),
+            ),
+          ),
+          AppTableColumn(
+            title:
+                '${context.l10n.duafaStatus}\n${context.l10n.studentLocation}',
+            flex: 3,
+            sortValue: (data) => switch (data.duafaStatus) {
+              'Yatim Piatu' => 0,
+              'Yatim' => 1,
+              'Piatu' => 2,
+              _ => 3,
+            },
+            cell: (s) => Text(
+              '${s.duafaStatus}\n${s.teachingLocationName}',
+              style: const TextStyle(fontSize: 12, height: 1.2),
+            ),
+          ),
+          AppTableColumn(
+            title: context.l10n.profileStatus,
+            flex: 2,
+            sortValue: (data) => data.profileStatus == 'complete' ? 0 : 1,
+            cell: (s) => _profileStatusPill(s.profileStatus),
+          ),
+          AppTableColumn(
+            title: context.l10n.scoreStatus,
+            flex: 2,
+            sortValue: (data) => data.averageScore?.round() ?? -1,
+            cell: (s) => Text(
+              '${s.averageScore?.toStringAsFixed(0) ?? '-'}/100\n${translateStudentStatus(context, s.status.name)}',
+              style: const TextStyle(fontSize: 12, height: 1.2),
+            ),
+          ),
+          AppTableColumn(
+            title: context.l10n.joinDate,
+            flex: 2,
+            sortValue: (data) =>
+                DateTime.tryParse(data.joinAt)?.millisecondsSinceEpoch ?? 0,
+            cell: (s) => Text(s.joinAt, style: const TextStyle(fontSize: 12)),
+          ),
+          AppTableColumn(
+            title: context.l10n.actions,
+            flex: 2,
+            cell: (s) => Align(
+              alignment: Alignment.centerLeft,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: context.l10n.editStudentTooltip,
+                    onPressed: _canUpdateStudents
+                        ? () => _showEditStudentDialog(s)
+                        : null,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 28,
+                      height: 28,
+                    ),
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(Icons.edit, size: 16),
+                  ),
+                  IconButton(
+                    tooltip: s.status == StudentStatus.inactive
+                        ? context.l10n.activate
+                        : context.l10n.deactivate,
+                    onPressed: _canDeleteStudents
+                        ? () => _confirmToggleStudentStatus(s)
+                        : null,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 28,
+                      height: 28,
+                    ),
+                    padding: EdgeInsets.zero,
+                    icon: Icon(
+                      s.status == StudentStatus.inactive
+                          ? Icons.person_add_alt_outlined
+                          : Icons.person_off_outlined,
+                      size: 16,
+                      color: s.status == StudentStatus.inactive
+                          ? AppColors.primary
+                          : AppColors.error,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

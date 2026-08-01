@@ -2,28 +2,26 @@ import 'package:edukita/core/helper/com_enum.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/localization/localized_display.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
-import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/teaching_locations/data/teaching_location_model.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class QuickStudentFormDialog extends StatefulWidget {
   const QuickStudentFormDialog({
     super.key,
-    required this.availableSchools,
     required this.availableClasses,
     required this.availableTeachingLocations,
     required this.generatedStudentNo,
     required this.onSubmit,
   });
 
-  final List<School> availableSchools;
   final List<SchoolClass> availableClasses;
   final List<TeachingLocation> availableTeachingLocations;
   final String generatedStudentNo;
-  final Future<void> Function(Student student, String schoolId) onSubmit;
+  final Future<void> Function(Student student, String? schoolId) onSubmit;
 
   @override
   State<QuickStudentFormDialog> createState() => _QuickStudentFormDialogState();
@@ -35,18 +33,9 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
   final _fullNameController = TextEditingController();
 
   Gender? _selectedGender = Gender.male;
-  String? _selectedSchoolId;
   String? _selectedClassId;
   String? _selectedTeachingLocationId;
   bool _saving = false;
-
-  List<SchoolClass> get _classesForSelectedSchool {
-    final schoolId = _selectedSchoolId;
-    if (schoolId == null) return const [];
-    return widget.availableClasses
-        .where((schoolClass) => schoolClass.schoolId == schoolId)
-        .toList();
-  }
 
   @override
   void initState() {
@@ -84,7 +73,7 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
         profileStatus: 'quick_registered',
       );
 
-      await widget.onSubmit(student, _selectedSchoolId!);
+      await widget.onSubmit(student, null);
       if (!mounted) return;
       Navigator.of(context).pop();
     } finally {
@@ -95,11 +84,12 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: AppColors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 720),
         child: Padding(
-          padding: const EdgeInsets.all(22),
+          padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
             child: Column(
@@ -115,7 +105,10 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
                           Text(
                             context.l10n.quickRegisterStudent,
                             style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w800),
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -128,26 +121,24 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
                         ],
                       ),
                     ),
-                    IconButton(
-                      tooltip: context.l10n.buttonClose,
+                    ShadButton.ghost(
                       onPressed: _saving ? null : () => Navigator.pop(context),
-                      icon: const Icon(Icons.close),
+                      child: const Icon(Icons.close, size: 18),
                     ),
                   ],
                 ),
                 const SizedBox(height: 18),
                 _fieldGrid([
-                  TextFormField(
+                  _shadInputField(
+                    label: context.l10n.studentNo,
                     controller: _studentNoController,
                     readOnly: true,
-                    decoration: InputDecoration(labelText: context.l10n.studentNo),
                   ),
-                  TextFormField(
+                  _shadInputField(
+                    label: context.l10n.fullName,
+                    isRequired: true,
                     controller: _fullNameController,
                     autofocus: true,
-                    decoration: InputDecoration(
-                      labelText: '${context.l10n.fullName} *',
-                    ),
                     inputFormatters: [LengthLimitingTextInputFormatter(80)],
                     validator: (value) {
                       final text = value?.trim() ?? '';
@@ -160,17 +151,13 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
                       return null;
                     },
                   ),
-                  DropdownButtonFormField<Gender>(
-                    initialValue: _selectedGender,
-                    decoration: InputDecoration(labelText: '${context.l10n.gender} *'),
-                    items: Gender.values
-                        .map(
-                          (gender) => DropdownMenuItem(
-                            value: gender,
-                            child: Text(translateGender(context, gender.name)),
-                          ),
-                        )
-                        .toList(),
+                  _shadSelectField<Gender>(
+                    label: context.l10n.gender,
+                    isRequired: true,
+                    value: _selectedGender,
+                    values: Gender.values,
+                    optionLabel: (gender) =>
+                        translateGender(context, gender.name),
                     onChanged: _saving
                         ? null
                         : (value) => setState(() => _selectedGender = value),
@@ -178,69 +165,35 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
                         ? context.l10n.fieldRequiredMessage(context.l10n.gender)
                         : null,
                   ),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedSchoolId,
-                    decoration: InputDecoration(labelText: '${context.l10n.school} *'),
-                    items: widget.availableSchools
-                        .map(
-                          (school) => DropdownMenuItem(
-                            value: school.id,
-                            child: Text(
-                              '${school.name ?? '-'} (${school.type?.label ?? '-'})',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: _saving
-                        ? null
-                        : (value) => setState(() {
-                            _selectedSchoolId = value;
-                            _selectedClassId = null;
-                          }),
-                    validator: (value) => value == null || value.isEmpty
-                        ? context.l10n.selectSchoolRequired
-                        : null,
-                  ),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedClassId,
-                    decoration: InputDecoration(
-                      labelText: '${context.l10n.className} *',
+                  _shadSelectField<String>(
+                    label: context.l10n.className,
+                    isRequired: true,
+                    value: _selectedClassId,
+                    values: widget.availableClasses.map(
+                      (schoolClass) => schoolClass.id,
                     ),
-                    items: _classesForSelectedSchool
-                        .map(
-                          (schoolClass) => DropdownMenuItem(
-                            value: schoolClass.id,
-                            child: Text(
-                              '${schoolClass.className} (${schoolClass.year})',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: _saving || _selectedSchoolId == null
+                    optionLabel: (id) => widget.availableClasses
+                        .firstWhere((schoolClass) => schoolClass.id == id)
+                        .className,
+                    onChanged: _saving
                         ? null
                         : (value) => setState(() => _selectedClassId = value),
                     validator: (value) => value == null || value.isEmpty
                         ? context.l10n.selectClassRequired
                         : null,
                   ),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedTeachingLocationId,
-                    decoration: InputDecoration(
-                      labelText: '${context.l10n.studentLocation} *',
+                  _shadSelectField<String>(
+                    label: context.l10n.studentLocation,
+                    isRequired: true,
+                    value: _selectedTeachingLocationId,
+                    values: widget.availableTeachingLocations.map(
+                      (location) => location.id,
                     ),
-                    items: widget.availableTeachingLocations
-                        .map(
-                          (location) => DropdownMenuItem(
-                            value: location.id,
-                            child: Text(
-                              '${location.code} - ${location.name}',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        )
-                        .toList(),
+                    optionLabel: (id) {
+                      final location = widget.availableTeachingLocations
+                          .firstWhere((location) => location.id == id);
+                      return '${location.code} - ${location.name}';
+                    },
                     onChanged: _saving
                         ? null
                         : (value) =>
@@ -254,21 +207,33 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton(
+                    ShadButton.outline(
                       onPressed: _saving ? null : () => Navigator.pop(context),
                       child: Text(context.l10n.buttonCancel),
                     ),
                     const SizedBox(width: 10),
-                    FilledButton.icon(
+                    ShadButton(
                       onPressed: _saving ? null : _submit,
-                      icon: _saving
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.save_outlined),
-                      label: Text(context.l10n.buttonSave),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_saving) ...[
+                            const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ] else ...[
+                            const Icon(Icons.save_outlined, size: 16),
+                            const SizedBox(width: 8),
+                          ],
+                          Text(context.l10n.buttonSave),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -297,6 +262,91 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
               .toList(),
         );
       },
+    );
+  }
+
+  Widget _shadFieldLabel(String label, {bool isRequired = false}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        if (isRequired) ...[
+          const SizedBox(width: 4),
+          const Text(
+            '*',
+            style: TextStyle(
+              color: AppColors.errorDark,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _shadInputField({
+    required String label,
+    required TextEditingController controller,
+    bool isRequired = false,
+    bool autofocus = false,
+    bool readOnly = false,
+    List<TextInputFormatter>? inputFormatters,
+    FormFieldValidator<String>? validator,
+  }) {
+    return ShadInputFormField(
+      controller: controller,
+      label: _shadFieldLabel(label, isRequired: isRequired),
+      autofocus: autofocus,
+      readOnly: readOnly,
+      inputFormatters: inputFormatters,
+      validator: validator,
+    );
+  }
+
+  Widget _shadSelectField<T>({
+    required String label,
+    required T? value,
+    required Iterable<T> values,
+    required String Function(T value) optionLabel,
+    required ValueChanged<T?>? onChanged,
+    bool isRequired = false,
+    FormFieldValidator<T>? validator,
+  }) {
+    final optionValues = values.toList();
+    final selectedValue = optionValues.contains(value) ? value : null;
+    return ShadSelectFormField<T>(
+      key: ValueKey('${label}_${selectedValue}_${optionValues.length}'),
+      label: _shadFieldLabel(label, isRequired: isRequired),
+      initialValue: selectedValue,
+      placeholder: Text(
+        AppFormFieldStyle.select(label),
+        overflow: TextOverflow.ellipsis,
+      ),
+      selectedOptionBuilder: (context, selected) =>
+          Text(optionLabel(selected), overflow: TextOverflow.ellipsis),
+      options: optionValues
+          .map(
+            (option) => ShadOption<T>(
+              value: option,
+              child: Text(optionLabel(option), overflow: TextOverflow.ellipsis),
+            ),
+          )
+          .toList(),
+      maxHeight: AppDropdownStyle.menuMaxHeight,
+      enabled: !_saving,
+      onChanged: onChanged,
+      validator: validator,
     );
   }
 

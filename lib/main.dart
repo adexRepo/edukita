@@ -143,61 +143,145 @@ class _StartupPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasError = error != null;
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.surfaceSoft,
       body: Column(
         children: [
           buildTitleBar(-1, context),
           Expanded(
             child: Center(
-              child: Container(
-                width: 420,
-                padding: const EdgeInsets.all(28),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 58,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Container(
+                  width: 440,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 72,
+                            height: 72,
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Image.asset(
+                              'assets/images/logo.webp',
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, _, _) => const Icon(
+                                Icons.school_outlined,
+                                color: AppColors.primaryDark,
+                                size: 30,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Edukita',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium
+                                    ?.copyWith(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0,
+                                      color: AppColors.textPrimary,
+                                    ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Foundation Education System',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                      child: const Icon(
-                        Icons.school_outlined,
-                        color: AppColors.white,
-                        size: 30,
+                      const SizedBox(height: 22),
+                      Container(height: 1, color: AppColors.border),
+                      const SizedBox(height: 18),
+                      Text(
+                        hasError
+                            ? context.l10n.startupFailed
+                            : context.l10n.startupPreparingWorkspace,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: hasError
+                              ? AppColors.errorDark
+                              : AppColors.textSecondary,
+                          fontSize: 13,
+                          height: 1.45,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Edukita',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      error == null
-                          ? context.l10n.startupPreparingWorkspace
-                          : context.l10n.startupFailed,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    if (error == null)
-                      const SizedBox(
-                        width: 180,
-                        child: LinearProgressIndicator(minHeight: 3),
-                      )
-                    else
-                      FilledButton.icon(
-                        onPressed: onRetry,
-                        icon: const Icon(Icons.refresh_outlined),
-                        label: Text(context.l10n.retry),
-                      ),
-                  ],
+                      const SizedBox(height: 20),
+                      if (!hasError)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: const LinearProgressIndicator(
+                            minHeight: 4,
+                            backgroundColor: AppColors.surfaceMuted,
+                            color: AppColors.primary,
+                          ),
+                        )
+                      else ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppColors.error.withValues(alpha: 0.32),
+                            ),
+                          ),
+                          child: Text(
+                            error.toString().replaceFirst('Exception: ', ''),
+                            textAlign: TextAlign.center,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.errorDark,
+                              fontSize: 12,
+                              height: 1.35,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          height: 42,
+                          child: FilledButton.icon(
+                            onPressed: onRetry,
+                            icon: const Icon(Icons.refresh_outlined),
+                            label: Text(context.l10n.retry),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),

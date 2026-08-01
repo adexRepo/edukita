@@ -6,15 +6,21 @@ import 'package:edukita/features/students/domain/detail/student_detail_cubit.dar
 import 'package:edukita/features/students/persentation/detail/detail_empty_section_text.dart';
 import 'package:edukita/features/students/persentation/detail/detail_info_pill.dart';
 import 'package:edukita/features/students/persentation/detail/detail_section_card.dart';
+import 'package:edukita/features/students/persentation/detail/student_story_report_card.dart';
 import 'package:edukita/widgets/detail_tab_scroll.dart';
 import 'package:edukita/features/students/persentation/detail/student_header_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class StudentOverviewTab extends StatelessWidget {
-  const StudentOverviewTab({super.key, required this.student});
+  const StudentOverviewTab({
+    super.key,
+    required this.student,
+    required this.canUpdateStudent,
+  });
 
   final StudentDetailData student;
+  final bool canUpdateStudent;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +33,10 @@ class StudentOverviewTab extends StatelessWidget {
             StudentHeaderDetail(
               student: student,
               monthlyAttendance: insights?.monthlyAttendance,
+            ),
+            StudentStoryReportCard(
+              student: student,
+              canUpdateStudent: canUpdateStudent,
             ),
             DetailSectionCard(
               title: context.l10n.quickProfile,

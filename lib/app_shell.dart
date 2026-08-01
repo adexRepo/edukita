@@ -25,7 +25,7 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  static const double _railWidth = 48;
+  static const double _railWidth = 56;
   static const Duration _navigationCooldown = Duration(milliseconds: 180);
 
   static const List<_SidebarItem> _menuItems = [
@@ -303,7 +303,7 @@ class _AppShellState extends State<AppShell> {
         : '';
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.surfaceSoft,
       body: Column(
         children: [
           buildTitleBar(selectedIndex, context, pageTitle: pageTitle),
@@ -322,13 +322,15 @@ class _AppShellState extends State<AppShell> {
                 ),
                 Expanded(
                   child: Container(
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(12),
                         bottomLeft: Radius.circular(12),
                       ),
-                      border: Border.all(color: AppColors.border),
-                      color: AppColors.background,
+                      border: Border(
+                        left: BorderSide(color: AppColors.border),
+                      ),
+                      color: AppColors.surfaceSoft,
                     ),
                     child: Center(
                       child: ConstrainedBox(
@@ -381,15 +383,18 @@ class _PrimaryRailState extends State<_PrimaryRail> {
   Widget build(BuildContext context) {
     return Container(
       width: widget.width,
-      color: AppColors.surface,
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceSoft,
+        border: Border(right: BorderSide(color: AppColors.border)),
+      ),
       child: Column(
         children: [
           Expanded(
             child: ReorderableListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
               itemCount: widget.items.length,
               buildDefaultDragHandles: false,
-              itemExtent: 40,
+              itemExtent: 44,
               onReorder: widget.onReorder,
               proxyDecorator: (child, index, animation) {
                 return Material(
@@ -412,7 +417,7 @@ class _PrimaryRailState extends State<_PrimaryRail> {
 
                 return Padding(
                   key: ValueKey(item.route),
-                  padding: const EdgeInsets.only(bottom: 4),
+                  padding: const EdgeInsets.only(bottom: 6),
                   child: _RailTooltip(
                     message: item.localizedLabel(context),
                     child: ReorderableDragStartListener(
@@ -447,7 +452,7 @@ class _PrimaryRailState extends State<_PrimaryRail> {
           ),
           const Divider(height: 1, thickness: 1, color: AppColors.border),
           Padding(
-            padding: const EdgeInsets.fromLTRB(6, 8, 6, 4),
+            padding: const EdgeInsets.fromLTRB(8, 10, 8, 5),
             child: _RailTooltip(
               message: context.l10n.menuPreferences,
               child: MouseRegion(
@@ -463,7 +468,7 @@ class _PrimaryRailState extends State<_PrimaryRail> {
                   child: _RailButtonBox(
                     selected: widget.location.startsWith('/settings'),
                     hovered: _settingsHovered,
-                    height: 36,
+                    height: 38,
                     child: _RailButtonContent(
                       icon: Icons.settings_outlined,
                       selected: widget.location.startsWith('/settings'),
@@ -475,7 +480,7 @@ class _PrimaryRailState extends State<_PrimaryRail> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(6, 4, 6, 8),
+            padding: const EdgeInsets.fromLTRB(8, 5, 8, 10),
             child: _RailTooltip(
               message: context.l10n.menuLogout,
               child: MouseRegion(
@@ -487,7 +492,7 @@ class _PrimaryRailState extends State<_PrimaryRail> {
                   child: _RailButtonBox(
                     selected: false,
                     hovered: _logoutHovered,
-                    height: 36,
+                    height: 38,
                     child: _RailButtonContent(
                       icon: Icons.logout,
                       selected: false,
@@ -525,14 +530,18 @@ class _RailButtonBox extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         color: selected
-            ? AppColors.primary.withValues(alpha: 0.14)
+            ? AppColors.primary
             : hovered
             ? AppColors.white
             : AppColors.transparent,
         borderRadius: BorderRadius.circular(8),
-        border: selected
-            ? Border.all(color: AppColors.primary.withValues(alpha: 0.24))
-            : null,
+        border: Border.all(
+          color: selected
+              ? AppColors.primary
+              : hovered
+              ? AppColors.border
+              : AppColors.transparent,
+        ),
       ),
       child: child,
     );
@@ -552,7 +561,9 @@ class _RailButtonContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected || hovered
+    final color = selected
+        ? AppColors.white
+        : hovered
         ? AppColors.primaryDark
         : AppColors.textSecondary;
 

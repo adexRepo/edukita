@@ -3,6 +3,7 @@ import 'package:edukita/features/students/persentation/detail/attendance_line_ch
 import 'package:edukita/features/students/persentation/detail/student_info_tile.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class StudentHeaderDetail extends StatelessWidget {
   const StudentHeaderDetail({
@@ -16,11 +17,6 @@ class StudentHeaderDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: AppColors.border),
-    );
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableWidth = constraints.maxWidth;
@@ -32,49 +28,50 @@ class StudentHeaderDetail extends StatelessWidget {
         final studentFlex = isMedium ? 2 : 1;
         final chartFlex = isMedium ? 4 : 3;
 
-        return Container(
-          decoration: boxDecoration,
+        return ShadCard(
           width: double.infinity,
-          height: isNarrow ? 430 : cardHeight,
-          child: isNarrow
-              ? Column(
-                  children: [
-                    SizedBox(
-                      height: 165,
-                      child: StudentInfoTile(student: student),
-                    ),
-                    const Divider(
-                      height: 1,
-                      thickness: 1,
-                      color: AppColors.border,
-                    ),
-                    Expanded(
-                      child: AttendanceLineChart(
-                        monthlyAttendance: monthlyAttendance,
+          child: SizedBox(
+            height: isNarrow ? 430 : cardHeight,
+            child: isNarrow
+                ? Column(
+                    children: [
+                      SizedBox(
+                        height: 165,
+                        child: StudentInfoTile(student: student),
                       ),
-                    ),
-                  ],
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      flex: studentFlex,
-                      child: StudentInfoTile(student: student),
-                    ),
-                    const VerticalDivider(
-                      width: 1,
-                      thickness: 1,
-                      color: AppColors.border,
-                    ),
-                    Expanded(
-                      flex: chartFlex,
-                      child: AttendanceLineChart(
-                        monthlyAttendance: monthlyAttendance,
+                      const Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: AppColors.border,
                       ),
-                    ),
-                  ],
-                ),
+                      Expanded(
+                        child: AttendanceLineChart(
+                          monthlyAttendance: monthlyAttendance,
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        flex: studentFlex,
+                        child: StudentInfoTile(student: student),
+                      ),
+                      const VerticalDivider(
+                        width: 1,
+                        thickness: 1,
+                        color: AppColors.border,
+                      ),
+                      Expanded(
+                        flex: chartFlex,
+                        child: AttendanceLineChart(
+                          monthlyAttendance: monthlyAttendance,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
         );
       },
     );

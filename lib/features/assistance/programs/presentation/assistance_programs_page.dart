@@ -123,6 +123,7 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
     if (widget.embedded) return content;
 
     return Scaffold(
+      backgroundColor: AppColors.surfaceSoft,
       appBar: AppBar(title: Text(context.l10n.assistanceProgramsTitle)),
       body: Padding(padding: const EdgeInsets.all(16), child: content),
     );
@@ -137,7 +138,7 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
           title: context.l10n.assistanceProgramsTitle,
           subtitle: context.l10n.assistanceProgramsSubtitle,
           trailing: _canCreate
-              ? ElevatedButton.icon(
+              ? FilledButton.icon(
                   onPressed: () => _openForm(context),
                   icon: const Icon(Icons.add, size: 17),
                   label: Text(context.l10n.addProgram),
@@ -145,11 +146,19 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
               : null,
         ),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
             SizedBox(
               width: 260,
               child: TextField(
@@ -233,7 +242,8 @@ class _AssistanceProgramsPageState extends State<AssistanceProgramsPage> {
                 icon: const Icon(Icons.filter_alt_off_outlined, size: 17),
                 label: Text(context.l10n.clearSearch),
               ),
-          ],
+            ],
+          ),
         ),
       ],
     );

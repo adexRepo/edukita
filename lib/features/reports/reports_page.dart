@@ -72,81 +72,85 @@ class _ReportsPageState extends State<ReportsPage> {
       );
     }
 
-    return Padding(
-      padding: AppPageHeaderStyle.pagePadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          BlocBuilder<ReportDefinitionCubit, ReportDefinitionState>(
-            buildWhen: (previous, current) {
-              return previous.selectedDefinition?.id !=
-                      current.selectedDefinition?.id ||
-                  previous.resultRows.length != current.resultRows.length ||
-                  previous.isLoading != current.isLoading ||
-                  previous.isRunning != current.isRunning;
-            },
-            builder: (context, state) {
-              final selected = state.selectedDefinition;
-              return AppPageHeader(
-                title: context.l10n.menuReports,
-                subtitle: selected == null
-                    ? context.l10n.reportsChooseDefinition
-                    : context.l10n.reportRowsLoaded(
-                        selected.name,
-                        state.resultRows.length,
-                      ),
-                trailing: _buildHeaderActions(context, state),
-              );
-            },
-          ),
-          BlocSelector<ReportDefinitionCubit, ReportDefinitionState, bool>(
-            selector: (state) => state.isLoading,
-            builder: (context, isLoading) {
-              return AppLoadingStrip(isLoading: isLoading);
-            },
-          ),
-          const SizedBox(height: AppPageHeaderStyle.bottomGap),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  width: 280,
-                  child:
-                      BlocBuilder<
-                        ReportDefinitionCubit,
-                        ReportDefinitionState
-                      >(
-                        buildWhen: (previous, current) {
-                          return previous.definitions != current.definitions ||
-                              previous.selectedDefinition?.id !=
-                                  current.selectedDefinition?.id ||
-                              previous.isLoading != current.isLoading;
-                        },
-                        builder: _buildReportList,
-                      ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child:
-                      BlocBuilder<
-                        ReportDefinitionCubit,
-                        ReportDefinitionState
-                      >(
-                        buildWhen: (previous, current) {
-                          return previous.selectedDefinition?.id !=
-                                  current.selectedDefinition?.id ||
-                              previous.resultRows != current.resultRows ||
-                              previous.isRunning != current.isRunning ||
-                              previous.runError != current.runError;
-                        },
-                        builder: _buildReportPreview,
-                      ),
-                ),
-              ],
+    return ColoredBox(
+      color: AppColors.surfaceSoft,
+      child: Padding(
+        padding: AppPageHeaderStyle.pagePadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            BlocBuilder<ReportDefinitionCubit, ReportDefinitionState>(
+              buildWhen: (previous, current) {
+                return previous.selectedDefinition?.id !=
+                        current.selectedDefinition?.id ||
+                    previous.resultRows.length != current.resultRows.length ||
+                    previous.isLoading != current.isLoading ||
+                    previous.isRunning != current.isRunning;
+              },
+              builder: (context, state) {
+                final selected = state.selectedDefinition;
+                return AppPageHeader(
+                  title: context.l10n.menuReports,
+                  subtitle: selected == null
+                      ? context.l10n.reportsChooseDefinition
+                      : context.l10n.reportRowsLoaded(
+                          selected.name,
+                          state.resultRows.length,
+                        ),
+                  trailing: _buildHeaderActions(context, state),
+                );
+              },
             ),
-          ),
-        ],
+            BlocSelector<ReportDefinitionCubit, ReportDefinitionState, bool>(
+              selector: (state) => state.isLoading,
+              builder: (context, isLoading) {
+                return AppLoadingStrip(isLoading: isLoading);
+              },
+            ),
+            const SizedBox(height: AppPageHeaderStyle.bottomGap),
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: 280,
+                    child:
+                        BlocBuilder<
+                          ReportDefinitionCubit,
+                          ReportDefinitionState
+                        >(
+                          buildWhen: (previous, current) {
+                            return previous.definitions !=
+                                    current.definitions ||
+                                previous.selectedDefinition?.id !=
+                                    current.selectedDefinition?.id ||
+                                previous.isLoading != current.isLoading;
+                          },
+                          builder: _buildReportList,
+                        ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child:
+                        BlocBuilder<
+                          ReportDefinitionCubit,
+                          ReportDefinitionState
+                        >(
+                          buildWhen: (previous, current) {
+                            return previous.selectedDefinition?.id !=
+                                    current.selectedDefinition?.id ||
+                                previous.resultRows != current.resultRows ||
+                                previous.isRunning != current.isRunning ||
+                                previous.runError != current.runError;
+                          },
+                          builder: _buildReportPreview,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

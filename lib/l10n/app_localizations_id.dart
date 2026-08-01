@@ -1558,10 +1558,10 @@ class AppLocalizationsId extends AppLocalizations {
   String get physicalAttributes => 'Atribut Fisik';
 
   @override
-  String get height => 'Tinggi';
+  String get height => 'Tinggi (cm)';
 
   @override
-  String get weight => 'Berat';
+  String get weight => 'Berat (kg)';
 
   @override
   String get uniform => 'Seragam';
@@ -4545,7 +4545,8 @@ class AppLocalizationsId extends AppLocalizations {
   String get disabilities => 'Disabilitas';
 
   @override
-  String get dailySchoolTransportCost => 'Biaya Transportasi Sekolah Harian';
+  String get dailySchoolTransportCost =>
+      'Biaya Transportasi Sekolah Harian (Rp/hari)';
 
   @override
   String get housingStatus => 'Status Tempat Tinggal';
@@ -4615,11 +4616,11 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String guardianIncomeFor(Object relation) {
-    return 'Penghasilan $relation';
+    return 'Penghasilan $relation (Rp/bulan)';
   }
 
   @override
-  String get income => 'Penghasilan';
+  String get income => 'Penghasilan (Rp/bulan)';
 
   @override
   String get agePositionOlder => 'Lebih Tua';
@@ -4637,16 +4638,16 @@ class AppLocalizationsId extends AppLocalizations {
   String get examSourceExternal => 'Eksternal';
 
   @override
-  String get householdMemberCount => 'Jumlah Anggota Keluarga';
+  String get householdMemberCount => 'Jumlah Anggota Keluarga (orang)';
 
   @override
-  String get fatherIncome => 'Penghasilan Ayah';
+  String get fatherIncome => 'Penghasilan Ayah (Rp/bulan)';
 
   @override
-  String get motherIncome => 'Penghasilan Ibu';
+  String get motherIncome => 'Penghasilan Ibu (Rp/bulan)';
 
   @override
-  String get educationArrears => 'Tunggakan Pendidikan';
+  String get educationArrears => 'Tunggakan Pendidikan (Rp)';
 
   @override
   String get academicAchievement => 'Prestasi Akademik';
@@ -5016,6 +5017,167 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get teachers => 'Pengajar';
+
+  @override
+  String get specialNotes => 'Catatan Khusus';
+
+  @override
+  String get specialNotesDescription =>
+      'Riwayat interview, survey, kunjungan rumah, atau observasi management.';
+
+  @override
+  String get addSpecialNote => 'Tambah Catatan';
+
+  @override
+  String get loadingSpecialNotes => 'Memuat catatan khusus...';
+
+  @override
+  String get failedLoadSpecialNotes => 'Gagal memuat catatan khusus.';
+
+  @override
+  String get noSpecialNotes => 'Belum ada catatan khusus management.';
+
+  @override
+  String get addedBy => 'Ditambahkan Oleh';
+
+  @override
+  String get archiveNote => 'Archive catatan';
+
+  @override
+  String get archiveSpecialNoteTitle => 'Archive catatan khusus?';
+
+  @override
+  String get archiveSpecialNoteMessage =>
+      'Catatan ini akan disembunyikan dari history aktif dan tidak dipakai dalam Student Story.';
+
+  @override
+  String get specialNoteArchived => 'Catatan khusus berhasil di-archive.';
+
+  @override
+  String get failedArchiveSpecialNote => 'Gagal archive catatan khusus.';
+
+  @override
+  String get addSpecialNoteTitle => 'Tambah Catatan Khusus';
+
+  @override
+  String get noteDate => 'Tanggal Catatan';
+
+  @override
+  String get noteType => 'Tipe Catatan';
+
+  @override
+  String get specialNote => 'Catatan Khusus';
+
+  @override
+  String get needsFollowUp => 'Perlu tindak lanjut';
+
+  @override
+  String get followUpNote => 'Catatan Tindak Lanjut';
+
+  @override
+  String get saveNote => 'Simpan Catatan';
+
+  @override
+  String get specialNoteRequired => 'Catatan khusus wajib diisi.';
+
+  @override
+  String get followUpNoteRequired =>
+      'Catatan tindak lanjut wajib diisi jika tindak lanjut ditandai.';
+
+  @override
+  String get specialNoteSaved => 'Catatan khusus berhasil disimpan.';
+
+  @override
+  String get failedSaveSpecialNote => 'Gagal menyimpan catatan khusus.';
+
+  @override
+  String get noFollowUpMarked => 'Tidak ada tindak lanjut';
+
+  @override
+  String get specialNoteTypeInterview => 'Interview';
+
+  @override
+  String get specialNoteTypeParentSurvey => 'Survey Orang Tua';
+
+  @override
+  String get specialNoteTypeStudentSurvey => 'Survey Siswa';
+
+  @override
+  String get specialNoteTypeHomeVisit => 'Kunjungan Rumah';
+
+  @override
+  String get specialNoteTypeManagementObservation => 'Observasi Management';
+
+  @override
+  String get specialNoteTypeOther => 'Lainnya';
+
+  @override
+  String get studentStoryReportTitle => 'Cerita Siswa & Laporan Perkembangan';
+
+  @override
+  String get studentStoryExecutiveSummary => 'Ringkasan Utama';
+
+  @override
+  String get downloadPdf => 'Unduh PDF';
+
+  @override
+  String get studentStoryLoadFailed => 'Student Story gagal dimuat';
+
+  @override
+  String get generatingStudentStory => 'Membuat cerita siswa terbaru';
+
+  @override
+  String get generatingStudentStoryDescription =>
+      'Mengambil profil, keluarga, nilai, kehadiran, catatan guru, dan data bantuan terbaru.';
+
+  @override
+  String get dataCompleteness => 'Kelengkapan Data';
+
+  @override
+  String get documentNo => 'Nomor Dokumen';
+
+  @override
+  String get generatedBy => 'Dibuat Oleh';
+
+  @override
+  String get parentGuardian => 'Orang Tua / Wali';
+
+  @override
+  String get nameSignature => 'Nama / Tanda Tangan';
+
+  @override
+  String get generated => 'Dibuat';
+
+  @override
+  String get studentStoryPdfDisclaimer =>
+      'Catatan: Report ini merangkum data observasi dan administrasi yang tercatat di Edukita. Report tidak menambahkan diagnosis atau fakta di luar data aplikasi.';
+
+  @override
+  String get studentStoryDefaultDraftNote => 'Draft dari daftar cepat';
+
+  @override
+  String get studentStoryDefaultGeneratedNote =>
+      'Dibuat dari data siswa terbaru';
+
+  @override
+  String get reportVersionNoteTitle => 'Catatan versi report';
+
+  @override
+  String get versionNote => 'Catatan versi';
+
+  @override
+  String get versionNoteHint =>
+      'Contoh: Review bulanan, draft untuk pertemuan orang tua';
+
+  @override
+  String get reportDataIncompleteTitle => 'Data report belum lengkap';
+
+  @override
+  String get reportDataIncompleteMessage =>
+      'PDF tetap bisa dibuat, tetapi sebaiknya dipakai sebagai draft sampai data siswa lengkap.';
+
+  @override
+  String get downloadDraftPdf => 'Unduh Draft PDF';
 
   @override
   String confirmActionForSubject(Object action, Object subject) {

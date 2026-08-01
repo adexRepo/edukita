@@ -392,12 +392,14 @@ class _SchedulePageState extends State<SchedulePage> {
 
     if (!_authorizationLoaded) {
       return const Scaffold(
+        backgroundColor: AppColors.surfaceSoft,
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
     if (!_canViewSchedule) {
       return Scaffold(
+        backgroundColor: AppColors.surfaceSoft,
         body: Center(
           child: Text(
             context.l10n.scheduleAccessDenied,
@@ -411,6 +413,7 @@ class _SchedulePageState extends State<SchedulePage> {
     }
 
     return Scaffold(
+      backgroundColor: AppColors.surfaceSoft,
       body: BlocBuilder<ScheduleCubit, ScheduleState>(
         builder: (context, scheduleState) {
           return Padding(
@@ -525,23 +528,32 @@ class _SchedulePageState extends State<SchedulePage> {
               )
             : const SizedBox.shrink();
 
-        if (compact) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              search,
-              const SizedBox(height: 10),
-              Align(alignment: Alignment.centerRight, child: addButton),
-            ],
-          );
-        }
+        final toolbarChild = compact
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  search,
+                  const SizedBox(height: 10),
+                  Align(alignment: Alignment.centerRight, child: addButton),
+                ],
+              )
+            : Row(
+                children: [
+                  Expanded(child: search),
+                  const SizedBox(width: 12),
+                  addButton,
+                ],
+              );
 
-        return Row(
-          children: [
-            Expanded(child: search),
-            const SizedBox(width: 12),
-            addButton,
-          ],
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: toolbarChild,
         );
       },
     );
@@ -635,7 +647,7 @@ class _SchedulePageState extends State<SchedulePage> {
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: AppColors.primary,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
