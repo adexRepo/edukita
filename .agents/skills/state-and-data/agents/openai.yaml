@@ -1,0 +1,4 @@
+interface:
+  display_name: "State and Data"
+  short_description: "Change Cubit, repository, cache, or data flow"
+  default_prompt: "Use $state-and-data to modify Edukita state or repository data flow safely."

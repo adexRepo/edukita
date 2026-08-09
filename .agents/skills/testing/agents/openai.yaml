@@ -1,0 +1,4 @@
+interface:
+  display_name: "Flutter Testing"
+  short_description: "Add focused Flutter regression coverage"
+  default_prompt: "Use $testing to add focused tests for an Edukita behavior or regression."

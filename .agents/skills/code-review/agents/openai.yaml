@@ -1,0 +1,4 @@
+interface:
+  display_name: "Flutter Code Review"
+  short_description: "Review Edukita Flutter code for real risks"
+  default_prompt: "Use $code-review to review an Edukita change for correctness and regressions."

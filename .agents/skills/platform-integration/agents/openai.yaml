@@ -1,0 +1,4 @@
+interface:
+  display_name: "Platform Integration"
+  short_description: "Handle Edukita Windows and file integration"
+  default_prompt: "Use $platform-integration for Edukita Windows, installer, storage, or file integration."

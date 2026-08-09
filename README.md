@@ -134,7 +134,7 @@ Default seeded login:
 
 ```text
 Username: admin
-Password: admin
+Password: p@ssw0rd
 ```
 
 For development only. Change this before real user deployment.
@@ -281,6 +281,85 @@ Future release improvements:
 
 Edukita is distributed as a Windows installer. GitHub Actions generates release
 files automatically when a Git tag matching `vX.Y.Z` is pushed.
+
+### Release From GitHub Tag
+
+Use this flow when preparing a new production installer, for example `v1.0.1`.
+
+1. Make sure the release branch is clean.
+
+```bash
+git status
+```
+
+2. Update the local branches.
+
+```bash
+git checkout develop
+git pull origin develop
+git checkout main
+git pull origin main
+```
+
+3. Merge `develop` into `main`.
+
+```bash
+git merge --no-ff develop -m "Merge develop for release v1.0.1"
+```
+
+4. Run release checks locally before pushing.
+
+```bash
+flutter analyze
+flutter test
+flutter build windows --release
+```
+
+5. Push `main`.
+
+```bash
+git push origin main
+```
+
+6. Create the release tag from the latest `main` commit.
+
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+Pushing the tag starts `.github/workflows/release-windows.yml`. The workflow
+builds the Windows release, generates the Inno Setup installer, creates the
+offline update zip, and publishes a GitHub Release.
+
+7. Download the generated release files from GitHub.
+
+```text
+GitHub -> Repository -> Releases -> v1.0.1
+```
+
+Expected files:
+
+```text
+EdukitaSetup_v1.0.1.exe
+EdukitaUpdate_v1.0.1.zip
+```
+
+8. Copy `EdukitaSetup_v1.0.1.exe` to the client laptop by USB and run it.
+
+For an existing installation, running the newer installer should update the app
+without requiring uninstall first. The installer updates application files only;
+user database and uploaded files remain in the app data/storage location.
+
+If the wrong commit was tagged, delete the local and remote tag, then create it
+again from the correct `main` commit:
+
+```bash
+git tag -d v1.0.1
+git push origin :refs/tags/v1.0.1
+git tag v1.0.1
+git push origin v1.0.1
+```
 
 Release output includes:
 

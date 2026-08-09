@@ -1,0 +1,4 @@
+interface:
+  display_name: "Security Review"
+  short_description: "Review Edukita local data and document security"
+  default_prompt: "Use $security-review to review Edukita authentication, PII, files, or exports."

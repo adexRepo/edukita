@@ -744,6 +744,8 @@ class TeachingActivityRepository {
       await txn.update(
         'teaching_activities',
         {
+          'status': TeachingActivityStatus.inProgress,
+          'ended_at': null,
           'lesson_completion_percent': null,
           'material_covered': null,
           'class_condition': null,

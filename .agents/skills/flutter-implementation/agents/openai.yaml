@@ -1,0 +1,4 @@
+interface:
+  display_name: "Flutter Implementation"
+  short_description: "Implement focused Edukita Flutter changes"
+  default_prompt: "Use $flutter-implementation to implement a focused Edukita Flutter feature or bug fix."

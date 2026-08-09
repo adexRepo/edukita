@@ -1,0 +1,4 @@
+interface:
+  display_name: "Local Database"
+  short_description: "Change Edukita SQLite schema and queries safely"
+  default_prompt: "Use $local-database to implement or review an Edukita SQLite change."
