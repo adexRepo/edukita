@@ -709,6 +709,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get replacementNeeded => 'Replacement needed';
 
   @override
+  String get replacementDate => 'Replacement date';
+
+  @override
   String get markCancelled => 'Mark Cancelled';
 
   @override
@@ -722,6 +725,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get completeReport => 'Complete Report';
+
+  @override
+  String get confirmCompleteTeachingReport => 'Complete Teaching Report?';
+
+  @override
+  String get confirmCompleteTeachingReportMessage =>
+      'Attendance defaults to Present. Confirm this summary to save attendance and complete the report.';
+
+  @override
+  String get confirmAndComplete => 'Confirm & Complete';
 
   @override
   String get teachingReportReset => 'Teaching report reset.';
@@ -784,6 +797,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get saveAttendance => 'Save attendance';
+
+  @override
+  String get saveAllAttendanceBeforeCompletion =>
+      'Save attendance for every session student before completing the report.';
 
   @override
   String get allPresent => 'All Present';

@@ -1,4 +1,4 @@
 interface:
   display_name: "UI and UX"
-  short_description: "Improve Edukita desktop UI and interaction"
-  default_prompt: "Use $ui-ux to improve an Edukita screen while preserving its design system."
+  short_description: "Apply Edukita desktop operations UI style"
+  default_prompt: "Use $ui-ux to improve an Edukita screen with its Windows-first Material and Shadcn desktop operations style."

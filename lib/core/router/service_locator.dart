@@ -119,31 +119,21 @@ Future<void> setupLocator() async {
   );
 
   getIt.registerFactory<SchoolCubit>(
-    () => SchoolCubit(
-      getIt<SchoolRepository>(),
-      getIt<SchoolCacheService>(),
-    ),
+    () => SchoolCubit(getIt<SchoolRepository>(), getIt<SchoolCacheService>()),
   );
 
   getIt.registerFactory<ClassCubit>(
-    () => ClassCubit(
-      getIt<ClassRepository>(),
-      getIt<ClassCacheService>(),
-    ),
+    () => ClassCubit(getIt<ClassRepository>(), getIt<ClassCacheService>()),
   );
 
   getIt.registerFactory<TeacherCubit>(
-    () => TeacherCubit(
-      getIt<TeacherRepository>(),
-      getIt<TeacherCacheService>(),
-    ),
+    () =>
+        TeacherCubit(getIt<TeacherRepository>(), getIt<TeacherCacheService>()),
   );
 
   getIt.registerFactory<SubjectCubit>(
-    () => SubjectCubit(
-      getIt<SubjectRepository>(),
-      getIt<SubjectCacheService>(),
-    ),
+    () =>
+        SubjectCubit(getIt<SubjectRepository>(), getIt<SubjectCacheService>()),
   );
 
   getIt.registerFactory<StrategyCubit>(
@@ -197,6 +187,7 @@ Future<void> setupLocator() async {
     () => TeachingActivityCubit(
       getIt<TeachingActivityRepository>(),
       getIt<TeachingActivityCacheService>(),
+      onDataChanged: clearTeachingActivityDependentCaches,
     ),
   );
 
@@ -204,12 +195,34 @@ Future<void> setupLocator() async {
     () => TeachingActivityDetailCubit(
       getIt<TeachingActivityRepository>(),
       getIt<TeachingActivityCacheService>(),
+      onDataChanged: clearTeachingActivityDependentCaches,
     ),
   );
 
   getIt.registerFactory<UserManagementCubit>(
     () => UserManagementCubit(getIt<UserManagementRepository>()),
   );
+}
+
+void clearTeachingActivityDependentCaches() {
+  if (getIt.isRegistered<DashboardCacheService>()) {
+    getIt<DashboardCacheService>().clear();
+  }
+  if (getIt.isRegistered<ScheduleCacheService>()) {
+    getIt<ScheduleCacheService>().clear();
+  }
+  if (getIt.isRegistered<StudentCacheService>()) {
+    getIt<StudentCacheService>().clear();
+  }
+  if (getIt.isRegistered<TeacherCacheService>()) {
+    getIt<TeacherCacheService>().clear();
+  }
+  if (getIt.isRegistered<AssistanceProgramCacheService>()) {
+    getIt<AssistanceProgramCacheService>().clear();
+  }
+  if (getIt.isRegistered<AssistancePlanCacheService>()) {
+    getIt<AssistancePlanCacheService>().clear();
+  }
 }
 
 void clearAppMemoryCaches() {

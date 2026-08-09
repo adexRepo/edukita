@@ -20,10 +20,9 @@ class TeachingAttendanceStatus {
   static const sick = 'sick';
   static const permission = 'permission';
 
-  static const values = [present, absent, sick, permission];
+  static const values = [present, absent, late, sick, permission];
 
   static String normalize(String? value) {
-    if (value == late) return present;
     if (values.contains(value)) return value!;
     return present;
   }
@@ -195,14 +194,17 @@ class TeachingActivityListItem {
       unitId: map['unit_id']?.toString(),
       strategyId: map['strategy_id']?.toString(),
       activityDate:
-          map['activity_date']?.toString() ?? map['schedule_date']?.toString() ?? '',
+          map['activity_date']?.toString() ??
+          map['schedule_date']?.toString() ??
+          '',
       startAt: map['start_at']?.toString(),
       endAt: map['end_at']?.toString(),
       status: status == null || status.isEmpty
           ? TeachingActivityStatus.scheduled
           : status,
-      className:
-          classLevel == null ? map['class_name']?.toString() : schoolLevelLabel(classLevel),
+      className: classLevel == null
+          ? map['class_name']?.toString()
+          : schoolLevelLabel(classLevel),
       teacherName: map['teacher_name']?.toString(),
       subjectName: map['subject_name']?.toString(),
       unitName: map['unit_name']?.toString(),
@@ -211,8 +213,8 @@ class TeachingActivityListItem {
       description: map['description']?.toString(),
       startedAt: map['started_at']?.toString(),
       endedAt: map['ended_at']?.toString(),
-      lessonCompletionPercent:
-          (map['lesson_completion_percent'] as num?)?.toInt(),
+      lessonCompletionPercent: (map['lesson_completion_percent'] as num?)
+          ?.toInt(),
       materialCovered: map['material_covered']?.toString(),
       classCondition: map['class_condition']?.toString(),
       teachingChallenges: map['teaching_challenges']?.toString(),
@@ -274,10 +276,7 @@ class ClassStudentOption {
 }
 
 class CompetencyOption {
-  const CompetencyOption({
-    required this.id,
-    required this.label,
-  });
+  const CompetencyOption({required this.id, required this.label});
 
   final String id;
   final String label;
@@ -287,7 +286,9 @@ class CompetencyOption {
     final description = map['description']?.toString() ?? '-';
     return CompetencyOption(
       id: map['id'].toString(),
-      label: code == null || code.isEmpty ? description : '$code - $description',
+      label: code == null || code.isEmpty
+          ? description
+          : '$code - $description',
     );
   }
 }
@@ -409,8 +410,10 @@ class TeachingAssessmentRecord {
       competencyId: map['competency_id']?.toString(),
       competencyLabel: map['competency_label']?.toString(),
       assessmentType:
-          map['assessment_type']?.toString() ?? TeachingAssessmentType.values.first,
-      result: map['result']?.toString() ?? TeachingAssessmentResult.values.first,
+          map['assessment_type']?.toString() ??
+          TeachingAssessmentType.values.first,
+      result:
+          map['result']?.toString() ?? TeachingAssessmentResult.values.first,
       scoreMode: map['score_mode']?.toString(),
       rawScore: rawScore is num
           ? rawScore.toDouble()
@@ -511,7 +514,8 @@ class StudentSessionNoteRecord {
       teachingActivityId: map['teaching_activity_id'].toString(),
       studentId: map['student_id'].toString(),
       studentName: map['student_name']?.toString(),
-      noteType: map['note_type']?.toString() ?? StudentSessionNoteType.values.first,
+      noteType:
+          map['note_type']?.toString() ?? StudentSessionNoteType.values.first,
       comment: map['comment']?.toString() ?? '',
       followUpNeeded: ((map['follow_up_needed'] as num?)?.toInt() ?? 0) == 1,
       scoreMode: map['score_mode']?.toString(),

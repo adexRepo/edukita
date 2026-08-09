@@ -42,6 +42,7 @@ class DatabaseTables {
     await studentActivity(db);
     await teachingNotes(db);
     await teachingActivities(db);
+    await teachingActivityStudents(db);
     await teachingAttendances(db);
     await teachingAssessments(db);
     await studentSessionNotes(db);
@@ -779,6 +780,7 @@ class DatabaseTables {
         cancellation_notes TEXT,
         replacement_required INTEGER NOT NULL DEFAULT 0,
         replacement_activity_id TEXT,
+        roster_captured_at TEXT,
         created_at TEXT NOT NULL,
         created_by TEXT,
         updated_at TEXT,
@@ -852,6 +854,20 @@ class DatabaseTables {
         FOREIGN KEY(teaching_activity_id) REFERENCES teaching_activities(id) ON DELETE CASCADE,
         FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
         FOREIGN KEY(created_by_teacher_id) REFERENCES teachers(id) ON DELETE SET NULL
+      )
+    ''');
+  }
+
+  static Future<void> teachingActivityStudents(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS teaching_activity_students(
+        id TEXT PRIMARY KEY NOT NULL,
+        teaching_activity_id TEXT NOT NULL,
+        student_id TEXT NOT NULL,
+        captured_at TEXT NOT NULL,
+        UNIQUE(teaching_activity_id, student_id),
+        FOREIGN KEY(teaching_activity_id) REFERENCES teaching_activities(id) ON DELETE CASCADE,
+        FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
       )
     ''');
   }
@@ -1832,6 +1848,20 @@ class DatabaseTables {
       columns: const ['status'],
       sql:
           'CREATE INDEX IF NOT EXISTS idx_teaching_activities_status ON teaching_activities(status)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'teaching_activity_students',
+      columns: const ['teaching_activity_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_teaching_activity_students_activity_id ON teaching_activity_students(teaching_activity_id)',
+    );
+    await _createIndexIfColumnsExist(
+      db,
+      table: 'teaching_activity_students',
+      columns: const ['student_id'],
+      sql:
+          'CREATE INDEX IF NOT EXISTS idx_teaching_activity_students_student_id ON teaching_activity_students(student_id)',
     );
     await _createIndexIfColumnsExist(
       db,

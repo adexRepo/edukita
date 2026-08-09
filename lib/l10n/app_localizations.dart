@@ -1416,6 +1416,12 @@ abstract class AppLocalizations {
   /// **'Replacement needed'**
   String get replacementNeeded;
 
+  /// No description provided for @replacementDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Replacement date'**
+  String get replacementDate;
+
   /// No description provided for @markCancelled.
   ///
   /// In en, this message translates to:
@@ -1445,6 +1451,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Complete Report'**
   String get completeReport;
+
+  /// No description provided for @confirmCompleteTeachingReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete Teaching Report?'**
+  String get confirmCompleteTeachingReport;
+
+  /// No description provided for @confirmCompleteTeachingReportMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Attendance defaults to Present. Confirm this summary to save attendance and complete the report.'**
+  String get confirmCompleteTeachingReportMessage;
+
+  /// No description provided for @confirmAndComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm & Complete'**
+  String get confirmAndComplete;
 
   /// No description provided for @teachingReportReset.
   ///
@@ -1565,6 +1589,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save attendance'**
   String get saveAttendance;
+
+  /// No description provided for @saveAllAttendanceBeforeCompletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Save attendance for every session student before completing the report.'**
+  String get saveAllAttendanceBeforeCompletion;
 
   /// No description provided for @allPresent.
   ///

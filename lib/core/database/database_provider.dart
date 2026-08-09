@@ -15,7 +15,7 @@ import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 class DatabaseProvider {
   DatabaseProvider._();
   static final instance = DatabaseProvider._();
-  static const schemaVersion = 29;
+  static const schemaVersion = 30;
 
   Database? _db;
 
@@ -132,7 +132,12 @@ class DatabaseProvider {
     required String newPassword,
   }) async {
     final db = await database;
-    final rows = await db.query('users', where: 'id = ?', whereArgs: [userId], limit: 1);
+    final rows = await db.query(
+      'users',
+      where: 'id = ?',
+      whereArgs: [userId],
+      limit: 1,
+    );
     if (rows.isEmpty) throw StateError('User not found.');
     final storedPassword = rows.first['password']?.toString() ?? '';
     if (!PasswordService.verify(currentPassword, storedPassword)) {

@@ -709,6 +709,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get replacementNeeded => 'Perlu pengganti';
 
   @override
+  String get replacementDate => 'Tanggal pengganti';
+
+  @override
   String get markCancelled => 'Tandai Dibatalkan';
 
   @override
@@ -722,6 +725,16 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get completeReport => 'Selesaikan Laporan';
+
+  @override
+  String get confirmCompleteTeachingReport => 'Selesaikan Laporan Mengajar?';
+
+  @override
+  String get confirmCompleteTeachingReportMessage =>
+      'Kehadiran secara default adalah Hadir. Konfirmasikan ringkasan ini untuk menyimpan kehadiran dan menyelesaikan laporan.';
+
+  @override
+  String get confirmAndComplete => 'Konfirmasi & Selesaikan';
 
   @override
   String get teachingReportReset => 'Laporan mengajar direset.';
@@ -783,6 +796,10 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get saveAttendance => 'Simpan kehadiran';
+
+  @override
+  String get saveAllAttendanceBeforeCompletion =>
+      'Simpan kehadiran untuk setiap siswa dalam sesi sebelum menyelesaikan laporan.';
 
   @override
   String get allPresent => 'Semua Hadir';

@@ -103,6 +103,10 @@ class DatabaseMigrations {
       await _ensureStudentSizeTextSchema(db);
     }
 
+    if (oldVersion < 30) {
+      await _ensureTeachingActivityRosterSchema(db);
+    }
+
     await ensureCriticalSchema(db);
   }
 
@@ -115,6 +119,7 @@ class DatabaseMigrations {
     await _ensureAssistancePeriodProgramSchema(db);
     await _ensureScheduleLevelSchema(db);
     await _ensureTeachingActivitySchema(db);
+    await _ensureTeachingActivityRosterSchema(db);
     await _removeLegacyAssessmentEvidenceSchema(db);
     await _ensureStudentExamScoreSchema(db);
     await _normalizeAcademicRelationFlow(db);
@@ -509,8 +514,24 @@ class DatabaseMigrations {
         _RoleMenuSeed('teachers', true, true, true, true, true, true),
         _RoleMenuSeed('parameters', true, true, true, true, true, true),
         _RoleMenuSeed('schedules', true, true, true, true, true, true),
-        _RoleMenuSeed('teaching_activities', true, true, true, true, true, true),
-        _RoleMenuSeed('assistance_programs', true, true, true, true, true, true),
+        _RoleMenuSeed(
+          'teaching_activities',
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+        ),
+        _RoleMenuSeed(
+          'assistance_programs',
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+        ),
         _RoleMenuSeed('reports', true, true, true, true, true, true),
         _RoleMenuSeed('users', true, true, true, true, true, true),
       ],
@@ -520,15 +541,39 @@ class DatabaseMigrations {
         _RoleMenuSeed('teachers', true, true, true, true, true, true),
         _RoleMenuSeed('parameters', true, true, true, true, true, true),
         _RoleMenuSeed('schedules', true, true, true, true, true, true),
-        _RoleMenuSeed('teaching_activities', true, true, true, true, true, true),
-        _RoleMenuSeed('assistance_programs', true, true, true, true, true, true),
+        _RoleMenuSeed(
+          'teaching_activities',
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+        ),
+        _RoleMenuSeed(
+          'assistance_programs',
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+        ),
         _RoleMenuSeed('reports', true, false, false, false, true, false),
         _RoleMenuSeed('users', true, true, true, false, false, false),
       ],
       'TEACHER': [
         _RoleMenuSeed('dashboard', true, false, false, false, false, false),
         _RoleMenuSeed('schedules', true, false, false, false, false, false),
-        _RoleMenuSeed('teaching_activities', true, true, true, false, false, false),
+        _RoleMenuSeed(
+          'teaching_activities',
+          true,
+          true,
+          true,
+          false,
+          false,
+          false,
+        ),
       ],
     };
     final now = DateTime.now().toIso8601String();
@@ -637,8 +682,7 @@ class DatabaseMigrations {
       'UPDATE classes SET section = UPPER(TRIM(section)) '
       'WHERE section IS NOT NULL',
     );
-    await db.execute(
-      '''
+    await db.execute('''
       UPDATE classes
       SET name = CAST(level AS TEXT) || COALESCE(section, '')
       WHERE (
@@ -649,8 +693,7 @@ class DatabaseMigrations {
         )
         OR (school_id IS NULL AND level BETWEEN 1 AND 12)
       )
-      ''',
-    );
+      ''');
   }
 
   static Future<void> _ensureTeacherManagementSchema(Database db) async {
@@ -971,7 +1014,9 @@ class DatabaseMigrations {
     if (createSql.contains("'distributed'")) return;
 
     final oldColumns = await _tableColumnNames(db, 'assistance_recipients');
-    await db.execute('ALTER TABLE assistance_recipients RENAME TO assistance_recipients_old');
+    await db.execute(
+      'ALTER TABLE assistance_recipients RENAME TO assistance_recipients_old',
+    );
     await DatabaseTables.assistanceRecipients(db);
     final newColumns = await _tableColumnNames(db, 'assistance_recipients');
     final commonColumns = [
@@ -1274,6 +1319,49 @@ class DatabaseMigrations {
       column: 'created_by_teacher_id',
       definition: 'TEXT',
     );
+    await DatabaseTables.indexes(db);
+  }
+
+  static Future<void> _ensureTeachingActivityRosterSchema(Database db) async {
+    await DatabaseTables.teachingActivities(db);
+    await DatabaseTables.teachingActivityStudents(db);
+    await _addColumnIfMissing(
+      db,
+      table: 'teaching_activities',
+      column: 'roster_captured_at',
+      definition: 'TEXT',
+    );
+
+    await db.execute('''
+      INSERT OR IGNORE INTO teaching_activity_students (
+        id,
+        teaching_activity_id,
+        student_id,
+        captured_at
+      )
+      SELECT
+        ta.id || ':' || st.id,
+        ta.id,
+        st.id,
+        COALESCE(ta.started_at, ta.created_at, CURRENT_TIMESTAMP)
+      FROM teaching_activities ta
+      INNER JOIN students st ON st.status = 'active'
+      LEFT JOIN classes c ON c.id = st.class_id
+      WHERE ta.roster_captured_at IS NULL
+        AND (
+          (ta.class_level IS NOT NULL AND c.level = ta.class_level)
+          OR (
+            ta.class_level IS NULL
+            AND ta.class_id IS NOT NULL
+            AND st.class_id = ta.class_id
+          )
+        )
+    ''');
+    await db.execute('''
+      UPDATE teaching_activities
+      SET roster_captured_at = COALESCE(started_at, created_at, CURRENT_TIMESTAMP)
+      WHERE roster_captured_at IS NULL
+    ''');
     await DatabaseTables.indexes(db);
   }
 
@@ -1601,7 +1689,6 @@ class DatabaseMigrations {
     }
     return null;
   }
-
 }
 
 class _RoleMenuSeed {

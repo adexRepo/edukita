@@ -38,6 +38,7 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
   );
   bool _refreshScheduled = false;
   bool _authorizationLoaded = false;
+  Object? _authorizationError;
 
   @override
   void initState() {
@@ -49,27 +50,39 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
   }
 
   Future<void> _loadAuthorizationAndActivities() async {
-    final session = await AuthSessionCache.instance.read();
-    AppAuthorizationScope scope;
-    if (session == null || session.isAdmin) {
-      scope = AppAuthorizationScope(
-        role: AppUserRole.admin,
-        permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
-          AppUserRole.admin,
-        ),
-      );
-    } else {
-      scope = await getIt<UserManagementRepository>()
-          .getAuthorizationScopeForUser(session.userId);
-    }
-    if (!mounted) return;
     setState(() {
-      _authScope = scope;
-      _authorizationLoaded = true;
+      _authorizationLoaded = false;
+      _authorizationError = null;
     });
-    if (!_canView) return;
-    await context.read<TeacherCubit>().loadTeachers();
-    await _loadScopedActivities(forceRefresh: true);
+    try {
+      final session = await AuthSessionCache.instance.read();
+      AppAuthorizationScope scope;
+      if (session == null || session.isAdmin) {
+        scope = AppAuthorizationScope(
+          role: AppUserRole.admin,
+          permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
+            AppUserRole.admin,
+          ),
+        );
+      } else {
+        scope = await getIt<UserManagementRepository>()
+            .getAuthorizationScopeForUser(session.userId);
+      }
+      if (!mounted) return;
+      setState(() {
+        _authScope = scope;
+        _authorizationLoaded = true;
+      });
+      if (!_canView) return;
+      await context.read<TeacherCubit>().loadTeachers();
+      await _loadScopedActivities(forceRefresh: true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _authorizationError = error;
+        _authorizationLoaded = true;
+      });
+    }
   }
 
   bool get _canView =>
@@ -103,7 +116,16 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
   @override
   Widget build(BuildContext context) {
     if (!_authorizationLoaded) {
-      return const Center(child: CircularProgressIndicator());
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_authorizationError != null) {
+      return Scaffold(
+        backgroundColor: AppColors.surfaceSoft,
+        body: _TeachingActivityErrorState(
+          onRetry: _loadAuthorizationAndActivities,
+        ),
+      );
     }
 
     if (!_canView) {
@@ -129,14 +151,13 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
         final id = state.openActivityId;
         if (id != null && id.isNotEmpty) context.go('/teaching-activities/$id');
       },
-      child: ColoredBox(
-        color: AppColors.surfaceSoft,
-        child: Padding(
-          padding: AppPageHeaderStyle.pagePadding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AppPageHeader(
+      child: Scaffold(
+        backgroundColor: AppColors.surfaceSoft,
+        body: Column(
+          children: [
+            Padding(
+              padding: AppPageHeaderStyle.pagePadding,
+              child: AppPageHeader(
                 title: context.l10n.teachingActivityTitle,
                 subtitle: context.l10n.teachingActivitySubtitle,
                 trailing: IconButton(
@@ -145,75 +166,95 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
                   icon: const Icon(Icons.refresh),
                 ),
               ),
-              BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
-                builder: (context, state) =>
-                    AppLoadingStrip(isLoading: state.isLoading),
-              ),
-              const SizedBox(height: AppPageHeaderStyle.bottomGap),
-              Expanded(
-                child: BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
-                  builder: (context, state) {
-                    return LayoutBuilder(
-                      builder: (context, constraints) {
-                        final compact = constraints.maxWidth < 920;
-                        final leftPanel = _TeachingActivityDatePanel(
-                          focusedMonth: _focusedMonth,
-                          selectedDate: _parseDate(state.date),
-                          activities: state.activities,
-                          sessionDateKeys: state.sessionDateKeys,
-                          onPreviousMonth: () {
-                            final newMonth = DateTime(
-                              _focusedMonth.year,
-                              _focusedMonth.month - 1,
+            ),
+            BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
+              builder: (context, state) =>
+                  AppLoadingStrip(isLoading: state.isLoading),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child:
+                    BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
+                      builder: (context, state) {
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            final compact = constraints.maxWidth < 920;
+                            final stats = _TeachingActivityStats(
+                              activities: state.activities,
                             );
-                            setState(() => _focusedMonth = newMonth);
-                            _loadScopedActivities(date: _dateKey(newMonth));
-                          },
-                          onNextMonth: () {
-                            final newMonth = DateTime(
-                              _focusedMonth.year,
-                              _focusedMonth.month + 1,
+                            final leftPanel = _TeachingActivityDatePanel(
+                              focusedMonth: _focusedMonth,
+                              selectedDate: _parseDate(state.date),
+                              activities: state.activities,
+                              sessionDateKeys: state.sessionDateKeys,
+                              onPreviousMonth: () {
+                                final newMonth = DateTime(
+                                  _focusedMonth.year,
+                                  _focusedMonth.month - 1,
+                                );
+                                setState(() => _focusedMonth = newMonth);
+                                _loadScopedActivities(date: _dateKey(newMonth));
+                              },
+                              onNextMonth: () {
+                                final newMonth = DateTime(
+                                  _focusedMonth.year,
+                                  _focusedMonth.month + 1,
+                                );
+                                setState(() => _focusedMonth = newMonth);
+                                _loadScopedActivities(date: _dateKey(newMonth));
+                              },
+                              onDateSelected: (date) {
+                                setState(() {
+                                  _focusedMonth = DateTime(
+                                    date.year,
+                                    date.month,
+                                  );
+                                });
+                                _loadScopedActivities(date: _dateKey(date));
+                              },
                             );
-                            setState(() => _focusedMonth = newMonth);
-                            _loadScopedActivities(date: _dateKey(newMonth));
-                          },
-                          onDateSelected: (date) {
-                            setState(() {
-                              _focusedMonth = DateTime(date.year, date.month);
-                            });
-                            _loadScopedActivities(date: _dateKey(date));
-                          },
-                        );
-                        final rightPanel = _TeachingActivityTablePanel(
-                          authScope: _authScope,
-                          canManageReports: _canManageReports,
-                        );
+                            final rightPanel = _TeachingActivityTablePanel(
+                              authScope: _authScope,
+                              canManageReports: _canManageReports,
+                            );
 
-                        if (compact) {
-                          return ListView(
-                            children: [
-                              leftPanel,
-                              const SizedBox(height: 12),
-                              SizedBox(height: 560, child: rightPanel),
-                            ],
-                          );
-                        }
+                            if (compact) {
+                              return ListView(
+                                children: [
+                                  stats,
+                                  const SizedBox(height: 12),
+                                  leftPanel,
+                                  const SizedBox(height: 12),
+                                  SizedBox(height: 560, child: rightPanel),
+                                ],
+                              );
+                            }
 
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(width: 286, child: leftPanel),
-                            const SizedBox(width: 14),
-                            Expanded(child: rightPanel),
-                          ],
+                            return Column(
+                              children: [
+                                stats,
+                                const SizedBox(height: 12),
+                                Expanded(
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      SizedBox(width: 286, child: leftPanel),
+                                      const SizedBox(width: 14),
+                                      Expanded(child: rightPanel),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         );
                       },
-                    );
-                  },
-                ),
+                    ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -244,6 +285,134 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
   }
 }
 
+class _TeachingActivityStats extends StatelessWidget {
+  const _TeachingActivityStats({required this.activities});
+
+  final List<TeachingActivityListItem> activities;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheduled = activities
+        .where((item) => item.status == TeachingActivityStatus.scheduled)
+        .length;
+    final inProgress = activities
+        .where((item) => item.status == TeachingActivityStatus.inProgress)
+        .length;
+    final completed = activities
+        .where((item) => item.status == TeachingActivityStatus.completed)
+        .length;
+    final cards = [
+      _TeachingActivityStatCard(
+        label: context.l10n.sessions,
+        value: activities.length,
+        icon: Icons.event_note_outlined,
+        color: AppColors.primaryDark,
+      ),
+      _TeachingActivityStatCard(
+        label: context.l10n.scheduled,
+        value: scheduled,
+        icon: Icons.schedule_outlined,
+        color: AppColors.warning,
+      ),
+      _TeachingActivityStatCard(
+        label: context.l10n.inProgress,
+        value: inProgress,
+        icon: Icons.play_circle_outline,
+        color: AppColors.accentBlue,
+      ),
+      _TeachingActivityStatCard(
+        label: context.l10n.statusCompleted,
+        value: completed,
+        icon: Icons.task_alt_outlined,
+        color: AppColors.success,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth < 680 ? 2 : 4;
+        const gap = 8.0;
+        final cardWidth =
+            (constraints.maxWidth - (gap * (columns - 1))) / columns;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final card in cards) SizedBox(width: cardWidth, child: card),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TeachingActivityStatCard extends StatelessWidget {
+  const _TeachingActivityStatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final int value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 76),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$value',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontSize: AppTypography.sectionTitle,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TeachingActivityFilters extends StatelessWidget {
   const _TeachingActivityFilters({required this.authScope});
 
@@ -254,9 +423,9 @@ class _TeachingActivityFilters extends StatelessWidget {
     return BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
       builder: (context, state) {
         return Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppColors.card,
+            color: AppColors.white,
             border: Border.all(color: AppColors.border),
             borderRadius: BorderRadius.circular(8),
           ),
@@ -388,10 +557,23 @@ class _TeachingActivityTablePanel extends StatelessWidget {
         Expanded(
           child: BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
             builder: (context, state) {
+              if (state.error != null && state.activities.isEmpty) {
+                return _TeachingActivityErrorState(
+                  onRetry: () =>
+                      context.read<TeachingActivityCubit>().loadActivities(
+                        teacherId: authScope.isTeacher
+                            ? authScope.teacherId
+                            : null,
+                        clearTeacherId: !authScope.isTeacher,
+                        forceRefresh: true,
+                      ),
+                );
+              }
               return AppTable<TeachingActivityListItem>(
                 data: state.activities,
                 emptyMessage: context.l10n.noTeachingSessionsFilter,
                 onRowTap: (item) async {
+                  if (state.isSaving) return;
                   if (item.activityId != null) {
                     context.go('/teaching-activities/${item.activityId}');
                     return;
@@ -458,6 +640,7 @@ class _TeachingActivityTablePanel extends StatelessWidget {
                       item: item,
                       authScope: authScope,
                       canManageReports: canManageReports,
+                      isSaving: state.isSaving,
                     ),
                   ),
                 ],
@@ -491,16 +674,6 @@ class _TeachingActivityDatePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheduled = activities
-        .where((item) => item.status == TeachingActivityStatus.scheduled)
-        .length;
-    final inProgress = activities
-        .where((item) => item.status == TeachingActivityStatus.inProgress)
-        .length;
-    final completed = activities
-        .where((item) => item.status == TeachingActivityStatus.completed)
-        .length;
-
     return Container(
       decoration: BoxDecoration(
         color: AppColors.white,
@@ -517,50 +690,65 @@ class _TeachingActivityDatePanel extends StatelessWidget {
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.calendar_today_outlined,
+                    color: AppColors.primaryDark,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
                         context.l10n.selectedDate,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        style: AppTypography.captionStyle,
                       ),
-                    ),
-                    Text(
-                      _dateKey(selectedDate),
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(height: 2),
+                      Text(
+                        MaterialLocalizations.of(
+                          context,
+                        ).formatMediumDate(selectedDate),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.bodyStrongStyle,
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.35),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                _DateSummaryRow(
-                  label: context.l10n.sessions,
-                  value: '${activities.length}',
-                  color: AppColors.primaryDark,
-                ),
-                _DateSummaryRow(
-                  label: context.l10n.scheduled,
-                  value: '$scheduled',
-                  color: AppColors.warning,
-                ),
-                _DateSummaryRow(
-                  label: context.l10n.inProgress,
-                  value: '$inProgress',
-                  color: AppColors.accentBlue,
-                ),
-                _DateSummaryRow(
-                  label: context.l10n.statusCompleted,
-                  value: '$completed',
-                  color: AppColors.success,
+                  ),
+                  child: Text(
+                    '${activities.length}',
+                    semanticsLabel:
+                        '${context.l10n.sessions}: ${activities.length}',
+                    style: const TextStyle(
+                      color: AppColors.primaryDark,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -701,70 +889,27 @@ class _TeachingActivityDatePanel extends StatelessWidget {
   }
 }
 
-class _DateSummaryRow extends StatelessWidget {
-  const _DateSummaryRow({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ActionButtons extends StatelessWidget {
   const _ActionButtons({
     required this.item,
     required this.authScope,
     required this.canManageReports,
+    required this.isSaving,
   });
 
   final TeachingActivityListItem item;
   final AppAuthorizationScope authScope;
   final bool canManageReports;
+  final bool isSaving;
 
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<TeachingActivityCubit>();
     final buttons = <Widget>[];
     final canAct =
-        canManageReports && authScope.ownsTeacherData(item.teacherId);
+        !isSaving &&
+        canManageReports &&
+        authScope.ownsTeacherData(item.teacherId);
 
     if (item.status == TeachingActivityStatus.scheduled) {
       buttons.add(
@@ -786,14 +931,6 @@ class _ActionButtons extends StatelessWidget {
               ? null
               : () => context.go('/teaching-activities/${item.activityId}'),
           child: Text(context.l10n.buttonContinue),
-        ),
-      );
-      buttons.add(
-        TextButton(
-          onPressed: item.activityId == null || !canAct
-              ? null
-              : () => cubit.completeActivity(item.activityId!),
-          child: Text(context.l10n.complete),
         ),
       );
     } else {
@@ -820,7 +957,9 @@ class _ActionButtons extends StatelessWidget {
       context: context,
       guardKey:
           'cancel_teaching_session_${item.scheduleId}_${item.activityId ?? ''}',
-      builder: (_) => const _CancelSessionDialog(),
+      builder: (_) => _CancelSessionDialog(
+        sessionDate: DateTime.tryParse(item.activityDate) ?? DateTime.now(),
+      ),
     );
     if (result == null || !context.mounted) return;
 
@@ -831,6 +970,7 @@ class _ActionButtons extends StatelessWidget {
         reason: result.reason,
         notes: result.notes,
         replacementRequired: result.replacementRequired,
+        replacementDate: result.replacementDate,
       );
       AppToast.showSuccess(successMessage);
     } catch (_) {
@@ -840,7 +980,9 @@ class _ActionButtons extends StatelessWidget {
 }
 
 class _CancelSessionDialog extends StatefulWidget {
-  const _CancelSessionDialog();
+  const _CancelSessionDialog({required this.sessionDate});
+
+  final DateTime sessionDate;
 
   @override
   State<_CancelSessionDialog> createState() => _CancelSessionDialogState();
@@ -849,7 +991,14 @@ class _CancelSessionDialog extends StatefulWidget {
 class _CancelSessionDialogState extends State<_CancelSessionDialog> {
   String _reason = CancellationReason.values.first;
   bool _replacementRequired = false;
+  late DateTime _replacementDate;
   final TextEditingController _notesController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _replacementDate = widget.sessionDate.add(const Duration(days: 7));
+  }
 
   @override
   void dispose() {
@@ -896,6 +1045,18 @@ class _CancelSessionDialogState extends State<_CancelSessionDialog> {
               title: Text(context.l10n.replacementNeeded),
               contentPadding: EdgeInsets.zero,
             ),
+            if (_replacementRequired)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(context.l10n.replacementDate),
+                subtitle: Text(
+                  MaterialLocalizations.of(
+                    context,
+                  ).formatMediumDate(_replacementDate),
+                ),
+                trailing: const Icon(Icons.calendar_month_outlined),
+                onTap: _selectReplacementDate,
+              ),
           ],
         ),
       ),
@@ -911,6 +1072,9 @@ class _CancelSessionDialogState extends State<_CancelSessionDialog> {
                 reason: _reason,
                 notes: _notesController.text.trim(),
                 replacementRequired: _replacementRequired,
+                replacementDate: _replacementRequired
+                    ? _dateKey(_replacementDate)
+                    : null,
               ),
             );
           },
@@ -919,6 +1083,23 @@ class _CancelSessionDialogState extends State<_CancelSessionDialog> {
       ],
     );
   }
+
+  Future<void> _selectReplacementDate() async {
+    final firstDate = DateUtils.dateOnly(
+      widget.sessionDate.add(const Duration(days: 1)),
+    );
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _replacementDate.isBefore(firstDate)
+          ? firstDate
+          : _replacementDate,
+      firstDate: firstDate,
+      lastDate: DateTime(firstDate.year + 10, firstDate.month, firstDate.day),
+    );
+    if (selected != null && mounted) {
+      setState(() => _replacementDate = selected);
+    }
+  }
 }
 
 class _CancelSessionResult {
@@ -926,11 +1107,45 @@ class _CancelSessionResult {
     required this.reason,
     required this.notes,
     required this.replacementRequired,
+    required this.replacementDate,
   });
 
   final String reason;
   final String notes;
   final bool replacementRequired;
+  final String? replacementDate;
+}
+
+class _TeachingActivityErrorState extends StatelessWidget {
+  const _TeachingActivityErrorState({required this.onRetry});
+
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 42, color: AppColors.error),
+            const SizedBox(height: 12),
+            Text(
+              context.l10n.teachingActivityError,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: Text(context.l10n.retry),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _StatusBadge extends StatelessWidget {

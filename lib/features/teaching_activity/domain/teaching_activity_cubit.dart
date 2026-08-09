@@ -55,24 +55,37 @@ class TeachingActivityState {
       date: date ?? this.date,
       teacherId: clearTeacherId == true ? null : teacherId ?? this.teacherId,
       classId: clearClassId == true ? null : classId ?? this.classId,
-      classLevel:
-          clearClassLevel == true ? null : classLevel ?? this.classLevel,
+      classLevel: clearClassLevel == true
+          ? null
+          : classLevel ?? this.classLevel,
       status: clearStatus == true ? null : status ?? this.status,
       isLoading: isLoading ?? this.isLoading,
       isSaving: isSaving ?? this.isSaving,
-      openActivityId:
-          clearOpenActivityId ? null : openActivityId ?? this.openActivityId,
+      openActivityId: clearOpenActivityId
+          ? null
+          : openActivityId ?? this.openActivityId,
       error: clearError ? null : error,
     );
   }
 }
 
 class TeachingActivityCubit extends Cubit<TeachingActivityState> {
-  TeachingActivityCubit(this._repository, this._cacheService)
-    : super(const TeachingActivityState());
+  TeachingActivityCubit(
+    this._repository,
+    this._cacheService, {
+    void Function()? onDataChanged,
+  }) : _onDataChanged = onDataChanged,
+       super(const TeachingActivityState());
 
   final TeachingActivityRepository _repository;
   final TeachingActivityCacheService _cacheService;
+  final void Function()? _onDataChanged;
+  int _loadGeneration = 0;
+
+  void _invalidateCaches() {
+    _cacheService.clear();
+    _onDataChanged?.call();
+  }
 
   void _safeEmit(TeachingActivityState nextState) {
     if (!isClosed) emit(nextState);
@@ -90,13 +103,15 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
     bool clearStatus = false,
     bool forceRefresh = false,
   }) async {
+    final loadGeneration = ++_loadGeneration;
     final effectiveDate = date ?? state.date ?? _dateOnly(DateTime.now());
     final effectiveTeacherId = clearTeacherId
         ? null
         : teacherId ?? state.teacherId;
     final effectiveClassId = clearClassId ? null : classId ?? state.classId;
-    final effectiveClassLevel =
-        clearClassLevel ? null : classLevel ?? state.classLevel;
+    final effectiveClassLevel = clearClassLevel
+        ? null
+        : classLevel ?? state.classLevel;
     final effectiveStatus = clearStatus ? null : status ?? state.status;
     final cacheKey = _cacheKey(
       date: effectiveDate,
@@ -154,6 +169,7 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
         classLevel: effectiveClassLevel,
         status: effectiveStatus,
       );
+      if (loadGeneration != _loadGeneration || isClosed) return;
       final sessionDateKeys = await _repository.getSessionDateKeysForMonth(
         month: DateTime.tryParse(effectiveDate) ?? DateTime.now(),
         teacherId: effectiveTeacherId,
@@ -161,6 +177,7 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
         classLevel: effectiveClassLevel,
         status: effectiveStatus,
       );
+      if (loadGeneration != _loadGeneration || isClosed) return;
       final nextState = state.copyWith(
         activities: activities,
         sessionDateKeys: sessionDateKeys,
@@ -178,11 +195,13 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
       _cacheService.put(cacheKey, nextState);
       _safeEmit(nextState);
     } catch (e) {
+      if (loadGeneration != _loadGeneration || isClosed) return;
       _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
   Future<void> startClass(String scheduleId) async {
+    if (state.isSaving) return;
     _safeEmit(
       state.copyWith(
         isSaving: true,
@@ -192,7 +211,7 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
     );
     try {
       final activityId = await _repository.startClass(scheduleId);
-      _cacheService.clear();
+      _invalidateCaches();
       _safeEmit(state.copyWith(isSaving: false, openActivityId: activityId));
     } catch (e) {
       _safeEmit(state.copyWith(isSaving: false, error: e.toString()));
@@ -206,7 +225,9 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
     required String reason,
     String? notes,
     required bool replacementRequired,
+    String? replacementDate,
   }) async {
+    if (state.isSaving) return;
     _safeEmit(state.copyWith(isSaving: true, clearError: true));
     try {
       await _repository.cancelClass(
@@ -215,8 +236,9 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
         reason: reason,
         notes: notes,
         replacementRequired: replacementRequired,
+        replacementDate: replacementDate,
       );
-      _cacheService.clear();
+      _invalidateCaches();
       _safeEmit(state.copyWith(isSaving: false));
       await loadActivities(forceRefresh: true);
     } catch (e) {
@@ -226,10 +248,11 @@ class TeachingActivityCubit extends Cubit<TeachingActivityState> {
   }
 
   Future<void> completeActivity(String activityId) async {
+    if (state.isSaving) return;
     _safeEmit(state.copyWith(isSaving: true, clearError: true));
     try {
       await _repository.completeActivity(activityId);
-      _cacheService.clear();
+      _invalidateCaches();
       _safeEmit(state.copyWith(isSaving: false));
       await loadActivities(forceRefresh: true);
     } catch (e) {

@@ -32,17 +32,45 @@ class TeachingActivityDetailState {
   }
 }
 
-class TeachingActivityDetailCubit
-    extends Cubit<TeachingActivityDetailState> {
-  TeachingActivityDetailCubit(this._repository, this._activityCacheService)
-      : super(const TeachingActivityDetailState());
+class TeachingActivityDetailCubit extends Cubit<TeachingActivityDetailState> {
+  TeachingActivityDetailCubit(
+    this._repository,
+    this._activityCacheService, {
+    void Function()? onDataChanged,
+  }) : _onDataChanged = onDataChanged,
+       super(const TeachingActivityDetailState());
 
   final TeachingActivityRepository _repository;
   final TeachingActivityCacheService _activityCacheService;
+  final void Function()? _onDataChanged;
   String? _activityId;
+  bool _canEdit = false;
+  bool _canReset = false;
+
+  void configureAuthorization({required bool canEdit, required bool canReset}) {
+    _canEdit = canEdit;
+    _canReset = canReset;
+  }
+
+  void _requireEditAccess() {
+    if (!_canEdit) {
+      throw StateError('You do not have permission to edit this report.');
+    }
+  }
+
+  void _requireResetAccess() {
+    if (!_canReset) {
+      throw StateError('You do not have permission to reset this report.');
+    }
+  }
 
   void _safeEmit(TeachingActivityDetailState nextState) {
     if (!isClosed) emit(nextState);
+  }
+
+  void _invalidateCaches() {
+    _activityCacheService.clear();
+    _onDataChanged?.call();
   }
 
   Future<void> loadDetail(String activityId) async {
@@ -78,12 +106,14 @@ class TeachingActivityDetailCubit
   }
 
   Future<void> saveAttendance(List<TeachingAttendanceRecord> records) async {
+    _requireEditAccess();
+    if (state.isSaving) return;
     final activityId = _activityId;
     if (activityId == null) return;
     _safeEmit(state.copyWith(isSaving: true, clearError: true));
     try {
       await _repository.saveAttendance(activityId, records);
-      _activityCacheService.clear();
+      _invalidateCaches();
       _safeEmit(state.copyWith(isSaving: false));
       await loadDetail(activityId);
     } catch (e) {
@@ -101,6 +131,8 @@ class TeachingActivityDetailCubit
     required String? sessionNotes,
     required String? assessmentType,
   }) async {
+    _requireEditAccess();
+    if (state.isSaving) return;
     final activityId = _activityId;
     if (activityId == null) return;
     _safeEmit(state.copyWith(isSaving: true, clearError: true));
@@ -115,104 +147,7 @@ class TeachingActivityDetailCubit
         sessionNotes: sessionNotes,
         assessmentType: assessmentType,
       );
-      _activityCacheService.clear();
-      _safeEmit(state.copyWith(isSaving: false));
-      await loadDetail(activityId);
-    } catch (e) {
-      _safeEmit(state.copyWith(isSaving: false, error: e.toString()));
-      rethrow;
-    }
-  }
-
-  Future<void> addAssessment({
-    required String studentId,
-    String? competencyId,
-    required String assessmentType,
-    required String result,
-    required String scoreMode,
-    double? rawScore,
-    double? normalizedScore,
-    double? score,
-    String? notes,
-  }) async {
-    final activityId = _activityId;
-    if (activityId == null) return;
-    _safeEmit(state.copyWith(isSaving: true, clearError: true));
-    try {
-      await _repository.addAssessment(
-        activityId: activityId,
-        studentId: studentId,
-        competencyId: competencyId,
-        assessmentType: assessmentType,
-        result: result,
-        scoreMode: scoreMode,
-        rawScore: rawScore,
-        normalizedScore: normalizedScore,
-        score: score,
-        notes: notes,
-      );
-      _activityCacheService.clear();
-      _safeEmit(state.copyWith(isSaving: false));
-      await loadDetail(activityId);
-    } catch (e) {
-      _safeEmit(state.copyWith(isSaving: false, error: e.toString()));
-      rethrow;
-    }
-  }
-
-  Future<void> updateAssessment({
-    required String id,
-    required String studentId,
-    String? competencyId,
-    required String assessmentType,
-    required String result,
-    required String scoreMode,
-    double? rawScore,
-    double? normalizedScore,
-    double? score,
-    String? notes,
-  }) async {
-    final activityId = _activityId;
-    if (activityId == null) return;
-    _safeEmit(state.copyWith(isSaving: true, clearError: true));
-    try {
-      await _repository.updateAssessment(
-        id: id,
-        studentId: studentId,
-        competencyId: competencyId,
-        assessmentType: assessmentType,
-        result: result,
-        scoreMode: scoreMode,
-        rawScore: rawScore,
-        normalizedScore: normalizedScore,
-        score: score,
-        notes: notes,
-      );
-      _activityCacheService.clear();
-      _safeEmit(state.copyWith(isSaving: false));
-      await loadDetail(activityId);
-    } catch (e) {
-      _safeEmit(state.copyWith(isSaving: false, error: e.toString()));
-      rethrow;
-    }
-  }
-
-  Future<void> saveBulkAssessments({
-    String? competencyId,
-    required String assessmentType,
-    required List<TeachingAssessmentBulkInput> records,
-  }) async {
-    final activityId = _activityId;
-    if (activityId == null) return;
-    _safeEmit(state.copyWith(isSaving: true, clearError: true));
-    try {
-      await _repository.saveBulkAssessments(
-        activityId: activityId,
-        competencyId: competencyId,
-        assessmentType: assessmentType,
-        records: records,
-      );
-      _activityCacheService.clear();
+      _invalidateCaches();
       _safeEmit(state.copyWith(isSaving: false));
       await loadDetail(activityId);
     } catch (e) {
@@ -223,9 +158,13 @@ class TeachingActivityDetailCubit
 
   Future<void> saveStudentReportingData({
     required String assessmentType,
+    required Set<String> studentIds,
+    required List<TeachingAttendanceRecord> attendanceRecords,
     required List<TeachingAssessmentBulkInput> assessments,
     required List<StudentSessionNoteInput> notes,
   }) async {
+    _requireEditAccess();
+    if (state.isSaving) return;
     final activityId = _activityId;
     if (activityId == null) return;
     _safeEmit(state.copyWith(isSaving: true, clearError: true));
@@ -233,10 +172,12 @@ class TeachingActivityDetailCubit
       await _repository.saveStudentReportingData(
         activityId: activityId,
         assessmentType: assessmentType,
+        studentIds: studentIds,
+        attendanceRecords: attendanceRecords,
         assessments: assessments,
         notes: notes,
       );
-      _activityCacheService.clear();
+      _invalidateCaches();
       _safeEmit(state.copyWith(isSaving: false));
       await loadDetail(activityId);
     } catch (e) {
@@ -246,27 +187,14 @@ class TeachingActivityDetailCubit
   }
 
   Future<void> resetReport() async {
+    _requireResetAccess();
+    if (state.isSaving) return;
     final activityId = _activityId;
     if (activityId == null) return;
     _safeEmit(state.copyWith(isSaving: true, clearError: true));
     try {
       await _repository.resetReport(activityId);
-      _activityCacheService.clear();
-      _safeEmit(state.copyWith(isSaving: false));
-      await loadDetail(activityId);
-    } catch (e) {
-      _safeEmit(state.copyWith(isSaving: false, error: e.toString()));
-      rethrow;
-    }
-  }
-
-  Future<void> deleteAssessment(String id) async {
-    final activityId = _activityId;
-    if (activityId == null) return;
-    _safeEmit(state.copyWith(isSaving: true, clearError: true));
-    try {
-      await _repository.deleteAssessment(id);
-      _activityCacheService.clear();
+      _invalidateCaches();
       _safeEmit(state.copyWith(isSaving: false));
       await loadDetail(activityId);
     } catch (e) {
@@ -285,6 +213,8 @@ class TeachingActivityDetailCubit
     required bool followUpNeeded,
     String? followUpNotes,
   }) async {
+    _requireEditAccess();
+    if (state.isSaving) return;
     final activityId = _activityId;
     if (activityId == null) return;
     _safeEmit(state.copyWith(isSaving: true, clearError: true));
@@ -300,7 +230,7 @@ class TeachingActivityDetailCubit
         followUpNeeded: followUpNeeded,
         followUpNotes: followUpNotes,
       );
-      _activityCacheService.clear();
+      _invalidateCaches();
       _safeEmit(state.copyWith(isSaving: false));
       await loadDetail(activityId);
     } catch (e) {
@@ -320,6 +250,8 @@ class TeachingActivityDetailCubit
     required bool followUpNeeded,
     String? followUpNotes,
   }) async {
+    _requireEditAccess();
+    if (state.isSaving) return;
     final activityId = _activityId;
     if (activityId == null) return;
     _safeEmit(state.copyWith(isSaving: true, clearError: true));
@@ -335,7 +267,7 @@ class TeachingActivityDetailCubit
         followUpNeeded: followUpNeeded,
         followUpNotes: followUpNotes,
       );
-      _activityCacheService.clear();
+      _invalidateCaches();
       _safeEmit(state.copyWith(isSaving: false));
       await loadDetail(activityId);
     } catch (e) {
@@ -344,30 +276,18 @@ class TeachingActivityDetailCubit
     }
   }
 
-  Future<void> deleteStudentNote(String id) async {
+  Future<void> completeActivityWithAttendance(
+    List<TeachingAttendanceRecord> records,
+  ) async {
+    _requireEditAccess();
+    if (state.isSaving) return;
     final activityId = _activityId;
     if (activityId == null) return;
     _safeEmit(state.copyWith(isSaving: true, clearError: true));
     try {
-      await _repository.deleteStudentNote(id);
-      _activityCacheService.clear();
+      await _repository.completeActivityWithAttendance(activityId, records);
+      _invalidateCaches();
       _safeEmit(state.copyWith(isSaving: false));
-      await loadDetail(activityId);
-    } catch (e) {
-      _safeEmit(state.copyWith(isSaving: false, error: e.toString()));
-      rethrow;
-    }
-  }
-
-  Future<void> completeActivity() async {
-    final activityId = _activityId;
-    if (activityId == null) return;
-    _safeEmit(state.copyWith(isSaving: true, clearError: true));
-    try {
-      await _repository.completeActivity(activityId);
-      _activityCacheService.clear();
-      _safeEmit(state.copyWith(isSaving: false));
-      await loadDetail(activityId);
     } catch (e) {
       _safeEmit(state.copyWith(isSaving: false, error: e.toString()));
       rethrow;
