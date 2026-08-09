@@ -148,3 +148,29 @@ There is currently no application API client. If a concrete API requirement is a
 Prioritize business rules, state transitions, migrations/transactions, authorization, critical user flows, cache invalidation, regressions, and loading/error/empty states. Use unit tests for pure rules, Cubit tests for transitions, widget tests for interaction/layout, and integration tests only for critical end-to-end flows. Avoid fragile private-widget assertions and excessive mocking.
 
 A bug fix should normally include a regression test when practical. Before handoff, run relevant formatting, targeted/full analysis, tests, and the affected platform build. Report commands actually run and any residual risk.
+
+## Autonomy and Change Policy
+For requests to:
+- check
+- review
+- inspect
+- analyze
+- explain
+- diagnose
+- audit
+- find gaps
+- find bugs
+- evaluate
+
+Codex must inspect the relevant implementation and report findings.
+
+DO NOT modify production code unless the user explicitly asks to:
+- implement
+- fix
+- change
+- refactor
+- create
+- update
+
+When the user asks to report findings first,
+stop after the analysis and wait for the user's decision before changing code.

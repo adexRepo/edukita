@@ -1,6 +1,6 @@
 ---
 name: ui-ux
-description: Design, implement, or review Edukita screens, layouts, desktop interactions, dialogs, tables, responsive behavior, and loading, empty, error, disabled, or success states. Use for UI consistency, usability, accessibility, overflow, keyboard, focus, and visual hierarchy work.
+description: Use when designing, reviewing, auditing, or improving Edukita Flutter screens and user flows. Covers usability, interaction efficiency, visual hierarchy, accessibility, responsive and desktop behavior, dialogs, tables, keyboard and focus handling, overflow, and missing loading, empty, error, disabled, or success states. Also use when the user asks whether an existing flow is confusing, inefficient, has unnecessary steps, or could provide a better user experience.
 ---
 
 # UI and UX

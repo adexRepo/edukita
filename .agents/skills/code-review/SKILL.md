@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Review Edukita Flutter changes, pull requests, features, or modules for correctness, state consistency, async lifecycle safety, sensitive-data handling, regressions, responsive/accessibility issues, performance, maintainability, and missing tests. Use whenever the user asks for a code review or risk audit.
+description: Use when reviewing, auditing, inspecting, or analyzing Edukita Flutter code, features, modules, or pull requests for correctness, requirement gaps, hidden or silent bugs, regressions, edge cases, state consistency, async lifecycle safety, sensitive-data handling, performance, maintainability, and missing tests. Also use when the user asks to understand an existing feature flow and identify implementation risks or incomplete behavior. Report findings first and do not implement fixes unless the user explicitly requests changes.
 ---
 
 # Flutter Code Review
