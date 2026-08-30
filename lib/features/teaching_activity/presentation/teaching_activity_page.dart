@@ -29,6 +29,7 @@ class TeachingActivityPage extends StatefulWidget {
 
 class _TeachingActivityPageState extends State<TeachingActivityPage> {
   late DateTime _focusedMonth;
+  late final TeachingActivityCacheService _activityCacheService;
   late int _cacheRevision;
   AppAuthorizationScope _authScope = AppAuthorizationScope(
     role: AppUserRole.admin,
@@ -45,8 +46,21 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
     super.initState();
     final now = DateTime.now();
     _focusedMonth = DateTime(now.year, now.month);
-    _cacheRevision = getIt<TeachingActivityCacheService>().revision;
+    _activityCacheService = getIt<TeachingActivityCacheService>();
+    _cacheRevision = _activityCacheService.revision;
+    _activityCacheService.addListener(_onActivityCacheChanged);
     _loadAuthorizationAndActivities();
+  }
+
+  @override
+  void dispose() {
+    _activityCacheService.removeListener(_onActivityCacheChanged);
+    super.dispose();
+  }
+
+  void _onActivityCacheChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   Future<void> _loadAuthorizationAndActivities() async {
@@ -265,7 +279,7 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
   }
 
   void _refreshIfCacheChanged(BuildContext context) {
-    final currentRevision = getIt<TeachingActivityCacheService>().revision;
+    final currentRevision = _activityCacheService.revision;
     if (currentRevision == _cacheRevision || _refreshScheduled) return;
 
     _refreshScheduled = true;
@@ -280,6 +294,9 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
         );
       } finally {
         _refreshScheduled = false;
+        if (mounted && _activityCacheService.revision != _cacheRevision) {
+          setState(() {});
+        }
       }
     });
   }

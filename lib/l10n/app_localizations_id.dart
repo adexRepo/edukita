@@ -210,6 +210,31 @@ class AppLocalizationsId extends AppLocalizations {
   String get attendanceLate => 'Terlambat';
 
   @override
+  String get syncNewStudents => 'Sinkronkan Siswa Baru';
+
+  @override
+  String get syncNewStudentsTitle => 'Tambahkan Siswa Baru ke Sesi Ini?';
+
+  @override
+  String syncNewStudentsCount(Object count) {
+    return 'Sinkronkan $count Baru';
+  }
+
+  @override
+  String syncNewStudentsConfirm(Object count) {
+    return 'Ada $count siswa aktif yang sekarang sesuai dengan kelas ini tetapi belum ada dalam daftar sesi. Tambahkan tanpa mengubah presensi atau laporan yang sudah ada?';
+  }
+
+  @override
+  String syncNewStudentsSuccess(Object count) {
+    return 'Berhasil menambahkan $count siswa baru ke sesi ini.';
+  }
+
+  @override
+  String get noNewStudentsToSync =>
+      'Tidak ada siswa baru yang memenuhi syarat.';
+
+  @override
   String get studentName => 'Nama Siswa';
 
   @override
@@ -268,6 +293,20 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get scheduleDeleteDenied =>
       'Anda tidak memiliki izin untuk menghapus jadwal ini.';
+
+  @override
+  String get scheduleDeleteLocked =>
+      'Jadwal ini tidak dapat dihapus karena sesi mengajarnya sudah dimulai atau sudah dilaporkan.';
+
+  @override
+  String get cannotDeleteSchedule => 'Tidak Dapat Menghapus Jadwal';
+
+  @override
+  String get failedToDeleteSchedule => 'Gagal menghapus jadwal.';
+
+  @override
+  String get scheduleShowingCachedData =>
+      'Data jadwal terbaru gagal dimuat. Kalender menampilkan data terakhir yang tersedia.';
 
   @override
   String get eventCreateDenied =>
@@ -371,6 +410,9 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get endDateAfterStartDate =>
       'Tanggal selesai harus setelah tanggal mulai';
+
+  @override
+  String get endTimeAfterStartTime => 'Waktu selesai harus setelah waktu mulai';
 
   @override
   String get start => 'Mulai';

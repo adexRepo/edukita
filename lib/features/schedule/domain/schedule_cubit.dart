@@ -10,19 +10,20 @@ class ScheduleCubit extends Cubit<ScheduleState> {
   final ScheduleRepository _repository;
   final ScheduleCacheService _cacheService;
   final TeachingActivityCacheService _teachingActivityCacheService;
+  int _loadGeneration = 0;
 
   ScheduleCubit(
     this._repository,
     this._cacheService,
     this._teachingActivityCacheService,
-  )
-    : super(const ScheduleState());
+  ) : super(const ScheduleState());
 
   void _safeEmit(ScheduleState nextState) {
     if (!isClosed) emit(nextState);
   }
 
   Future<void> loadSchedules({bool forceRefresh = false}) async {
+    final loadGeneration = ++_loadGeneration;
     const cacheKey = 'all';
     if (!forceRefresh) {
       final cachedState = _cacheService.get(cacheKey);
@@ -38,46 +39,66 @@ class ScheduleCubit extends Cubit<ScheduleState> {
       final events = await _repository.getAllEvents();
       final nextState = state.copyWith(
         isLoading: false,
+        hasLoaded: true,
         schedules: schedules,
         events: events,
         error: null,
       );
+      if (loadGeneration != _loadGeneration || isClosed) return;
       _cacheService.put(cacheKey, nextState);
       _safeEmit(nextState);
     } catch (e) {
+      if (loadGeneration != _loadGeneration || isClosed) return;
       _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
-  Future<void> addSchedule(Schedule schedule) async {
+  Future<void> addSchedule(Schedule schedule, {String? teacherScopeId}) async {
     try {
       await _repository.insertSchedule(schedule);
+      _safeEmit(
+        state.copyWith(schedules: [...state.schedules, schedule], error: null),
+      );
       _clearScheduleRelatedCaches();
-      await loadSchedules(forceRefresh: true);
-    } catch (e) {
-      _safeEmit(state.copyWith(error: e.toString()));
+      await _reloadAfterMutation(teacherScopeId: teacherScopeId);
+    } catch (_) {
       rethrow;
     }
   }
 
-  Future<void> updateSchedule(Schedule schedule) async {
+  Future<void> updateSchedule(
+    Schedule schedule, {
+    String? teacherScopeId,
+  }) async {
     try {
       await _repository.updateSchedule(schedule);
+      _safeEmit(
+        state.copyWith(
+          schedules: state.schedules
+              .map((item) => item.id == schedule.id ? schedule : item)
+              .toList(),
+          error: null,
+        ),
+      );
       _clearScheduleRelatedCaches();
-      await loadSchedules(forceRefresh: true);
-    } catch (e) {
-      _safeEmit(state.copyWith(error: e.toString()));
+      await _reloadAfterMutation(teacherScopeId: teacherScopeId);
+    } catch (_) {
       rethrow;
     }
   }
 
-  Future<void> deleteSchedule(String id) async {
+  Future<void> deleteSchedule(String id, {String? teacherScopeId}) async {
     try {
       await _repository.deleteSchedule(id);
+      _safeEmit(
+        state.copyWith(
+          schedules: state.schedules.where((item) => item.id != id).toList(),
+          error: null,
+        ),
+      );
       _clearScheduleRelatedCaches();
-      await loadSchedules(forceRefresh: true);
-    } catch (e) {
-      _safeEmit(state.copyWith(error: e.toString()));
+      await _reloadAfterMutation(teacherScopeId: teacherScopeId);
+    } catch (_) {
       rethrow;
     }
   }
@@ -85,10 +106,10 @@ class ScheduleCubit extends Cubit<ScheduleState> {
   Future<void> addEvent(ScheduleEvent event) async {
     try {
       await _repository.insertEvent(event);
+      _safeEmit(state.copyWith(events: [...state.events, event], error: null));
       _cacheService.clear();
       await loadSchedules(forceRefresh: true);
-    } catch (e) {
-      _safeEmit(state.copyWith(error: e.toString()));
+    } catch (_) {
       rethrow;
     }
   }
@@ -96,10 +117,17 @@ class ScheduleCubit extends Cubit<ScheduleState> {
   Future<void> updateEvent(ScheduleEvent event) async {
     try {
       await _repository.updateEvent(event);
+      _safeEmit(
+        state.copyWith(
+          events: state.events
+              .map((item) => item.id == event.id ? event : item)
+              .toList(),
+          error: null,
+        ),
+      );
       _cacheService.clear();
       await loadSchedules(forceRefresh: true);
-    } catch (e) {
-      _safeEmit(state.copyWith(error: e.toString()));
+    } catch (_) {
       rethrow;
     }
   }
@@ -107,10 +135,15 @@ class ScheduleCubit extends Cubit<ScheduleState> {
   Future<void> deleteEvent(String id) async {
     try {
       await _repository.deleteEvent(id);
+      _safeEmit(
+        state.copyWith(
+          events: state.events.where((item) => item.id != id).toList(),
+          error: null,
+        ),
+      );
       _cacheService.clear();
       await loadSchedules(forceRefresh: true);
-    } catch (e) {
-      _safeEmit(state.copyWith(error: e.toString()));
+    } catch (_) {
       rethrow;
     }
   }
@@ -119,6 +152,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     String classId, {
     bool forceRefresh = false,
   }) async {
+    final loadGeneration = ++_loadGeneration;
     final cacheKey = 'class:$classId';
     final cachedState = forceRefresh ? null : _cacheService.get(cacheKey);
     if (cachedState != null) {
@@ -131,12 +165,15 @@ class ScheduleCubit extends Cubit<ScheduleState> {
       final schedules = await _repository.getSchedulesByClass(classId);
       final nextState = state.copyWith(
         isLoading: false,
+        hasLoaded: true,
         schedules: schedules,
         error: null,
       );
+      if (loadGeneration != _loadGeneration || isClosed) return;
       _cacheService.put(cacheKey, nextState);
       _safeEmit(nextState);
     } catch (e) {
+      if (loadGeneration != _loadGeneration || isClosed) return;
       _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
@@ -145,6 +182,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     int level, {
     bool forceRefresh = false,
   }) async {
+    final loadGeneration = ++_loadGeneration;
     final cacheKey = 'level:$level';
     final cachedState = forceRefresh ? null : _cacheService.get(cacheKey);
     if (cachedState != null) {
@@ -157,12 +195,15 @@ class ScheduleCubit extends Cubit<ScheduleState> {
       final schedules = await _repository.getSchedulesByLevel(level);
       final nextState = state.copyWith(
         isLoading: false,
+        hasLoaded: true,
         schedules: schedules,
         error: null,
       );
+      if (loadGeneration != _loadGeneration || isClosed) return;
       _cacheService.put(cacheKey, nextState);
       _safeEmit(nextState);
     } catch (e) {
+      if (loadGeneration != _loadGeneration || isClosed) return;
       _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
@@ -171,6 +212,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     String teacherId, {
     bool forceRefresh = false,
   }) async {
+    final loadGeneration = ++_loadGeneration;
     final cacheKey = 'teacher:$teacherId';
     final cachedState = forceRefresh ? null : _cacheService.get(cacheKey);
     if (cachedState != null) {
@@ -181,14 +223,19 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     _safeEmit(state.copyWith(isLoading: true));
     try {
       final schedules = await _repository.getSchedulesByTeacher(teacherId);
+      final events = await _repository.getAllEvents();
       final nextState = state.copyWith(
         isLoading: false,
+        hasLoaded: true,
         schedules: schedules,
+        events: events,
         error: null,
       );
+      if (loadGeneration != _loadGeneration || isClosed) return;
       _cacheService.put(cacheKey, nextState);
       _safeEmit(nextState);
     } catch (e) {
+      if (loadGeneration != _loadGeneration || isClosed) return;
       _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
@@ -197,6 +244,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     String date, {
     bool forceRefresh = false,
   }) async {
+    final loadGeneration = ++_loadGeneration;
     final cacheKey = 'date:$date';
     final cachedState = forceRefresh ? null : _cacheService.get(cacheKey);
     if (cachedState != null) {
@@ -209,12 +257,15 @@ class ScheduleCubit extends Cubit<ScheduleState> {
       final schedules = await _repository.getSchedulesByDate(date);
       final nextState = state.copyWith(
         isLoading: false,
+        hasLoaded: true,
         schedules: schedules,
         error: null,
       );
+      if (loadGeneration != _loadGeneration || isClosed) return;
       _cacheService.put(cacheKey, nextState);
       _safeEmit(nextState);
     } catch (e) {
+      if (loadGeneration != _loadGeneration || isClosed) return;
       _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
@@ -223,6 +274,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     String subjectId, {
     bool forceRefresh = false,
   }) async {
+    final loadGeneration = ++_loadGeneration;
     final cacheKey = 'subject:$subjectId';
     final cachedState = forceRefresh ? null : _cacheService.get(cacheKey);
     if (cachedState != null) {
@@ -235,12 +287,15 @@ class ScheduleCubit extends Cubit<ScheduleState> {
       final schedules = await _repository.getSchedulesBySubject(subjectId);
       final nextState = state.copyWith(
         isLoading: false,
+        hasLoaded: true,
         schedules: schedules,
         error: null,
       );
+      if (loadGeneration != _loadGeneration || isClosed) return;
       _cacheService.put(cacheKey, nextState);
       _safeEmit(nextState);
     } catch (e) {
+      if (loadGeneration != _loadGeneration || isClosed) return;
       _safeEmit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
@@ -249,16 +304,20 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     _cacheService.clear();
     _teachingActivityCacheService.clear();
   }
+
+  Future<void> _reloadAfterMutation({String? teacherScopeId}) {
+    if (teacherScopeId != null && teacherScopeId.trim().isNotEmpty) {
+      return loadSchedulesByTeacher(teacherScopeId, forceRefresh: true);
+    }
+    return loadSchedules(forceRefresh: true);
+  }
 }
 
 class ScheduleCacheService {
   ScheduleCacheService({
     Duration ttl = const Duration(seconds: 75),
     int maxEntries = 4,
-  }) : _items = AppMemoryCache<ScheduleState>(
-         ttl: ttl,
-         maxEntries: maxEntries,
-       );
+  }) : _items = AppMemoryCache<ScheduleState>(ttl: ttl, maxEntries: maxEntries);
 
   final AppMemoryCache<ScheduleState> _items;
   int _revision = 0;

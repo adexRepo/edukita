@@ -494,6 +494,42 @@ abstract class AppLocalizations {
   /// **'Late'**
   String get attendanceLate;
 
+  /// No description provided for @syncNewStudents.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync New Students'**
+  String get syncNewStudents;
+
+  /// No description provided for @syncNewStudentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add New Students to This Session?'**
+  String get syncNewStudentsTitle;
+
+  /// No description provided for @syncNewStudentsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync {count} New'**
+  String syncNewStudentsCount(Object count);
+
+  /// No description provided for @syncNewStudentsConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} active student(s) now match this class but are not in the session roster. Add them without changing existing attendance or reports?'**
+  String syncNewStudentsConfirm(Object count);
+
+  /// No description provided for @syncNewStudentsSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {count} new student(s) to this session.'**
+  String syncNewStudentsSuccess(Object count);
+
+  /// No description provided for @noNewStudentsToSync.
+  ///
+  /// In en, this message translates to:
+  /// **'No new eligible students were found.'**
+  String get noNewStudentsToSync;
+
   /// No description provided for @studentName.
   ///
   /// In en, this message translates to:
@@ -601,6 +637,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You do not have permission to delete this schedule.'**
   String get scheduleDeleteDenied;
+
+  /// No description provided for @scheduleDeleteLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'This schedule cannot be deleted because its teaching session has already started or been reported.'**
+  String get scheduleDeleteLocked;
+
+  /// No description provided for @cannotDeleteSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot Delete Schedule'**
+  String get cannotDeleteSchedule;
+
+  /// No description provided for @failedToDeleteSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete schedule.'**
+  String get failedToDeleteSchedule;
+
+  /// No description provided for @scheduleShowingCachedData.
+  ///
+  /// In en, this message translates to:
+  /// **'The latest schedule data could not be loaded. Showing the last available calendar data.'**
+  String get scheduleShowingCachedData;
 
   /// No description provided for @eventCreateDenied.
   ///
@@ -781,6 +841,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'End date must be after start date'**
   String get endDateAfterStartDate;
+
+  /// No description provided for @endTimeAfterStartTime.
+  ///
+  /// In en, this message translates to:
+  /// **'End time must be after start time'**
+  String get endTimeAfterStartTime;
 
   /// No description provided for @start.
   ///

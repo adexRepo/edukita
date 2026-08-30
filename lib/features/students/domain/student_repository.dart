@@ -238,26 +238,22 @@ class StudentRepository extends BaseRepository<Student> {
 
     // 🏫 school
     if (filter.schoolNames.isNotEmpty) {
-      where.add(
-        '''
+      where.add('''
         CASE
           WHEN COALESCE(sc.is_system_default, 0) = 1 THEN ''
           ELSE COALESCE(sc.name, '')
         END IN (${placeholders(filter.schoolNames.length)})
-        ''',
-      );
+        ''');
       args.addAll(filter.schoolNames);
     }
 
     if (filter.schoolNamesNot.isNotEmpty) {
-      where.add(
-        '''
+      where.add('''
         CASE
           WHEN COALESCE(sc.is_system_default, 0) = 1 THEN ''
           ELSE COALESCE(sc.name, '')
         END NOT IN (${placeholders(filter.schoolNamesNot.length)})
-        ''',
-      );
+        ''');
       args.addAll(filter.schoolNamesNot);
     }
 
@@ -456,26 +452,22 @@ class StudentRepository extends BaseRepository<Student> {
     }
 
     if (filter.schoolNames.isNotEmpty) {
-      where.add(
-        '''
+      where.add('''
         CASE
           WHEN COALESCE(sc.is_system_default, 0) = 1 THEN ''
           ELSE COALESCE(sc.name, '')
         END IN (${placeholders(filter.schoolNames.length)})
-        ''',
-      );
+        ''');
       args.addAll(filter.schoolNames);
     }
 
     if (filter.schoolNamesNot.isNotEmpty) {
-      where.add(
-        '''
+      where.add('''
         CASE
           WHEN COALESCE(sc.is_system_default, 0) = 1 THEN ''
           ELSE COALESCE(sc.name, '')
         END NOT IN (${placeholders(filter.schoolNamesNot.length)})
-        ''',
-      );
+        ''');
       args.addAll(filter.schoolNamesNot);
     }
 
@@ -582,7 +574,7 @@ class StudentRepository extends BaseRepository<Student> {
       FROM classes c
       INNER JOIN schools sc ON sc.id = c.school_id
       WHERE COALESCE(sc.is_system_default, 0) = 1
-        AND c.level BETWEEN 1 AND 12
+        AND c.level BETWEEN 0 AND 12
       ORDER BY c.level
     ''');
     return result.map(SchoolClass.fromMap).toList();
@@ -1034,11 +1026,7 @@ class StudentRepository extends BaseRepository<Student> {
     if (!guardians.any((guardian) => guardian.hasData)) {
       await _copyGuardiansFromRelations(txn, student.id, resolvedRelations);
     } else {
-      await _copyGuardiansToRelations(
-        txn,
-        savedGuardians,
-        resolvedRelations,
-      );
+      await _copyGuardiansToRelations(txn, savedGuardians, resolvedRelations);
     }
     await _saveActivities(txn, student.id, advanced.activities);
     await _saveRegistrationForm(txn, student.id, advanced.registrationForm);
@@ -1062,13 +1050,12 @@ class StudentRepository extends BaseRepository<Student> {
     return StudentHouseholdProfileFormData(
       id: row['id']?.toString(),
       homeAddress: row['home_address']?.toString(),
-      dailySchoolTransportCost:
-          (row['daily_school_transport_cost'] as num?)?.toDouble(),
+      dailySchoolTransportCost: (row['daily_school_transport_cost'] as num?)
+          ?.toDouble(),
       fatherIncome: (row['father_income'] as num?)?.toDouble(),
       motherIncome: (row['mother_income'] as num?)?.toDouble(),
       housingStatus: row['housing_status']?.toString(),
-      householdMemberCount:
-          (row['household_member_count'] as num?)?.toInt(),
+      householdMemberCount: (row['household_member_count'] as num?)?.toInt(),
       educationArrears: (row['education_arrears'] as num?)?.toDouble(),
       academicAchievement: row['academic_achievement']?.toString(),
       nonAcademicAchievement: row['non_academic_achievement']?.toString(),
@@ -1310,7 +1297,9 @@ class StudentRepository extends BaseRepository<Student> {
     }
 
     for (final relatedStudentId in relatedStudentIds) {
-      final hasPrimaryGuardian = guardians.any((guardian) => guardian.isPrimary);
+      final hasPrimaryGuardian = guardians.any(
+        (guardian) => guardian.isPrimary,
+      );
       if (hasPrimaryGuardian) {
         await txn.update(
           'student_guardians',
@@ -1493,10 +1482,7 @@ class StudentRepository extends BaseRepository<Student> {
     final result = await db.query(
       'student_documents',
       where: 'student_id = ? AND document_type = ?',
-      whereArgs: [
-        studentId,
-        StudentDocumentTypeOptions.registrationForm,
-      ],
+      whereArgs: [studentId, StudentDocumentTypeOptions.registrationForm],
       orderBy: 'uploaded_at DESC',
       limit: 1,
     );
@@ -1542,10 +1528,7 @@ class StudentRepository extends BaseRepository<Student> {
       await txn.delete(
         'student_documents',
         where: 'student_id = ? AND document_type = ?',
-        whereArgs: [
-          studentId,
-          StudentDocumentTypeOptions.registrationForm,
-        ],
+        whereArgs: [studentId, StudentDocumentTypeOptions.registrationForm],
       );
       await UploadedFileRepository.deactivate(
         txn,
@@ -1559,10 +1542,7 @@ class StudentRepository extends BaseRepository<Student> {
     await txn.delete(
       'student_documents',
       where: 'student_id = ? AND document_type = ?',
-      whereArgs: [
-        studentId,
-        StudentDocumentTypeOptions.registrationForm,
-      ],
+      whereArgs: [studentId, StudentDocumentTypeOptions.registrationForm],
     );
     await txn.insert('student_documents', {
       'id': document.id ?? const Uuid().v4(),
@@ -1570,8 +1550,7 @@ class StudentRepository extends BaseRepository<Student> {
       'document_type': StudentDocumentTypeOptions.registrationForm,
       'file_url': filePath,
       'uploaded_at':
-          _nullIfBlank(document.uploadedAt) ??
-          DateTime.now().toIso8601String(),
+          _nullIfBlank(document.uploadedAt) ?? DateTime.now().toIso8601String(),
     });
     await UploadedFileRepository.register(
       txn,
@@ -1891,7 +1870,10 @@ class StudentRepository extends BaseRepository<Student> {
       orderBy: 'name COLLATE NOCASE',
     );
     final unitRows = studentLevel == null
-        ? await db.query('units', orderBy: 'sequence_no ASC, name COLLATE NOCASE')
+        ? await db.query(
+            'units',
+            orderBy: 'sequence_no ASC, name COLLATE NOCASE',
+          )
         : await db.rawQuery(
             '''
             SELECT DISTINCT u.*
@@ -1911,7 +1893,10 @@ class StudentRepository extends BaseRepository<Student> {
     );
   }
 
-  Future<int?> _loadStudentClassLevel(DatabaseExecutor db, String studentId) async {
+  Future<int?> _loadStudentClassLevel(
+    DatabaseExecutor db,
+    String studentId,
+  ) async {
     final rows = await db.rawQuery(
       '''
       SELECT c.level
@@ -1943,9 +1928,10 @@ class StudentRepository extends BaseRepository<Student> {
     final legacyGroups = await _loadLegacyStudentExamScores(db, studentId);
     if (groupRows.isEmpty) return legacyGroups;
 
-    final groupIds = groupRows.map((row) => row['id']?.toString() ?? '').toList();
-    final itemRows = await db.rawQuery(
-      '''
+    final groupIds = groupRows
+        .map((row) => row['id']?.toString() ?? '')
+        .toList();
+    final itemRows = await db.rawQuery('''
       SELECT
         item.*,
         subject.name AS subject_name,
@@ -1955,9 +1941,7 @@ class StudentRepository extends BaseRepository<Student> {
       LEFT JOIN units unit ON unit.id = item.unit_id
       WHERE item.group_id IN (${placeholders(groupIds.length)})
       ORDER BY subject.name COLLATE NOCASE, unit.sequence_no ASC, unit.name COLLATE NOCASE
-      ''',
-      groupIds,
-    );
+      ''', groupIds);
     final itemsByGroup = <String, List<StudentExamScoreItem>>{};
     for (final row in itemRows) {
       final item = StudentExamScoreItem.fromMap(row);
@@ -1971,12 +1955,11 @@ class StudentRepository extends BaseRepository<Student> {
         items: itemsByGroup[id] ?? const <StudentExamScoreItem>[],
       );
     }).toList();
-    return [...groups, ...legacyGroups]
-      ..sort((a, b) {
-        final dateCompare = b.examDate.compareTo(a.examDate);
-        if (dateCompare != 0) return dateCompare;
-        return b.createdAt.compareTo(a.createdAt);
-      });
+    return [...groups, ...legacyGroups]..sort((a, b) {
+      final dateCompare = b.examDate.compareTo(a.examDate);
+      if (dateCompare != 0) return dateCompare;
+      return b.createdAt.compareTo(a.createdAt);
+    });
   }
 
   Future<void> registerStudentStoryReport({
@@ -2005,10 +1988,7 @@ class StudentRepository extends BaseRepository<Student> {
     final db = await _dbProvider.database;
     await db.update(
       'uploaded_files',
-      {
-        'is_active': 0,
-        'updated_at': DateTime.now().toIso8601String(),
-      },
+      {'is_active': 0, 'updated_at': DateTime.now().toIso8601String()},
       where:
           'id = ? AND entity_type = ? AND entity_id = ? AND document_type = ?',
       whereArgs: [
@@ -2093,10 +2073,7 @@ class StudentRepository extends BaseRepository<Student> {
     final db = await _dbProvider.database;
     await db.update(
       'student_special_notes',
-      {
-        'is_active': 0,
-        'updated_at': DateTime.now().toIso8601String(),
-      },
+      {'is_active': 0, 'updated_at': DateTime.now().toIso8601String()},
       where: 'id = ?',
       whereArgs: [noteId],
     );
@@ -2347,7 +2324,8 @@ class StudentRepository extends BaseRepository<Student> {
               entityId: migratedGroupId,
               documentType: 'exam_evidence',
               filePath: evidencePath!,
-              originalFileName: migratedValues['evidence_file_name']?.toString(),
+              originalFileName: migratedValues['evidence_file_name']
+                  ?.toString(),
             );
           }
           return;
@@ -2481,8 +2459,7 @@ class StudentRepository extends BaseRepository<Student> {
     );
     await directory.create(recursive: true);
 
-    final fileName =
-        '${scoreId}_${_compactDateTime(DateTime.now())}$extension';
+    final fileName = '${scoreId}_${_compactDateTime(DateTime.now())}$extension';
     final destinationPath = p.join(directory.path, fileName);
 
     if (p.normalize(sourceFile.path) != p.normalize(destinationPath)) {
@@ -2694,9 +2671,10 @@ class StudentRepository extends BaseRepository<Student> {
     return rows.map((row) {
       final start = row['start_at']?.toString();
       final end = row['end_at']?.toString();
-      final time = [start, end]
-          .where((value) => value != null && value.trim().isNotEmpty)
-          .join(' - ');
+      final time = [
+        start,
+        end,
+      ].where((value) => value != null && value.trim().isNotEmpty).join(' - ');
       return StudentAttendanceRecordView(
         date: row['activity_date']?.toString() ?? '-',
         session: row['session_name']?.toString() ?? 'Teaching Session',

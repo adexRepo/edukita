@@ -31,6 +31,7 @@ class DatabaseSeed {
     final classColumnNames = classColumns.map((row) => row['name']).toSet();
 
     const defaultSchools = [
+      (id: 'system-default-school-tk', type: 'TK', name: 'Default TK'),
       (id: 'system-default-school-sd', type: 'SD', name: 'Default SD'),
       (id: 'system-default-school-smp', type: 'SMP', name: 'Default SMP'),
       (id: 'system-default-school-sma', type: 'SMA', name: 'Default SMA'),
@@ -61,12 +62,13 @@ class DatabaseSeed {
     }
 
     String defaultSchoolIdForLevel(int level) {
+      if (level == 0) return 'system-default-school-tk';
       if (level >= 1 && level <= 6) return 'system-default-school-sd';
       if (level >= 7 && level <= 9) return 'system-default-school-smp';
       return 'system-default-school-sma';
     }
 
-    for (var level = 1; level <= 12; level += 1) {
+    for (var level = 0; level <= 12; level += 1) {
       final schoolId = defaultSchoolIdForLevel(level);
       final values = <String, Object?>{
         'id': 'system-default-class-$level',
@@ -280,8 +282,7 @@ class DatabaseSeed {
         'category': 'emergency',
         'benefit_type': 'mixed',
         'frequency': 'as_needed',
-        'default_item_description':
-            'Cash or goods depending on emergency case',
+        'default_item_description': 'Cash or goods depending on emergency case',
       },
       {
         'code': 'FOOD_PACKAGE_SUPPORT',
@@ -617,7 +618,12 @@ ORDER BY teacher.full_name ASC
             type: 'number',
             align: 'right',
           ),
-          _reportColumn('first_session_date', 'First Session', 130, type: 'date'),
+          _reportColumn(
+            'first_session_date',
+            'First Session',
+            130,
+            type: 'date',
+          ),
           _reportColumn('last_session_date', 'Last Session', 130, type: 'date'),
         ],
       ),

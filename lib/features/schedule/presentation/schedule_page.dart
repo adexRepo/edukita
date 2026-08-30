@@ -6,6 +6,7 @@ import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/features/schedule/data/schedule_model.dart';
 import 'package:edukita/features/schedule/domain/schedule_cubit.dart';
+import 'package:edukita/features/schedule/domain/schedule_repository.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/schools/data/school_level_option.dart';
@@ -64,8 +65,7 @@ class _SchedulePageState extends State<SchedulePage> {
   final LayerLink _searchLayerLink = LayerLink();
   final ScrollController _timelineHeaderHorizontalController =
       ScrollController();
-  final ScrollController _timelineGridHorizontalController =
-      ScrollController();
+  final ScrollController _timelineGridHorizontalController = ScrollController();
   OverlayEntry? _searchOverlayEntry;
   late DateTime _focusedMonth;
   late DateTime _selectedDate;
@@ -171,10 +171,9 @@ class _SchedulePageState extends State<SchedulePage> {
   ) {
     if (_syncingTimelineHorizontalScroll || !target.hasClients) return;
     final targetPosition = target.position;
-    final nextOffset = source.offset.clamp(
-      targetPosition.minScrollExtent,
-      targetPosition.maxScrollExtent,
-    ).toDouble();
+    final nextOffset = source.offset
+        .clamp(targetPosition.minScrollExtent, targetPosition.maxScrollExtent)
+        .toDouble();
     if ((target.offset - nextOffset).abs() < 0.5) return;
     _syncingTimelineHorizontalScroll = true;
     target.jumpTo(nextOffset);
@@ -244,9 +243,19 @@ class _SchedulePageState extends State<SchedulePage> {
               ? schedule.copyWith(teacherId: _authScope.teacherId)
               : schedule;
           if (existingSchedule == null) {
-            await cubit.addSchedule(securedSchedule);
+            await cubit.addSchedule(
+              securedSchedule,
+              teacherScopeId: _authScope.isTeacher
+                  ? _authScope.teacherId
+                  : null,
+            );
           } else {
-            await cubit.updateSchedule(securedSchedule);
+            await cubit.updateSchedule(
+              securedSchedule,
+              teacherScopeId: _authScope.isTeacher
+                  ? _authScope.teacherId
+                  : null,
+            );
           }
         },
       ),
@@ -272,7 +281,8 @@ class _SchedulePageState extends State<SchedulePage> {
         : _schoolEventTypes.contains(existingEvent.type);
     await showGuardedDialog<void>(
       context: context,
-      guardKey: 'schedule_event_form_${existingEvent?.id ?? 'new_$isSchoolEvent'}',
+      guardKey:
+          'schedule_event_form_${existingEvent?.id ?? 'new_$isSchoolEvent'}',
       builder: (_) => ScheduleEventFormDialog(
         event: existingEvent,
         initialDate: _dateKey(_selectedDate),
@@ -293,7 +303,8 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 
   Future<void> _confirmDeleteSchedule(Schedule schedule) async {
-    if (!_canDeleteSchedule || !_authScope.ownsTeacherData(schedule.teacherId)) {
+    if (!_canDeleteSchedule ||
+        !_authScope.ownsTeacherData(schedule.teacherId)) {
       AppToast.showFailed(context.l10n.scheduleDeleteDenied);
       return;
     }
@@ -325,15 +336,19 @@ class _SchedulePageState extends State<SchedulePage> {
 
     if (confirmed == true) {
       try {
-        await cubit.deleteSchedule(schedule.id);
+        await cubit.deleteSchedule(
+          schedule.id,
+          teacherScopeId: _authScope.isTeacher ? _authScope.teacherId : null,
+        );
         AppToast.showSubmissionSuccess(
           action: SubmissionAction.delete,
           subject: 'schedule',
         );
-      } catch (_) {
-        AppToast.showSubmissionFailed(
-          action: SubmissionAction.delete,
-          subject: 'schedule',
+      } catch (error) {
+        if (!mounted) return;
+        AppToast.showFailed(
+          _scheduleDeleteErrorMessage(context, error),
+          title: context.l10n.cannotDeleteSchedule,
         );
       }
     }
@@ -423,6 +438,10 @@ class _SchedulePageState extends State<SchedulePage> {
               children: [
                 _buildHeader(context, scheduleState),
                 AppLoadingStrip(isLoading: scheduleState.isLoading),
+                if (scheduleState.error != null && scheduleState.hasLoaded) ...[
+                  const SizedBox(height: 8),
+                  _buildRefreshWarning(),
+                ],
                 const SizedBox(height: AppPageHeaderStyle.bottomGap),
                 _buildToolbar(
                   state: scheduleState,
@@ -464,6 +483,43 @@ class _SchedulePageState extends State<SchedulePage> {
         tooltip: context.l10n.refreshSchedules,
         onPressed: () => _reloadSchedules(forceRefresh: true),
         icon: const Icon(Icons.refresh),
+      ),
+    );
+  }
+
+  Widget _buildRefreshWarning() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.08),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.30)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.warning_amber_rounded,
+            size: 18,
+            color: AppColors.warning,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              context.l10n.scheduleShowingCachedData,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () => _reloadSchedules(forceRefresh: true),
+            icon: const Icon(Icons.refresh, size: 16),
+            label: Text(context.l10n.refreshSchedules),
+          ),
+        ],
       ),
     );
   }
@@ -868,7 +924,7 @@ class _SchedulePageState extends State<SchedulePage> {
     required List<Strategy> strategies,
     required List<School> schools,
   }) {
-    if (state.error != null) {
+    if (state.error != null && !state.hasLoaded) {
       return Center(child: Text(context.l10n.errorWithDetails(state.error!)));
     }
 
@@ -1421,9 +1477,7 @@ class _SchedulePageState extends State<SchedulePage> {
     );
   }
 
-  Widget _buildTimelineTimeHeader({
-    required double hourColumnWidth,
-  }) {
+  Widget _buildTimelineTimeHeader({required double hourColumnWidth}) {
     return SizedBox(
       height: 40,
       child: Row(
@@ -2042,8 +2096,9 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 
   String _shortWeekday(DateTime date) {
-    return DateFormat.E(Localizations.localeOf(context).toLanguageTag())
-        .format(date);
+    return DateFormat.E(
+      Localizations.localeOf(context).toLanguageTag(),
+    ).format(date);
   }
 
   String _hourLabel(int hour) {
@@ -2284,9 +2339,8 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                   labelBuilder: (item) => item.label,
                   valueBuilder: (item) => item.level.toString(),
                   value: selectedLevel,
-                  onSaved: (value) =>
-                      classLevel =
-                          value?.level ?? SchoolLevelOption.values.first.level,
+                  onSaved: (value) => classLevel =
+                      value?.level ?? SchoolLevelOption.values.first.level,
                 ),
                 const SizedBox(height: 16),
                 CommonFormWidgets.dropdownFieldTyped<Teacher>(
@@ -2386,7 +2440,17 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                           if (value != null) _endController.text = value;
                         },
                         onSaved: (value) => endAt = _nullIfBlank(value),
-                        validator: (_) => null,
+                        validator: (value) {
+                          final start = _parseLooseTime(_startController.text);
+                          final end = _parseLooseTime(value);
+                          if (start != null &&
+                              end != null &&
+                              _timeOfDayMinutes(end) <=
+                                  _timeOfDayMinutes(start)) {
+                            return context.l10n.endTimeAfterStartTime;
+                          }
+                          return null;
+                        },
                         isRequired: false,
                       ),
                     ),
@@ -2398,9 +2462,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                   value: description,
                   onSaved: (value) => description = _nullIfBlank(value),
                   maxLines: 3,
-                  inputFormatters: [
-                    LengthLimitingTextInputFormatter(200),
-                  ],
+                  inputFormatters: [LengthLimitingTextInputFormatter(200)],
                   validator: (_) => null,
                   isRequired: false,
                 ),
@@ -2610,7 +2672,8 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                     label: context.l10n.type,
                     items: eventTypes,
                     value: type,
-                    itemLabelBuilder: (value) => _eventTypeLabel(context, value),
+                    itemLabelBuilder: (value) =>
+                        _eventTypeLabel(context, value),
                     onSaved: (value) => type = value ?? eventTypes.first,
                   ),
                   const SizedBox(height: 16),
@@ -2766,7 +2829,24 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                           if (value != null) _endTimeController.text = value;
                         },
                         onSaved: (value) => endAt = _nullIfBlank(value),
-                        validator: (_) => null,
+                        validator: (value) {
+                          if (wholeDay ||
+                              _startDateController.text !=
+                                  _endDateController.text) {
+                            return null;
+                          }
+                          final start = _parseLooseTime(
+                            _startTimeController.text,
+                          );
+                          final end = _parseLooseTime(value);
+                          if (start != null &&
+                              end != null &&
+                              _timeOfDayMinutes(end) <=
+                                  _timeOfDayMinutes(start)) {
+                            return context.l10n.endTimeAfterStartTime;
+                          }
+                          return null;
+                        },
                         isRequired: false,
                       ),
                     ),
@@ -2778,9 +2858,7 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                   value: description,
                   onSaved: (value) => description = _nullIfBlank(value),
                   maxLines: 3,
-                  inputFormatters: [
-                    LengthLimitingTextInputFormatter(200),
-                  ],
+                  inputFormatters: [LengthLimitingTextInputFormatter(200)],
                   validator: (_) => null,
                   isRequired: false,
                 ),
@@ -2949,6 +3027,8 @@ TimeOfDay? _parseLooseTime(String? value) {
   );
 }
 
+int _timeOfDayMinutes(TimeOfDay value) => (value.hour * 60) + value.minute;
+
 String _formatDateValue(DateTime date) {
   final month = date.month.toString().padLeft(2, '0');
   final day = date.day.toString().padLeft(2, '0');
@@ -2980,6 +3060,15 @@ String _eventTypeLabel(BuildContext context, String value) {
 String _scheduleSaveErrorMessage(BuildContext context, Object error) {
   final message = error.toString().replaceFirst('Exception: ', '').trim();
   if (message.isEmpty) return context.l10n.failedToSaveSchedule;
+  return message;
+}
+
+String _scheduleDeleteErrorMessage(BuildContext context, Object error) {
+  if (error is ScheduleLockedException) {
+    return context.l10n.scheduleDeleteLocked;
+  }
+  final message = error.toString().replaceFirst('Exception: ', '').trim();
+  if (message.isEmpty) return context.l10n.failedToDeleteSchedule;
   return message;
 }
 

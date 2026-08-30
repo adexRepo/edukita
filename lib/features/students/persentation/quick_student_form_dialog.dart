@@ -2,6 +2,7 @@ import 'package:edukita/core/helper/com_enum.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/localization/localized_display.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
+import 'package:edukita/features/schools/data/school_level_option.dart';
 import 'package:edukita/features/students/data/student.dart';
 import 'package:edukita/features/teaching_locations/data/teaching_location_model.dart';
 import 'package:edukita/theme/app_theme.dart';
@@ -147,7 +148,9 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
                           context.l10n.fullName,
                         );
                       }
-                      if (text.length < 3) return context.l10n.fullNameMinimumThree;
+                      if (text.length < 3) {
+                        return context.l10n.fullNameMinimumThree;
+                      }
                       return null;
                     },
                   ),
@@ -172,9 +175,15 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
                     values: widget.availableClasses.map(
                       (schoolClass) => schoolClass.id,
                     ),
-                    optionLabel: (id) => widget.availableClasses
-                        .firstWhere((schoolClass) => schoolClass.id == id)
-                        .className,
+                    optionLabel: (id) {
+                      final schoolClass = widget.availableClasses.firstWhere(
+                        (schoolClass) => schoolClass.id == id,
+                      );
+                      if (schoolClass.level == 0) {
+                        return '0 - ${schoolLevelLabel(0)}';
+                      }
+                      return schoolClass.className;
+                    },
                     onChanged: _saving
                         ? null
                         : (value) => setState(() => _selectedClassId = value),
@@ -196,8 +205,9 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
                     },
                     onChanged: _saving
                         ? null
-                        : (value) =>
-                            setState(() => _selectedTeachingLocationId = value),
+                        : (value) => setState(
+                            () => _selectedTeachingLocationId = value,
+                          ),
                     validator: (value) => value == null || value.isEmpty
                         ? context.l10n.selectStudentLocationRequired
                         : null,
@@ -255,7 +265,8 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
           children: children
               .map(
                 (child) => SizedBox(
-                  width: (constraints.maxWidth - (14 * (columns - 1))) / columns,
+                  width:
+                      (constraints.maxWidth - (14 * (columns - 1))) / columns,
                   child: child,
                 ),
               )

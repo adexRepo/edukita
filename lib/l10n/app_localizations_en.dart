@@ -210,6 +210,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get attendanceLate => 'Late';
 
   @override
+  String get syncNewStudents => 'Sync New Students';
+
+  @override
+  String get syncNewStudentsTitle => 'Add New Students to This Session?';
+
+  @override
+  String syncNewStudentsCount(Object count) {
+    return 'Sync $count New';
+  }
+
+  @override
+  String syncNewStudentsConfirm(Object count) {
+    return '$count active student(s) now match this class but are not in the session roster. Add them without changing existing attendance or reports?';
+  }
+
+  @override
+  String syncNewStudentsSuccess(Object count) {
+    return 'Added $count new student(s) to this session.';
+  }
+
+  @override
+  String get noNewStudentsToSync => 'No new eligible students were found.';
+
+  @override
   String get studentName => 'Student Name';
 
   @override
@@ -268,6 +292,20 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get scheduleDeleteDenied =>
       'You do not have permission to delete this schedule.';
+
+  @override
+  String get scheduleDeleteLocked =>
+      'This schedule cannot be deleted because its teaching session has already started or been reported.';
+
+  @override
+  String get cannotDeleteSchedule => 'Cannot Delete Schedule';
+
+  @override
+  String get failedToDeleteSchedule => 'Failed to delete schedule.';
+
+  @override
+  String get scheduleShowingCachedData =>
+      'The latest schedule data could not be loaded. Showing the last available calendar data.';
 
   @override
   String get eventCreateDenied =>
@@ -370,6 +408,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get endDateAfterStartDate => 'End date must be after start date';
+
+  @override
+  String get endTimeAfterStartTime => 'End time must be after start time';
 
   @override
   String get start => 'Start';

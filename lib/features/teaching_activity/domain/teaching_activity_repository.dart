@@ -353,6 +353,18 @@ class TeachingActivityRepository {
 
     final activity = TeachingActivityListItem.fromMap(activityRows.first);
     final students = await _loadSessionStudents(db, activityId);
+    final rosterStudentIds = students.map((student) => student.id).toSet();
+    final eligibleStudents =
+        activity.status == TeachingActivityStatus.inProgress
+        ? await _loadStudents(
+            db,
+            classId: activity.classId,
+            classLevel: activity.classLevel,
+          )
+        : const <ClassStudentOption>[];
+    final missingStudents = eligibleStudents
+        .where((student) => !rosterStudentIds.contains(student.id))
+        .toList();
     final attendances = await db
         .query(
           'teaching_attendances',
@@ -372,7 +384,59 @@ class TeachingActivityRepository {
       assessments: assessments,
       studentNotes: studentNotes,
       competencies: competencies,
+      missingStudents: missingStudents,
     );
+  }
+
+  Future<int> syncNewSessionStudents(String activityId) async {
+    final db = await _database;
+    final now = DateTime.now().toIso8601String();
+
+    return db.transaction((txn) async {
+      final activity = await _activityWithScheduleById(txn, activityId);
+      if (activity == null) throw Exception('Teaching activity not found.');
+      if (activity['status'] != TeachingActivityStatus.inProgress) {
+        throw Exception(
+          'New students can only be synced while the session is in progress.',
+        );
+      }
+
+      final students = await _loadStudents(
+        txn,
+        classId: activity['class_id']?.toString(),
+        classLevel: _intValue(activity['class_level']),
+      );
+      final rosterRows = await txn.query(
+        'teaching_activity_students',
+        columns: const ['student_id'],
+        where: 'teaching_activity_id = ?',
+        whereArgs: [activityId],
+      );
+      final rosterStudentIds = rosterRows
+          .map((row) => row['student_id']?.toString())
+          .whereType<String>()
+          .toSet();
+      final missingStudents = students
+          .where((student) => !rosterStudentIds.contains(student.id))
+          .toList();
+      if (missingStudents.isEmpty) return 0;
+
+      final batch = txn.batch();
+      for (final student in missingStudents) {
+        batch.insert(
+          'teaching_activity_students',
+          {
+            'id': _uuid.v4(),
+            'teaching_activity_id': activityId,
+            'student_id': student.id,
+            'captured_at': now,
+          },
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+      }
+      await batch.commit(noResult: true);
+      return missingStudents.length;
+    });
   }
 
   Future<void> saveAttendance(

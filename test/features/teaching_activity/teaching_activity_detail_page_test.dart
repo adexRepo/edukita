@@ -280,6 +280,8 @@ STORAGE_PATH=storage
     (tester) async {
       final repository = _DetailRepository(database);
       final cache = TeachingActivityCacheService();
+      var cacheNotifications = 0;
+      cache.addListener(() => cacheNotifications++);
       final cubit = TeachingActivityDetailCubit(repository, cache);
       addTearDown(cubit.close);
 
@@ -296,10 +298,46 @@ STORAGE_PATH=storage
 
       expect(find.text('Teaching Session Page'), findsOneWidget);
       expect(cache.revision, 1);
+      expect(cacheNotifications, 1);
       expect(repository.loadCalls, 1);
       await tester.pump(const Duration(seconds: 4));
     },
   );
+
+  testWidgets('syncs a newly eligible student after confirmation', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1100, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repository = _DetailRepository(database);
+    final cubit = TeachingActivityDetailCubit(
+      repository,
+      TeachingActivityCacheService(),
+    );
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_testApp(cubit));
+    await _pumpUntil(tester, () => repository.loadStarted.isCompleted);
+    repository.detailCompleter.complete(_detailWithMissingStudent());
+    await _pumpUntil(tester, () => cubit.state.detail != null);
+
+    expect(find.text('Sync 1 New'), findsOneWidget);
+    await tester.tap(find.text('Sync 1 New'));
+    await tester.pumpAndSettle();
+    expect(find.text('Add New Students to This Session?'), findsOneWidget);
+    await tester.tap(find.text('Sync New Students'));
+    await _pumpUntil(tester, () => repository.syncCalls == 1);
+    await _pumpUntil(
+      tester,
+      () => cubit.state.detail?.missingStudents.isEmpty == true,
+    );
+    await tester.pump();
+
+    expect(find.text('Sync 1 New'), findsNothing);
+    expect(find.text('Student C'), findsWidgets);
+    expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(seconds: 4));
+  });
 }
 
 String _scoreText(WidgetTester tester, String studentId) {
@@ -458,6 +496,25 @@ TeachingActivityDetailData _singleCompetencyDetail() {
   );
 }
 
+TeachingActivityDetailData _detailWithMissingStudent() {
+  final detail = _populatedDetail();
+  return TeachingActivityDetailData(
+    activity: detail.activity,
+    students: detail.students,
+    attendances: detail.attendances,
+    assessments: detail.assessments,
+    studentNotes: detail.studentNotes,
+    competencies: detail.competencies,
+    missingStudents: const [
+      ClassStudentOption(
+        id: 'student-c',
+        studentNo: 'C001',
+        fullName: 'Student C',
+      ),
+    ],
+  );
+}
+
 class _DetailRepository extends TeachingActivityRepository {
   _DetailRepository(super.database, {this.fail = false}) : super.forDatabase();
 
@@ -469,6 +526,7 @@ class _DetailRepository extends TeachingActivityRepository {
   List<TeachingAttendanceRecord>? savedAttendanceRecords;
   int reportingSaveCalls = 0;
   int completeCalls = 0;
+  int syncCalls = 0;
   int loadCalls = 0;
 
   @override
@@ -498,5 +556,20 @@ class _DetailRepository extends TeachingActivityRepository {
     List<TeachingAttendanceRecord> records,
   ) async {
     completeCalls++;
+  }
+
+  @override
+  Future<int> syncNewSessionStudents(String activityId) async {
+    syncCalls++;
+    final detail = _currentDetail!;
+    _currentDetail = TeachingActivityDetailData(
+      activity: detail.activity,
+      students: [...detail.students, ...detail.missingStudents],
+      attendances: detail.attendances,
+      assessments: detail.assessments,
+      studentNotes: detail.studentNotes,
+      competencies: detail.competencies,
+    );
+    return detail.missingStudents.length;
   }
 }

@@ -290,6 +290,7 @@ class TeachingActivityCacheService {
        );
 
   final AppMemoryCache<TeachingActivityState> _items;
+  final Set<void Function()> _listeners = {};
   int _revision = 0;
 
   int get revision => _revision;
@@ -300,8 +301,15 @@ class TeachingActivityCacheService {
     _items.put(key, state.copyWith(isLoading: false, isSaving: false));
   }
 
+  void addListener(void Function() listener) => _listeners.add(listener);
+
+  void removeListener(void Function() listener) => _listeners.remove(listener);
+
   void clear() {
     _revision++;
     _items.clear();
+    for (final listener in List<void Function()>.of(_listeners)) {
+      listener();
+    }
   }
 }

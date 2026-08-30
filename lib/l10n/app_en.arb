@@ -66,6 +66,27 @@
   "attendanceSick": "Sick",
   "attendancePermission": "Permission",
   "attendanceLate": "Late",
+  "syncNewStudents": "Sync New Students",
+  "syncNewStudentsTitle": "Add New Students to This Session?",
+  "syncNewStudentsCount": "Sync {count} New",
+  "@syncNewStudentsCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "syncNewStudentsConfirm": "{count} active student(s) now match this class but are not in the session roster. Add them without changing existing attendance or reports?",
+  "@syncNewStudentsConfirm": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "syncNewStudentsSuccess": "Added {count} new student(s) to this session.",
+  "@syncNewStudentsSuccess": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "noNewStudentsToSync": "No new eligible students were found.",
   "studentName": "Student Name",
   "studentCode": "Student Code",
   "teacherName": "Teacher Name",
@@ -90,6 +111,10 @@
   "scheduleCreateDenied": "You do not have permission to create schedules.",
   "scheduleUpdateDenied": "You do not have permission to update this schedule.",
   "scheduleDeleteDenied": "You do not have permission to delete this schedule.",
+  "scheduleDeleteLocked": "This schedule cannot be deleted because its teaching session has already started or been reported.",
+  "cannotDeleteSchedule": "Cannot Delete Schedule",
+  "failedToDeleteSchedule": "Failed to delete schedule.",
+  "scheduleShowingCachedData": "The latest schedule data could not be loaded. Showing the last available calendar data.",
   "eventCreateDenied": "You do not have permission to create events.",
   "eventUpdateDenied": "You do not have permission to update events.",
   "eventDeleteDenied": "You do not have permission to delete events.",
@@ -130,6 +155,7 @@
   "wholeDaySubtitle": "Use when this event takes the full selected day.",
   "wholeDayUnavailableSubtitle": "Whole day is available only for one-day events.",
   "endDateAfterStartDate": "End date must be after start date",
+  "endTimeAfterStartTime": "End time must be after start time",
   "start": "Start",
   "end": "End",
   "title": "Title",

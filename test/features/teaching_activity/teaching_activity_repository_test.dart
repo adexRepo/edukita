@@ -41,6 +41,64 @@ void main() {
     final detail = await repository.getDetail(activityId);
 
     expect(detail.students.map((student) => student.id), ['student-1']);
+    expect(detail.missingStudents.map((student) => student.id), [
+      'student-later',
+    ]);
+  });
+
+  test(
+    'sync adds only new eligible students and preserves existing attendance',
+    () async {
+      final activityId = await repository.startClass('schedule-1');
+      await repository.saveAttendance(activityId, [
+        TeachingAttendanceRecord(
+          teachingActivityId: activityId,
+          studentId: 'student-1',
+          status: TeachingAttendanceStatus.late,
+          notes: 'Existing attendance',
+        ),
+      ]);
+      await _insertStudent(
+        database,
+        id: 'student-later',
+        name: 'Later Student',
+      );
+
+      expect(await repository.syncNewSessionStudents(activityId), 1);
+      expect(await repository.syncNewSessionStudents(activityId), 0);
+
+      final detail = await repository.getDetail(activityId);
+      expect(detail.students.map((student) => student.id), [
+        'student-1',
+        'student-later',
+      ]);
+      expect(detail.missingStudents, isEmpty);
+      expect(detail.attendances, hasLength(1));
+      expect(detail.attendances.single.studentId, 'student-1');
+      expect(detail.attendances.single.status, TeachingAttendanceStatus.late);
+      expect(detail.attendances.single.notes, 'Existing attendance');
+    },
+  );
+
+  test('sync rejects completed sessions without changing the roster', () async {
+    final activityId = await repository.startClass('schedule-1');
+    await repository.completeActivityWithAttendance(activityId, [
+      TeachingAttendanceRecord(
+        teachingActivityId: activityId,
+        studentId: 'student-1',
+        status: TeachingAttendanceStatus.present,
+      ),
+    ]);
+    await _insertStudent(database, id: 'student-later', name: 'Later Student');
+
+    await expectLater(
+      repository.syncNewSessionStudents(activityId),
+      throwsA(isA<Exception>()),
+    );
+
+    final detail = await repository.getDetail(activityId);
+    expect(detail.students.map((student) => student.id), ['student-1']);
+    expect(detail.missingStudents, isEmpty);
   });
 
   test('version 30 migration freezes the best-known legacy roster', () async {
@@ -204,6 +262,7 @@ void main() {
       cubit.completeActivityWithAttendance(const []),
       throwsA(isA<StateError>()),
     );
+    await expectLater(cubit.syncNewStudents(), throwsA(isA<StateError>()));
     await expectLater(cubit.resetReport(), throwsA(isA<StateError>()));
 
     cubit.configureAuthorization(canEdit: true, canReset: false);
@@ -587,6 +646,20 @@ void main() {
     expect(cache.revision, greaterThan(initialRevision));
     expect(downstreamInvalidations, 1);
     await cubit.close();
+  });
+
+  test('cache clear notifies active page listeners', () {
+    final cache = TeachingActivityCacheService();
+    var notifications = 0;
+    void listener() => notifications++;
+    cache.addListener(listener);
+
+    cache.clear();
+    cache.removeListener(listener);
+    cache.clear();
+
+    expect(cache.revision, 2);
+    expect(notifications, 1);
   });
 
   test('rapid start actions perform only one repository mutation', () async {

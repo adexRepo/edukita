@@ -110,6 +110,44 @@ class _TeachingActivityDetailPageState
   bool get _canResetReports =>
       _authScope.canDelete(AppMenuAccessRegistry.teachingActivities.code);
 
+  Future<void> _syncNewStudents(TeachingActivityDetailData detail) async {
+    final missingCount = detail.missingStudents.length;
+    if (missingCount == 0) return;
+    final confirmed = await showGuardedDialog<bool>(
+      context: context,
+      guardKey: 'sync_session_students_${detail.activity.activityId}',
+      builder: (dialogContext) => AlertDialog(
+        title: AppDialogTitle(dialogContext.l10n.syncNewStudentsTitle),
+        content: Text(dialogContext.l10n.syncNewStudentsConfirm(missingCount)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(dialogContext.l10n.buttonCancel),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            icon: const Icon(Icons.group_add_outlined, size: 18),
+            label: Text(dialogContext.l10n.syncNewStudents),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final addedCount = await context
+          .read<TeachingActivityDetailCubit>()
+          .syncNewStudents();
+      if (!mounted) return;
+      final message = addedCount == 0
+          ? context.l10n.noNewStudentsToSync
+          : context.l10n.syncNewStudentsSuccess(addedCount);
+      AppToast.showSuccess(message);
+    } catch (_) {
+      // The Cubit exposes the actionable error through the page listener.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<
@@ -230,6 +268,26 @@ class _TeachingActivityDetailPageState
             ],
           );
           final actions = <Widget>[
+            if (_canManageReports &&
+                detail.activity.status == TeachingActivityStatus.inProgress &&
+                detail.missingStudents.isNotEmpty)
+              ShadButton.outline(
+                onPressed: state.isSaving
+                    ? null
+                    : () => _syncNewStudents(detail),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.group_add_outlined, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      context.l10n.syncNewStudentsCount(
+                        detail.missingStudents.length,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             if (_canManageReports &&
                 !isCancelled &&
                 detail.activity.status != TeachingActivityStatus.completed)
@@ -737,10 +795,38 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
     final currentStudentIds = widget.detail.students
         .map((student) => student.id)
         .toSet();
+    final onlyAddedStudents =
+        previousActivityId == currentActivityId &&
+        currentStudentIds.length > previousStudentIds.length &&
+        currentStudentIds.containsAll(previousStudentIds);
+    if (onlyAddedStudents) {
+      _mergeAddedStudents(currentStudentIds.difference(previousStudentIds));
+      return;
+    }
     if (previousActivityId != currentActivityId ||
         previousStudentIds.length != currentStudentIds.length ||
         !previousStudentIds.containsAll(currentStudentIds)) {
       _hydrate();
+    }
+  }
+
+  void _mergeAddedStudents(Set<String> addedStudentIds) {
+    for (final student in widget.detail.students) {
+      if (!addedStudentIds.contains(student.id)) continue;
+      _attendanceStatus.putIfAbsent(
+        student.id,
+        () => TeachingAttendanceStatus.present,
+      );
+      _competencyScores.putIfAbsent(student.id, () => {});
+      _competencyNotes.putIfAbsent(student.id, () => {});
+      final ratings = _noteRatings.putIfAbsent(student.id, () => {});
+      _noteComments.putIfAbsent(student.id, () => {});
+      for (final noteType in StudentSessionNoteType.values) {
+        ratings.putIfAbsent(noteType, () => 3);
+      }
+    }
+    if (_selectedStudentId == null && widget.detail.students.isNotEmpty) {
+      _selectedStudentId = widget.detail.students.first.id;
     }
   }
 

@@ -3,12 +3,20 @@ import 'package:edukita/features/schedule/data/schedule_model.dart';
 import 'package:sqflite_common/sqlite_api.dart';
 
 class ScheduleRepository {
-  final DatabaseProvider _dbProvider;
+  ScheduleRepository(this._dbProvider) : _databaseOverride = null;
 
-  ScheduleRepository(this._dbProvider);
+  ScheduleRepository.forDatabase(Database database)
+    : _dbProvider = null,
+      _databaseOverride = database;
+
+  final DatabaseProvider? _dbProvider;
+  final Database? _databaseOverride;
+
+  Future<Database> get _database async =>
+      _databaseOverride ?? await _dbProvider!.database;
 
   Future<List<Schedule>> getAllSchedules() async {
-    final db = await _dbProvider.database;
+    final db = await _database;
     final maps = await db.query(
       'schedules',
       orderBy: 'date DESC, start_at, title COLLATE NOCASE',
@@ -17,7 +25,7 @@ class ScheduleRepository {
   }
 
   Future<List<ScheduleEvent>> getAllEvents() async {
-    final db = await _dbProvider.database;
+    final db = await _database;
     final maps = await db.query(
       'schedule_events',
       orderBy: 'date DESC, start_at, title COLLATE NOCASE',
@@ -26,7 +34,7 @@ class ScheduleRepository {
   }
 
   Future<Schedule?> getScheduleById(String id) async {
-    final db = await _dbProvider.database;
+    final db = await _database;
     final maps = await db.query('schedules', where: 'id = ?', whereArgs: [id]);
     if (maps.isEmpty) {
       return null;
@@ -35,32 +43,96 @@ class ScheduleRepository {
   }
 
   Future<int> insertSchedule(Schedule schedule) async {
-    final db = await _dbProvider.database;
-    await _validateScheduleConflict(db, schedule);
-    return db.insert('schedules', await _scheduleMapForDb(schedule));
+    final db = await _database;
+    return db.transaction((txn) async {
+      await _validateScheduleConflict(txn, schedule);
+      final map = await _scheduleMapForDb(txn, schedule);
+      return txn.insert('schedules', map);
+    });
   }
 
   Future<int> updateSchedule(Schedule schedule) async {
-    final db = await _dbProvider.database;
-    await _validateScheduleConflict(db, schedule);
-    await _validateScheduleEditable(db, schedule.id);
-    final map = await _scheduleMapForDb(schedule);
-    final result = await db.update(
-      'schedules',
-      map,
-      where: 'id = ?',
-      whereArgs: [schedule.id],
-    );
-    if (result > 0) {
-      await _syncTeachingActivitySnapshot(db, schedule.id, map);
-    }
-    return result;
+    final db = await _database;
+    return db.transaction((txn) async {
+      await _validateScheduleEditable(txn, schedule.id);
+      await _validateScheduleConflict(txn, schedule);
+      final map = await _scheduleMapForDb(txn, schedule);
+      final result = await txn.update(
+        'schedules',
+        map,
+        where: 'id = ?',
+        whereArgs: [schedule.id],
+      );
+      if (result > 0) {
+        await _syncTeachingActivitySnapshot(txn, schedule.id, map);
+      }
+      return result;
+    });
   }
 
   Future<int> deleteSchedule(String id) async {
-    final db = await _dbProvider.database;
-    await _validateScheduleEditable(db, id);
+    final db = await _database;
     return db.transaction((txn) async {
+      await _validateScheduleEditable(txn, id);
+      final sessionRows = await txn.query(
+        'attendance_sessions',
+        columns: const ['id'],
+        where: 'schedule_id = ?',
+        whereArgs: [id],
+      );
+      final sessionIds = sessionRows
+          .map((row) => row['id']?.toString())
+          .whereType<String>()
+          .toList();
+
+      if (sessionIds.isNotEmpty) {
+        final placeholders = List.filled(sessionIds.length, '?').join(',');
+        await txn.delete(
+          'teaching_notes',
+          where: 'attendance_session_id IN ($placeholders)',
+          whereArgs: sessionIds,
+        );
+        await txn.delete(
+          'student_activity',
+          where: 'session_id IN ($placeholders)',
+          whereArgs: sessionIds,
+        );
+        await txn.delete(
+          'student_attendance',
+          where: 'attendance_session_id IN ($placeholders)',
+          whereArgs: sessionIds,
+        );
+      }
+      await txn.delete(
+        'teaching_notes',
+        where: 'schedule_id = ?',
+        whereArgs: [id],
+      );
+      await txn.delete(
+        'attendance_sessions',
+        where: 'schedule_id = ?',
+        whereArgs: [id],
+      );
+
+      final activityRows = await txn.query(
+        'teaching_activities',
+        columns: const ['id'],
+        where: 'schedule_id = ?',
+        whereArgs: [id],
+      );
+      final activityIds = activityRows
+          .map((row) => row['id']?.toString())
+          .whereType<String>()
+          .toList();
+      if (activityIds.isNotEmpty) {
+        final placeholders = List.filled(activityIds.length, '?').join(',');
+        await txn.update(
+          'teaching_activities',
+          {'replacement_activity_id': null},
+          where: 'replacement_activity_id IN ($placeholders)',
+          whereArgs: activityIds,
+        );
+      }
       await txn.delete(
         'teaching_activities',
         where: 'schedule_id = ?',
@@ -71,12 +143,14 @@ class ScheduleRepository {
   }
 
   Future<int> insertEvent(ScheduleEvent event) async {
-    final db = await _dbProvider.database;
+    final db = await _database;
+    _validateEventRange(event);
     return db.insert('schedule_events', event.toMap());
   }
 
   Future<int> updateEvent(ScheduleEvent event) async {
-    final db = await _dbProvider.database;
+    final db = await _database;
+    _validateEventRange(event);
     return db.update(
       'schedule_events',
       event.toMap(),
@@ -86,12 +160,12 @@ class ScheduleRepository {
   }
 
   Future<int> deleteEvent(String id) async {
-    final db = await _dbProvider.database;
+    final db = await _database;
     return db.delete('schedule_events', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<List<Schedule>> getSchedulesByClass(String classId) async {
-    final db = await _dbProvider.database;
+    final db = await _database;
     final maps = await db.query(
       'schedules',
       where: 'class_id = ?',
@@ -101,7 +175,7 @@ class ScheduleRepository {
   }
 
   Future<List<Schedule>> getSchedulesByLevel(int level) async {
-    final db = await _dbProvider.database;
+    final db = await _database;
     final maps = await db.rawQuery(
       '''
         SELECT sch.*
@@ -116,7 +190,7 @@ class ScheduleRepository {
   }
 
   Future<List<Schedule>> getSchedulesByTeacher(String teacherId) async {
-    final db = await _dbProvider.database;
+    final db = await _database;
     final maps = await db.query(
       'schedules',
       where: 'teacher_id = ?',
@@ -126,7 +200,7 @@ class ScheduleRepository {
   }
 
   Future<List<Schedule>> getSchedulesByUnit(String unitId) async {
-    final db = await _dbProvider.database;
+    final db = await _database;
     final maps = await db.query(
       'schedules',
       where: 'unit_id = ?',
@@ -136,7 +210,7 @@ class ScheduleRepository {
   }
 
   Future<List<Schedule>> getSchedulesByDate(String date) async {
-    final db = await _dbProvider.database;
+    final db = await _database;
     final maps = await db.query(
       'schedules',
       where: 'date = ?',
@@ -146,7 +220,7 @@ class ScheduleRepository {
   }
 
   Future<List<Schedule>> getSchedulesBySubject(String subjectId) async {
-    final db = await _dbProvider.database;
+    final db = await _database;
     final maps = await db.rawQuery(
       '''
         SELECT sch.*
@@ -161,20 +235,17 @@ class ScheduleRepository {
   }
 
   Future<void> _validateScheduleConflict(
-    Database db,
+    DatabaseExecutor db,
     Schedule schedule,
   ) async {
     final teacherId = schedule.teacherId?.trim();
+    final classId = schedule.classId?.trim();
+    final classLevel = schedule.classLevel;
     final date = schedule.date?.trim();
     final start = _timeToMinutes(schedule.startAt);
     final end = _timeToMinutes(schedule.endAt);
 
-    if (teacherId == null ||
-        teacherId.isEmpty ||
-        date == null ||
-        date.isEmpty ||
-        start == null ||
-        end == null) {
+    if (date == null || date.isEmpty || start == null || end == null) {
       return;
     }
 
@@ -184,11 +255,39 @@ class ScheduleRepository {
       );
     }
 
-    final rows = await db.query(
-      'schedules',
-      columns: const ['id', 'title', 'start_at', 'end_at'],
-      where: 'teacher_id = ? AND date = ? AND id <> ?',
-      whereArgs: [teacherId, date, schedule.id],
+    final targetConditions = <String>[];
+    final targetArgs = <Object?>[];
+    if (teacherId != null && teacherId.isNotEmpty) {
+      targetConditions.add('schedule.teacher_id = ?');
+      targetArgs.add(teacherId);
+    }
+    if (classId != null && classId.isNotEmpty) {
+      targetConditions.add('schedule.class_id = ?');
+      targetArgs.add(classId);
+    }
+    if (classLevel != null) {
+      targetConditions.add('COALESCE(schedule.class_level, c.level) = ?');
+      targetArgs.add(classLevel);
+    }
+    if (targetConditions.isEmpty) return;
+
+    final rows = await db.rawQuery(
+      '''
+        SELECT
+          schedule.id,
+          schedule.title,
+          schedule.start_at,
+          schedule.end_at,
+          schedule.teacher_id,
+          schedule.class_id,
+          COALESCE(schedule.class_level, c.level) AS effective_class_level
+        FROM schedules schedule
+        LEFT JOIN classes c ON c.id = schedule.class_id
+        WHERE schedule.date = ?
+          AND schedule.id <> ?
+          AND (${targetConditions.join(' OR ')})
+      ''',
+      [date, schedule.id, ...targetArgs],
     );
 
     for (final row in rows) {
@@ -201,14 +300,19 @@ class ScheduleRepository {
 
       final title = row['title']?.toString().trim();
       final label = title == null || title.isEmpty ? 'another schedule' : title;
+      final sameTeacher = teacherId != null && row['teacher_id'] == teacherId;
+      final conflictOwner = sameTeacher ? 'Teacher' : 'Class';
       throw ScheduleConflictException(
-        'Teacher already has $label on $date at '
+        '$conflictOwner already has $label on $date at '
         '${row['start_at'] ?? '-'} - ${row['end_at'] ?? '-'}.',
       );
     }
   }
 
-  Future<void> _validateScheduleEditable(Database db, String scheduleId) async {
+  Future<void> _validateScheduleEditable(
+    DatabaseExecutor db,
+    String scheduleId,
+  ) async {
     final rows = await db.query(
       'teaching_activities',
       columns: const ['status'],
@@ -221,7 +325,7 @@ class ScheduleRepository {
     });
     if (!locked) return;
 
-    throw ScheduleConflictException(
+    throw ScheduleLockedException(
       'This schedule already has a teaching session report and cannot be changed.',
     );
   }
@@ -237,8 +341,10 @@ class ScheduleRepository {
     return (hour * 60) + minute;
   }
 
-  Future<Map<String, Object?>> _scheduleMapForDb(Schedule schedule) async {
-    final db = await _dbProvider.database;
+  Future<Map<String, Object?>> _scheduleMapForDb(
+    DatabaseExecutor db,
+    Schedule schedule,
+  ) async {
     final columns = await db.rawQuery('PRAGMA table_info(schedules)');
     final names = columns.map((row) => row['name']?.toString()).toSet();
     final idColumn = columns.firstWhere(
@@ -277,7 +383,7 @@ class ScheduleRepository {
   }
 
   Future<void> _syncTeachingActivitySnapshot(
-    Database db,
+    DatabaseExecutor db,
     String scheduleId,
     Map<String, Object?> scheduleMap,
   ) async {
@@ -306,7 +412,10 @@ class ScheduleRepository {
     );
   }
 
-  Future<String?> _defaultClassIdForLevel(Database db, int level) async {
+  Future<String?> _defaultClassIdForLevel(
+    DatabaseExecutor db,
+    int level,
+  ) async {
     final rows = await db.query(
       'classes',
       columns: const ['id'],
@@ -318,6 +427,28 @@ class ScheduleRepository {
     if (rows.isEmpty) return null;
     return rows.first['id']?.toString();
   }
+
+  void _validateEventRange(ScheduleEvent event) {
+    final startDate = DateTime.tryParse(event.date.trim());
+    final endDate = DateTime.tryParse((event.endDate ?? event.date).trim());
+    if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
+      throw const ScheduleConflictException(
+        'Event end date must not be before its start date.',
+      );
+    }
+
+    if (event.wholeDay ||
+        event.endDate != null && event.endDate != event.date) {
+      return;
+    }
+    final start = _timeToMinutes(event.startAt);
+    final end = _timeToMinutes(event.endAt);
+    if (start != null && end != null && end <= start) {
+      throw const ScheduleConflictException(
+        'Event end time must be after its start time.',
+      );
+    }
+  }
 }
 
 class ScheduleConflictException implements Exception {
@@ -327,4 +458,8 @@ class ScheduleConflictException implements Exception {
 
   @override
   String toString() => message;
+}
+
+class ScheduleLockedException extends ScheduleConflictException {
+  const ScheduleLockedException(super.message);
 }

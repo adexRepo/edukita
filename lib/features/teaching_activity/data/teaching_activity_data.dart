@@ -238,6 +238,7 @@ class TeachingActivityDetailData {
     required this.assessments,
     required this.studentNotes,
     required this.competencies,
+    this.missingStudents = const [],
   });
 
   final TeachingActivityListItem activity;
@@ -246,6 +247,7 @@ class TeachingActivityDetailData {
   final List<TeachingAssessmentRecord> assessments;
   final List<StudentSessionNoteRecord> studentNotes;
   final List<CompetencyOption> competencies;
+  final List<ClassStudentOption> missingStudents;
 }
 
 class ClassStudentOption {

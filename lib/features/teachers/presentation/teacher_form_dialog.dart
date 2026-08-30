@@ -152,21 +152,19 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
                 _inputField(
                   label: context.l10n.email,
                   controller: _emailController,
-                  isRequired: true,
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) =>
-                      AppFormValidation.requiredEmail(context, value),
+                      AppFormValidation.optionalEmail(context, value),
                   inputFormatters: [LengthLimitingTextInputFormatter(120)],
                 ),
                 _inputField(
                   label: context.l10n.mobileNo,
                   controller: _mobileNoController,
-                  isRequired: true,
                   placeholder: AppFormValidation.mobilePlaceholder,
                   keyboardType: TextInputType.phone,
                   inputFormatters: AppFormValidation.mobileInputFormatters,
                   validator: (value) =>
-                      AppFormValidation.requiredMobile(context, value),
+                      AppFormValidation.optionalMobile(context, value),
                 ),
               ]),
               const SizedBox(height: 22),

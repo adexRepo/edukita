@@ -66,6 +66,27 @@
   "attendanceSick": "Sakit",
   "attendancePermission": "Izin",
   "attendanceLate": "Terlambat",
+  "syncNewStudents": "Sinkronkan Siswa Baru",
+  "syncNewStudentsTitle": "Tambahkan Siswa Baru ke Sesi Ini?",
+  "syncNewStudentsCount": "Sinkronkan {count} Baru",
+  "@syncNewStudentsCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "syncNewStudentsConfirm": "Ada {count} siswa aktif yang sekarang sesuai dengan kelas ini tetapi belum ada dalam daftar sesi. Tambahkan tanpa mengubah presensi atau laporan yang sudah ada?",
+  "@syncNewStudentsConfirm": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "syncNewStudentsSuccess": "Berhasil menambahkan {count} siswa baru ke sesi ini.",
+  "@syncNewStudentsSuccess": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "noNewStudentsToSync": "Tidak ada siswa baru yang memenuhi syarat.",
   "studentName": "Nama Siswa",
   "studentCode": "Kode Siswa",
   "teacherName": "Nama Guru",
@@ -90,6 +111,10 @@
   "scheduleCreateDenied": "Anda tidak memiliki izin untuk membuat jadwal.",
   "scheduleUpdateDenied": "Anda tidak memiliki izin untuk mengubah jadwal ini.",
   "scheduleDeleteDenied": "Anda tidak memiliki izin untuk menghapus jadwal ini.",
+  "scheduleDeleteLocked": "Jadwal ini tidak dapat dihapus karena sesi mengajarnya sudah dimulai atau sudah dilaporkan.",
+  "cannotDeleteSchedule": "Tidak Dapat Menghapus Jadwal",
+  "failedToDeleteSchedule": "Gagal menghapus jadwal.",
+  "scheduleShowingCachedData": "Data jadwal terbaru gagal dimuat. Kalender menampilkan data terakhir yang tersedia.",
   "eventCreateDenied": "Anda tidak memiliki izin untuk membuat event.",
   "eventUpdateDenied": "Anda tidak memiliki izin untuk mengubah event.",
   "eventDeleteDenied": "Anda tidak memiliki izin untuk menghapus event.",
@@ -130,6 +155,7 @@
   "wholeDaySubtitle": "Gunakan jika event berlangsung sepanjang hari yang dipilih.",
   "wholeDayUnavailableSubtitle": "Sepanjang hari hanya tersedia untuk event satu hari.",
   "endDateAfterStartDate": "Tanggal selesai harus setelah tanggal mulai",
+  "endTimeAfterStartTime": "Waktu selesai harus setelah waktu mulai",
   "start": "Mulai",
   "end": "Selesai",
   "title": "Judul",

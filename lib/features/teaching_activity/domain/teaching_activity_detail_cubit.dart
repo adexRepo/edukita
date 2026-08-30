@@ -122,6 +122,24 @@ class TeachingActivityDetailCubit extends Cubit<TeachingActivityDetailState> {
     }
   }
 
+  Future<int> syncNewStudents() async {
+    _requireEditAccess();
+    if (state.isSaving) return 0;
+    final activityId = _activityId;
+    if (activityId == null) return 0;
+    _safeEmit(state.copyWith(isSaving: true, clearError: true));
+    try {
+      final addedCount = await _repository.syncNewSessionStudents(activityId);
+      if (addedCount > 0) _invalidateCaches();
+      _safeEmit(state.copyWith(isSaving: false));
+      await loadDetail(activityId);
+      return addedCount;
+    } catch (e) {
+      _safeEmit(state.copyWith(isSaving: false, error: e.toString()));
+      rethrow;
+    }
+  }
+
   Future<void> saveSessionNotes({
     required int? lessonCompletionPercent,
     required String? materialCovered,
