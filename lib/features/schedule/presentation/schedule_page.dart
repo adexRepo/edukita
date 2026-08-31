@@ -22,7 +22,6 @@ import 'package:edukita/features/users/domain/user_authorization.dart';
 import 'package:edukita/features/users/domain/user_management_repository.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
-import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_toast.dart';
@@ -312,26 +311,12 @@ class _SchedulePageState extends State<SchedulePage> {
     final confirmed = await showGuardedDialog<bool>(
       context: context,
       guardKey: 'delete_schedule_${schedule.id}',
-      builder: (context) {
-        return AlertDialog(
-          title: AppDialogTitle(context.l10n.deleteSchedule),
-          content: Text(
-            context.l10n.deleteScheduleConfirm(
-              schedule.title ?? context.l10n.thisSchedule,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(context.l10n.buttonCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(context.l10n.buttonDelete),
-            ),
-          ],
-        );
-      },
+      builder: (context) => _CalendarDeleteDialog(
+        title: context.l10n.deleteSchedule,
+        message: context.l10n.deleteScheduleConfirm(
+          schedule.title ?? context.l10n.thisSchedule,
+        ),
+      ),
     );
 
     if (confirmed == true) {
@@ -363,22 +348,10 @@ class _SchedulePageState extends State<SchedulePage> {
     final confirmed = await showGuardedDialog<bool>(
       context: context,
       guardKey: 'delete_event_${event.id}',
-      builder: (context) {
-        return AlertDialog(
-          title: AppDialogTitle(context.l10n.deleteEvent),
-          content: Text(context.l10n.deleteEventConfirm(event.title)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(context.l10n.buttonCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(context.l10n.buttonDelete),
-            ),
-          ],
-        );
-      },
+      builder: (context) => _CalendarDeleteDialog(
+        title: context.l10n.deleteEvent,
+        message: context.l10n.deleteEventConfirm(event.title),
+      ),
     );
 
     if (confirmed == true) {
@@ -431,58 +404,167 @@ class _SchedulePageState extends State<SchedulePage> {
       backgroundColor: AppColors.surfaceSoft,
       body: BlocBuilder<ScheduleCubit, ScheduleState>(
         builder: (context, scheduleState) {
-          return Padding(
-            padding: AppPageHeaderStyle.pagePadding,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(context, scheduleState),
-                AppLoadingStrip(isLoading: scheduleState.isLoading),
-                if (scheduleState.error != null && scheduleState.hasLoaded) ...[
-                  const SizedBox(height: 8),
-                  _buildRefreshWarning(),
-                ],
-                const SizedBox(height: AppPageHeaderStyle.bottomGap),
-                _buildToolbar(
-                  state: scheduleState,
-                  classes: classState.classes,
-                  teachers: teacherState.teachers,
-                  subjects: curriculum.subjects,
-                  units: curriculum.units,
-                  strategies: strategyState.strategies,
-                  schools: schoolState.schools,
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: _buildContent(
-                    scheduleState,
-                    classes: classState.classes,
-                    teachers: teacherState.teachers,
-                    subjects: curriculum.subjects,
-                    units: curriculum.units,
-                    strategies: strategyState.strategies,
-                    schools: schoolState.schools,
+          return Column(
+            children: [
+              _buildTopBar(),
+              AppLoadingStrip(isLoading: scheduleState.isLoading),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      _buildStatsFromState(scheduleState),
+                      if (scheduleState.error != null &&
+                          scheduleState.hasLoaded) ...[
+                        const SizedBox(height: 8),
+                        _buildRefreshWarning(),
+                      ],
+                      const SizedBox(height: 12),
+                      _buildToolbar(
+                        state: scheduleState,
+                        classes: classState.classes,
+                        teachers: teacherState.teachers,
+                        subjects: curriculum.subjects,
+                        units: curriculum.units,
+                        strategies: strategyState.strategies,
+                        schools: schoolState.schools,
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: _buildContent(
+                          scheduleState,
+                          classes: classState.classes,
+                          teachers: teacherState.teachers,
+                          subjects: curriculum.subjects,
+                          units: curriculum.units,
+                          strategies: strategyState.strategies,
+                          schools: schoolState.schools,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           );
         },
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, ScheduleState state) {
-    return AppPageHeader(
-      title: context.l10n.scheduleCalendar,
-      subtitle: context.l10n.scheduleHeaderSummary(
-        state.schedules.length,
-        state.events.length,
+  Widget _buildTopBar() {
+    return Padding(
+      padding: AppPageHeaderStyle.pagePadding,
+      child: AppPageHeader(title: context.l10n.scheduleCalendar),
+    );
+  }
+
+  Widget _buildStatsFromState(ScheduleState state) {
+    final schoolEventCount = state.events
+        .where((event) => _schoolEventTypes.contains(event.type))
+        .length;
+    final otherEventCount = state.events.length - schoolEventCount;
+    final items = [
+      (
+        label: context.l10n.total,
+        value: state.schedules.length + state.events.length,
+        icon: Icons.calendar_month_outlined,
       ),
-      trailing: IconButton(
-        tooltip: context.l10n.refreshSchedules,
-        onPressed: () => _reloadSchedules(forceRefresh: true),
-        icon: const Icon(Icons.refresh),
+      (
+        label: context.l10n.teachingSchedule,
+        value: state.schedules.length,
+        icon: Icons.school_outlined,
+      ),
+      (
+        label: context.l10n.schoolEvent,
+        value: schoolEventCount,
+        icon: Icons.event_outlined,
+      ),
+      (
+        label: context.l10n.otherEvent,
+        value: otherEventCount,
+        icon: Icons.add_alarm_outlined,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columnCount = constraints.maxWidth >= 900
+            ? 4
+            : constraints.maxWidth >= 420
+            ? 2
+            : 1;
+        const gap = 8.0;
+        final cardWidth =
+            (constraints.maxWidth - (gap * (columnCount - 1))) / columnCount;
+
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final item in items)
+              SizedBox(
+                width: cardWidth,
+                child: _buildSummaryCard(
+                  item.label,
+                  item.value.toString(),
+                  item.icon,
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSummaryCard(String title, String value, IconData icon) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 76),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: AppColors.primaryDark, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontSize: AppTypography.sectionTitle,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -583,6 +665,13 @@ class _SchedulePageState extends State<SchedulePage> {
                 schools: schools,
               )
             : const SizedBox.shrink();
+        final refreshButton = IconButton.filled(
+          tooltip: context.l10n.refreshSchedules,
+          onPressed: state.isLoading
+              ? null
+              : () => _reloadSchedules(forceRefresh: true),
+          icon: const Icon(Icons.refresh, color: AppColors.white),
+        );
 
         final toolbarChild = compact
             ? Column(
@@ -590,14 +679,16 @@ class _SchedulePageState extends State<SchedulePage> {
                 children: [
                   search,
                   const SizedBox(height: 10),
-                  Align(alignment: Alignment.centerRight, child: addButton),
+                  Row(children: [addButton, const Spacer(), refreshButton]),
                 ],
               )
             : Row(
                 children: [
-                  Expanded(child: search),
-                  const SizedBox(width: 12),
                   addButton,
+                  const SizedBox(width: 12),
+                  Expanded(child: search),
+                  const SizedBox(width: 8),
+                  refreshButton,
                 ],
               );
 
@@ -622,111 +713,52 @@ class _SchedulePageState extends State<SchedulePage> {
     required List<Strategy> strategies,
     required List<School> schools,
   }) {
-    return PopupMenuButton<_ScheduleAddType>(
-      tooltip: context.l10n.addScheduleOrEvent,
-      onSelected: (type) {
-        switch (type) {
-          case _ScheduleAddType.schedule:
-            _showScheduleForm(
-              classes: classes,
-              teachers: teachers,
-              units: units,
-              strategies: strategies,
-            );
-            break;
-          case _ScheduleAddType.schoolEvent:
-            _showEventForm(schools: schools, isSchoolEvent: true);
-            break;
-          case _ScheduleAddType.otherEvent:
-            _showEventForm(schools: schools, isSchoolEvent: false);
-            break;
-        }
-      },
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: _ScheduleAddType.schedule,
-          child: Row(
-            children: [
-              Icon(
-                units.isEmpty
-                    ? Icons.warning_amber_rounded
-                    : Icons.school_outlined,
-                size: 18,
-                color: units.isEmpty ? AppColors.warning : null,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(context.l10n.teachingSchedule),
-                    if (units.isEmpty)
-                      Text(
-                        context.l10n.teachingScheduleRequiresUnitShort,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 10,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (_canCreateEvent)
-          PopupMenuItem(
-            value: _ScheduleAddType.schoolEvent,
-            child: Row(
-              children: [
-                const Icon(Icons.event_outlined, size: 18),
-                const SizedBox(width: 10),
-                Text(context.l10n.schoolEvent),
-              ],
-            ),
-          ),
-        if (_canCreateEvent)
-          PopupMenuItem(
-            value: _ScheduleAddType.otherEvent,
-            child: Row(
-              children: [
-                const Icon(Icons.add_alarm_outlined, size: 18),
-                const SizedBox(width: 10),
-                Text(context.l10n.otherEvent),
-              ],
-            ),
-          ),
-      ],
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.add, color: AppColors.white, size: 18),
-            const SizedBox(width: 8),
-            Text(
-              context.l10n.buttonAdd,
-              style: const TextStyle(
-                color: AppColors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(width: 6),
-            const Icon(
-              Icons.keyboard_arrow_down,
-              color: AppColors.white,
-              size: 18,
-            ),
-          ],
-        ),
+    return FilledButton.icon(
+      onPressed: () => _showAddTypeDialog(
+        classes: classes,
+        teachers: teachers,
+        units: units,
+        strategies: strategies,
+        schools: schools,
+      ),
+      icon: const Icon(Icons.add),
+      label: Text(context.l10n.buttonAdd),
+    );
+  }
+
+  Future<void> _showAddTypeDialog({
+    required List<SchoolClass> classes,
+    required List<Teacher> teachers,
+    required List<Unit> units,
+    required List<Strategy> strategies,
+    required List<School> schools,
+  }) async {
+    final type = await showGuardedDialog<_ScheduleAddType>(
+      context: context,
+      guardKey: 'schedule_add_type',
+      builder: (dialogContext) => _ScheduleAddTypeDialog(
+        canCreateEvent: _canCreateEvent,
+        scheduleAvailable: units.isNotEmpty,
       ),
     );
+    if (!mounted || type == null) return;
+
+    switch (type) {
+      case _ScheduleAddType.schedule:
+        await _showScheduleForm(
+          classes: classes,
+          teachers: teachers,
+          units: units,
+          strategies: strategies,
+        );
+        break;
+      case _ScheduleAddType.schoolEvent:
+        await _showEventForm(schools: schools, isSchoolEvent: true);
+        break;
+      case _ScheduleAddType.otherEvent:
+        await _showEventForm(schools: schools, isSchoolEvent: false);
+        break;
+    }
   }
 
   Widget _buildSearchResults(List<_ScheduleSearchResult> results) {
@@ -974,7 +1006,7 @@ class _SchedulePageState extends State<SchedulePage> {
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1345,7 +1377,7 @@ class _SchedulePageState extends State<SchedulePage> {
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         children: [
@@ -1854,6 +1886,10 @@ class _SchedulePageState extends State<SchedulePage> {
         iconSize: 15,
         color: AppColors.white,
         surfaceTintColor: AppColors.white,
+        elevation: 8,
+        position: PopupMenuPosition.under,
+        constraints: const BoxConstraints(minWidth: 156),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         icon: Icon(Icons.more_vert, color: color),
         onSelected: (value) {
           if (value == 'edit') onEdit();
@@ -1861,11 +1897,33 @@ class _SchedulePageState extends State<SchedulePage> {
         },
         itemBuilder: (context) => [
           if (canEdit)
-            PopupMenuItem(value: 'edit', child: Text(context.l10n.buttonEdit)),
+            PopupMenuItem(
+              value: 'edit',
+              child: Row(
+                children: [
+                  const Icon(Icons.edit_outlined, size: 17),
+                  const SizedBox(width: 10),
+                  Text(context.l10n.buttonEdit),
+                ],
+              ),
+            ),
           if (canDelete)
             PopupMenuItem(
               value: 'delete',
-              child: Text(context.l10n.buttonDelete),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.delete_outline,
+                    size: 17,
+                    color: AppColors.errorDark,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    context.l10n.buttonDelete,
+                    style: const TextStyle(color: AppColors.errorDark),
+                  ),
+                ],
+              ),
             ),
         ],
       ),
@@ -2226,6 +2284,373 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 }
 
+class _ScheduleAddTypeDialog extends StatelessWidget {
+  const _ScheduleAddTypeDialog({
+    required this.canCreateEvent,
+    required this.scheduleAvailable,
+  });
+
+  final bool canCreateEvent;
+  final bool scheduleAvailable;
+
+  @override
+  Widget build(BuildContext context) {
+    final choices = [
+      (
+        type: _ScheduleAddType.schedule,
+        icon: scheduleAvailable
+            ? Icons.school_outlined
+            : Icons.warning_amber_rounded,
+        title: context.l10n.teachingSchedule,
+        supportingText: scheduleAvailable
+            ? null
+            : context.l10n.teachingScheduleRequiresUnitShort,
+        enabled: true,
+      ),
+      if (canCreateEvent)
+        (
+          type: _ScheduleAddType.schoolEvent,
+          icon: Icons.event_outlined,
+          title: context.l10n.schoolEvent,
+          supportingText: null,
+          enabled: true,
+        ),
+      if (canCreateEvent)
+        (
+          type: _ScheduleAddType.otherEvent,
+          icon: Icons.add_alarm_outlined,
+          title: context.l10n.otherEvent,
+          supportingText: null,
+          enabled: true,
+        ),
+    ];
+
+    return Dialog(
+      backgroundColor: AppColors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 720),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _CalendarDialogHeader(title: context.l10n.addScheduleOrEvent),
+              const SizedBox(height: 18),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final cardWidth = choices.length == 1
+                      ? constraints.maxWidth
+                      : (constraints.maxWidth - 14 * (choices.length - 1)) /
+                            choices.length;
+                  return Wrap(
+                    spacing: 14,
+                    runSpacing: 14,
+                    children: [
+                      for (final choice in choices)
+                        SizedBox(
+                          width: cardWidth,
+                          height: 150,
+                          child: _ScheduleAddTypeCard(
+                            icon: choice.icon,
+                            title: choice.title,
+                            supportingText: choice.supportingText,
+                            enabled: choice.enabled,
+                            onTap: () => Navigator.of(context).pop(choice.type),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScheduleAddTypeCard extends StatefulWidget {
+  const _ScheduleAddTypeCard({
+    required this.icon,
+    required this.title,
+    required this.enabled,
+    required this.onTap,
+    this.supportingText,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? supportingText;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  State<_ScheduleAddTypeCard> createState() => _ScheduleAddTypeCardState();
+}
+
+class _ScheduleAddTypeCardState extends State<_ScheduleAddTypeCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = widget.enabled && _hovered;
+    return MouseRegion(
+      cursor: widget.enabled
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.forbidden,
+      onEnter: widget.enabled ? (_) => setState(() => _hovered = true) : null,
+      onExit: widget.enabled ? (_) => setState(() => _hovered = false) : null,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: widget.enabled ? widget.onTap : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: active
+                ? AppColors.primary.withValues(alpha: 0.08)
+                : AppColors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: active ? AppColors.primary : AppColors.border,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color:
+                      (widget.enabled ? AppColors.primary : AppColors.warning)
+                          .withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  widget.icon,
+                  color: widget.enabled ? AppColors.primary : AppColors.warning,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                widget.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: widget.enabled
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
+                ),
+              ),
+              if (widget.supportingText != null) ...[
+                const SizedBox(height: 5),
+                Text(
+                  widget.supportingText!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 10,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CalendarDialogHeader extends StatelessWidget {
+  const _CalendarDialogHeader({required this.title, this.enabled = true});
+
+  final String title;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        IconButton(
+          tooltip: context.l10n.buttonClose,
+          onPressed: enabled ? () => Navigator.of(context).maybePop() : null,
+          icon: const Icon(Icons.close, size: 18),
+        ),
+      ],
+    );
+  }
+}
+
+class _CalendarFormDialog extends StatelessWidget {
+  const _CalendarFormDialog({
+    required this.title,
+    required this.isSaving,
+    required this.onSave,
+    required this.child,
+  });
+
+  final String title;
+  final bool isSaving;
+  final VoidCallback onSave;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxHeight = (MediaQuery.sizeOf(context).height - 44)
+        .clamp(360.0, 760.0)
+        .toDouble();
+    return Dialog(
+      backgroundColor: AppColors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: SizedBox(
+        width: 720,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _CalendarDialogHeader(title: title, enabled: !isSaving),
+                const SizedBox(height: 18),
+                Flexible(child: SingleChildScrollView(child: child)),
+                const SizedBox(height: 22),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton(
+                      onPressed: isSaving
+                          ? null
+                          : () => Navigator.of(context).pop(),
+                      child: Text(context.l10n.buttonCancel),
+                    ),
+                    const SizedBox(width: 10),
+                    FilledButton.icon(
+                      onPressed: isSaving ? null : onSave,
+                      icon: isSaving
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.white,
+                              ),
+                            )
+                          : const Icon(Icons.save_outlined, size: 16),
+                      label: Text(context.l10n.buttonSave),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CalendarDeleteDialog extends StatelessWidget {
+  const _CalendarDeleteDialog({required this.title, required this.message});
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _CalendarDialogHeader(title: title),
+              const SizedBox(height: 18),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.errorDark.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.delete_outline,
+                      color: AppColors.errorDark,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        message,
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: AppTypography.body,
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: Text(context.l10n.buttonCancel),
+                  ),
+                  const SizedBox(width: 10),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.errorDark,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(true),
+                    icon: const Icon(Icons.delete_outline, size: 16),
+                    label: Text(context.l10n.buttonDelete),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class ScheduleFormDialog extends StatefulWidget {
   final Schedule? schedule;
   final String? initialDate;
@@ -2319,174 +2744,152 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
       (item) => item.id == strategyId,
     );
 
-    return AlertDialog(
-      title: AppDialogTitle(
-        widget.schedule == null
-            ? context.l10n.addSchedule
-            : context.l10n.editSchedule,
-      ),
-      content: SizedBox(
-        width: 520,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    return _CalendarFormDialog(
+      title: widget.schedule == null
+          ? context.l10n.addSchedule
+          : context.l10n.editSchedule,
+      isSaving: _isSaving,
+      onSave: _submit,
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CommonFormWidgets.dropdownFieldTyped<SchoolLevelOption>(
+              label: context.l10n.level,
+              items: SchoolLevelOption.values,
+              labelBuilder: (item) => item.label,
+              valueBuilder: (item) => item.level.toString(),
+              value: selectedLevel,
+              onSaved: (value) => classLevel =
+                  value?.level ?? SchoolLevelOption.values.first.level,
+            ),
+            const SizedBox(height: 16),
+            CommonFormWidgets.dropdownFieldTyped<Teacher>(
+              label: context.l10n.teacher,
+              items: widget.teachers,
+              labelBuilder: (item) => item.fullName,
+              valueBuilder: (item) => item.id,
+              value: selectedTeacher,
+              isRequired: false,
+              onSaved: (value) => teacherId = value?.id,
+            ),
+            const SizedBox(height: 16),
+            CommonFormWidgets.dropdownFieldTyped<Unit>(
+              label: context.l10n.unit,
+              items: widget.units,
+              labelBuilder: (item) => item.name,
+              valueBuilder: (item) => item.id,
+              value: selectedUnit,
+              onSaved: (value) => unitId = value?.id ?? '',
+            ),
+            const SizedBox(height: 16),
+            CommonFormWidgets.dropdownFieldTyped<Strategy>(
+              label: context.l10n.menuStrategy,
+              items: widget.strategies,
+              labelBuilder: (item) => item.name,
+              valueBuilder: (item) => item.id,
+              value: selectedStrategy,
+              isRequired: false,
+              onSaved: (value) => strategyId = value?.id,
+            ),
+            const SizedBox(height: 16),
+            CommonFormWidgets.textField(
+              label: context.l10n.title,
+              value: title,
+              onSaved: (value) => title = _nullIfBlank(value),
+              validator: (_) => null,
+              isRequired: false,
+            ),
+            const SizedBox(height: 16),
+            Row(
               children: [
-                CommonFormWidgets.dropdownFieldTyped<SchoolLevelOption>(
-                  label: context.l10n.level,
-                  items: SchoolLevelOption.values,
-                  labelBuilder: (item) => item.label,
-                  valueBuilder: (item) => item.level.toString(),
-                  value: selectedLevel,
-                  onSaved: (value) => classLevel =
-                      value?.level ?? SchoolLevelOption.values.first.level,
+                Expanded(
+                  child: _PickerFormField(
+                    label: context.l10n.date,
+                    controller: _dateController,
+                    hint: AppFormFieldStyle.dateFormat,
+                    icon: Icons.calendar_today,
+                    onTap: () async {
+                      final value = await _pickDateValue(
+                        context,
+                        _dateController.text,
+                      );
+                      if (value != null) _dateController.text = value;
+                    },
+                    onSaved: (value) => date = _nullIfBlank(value),
+                    validator: (value) {
+                      if (value?.trim().isEmpty ?? true) {
+                        return context.l10n.fieldRequiredMessage(
+                          context.l10n.date,
+                        );
+                      }
+                      return null;
+                    },
+                  ),
                 ),
-                const SizedBox(height: 16),
-                CommonFormWidgets.dropdownFieldTyped<Teacher>(
-                  label: context.l10n.teacher,
-                  items: widget.teachers,
-                  labelBuilder: (item) => item.fullName,
-                  valueBuilder: (item) => item.id,
-                  value: selectedTeacher,
-                  isRequired: false,
-                  onSaved: (value) => teacherId = value?.id,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _PickerFormField(
+                    label: context.l10n.start,
+                    controller: _startController,
+                    hint: AppFormFieldStyle.timeFormat,
+                    icon: Icons.schedule,
+                    onTap: () async {
+                      final value = await _pickTimeValue(
+                        context,
+                        _startController.text,
+                      );
+                      if (value != null) _startController.text = value;
+                    },
+                    onSaved: (value) => startAt = _nullIfBlank(value),
+                    validator: (_) => null,
+                    isRequired: false,
+                  ),
                 ),
-                const SizedBox(height: 16),
-                CommonFormWidgets.dropdownFieldTyped<Unit>(
-                  label: context.l10n.unit,
-                  items: widget.units,
-                  labelBuilder: (item) => item.name,
-                  valueBuilder: (item) => item.id,
-                  value: selectedUnit,
-                  onSaved: (value) => unitId = value?.id ?? '',
-                ),
-                const SizedBox(height: 16),
-                CommonFormWidgets.dropdownFieldTyped<Strategy>(
-                  label: context.l10n.menuStrategy,
-                  items: widget.strategies,
-                  labelBuilder: (item) => item.name,
-                  valueBuilder: (item) => item.id,
-                  value: selectedStrategy,
-                  isRequired: false,
-                  onSaved: (value) => strategyId = value?.id,
-                ),
-                const SizedBox(height: 16),
-                CommonFormWidgets.textField(
-                  label: context.l10n.title,
-                  value: title,
-                  onSaved: (value) => title = _nullIfBlank(value),
-                  validator: (_) => null,
-                  isRequired: false,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _PickerFormField(
-                        label: context.l10n.date,
-                        controller: _dateController,
-                        hint: AppFormFieldStyle.dateFormat,
-                        icon: Icons.calendar_today,
-                        onTap: () async {
-                          final value = await _pickDateValue(
-                            context,
-                            _dateController.text,
-                          );
-                          if (value != null) _dateController.text = value;
-                        },
-                        onSaved: (value) => date = _nullIfBlank(value),
-                        validator: (value) {
-                          if (value?.trim().isEmpty ?? true) {
-                            return context.l10n.fieldRequiredMessage(
-                              context.l10n.date,
-                            );
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _PickerFormField(
-                        label: context.l10n.start,
-                        controller: _startController,
-                        hint: AppFormFieldStyle.timeFormat,
-                        icon: Icons.schedule,
-                        onTap: () async {
-                          final value = await _pickTimeValue(
-                            context,
-                            _startController.text,
-                          );
-                          if (value != null) _startController.text = value;
-                        },
-                        onSaved: (value) => startAt = _nullIfBlank(value),
-                        validator: (_) => null,
-                        isRequired: false,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _PickerFormField(
-                        label: context.l10n.end,
-                        controller: _endController,
-                        hint: AppFormFieldStyle.timeFormat,
-                        icon: Icons.schedule,
-                        onTap: () async {
-                          final value = await _pickTimeValue(
-                            context,
-                            _endController.text,
-                          );
-                          if (value != null) _endController.text = value;
-                        },
-                        onSaved: (value) => endAt = _nullIfBlank(value),
-                        validator: (value) {
-                          final start = _parseLooseTime(_startController.text);
-                          final end = _parseLooseTime(value);
-                          if (start != null &&
-                              end != null &&
-                              _timeOfDayMinutes(end) <=
-                                  _timeOfDayMinutes(start)) {
-                            return context.l10n.endTimeAfterStartTime;
-                          }
-                          return null;
-                        },
-                        isRequired: false,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                CommonFormWidgets.textField(
-                  label: context.l10n.description,
-                  value: description,
-                  onSaved: (value) => description = _nullIfBlank(value),
-                  maxLines: 3,
-                  inputFormatters: [LengthLimitingTextInputFormatter(200)],
-                  validator: (_) => null,
-                  isRequired: false,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _PickerFormField(
+                    label: context.l10n.end,
+                    controller: _endController,
+                    hint: AppFormFieldStyle.timeFormat,
+                    icon: Icons.schedule,
+                    onTap: () async {
+                      final value = await _pickTimeValue(
+                        context,
+                        _endController.text,
+                      );
+                      if (value != null) _endController.text = value;
+                    },
+                    onSaved: (value) => endAt = _nullIfBlank(value),
+                    validator: (value) {
+                      final start = _parseLooseTime(_startController.text);
+                      final end = _parseLooseTime(value);
+                      if (start != null &&
+                          end != null &&
+                          _timeOfDayMinutes(end) <= _timeOfDayMinutes(start)) {
+                        return context.l10n.endTimeAfterStartTime;
+                      }
+                      return null;
+                    },
+                    isRequired: false,
+                  ),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 16),
+            CommonFormWidgets.textField(
+              label: context.l10n.description,
+              value: description,
+              onSaved: (value) => description = _nullIfBlank(value),
+              maxLines: 3,
+              inputFormatters: [LengthLimitingTextInputFormatter(200)],
+              validator: (_) => null,
+              isRequired: false,
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: Text(context.l10n.buttonCancel),
-        ),
-        ElevatedButton(
-          onPressed: _isSaving ? null : _submit,
-          child: _isSaving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(context.l10n.buttonSave),
-        ),
-      ],
     );
   }
 
@@ -2641,248 +3044,221 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
     );
     final singleDay = _startDateController.text == _endDateController.text;
 
-    return AlertDialog(
-      title: AppDialogTitle(
-        widget.event == null ? context.l10n.addEvent : context.l10n.editEvent,
-      ),
-      content: SizedBox(
-        width: 520,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    return _CalendarFormDialog(
+      title: widget.event == null
+          ? context.l10n.addEvent
+          : context.l10n.editEvent,
+      isSaving: _isSaving,
+      onSave: _submit,
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CommonFormWidgets.textField(
+              label: context.l10n.eventName,
+              value: title,
+              onSaved: (value) => title = value?.trim() ?? '',
+              validator: (value) {
+                if (value?.trim().isEmpty ?? true) {
+                  return context.l10n.fieldRequiredMessage(
+                    context.l10n.eventName,
+                  );
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            if (widget.showType) ...[
+              CommonFormWidgets.dropdownField(
+                label: context.l10n.type,
+                items: eventTypes,
+                value: type,
+                itemLabelBuilder: (value) => _eventTypeLabel(context, value),
+                onSaved: (value) => type = value ?? eventTypes.first,
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (widget.showSchool) ...[
+              CommonFormWidgets.dropdownFieldTyped<School>(
+                label: context.l10n.school,
+                items: widget.schools,
+                labelBuilder: (item) => item.name ?? context.l10n.unnamedSchool,
+                valueBuilder: (item) => item.id,
+                value: selectedSchool,
+                isRequired: false,
+                onSaved: (value) => schoolId = value?.id,
+              ),
+              const SizedBox(height: 16),
+            ],
+            Row(
               children: [
-                CommonFormWidgets.textField(
-                  label: context.l10n.eventName,
-                  value: title,
-                  onSaved: (value) => title = value?.trim() ?? '',
-                  validator: (value) {
-                    if (value?.trim().isEmpty ?? true) {
-                      return context.l10n.fieldRequiredMessage(
-                        context.l10n.eventName,
+                Expanded(
+                  child: _PickerFormField(
+                    label: context.l10n.startDate,
+                    controller: _startDateController,
+                    hint: AppFormFieldStyle.dateFormat,
+                    icon: Icons.calendar_today,
+                    onTap: () async {
+                      final value = await _pickDateValue(
+                        context,
+                        _startDateController.text,
                       );
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                if (widget.showType) ...[
-                  CommonFormWidgets.dropdownField(
-                    label: context.l10n.type,
-                    items: eventTypes,
-                    value: type,
-                    itemLabelBuilder: (value) =>
-                        _eventTypeLabel(context, value),
-                    onSaved: (value) => type = value ?? eventTypes.first,
+                      if (value == null) return;
+                      setState(() {
+                        _startDateController.text = value;
+                        if (_endDateController.text.compareTo(value) < 0) {
+                          _endDateController.text = value;
+                        }
+                        if (_startDateController.text !=
+                            _endDateController.text) {
+                          wholeDay = false;
+                        }
+                      });
+                    },
+                    onSaved: (value) => date = value?.trim() ?? '',
+                    validator: (value) {
+                      if (value?.trim().isEmpty ?? true) {
+                        return context.l10n.fieldRequiredMessage(
+                          context.l10n.startDate,
+                        );
+                      }
+                      return null;
+                    },
                   ),
-                  const SizedBox(height: 16),
-                ],
-                if (widget.showSchool) ...[
-                  CommonFormWidgets.dropdownFieldTyped<School>(
-                    label: context.l10n.school,
-                    items: widget.schools,
-                    labelBuilder: (item) =>
-                        item.name ?? context.l10n.unnamedSchool,
-                    valueBuilder: (item) => item.id,
-                    value: selectedSchool,
-                    isRequired: false,
-                    onSaved: (value) => schoolId = value?.id,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _PickerFormField(
+                    label: context.l10n.endDate,
+                    controller: _endDateController,
+                    hint: AppFormFieldStyle.dateFormat,
+                    icon: Icons.event_available,
+                    onTap: () async {
+                      final value = await _pickDateValue(
+                        context,
+                        _endDateController.text,
+                      );
+                      if (value == null) return;
+                      setState(() {
+                        _endDateController.text = value;
+                        if (_startDateController.text.compareTo(value) > 0) {
+                          _startDateController.text = value;
+                        }
+                        if (_startDateController.text !=
+                            _endDateController.text) {
+                          wholeDay = false;
+                        }
+                      });
+                    },
+                    onSaved: (value) => endDate = value?.trim() ?? date,
+                    validator: (value) {
+                      if (value?.trim().isEmpty ?? true) {
+                        return context.l10n.fieldRequiredMessage(
+                          context.l10n.endDate,
+                        );
+                      }
+                      if (value!.trim().compareTo(_startDateController.text) <
+                          0) {
+                        return context.l10n.endDateAfterStartDate;
+                      }
+                      return null;
+                    },
                   ),
-                  const SizedBox(height: 16),
-                ],
-                Row(
-                  children: [
-                    Expanded(
-                      child: _PickerFormField(
-                        label: context.l10n.startDate,
-                        controller: _startDateController,
-                        hint: AppFormFieldStyle.dateFormat,
-                        icon: Icons.calendar_today,
-                        onTap: () async {
-                          final value = await _pickDateValue(
-                            context,
-                            _startDateController.text,
-                          );
-                          if (value == null) return;
-                          setState(() {
-                            _startDateController.text = value;
-                            if (_endDateController.text.compareTo(value) < 0) {
-                              _endDateController.text = value;
-                            }
-                            if (_startDateController.text !=
-                                _endDateController.text) {
-                              wholeDay = false;
-                            }
-                          });
-                        },
-                        onSaved: (value) => date = value?.trim() ?? '',
-                        validator: (value) {
-                          if (value?.trim().isEmpty ?? true) {
-                            return context.l10n.fieldRequiredMessage(
-                              context.l10n.startDate,
-                            );
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _PickerFormField(
-                        label: context.l10n.endDate,
-                        controller: _endDateController,
-                        hint: AppFormFieldStyle.dateFormat,
-                        icon: Icons.event_available,
-                        onTap: () async {
-                          final value = await _pickDateValue(
-                            context,
-                            _endDateController.text,
-                          );
-                          if (value == null) return;
-                          setState(() {
-                            _endDateController.text = value;
-                            if (_startDateController.text.compareTo(value) >
-                                0) {
-                              _startDateController.text = value;
-                            }
-                            if (_startDateController.text !=
-                                _endDateController.text) {
-                              wholeDay = false;
-                            }
-                          });
-                        },
-                        onSaved: (value) => endDate = value?.trim() ?? date,
-                        validator: (value) {
-                          if (value?.trim().isEmpty ?? true) {
-                            return context.l10n.fieldRequiredMessage(
-                              context.l10n.endDate,
-                            );
-                          }
-                          if (value!.trim().compareTo(
-                                _startDateController.text,
-                              ) <
-                              0) {
-                            return context.l10n.endDateAfterStartDate;
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(context.l10n.wholeDay),
-                  subtitle: Text(
-                    singleDay
-                        ? context.l10n.wholeDaySubtitle
-                        : context.l10n.wholeDayUnavailableSubtitle,
-                  ),
-                  value: singleDay && wholeDay,
-                  onChanged: singleDay
-                      ? (value) => setState(() {
-                          wholeDay = value;
-                          if (value) {
-                            _startTimeController.text = '09:00';
-                            _endTimeController.text = '21:00';
-                          }
-                        })
-                      : null,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _PickerFormField(
-                        label: context.l10n.start,
-                        controller: _startTimeController,
-                        hint: AppFormFieldStyle.timeFormat,
-                        icon: Icons.schedule,
-                        enabled: !wholeDay,
-                        onTap: () async {
-                          final value = await _pickTimeValue(
-                            context,
-                            _startTimeController.text,
-                          );
-                          if (value != null) _startTimeController.text = value;
-                        },
-                        onSaved: (value) => startAt = _nullIfBlank(value),
-                        validator: (_) => null,
-                        isRequired: false,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _PickerFormField(
-                        label: context.l10n.end,
-                        controller: _endTimeController,
-                        hint: AppFormFieldStyle.timeFormat,
-                        icon: Icons.schedule,
-                        enabled: !wholeDay,
-                        onTap: () async {
-                          final value = await _pickTimeValue(
-                            context,
-                            _endTimeController.text,
-                          );
-                          if (value != null) _endTimeController.text = value;
-                        },
-                        onSaved: (value) => endAt = _nullIfBlank(value),
-                        validator: (value) {
-                          if (wholeDay ||
-                              _startDateController.text !=
-                                  _endDateController.text) {
-                            return null;
-                          }
-                          final start = _parseLooseTime(
-                            _startTimeController.text,
-                          );
-                          final end = _parseLooseTime(value);
-                          if (start != null &&
-                              end != null &&
-                              _timeOfDayMinutes(end) <=
-                                  _timeOfDayMinutes(start)) {
-                            return context.l10n.endTimeAfterStartTime;
-                          }
-                          return null;
-                        },
-                        isRequired: false,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                CommonFormWidgets.textField(
-                  label: context.l10n.description,
-                  value: description,
-                  onSaved: (value) => description = _nullIfBlank(value),
-                  maxLines: 3,
-                  inputFormatters: [LengthLimitingTextInputFormatter(200)],
-                  validator: (_) => null,
-                  isRequired: false,
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 12),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: Text(context.l10n.wholeDay),
+              subtitle: Text(
+                singleDay
+                    ? context.l10n.wholeDaySubtitle
+                    : context.l10n.wholeDayUnavailableSubtitle,
+              ),
+              value: singleDay && wholeDay,
+              onChanged: singleDay
+                  ? (value) => setState(() {
+                      wholeDay = value;
+                      if (value) {
+                        _startTimeController.text = '09:00';
+                        _endTimeController.text = '21:00';
+                      }
+                    })
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _PickerFormField(
+                    label: context.l10n.start,
+                    controller: _startTimeController,
+                    hint: AppFormFieldStyle.timeFormat,
+                    icon: Icons.schedule,
+                    enabled: !wholeDay,
+                    onTap: () async {
+                      final value = await _pickTimeValue(
+                        context,
+                        _startTimeController.text,
+                      );
+                      if (value != null) _startTimeController.text = value;
+                    },
+                    onSaved: (value) => startAt = _nullIfBlank(value),
+                    validator: (_) => null,
+                    isRequired: false,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _PickerFormField(
+                    label: context.l10n.end,
+                    controller: _endTimeController,
+                    hint: AppFormFieldStyle.timeFormat,
+                    icon: Icons.schedule,
+                    enabled: !wholeDay,
+                    onTap: () async {
+                      final value = await _pickTimeValue(
+                        context,
+                        _endTimeController.text,
+                      );
+                      if (value != null) _endTimeController.text = value;
+                    },
+                    onSaved: (value) => endAt = _nullIfBlank(value),
+                    validator: (value) {
+                      if (wholeDay ||
+                          _startDateController.text !=
+                              _endDateController.text) {
+                        return null;
+                      }
+                      final start = _parseLooseTime(_startTimeController.text);
+                      final end = _parseLooseTime(value);
+                      if (start != null &&
+                          end != null &&
+                          _timeOfDayMinutes(end) <= _timeOfDayMinutes(start)) {
+                        return context.l10n.endTimeAfterStartTime;
+                      }
+                      return null;
+                    },
+                    isRequired: false,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            CommonFormWidgets.textField(
+              label: context.l10n.description,
+              value: description,
+              onSaved: (value) => description = _nullIfBlank(value),
+              maxLines: 3,
+              inputFormatters: [LengthLimitingTextInputFormatter(200)],
+              validator: (_) => null,
+              isRequired: false,
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: Text(context.l10n.buttonCancel),
-        ),
-        ElevatedButton(
-          onPressed: _isSaving ? null : _submit,
-          child: _isSaving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(context.l10n.buttonSave),
-        ),
-      ],
     );
   }
 
