@@ -7,6 +7,7 @@ import 'package:edukita/features/assistance/plans/data/assistance_plan_models.da
 import 'package:edukita/features/assistance/plans/domain/assistance_plan_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
+import 'package:edukita/widgets/app_dialog.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
@@ -16,10 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AssistanceRulesPage extends StatefulWidget {
-  const AssistanceRulesPage({
-    super.key,
-    this.embedded = false,
-  });
+  const AssistanceRulesPage({super.key, this.embedded = false});
 
   final bool embedded;
 
@@ -56,8 +54,7 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
           children: [
             AppPageHeader(
               title: context.l10n.rules,
-              subtitle:
-                  context.l10n.assistanceRulesSubtitle,
+              subtitle: context.l10n.assistanceRulesSubtitle,
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -181,10 +178,7 @@ class _AssistanceRulesPageState extends State<AssistanceRulesPage> {
 
     if (widget.embedded) return content;
     return Scaffold(
-      body: Padding(
-        padding: AppPageHeaderStyle.pagePadding,
-        child: content,
-      ),
+      body: Padding(padding: AppPageHeaderStyle.pagePadding, child: content),
     );
   }
 }
@@ -225,7 +219,7 @@ class _AssistanceRuleDialogState extends State<_AssistanceRuleDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(
         widget.rule == null
             ? context.l10n.addCustomRule

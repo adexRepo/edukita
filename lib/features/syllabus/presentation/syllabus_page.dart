@@ -14,6 +14,7 @@ import 'package:edukita/features/strategy/domain/strategy_cubit.dart';
 import 'package:edukita/features/strategy/presentation/strategy_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
+import 'package:edukita/widgets/app_dialog.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
@@ -25,11 +26,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 
 class SyllabusPage extends StatefulWidget {
-  const SyllabusPage({
-    super.key,
-    this.parameterMenu,
-    this.embedded = false,
-  });
+  const SyllabusPage({super.key, this.parameterMenu, this.embedded = false});
 
   final String? parameterMenu;
   final bool embedded;
@@ -217,7 +214,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
       context: context,
       guardKey: 'delete_parameter_${title}_$subject',
       builder: (context) {
-        return AlertDialog(
+        return AppDialog(
           title: AppDialogTitle(context.l10n.deleteItemTitle(title)),
           content: _DeleteImpactContent(subject: subject, impact: impact),
           actions: [
@@ -226,6 +223,9 @@ class _SyllabusPageState extends State<SyllabusPage> {
               child: Text(context.l10n.buttonCancel),
             ),
             FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.errorDark,
+              ),
               onPressed: () => Navigator.of(context).pop(true),
               child: Text(
                 hasImpact ? context.l10n.deleteAnyway : context.l10n.delete,
@@ -948,7 +948,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
               icon: const Icon(Icons.download_outlined, size: 17),
             ),
           IconButton(
-              tooltip: context.l10n.edit,
+            tooltip: context.l10n.edit,
             onPressed: onEdit,
             constraints: const BoxConstraints.tightFor(width: 30, height: 30),
             padding: EdgeInsets.zero,

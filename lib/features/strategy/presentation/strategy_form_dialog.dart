@@ -5,6 +5,7 @@ import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
 import 'package:edukita/features/strategy/data/strategy_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
+import 'package:edukita/widgets/app_dialog.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:file_selector/file_selector.dart';
@@ -73,7 +74,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(
         widget.strategy == null
             ? context.l10n.addStrategy
@@ -228,9 +229,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
           OutlinedButton.icon(
             onPressed: _isSaving ? null : _pickSampleFile,
             icon: const Icon(Icons.upload_file, size: 16),
-            label: Text(
-              hasFile ? context.l10n.change : context.l10n.upload,
-            ),
+            label: Text(hasFile ? context.l10n.change : context.l10n.upload),
           ),
           if (hasFile) ...[
             const SizedBox(width: 4),

@@ -8,6 +8,7 @@ import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
 import 'package:edukita/features/schools/presentation/school_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
+import 'package:edukita/widgets/app_dialog.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_dialog_skeleton.dart';
 import 'package:edukita/widgets/app_loading.dart';
@@ -99,7 +100,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
           future: classesFuture,
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
-              return AlertDialog(
+              return AppDialog(
                 title: AppDialogTitle(
                   context.l10n.classesForSchool(school.name ?? '-'),
                 ),
@@ -175,7 +176,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
     final confirmed = await showGuardedDialog<bool>(
       context: context,
       guardKey: 'delete_class_${schoolClass.id}',
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => AppDialog(
         title: AppDialogTitle(context.l10n.deleteClass),
         content: Text(context.l10n.deleteNamedItem(schoolClass.name)),
         actions: [
@@ -184,6 +185,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
             child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(context.l10n.delete),
           ),
@@ -213,7 +215,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
     final confirmed = await showGuardedDialog<bool>(
       context: context,
       guardKey: 'delete_school_${school.id}',
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => AppDialog(
         title: AppDialogTitle(context.l10n.deleteSchool),
         content: Text(
           context.l10n.deleteNamedItem(school.name ?? context.l10n.school),
@@ -224,6 +226,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
             child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(context.l10n.delete),
           ),
@@ -517,7 +520,7 @@ class _SchoolClassesDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(context.l10n.classesForSchool(school.name ?? '-')),
       content: SizedBox(
         width: 720,
@@ -577,9 +580,7 @@ class _SchoolClassesDialog extends StatelessWidget {
                               )?.codeUnitAt(0) ??
                               0,
                           cell: (schoolClass) => Text(
-                            SchoolClass.normalizeSection(
-                                  schoolClass.section,
-                                ) ??
+                            SchoolClass.normalizeSection(schoolClass.section) ??
                                 '',
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(fontSize: 12),

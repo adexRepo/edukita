@@ -51,9 +51,7 @@ class _ParameterPageState extends State<ParameterPage> {
     _ParameterSection(
       title: 'System',
       icon: Icons.settings_outlined,
-      items: [
-        _ParameterMenuItem('Reports', Icons.summarize_outlined),
-      ],
+      items: [_ParameterMenuItem('Reports', Icons.summarize_outlined)],
     ),
   ];
 
@@ -87,75 +85,162 @@ class _ParameterPageState extends State<ParameterPage> {
   @override
   Widget build(BuildContext context) {
     if (!_authorizationLoaded) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (!_canViewParameters) {
-      return AccessDeniedPanel(
-        message: context.l10n.noPermissionViewParameters,
+      return const Scaffold(
+        backgroundColor: AppColors.surfaceSoft,
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    return ColoredBox(
-      color: AppColors.surfaceSoft,
-      child: Padding(
-        padding: AppPageHeaderStyle.pagePadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppPageHeader(
-              title: context.l10n.menuParameter,
-              subtitle: context.l10n.parameterSubtitle,
+    if (!_canViewParameters) {
+      return Scaffold(
+        backgroundColor: AppColors.surfaceSoft,
+        body: AccessDeniedPanel(
+          message: context.l10n.noPermissionViewParameters,
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.surfaceSoft,
+      body: Column(
+        children: [
+          Padding(
+            padding: AppPageHeaderStyle.pagePadding,
+            child: AppPageHeader(title: context.l10n.menuParameter),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth < 720) {
+                    return Column(
+                      children: [
+                        _buildCompactNavigation(),
+                        const SizedBox(height: 12),
+                        Expanded(child: _buildSelectedContent(context)),
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(width: 240, child: _buildDesktopNavigation()),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildSelectedContent(context)),
+                    ],
+                  );
+                },
+              ),
             ),
-            const SizedBox(height: AppPageHeaderStyle.bottomGap),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    width: 260,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        border: Border.all(color: AppColors.border),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        children: [
-                          for (final section in _sections)
-                            _ParameterSectionTile(
-                              section: section,
-                              selectedTitle: _selectedTitle,
-                              expanded: _expandedSectionTitle == section.title,
-                              onExpansionChanged: (expanded) {
-                                setState(() {
-                                  _expandedSectionTitle =
-                                      expanded ? section.title : '';
-                                });
-                              },
-                              onSelected: (title) {
-                                setState(() {
-                                  _selectedTitle = title;
-                                  _expandedSectionTitle = section.title;
-                                });
-                              },
-                            ),
-                        ],
-                      ),
-                    ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopNavigation() {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+            child: Text(
+              context.l10n.parameterSubtitle,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: AppTypography.bodySmall,
+                fontWeight: FontWeight.w600,
+                height: 1.35,
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: [
+                for (final section in _sections)
+                  _ParameterSectionTile(
+                    section: section,
+                    selectedTitle: _selectedTitle,
+                    expanded: _expandedSectionTitle == section.title,
+                    onExpansionChanged: (expanded) {
+                      setState(() {
+                        _expandedSectionTitle = expanded ? section.title : '';
+                      });
+                    },
+                    onSelected: (title) =>
+                        _selectMenu(title, sectionTitle: section.title),
                   ),
-                  const SizedBox(width: 16),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactNavigation() {
+    final items = [for (final section in _sections) ...section.items];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: DropdownButtonFormField<String>(
+        initialValue: _selectedTitle,
+        isExpanded: true,
+        decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.tune_outlined),
+          labelText: context.l10n.menuParameter,
+        ),
+        items: [
+          for (final item in items)
+            DropdownMenuItem(
+              value: item.title,
+              child: Row(
+                children: [
+                  Icon(item.icon, size: 17, color: AppColors.textSecondary),
+                  const SizedBox(width: 10),
                   Expanded(
-                    child: _buildSelectedContent(context),
+                    child: Text(
+                      _menuLabel(context, item.title),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+        ],
+        onChanged: (title) {
+          if (title == null) return;
+          _selectMenu(title);
+        },
       ),
     );
+  }
+
+  void _selectMenu(String title, {String? sectionTitle}) {
+    final ownerSection =
+        sectionTitle ??
+        _sections.firstWhere((section) {
+          return section.items.any((item) => item.title == title);
+        }).title;
+    setState(() {
+      _selectedTitle = title;
+      _expandedSectionTitle = ownerSection;
+    });
   }
 
   Widget _buildSelectedContent(BuildContext context) {
@@ -284,15 +369,23 @@ class _ParameterSectionTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             onTap: () => onExpansionChanged(!expanded),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               child: Row(
                 children: [
-                  Icon(
-                    section.icon,
-                    size: 18,
-                    color: AppColors.primaryDark,
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      section.icon,
+                      size: 17,
+                      color: AppColors.primaryDark,
+                    ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       _parameterSectionLabel(context, section.title),
@@ -372,13 +465,18 @@ class _ParameterMenuTile extends StatelessWidget {
                 ? AppColors.primary.withValues(alpha: 0.12)
                 : AppColors.transparent,
             borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: selected ? AppColors.primaryLight : AppColors.transparent,
+            ),
           ),
           child: Row(
             children: [
               Icon(
                 item.icon,
                 size: 17,
-                color: selected ? AppColors.primaryDark : AppColors.textSecondary,
+                color: selected
+                    ? AppColors.primaryDark
+                    : AppColors.textSecondary,
               ),
               const SizedBox(width: 10),
               Expanded(

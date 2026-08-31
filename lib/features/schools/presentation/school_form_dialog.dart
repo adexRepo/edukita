@@ -3,6 +3,7 @@ import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
+import 'package:edukita/widgets/app_dialog.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
@@ -166,7 +167,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
     return showGuardedDialog<bool>(
       context: context,
       guardKey: 'school_form_change_type_${_type.name}_${newType.name}',
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => AppDialog(
         title: AppDialogTitle(context.l10n.changeSchoolType),
         content: Text(
           context.l10n.changeSchoolTypeRemovesClasses(
@@ -180,6 +181,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
             child: Text(context.l10n.keepType),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(context.l10n.removeClasses),
           ),
@@ -264,17 +266,16 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
     final confirmed = await showGuardedDialog<bool>(
       context: context,
       guardKey: 'school_form_clear_classes',
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => AppDialog(
         title: AppDialogTitle(context.l10n.clearClasses),
-        content: Text(
-          context.l10n.removeAllClassesConfirm,
-        ),
+        content: Text(context.l10n.removeAllClassesConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(context.l10n.clearAll),
           ),
@@ -344,9 +345,11 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(
-        widget.school == null ? context.l10n.addSchool : context.l10n.editSchool,
+        widget.school == null
+            ? context.l10n.addSchool
+            : context.l10n.editSchool,
       ),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 620),
@@ -1012,7 +1015,7 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
   Widget build(BuildContext context) {
     final isEditing = widget.initialDraft != null;
 
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(
         isEditing ? context.l10n.editClass : context.l10n.addClass,
       ),
@@ -1097,9 +1100,7 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
               const SizedBox(height: 10),
               TextFormField(
                 controller: _sectionController,
-                decoration: InputDecoration(
-                  label: Text(context.l10n.section),
-                ),
+                decoration: InputDecoration(label: Text(context.l10n.section)),
                 textCapitalization: TextCapitalization.characters,
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp('[a-zA-Z]')),
@@ -1162,10 +1163,7 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
     final name = widget.autoName
         ? parsedLevel == null
               ? ''
-              : SchoolClass.generatedName(
-                  level: parsedLevel,
-                  section: section,
-                )
+              : SchoolClass.generatedName(level: parsedLevel, section: section)
         : _nameController.text.trim();
     if (level.isEmpty || year.isEmpty || name.isEmpty) return false;
 

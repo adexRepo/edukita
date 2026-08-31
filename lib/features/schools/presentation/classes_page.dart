@@ -4,6 +4,7 @@ import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
+import 'package:edukita/widgets/app_dialog.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_toast.dart';
@@ -51,7 +52,7 @@ class _ClassesPageState extends State<ClassesPage> {
       context: context,
       guardKey: 'delete_class_$id',
       builder: (context) {
-        return AlertDialog(
+        return AppDialog(
           title: AppDialogTitle(context.l10n.deleteClass),
           content: Text(context.l10n.deleteClassConfirm),
           actions: [
@@ -60,6 +61,9 @@ class _ClassesPageState extends State<ClassesPage> {
               child: Text(context.l10n.buttonCancel),
             ),
             FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.errorDark,
+              ),
               onPressed: () => Navigator.of(context).pop(true),
               child: Text(context.l10n.delete),
             ),
@@ -115,48 +119,48 @@ class _ClassesPageState extends State<ClassesPage> {
                 AppLoadingStrip(isLoading: state.isLoading, topPadding: 0),
                 Expanded(
                   child: classes.isEmpty
-                ? Center(child: Text(context.l10n.noClassesYet))
-                : ListView.builder(
-                    itemCount: classes.length,
-                    itemBuilder: (context, index) {
-                      final schoolClass = classes[index];
-                      final section = SchoolClass.normalizeSection(
-                        schoolClass.section,
-                      );
-                      return ListTile(
-                        title: Text(schoolClass.className),
-                        subtitle: Text(
-                          [
-                            '${context.l10n.level} ${schoolClass.level}',
-                            if (section != null)
-                              '${context.l10n.section} $section',
-                            '${context.l10n.year} ${schoolClass.year}',
-                          ].join(' | '),
-                        ),
-                        onTap: () => {},
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit),
-                              onPressed: () => _showClassFormDialog(
-                                context,
-                                existingClass: schoolClass,
+                      ? Center(child: Text(context.l10n.noClassesYet))
+                      : ListView.builder(
+                          itemCount: classes.length,
+                          itemBuilder: (context, index) {
+                            final schoolClass = classes[index];
+                            final section = SchoolClass.normalizeSection(
+                              schoolClass.section,
+                            );
+                            return ListTile(
+                              title: Text(schoolClass.className),
+                              subtitle: Text(
+                                [
+                                  '${context.l10n.level} ${schoolClass.level}',
+                                  if (section != null)
+                                    '${context.l10n.section} $section',
+                                  '${context.l10n.year} ${schoolClass.year}',
+                                ].join(' | '),
                               ),
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.delete,
-                                color: AppColors.error,
+                              onTap: () => {},
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit),
+                                    onPressed: () => _showClassFormDialog(
+                                      context,
+                                      existingClass: schoolClass,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: AppColors.error,
+                                    ),
+                                    onPressed: () =>
+                                        _confirmDelete(context, schoolClass.id),
+                                  ),
+                                ],
                               ),
-                              onPressed: () =>
-                                  _confirmDelete(context, schoolClass.id),
-                            ),
-                          ],
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
                 ),
               ],
             ),

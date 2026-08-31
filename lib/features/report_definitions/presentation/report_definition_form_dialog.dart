@@ -4,6 +4,7 @@ import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/report_definitions/data/report_definition_model.dart';
 import 'package:edukita/features/report_definitions/domain/report_definition_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_dialog.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_error_dialog.dart';
 import 'package:edukita/widgets/app_toast.dart';
@@ -90,7 +91,7 @@ class _ReportDefinitionFormDialogState
         .clamp(440.0, 720.0)
         .toDouble();
 
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(
         widget.definition == null
             ? context.l10n.addReportSetting
@@ -245,10 +246,7 @@ class _ReportDefinitionFormDialogState
               padding: const EdgeInsets.all(8),
               child: DetailTabBar(
                 height: 32,
-                tabs: [
-                  context.l10n.querySql,
-                  context.l10n.columnSettings,
-                ],
+                tabs: [context.l10n.querySql, context.l10n.columnSettings],
               ),
             ),
             Expanded(
@@ -301,7 +299,7 @@ class _ReportDefinitionFormDialogState
                           showSuccessToast: true,
                           useDatabasePreview: true,
                           showLoading: true,
-                  ),
+                        ),
                   icon: const Icon(Icons.auto_fix_high_outlined, size: 16),
                   label: Text(context.l10n.detectColumns),
                 ),
@@ -395,7 +393,9 @@ class _ReportDefinitionFormDialogState
                       Icons.cleaning_services_outlined,
                       size: 16,
                     ),
-                    label: Text(context.l10n.removeMissingColumns(missingCount)),
+                    label: Text(
+                      context.l10n.removeMissingColumns(missingCount),
+                    ),
                   ),
               ],
             ),
@@ -758,9 +758,8 @@ class _ColumnSettingRowState extends State<_ColumnSettingRow> {
                       width: 96,
                       child: CheckboxListTile(
                         value: _column.export,
-                        onChanged: (value) => _setColumn(
-                          _column.copyWith(export: value ?? true),
-                        ),
+                        onChanged: (value) =>
+                            _setColumn(_column.copyWith(export: value ?? true)),
                         dense: true,
                         contentPadding: EdgeInsets.zero,
                         controlAffinity: ListTileControlAffinity.leading,

@@ -5,6 +5,7 @@ import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/syllabus/data/subject_model.dart';
 import 'package:edukita/features/syllabus/data/syllabus_model.dart';
+import 'package:edukita/widgets/app_dialog.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
@@ -55,7 +56,7 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(
         widget.curriculum == null
             ? context.l10n.addCurriculum
@@ -248,7 +249,7 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
       (subject) => subject.id == subjectId,
     );
 
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(
         widget.syllabus == null
             ? context.l10n.addSyllabus
@@ -507,7 +508,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(
         widget.subject == null
             ? context.l10n.addSubject
@@ -643,7 +644,7 @@ class _UnitFormDialogState extends State<UnitFormDialog> {
       (subject) => subject.id == subjectId,
     );
 
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(
         widget.unit == null ? context.l10n.addUnit : context.l10n.editUnit,
       ),
@@ -785,7 +786,7 @@ class _CompetencyFormDialogState extends State<CompetencyFormDialog> {
       (unit) => unit.id == unitId,
     );
 
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(
         widget.competency == null
             ? context.l10n.addCompetency

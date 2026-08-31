@@ -7,6 +7,7 @@ import 'package:edukita/features/assistance/programs/data/assistance_program_mod
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
+import 'package:edukita/widgets/app_dialog.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
@@ -85,7 +86,7 @@ class _AssistanceProgramFormDialogState
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(
         widget.program == null
             ? context.l10n.addProgram
@@ -196,15 +197,19 @@ class _AssistanceProgramFormDialogState
                     ),
                     onSaved: (value) => defaultAmount =
                         ThousandsSeparatorInputFormatter.parseDouble(
-                      value ?? '',
-                    ),
+                          value ?? '',
+                        ),
                     validator: (value) {
                       final trimmed = value?.trim();
                       if (trimmed == null || trimmed.isEmpty) return null;
                       final number =
                           ThousandsSeparatorInputFormatter.parseDouble(trimmed);
-                      if (number == null) return context.l10n.amountMustBeNumber;
-                      if (number < 0) return context.l10n.amountCannotBeNegative;
+                      if (number == null) {
+                        return context.l10n.amountMustBeNumber;
+                      }
+                      if (number < 0) {
+                        return context.l10n.amountCannotBeNegative;
+                      }
                       return null;
                     },
                   ),
@@ -563,7 +568,7 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
         _benefitType == AssistanceBenefitType.goods ||
         _benefitType == AssistanceBenefitType.mixed;
 
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(
         widget.benefit == null
             ? context.l10n.addBenefitPackage
@@ -628,8 +633,8 @@ class _BenefitPackageDialogState extends State<BenefitPackageDialog> {
                       }
                       final amount =
                           ThousandsSeparatorInputFormatter.parseDouble(
-                        value?.trim() ?? '',
-                      );
+                            value?.trim() ?? '',
+                          );
                       if (amount == null) return context.l10n.amountRequired;
                       if (amount < 0) {
                         return context.l10n.amountCannotBeNegative;
@@ -867,7 +872,7 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(
         widget.item == null ? context.l10n.addItem : context.l10n.editItem,
       ),
@@ -924,8 +929,9 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
                 validator: (value) {
                   final trimmed = value?.trim() ?? '';
                   if (trimmed.isEmpty) return null;
-                  final amount =
-                      ThousandsSeparatorInputFormatter.parseDouble(trimmed);
+                  final amount = ThousandsSeparatorInputFormatter.parseDouble(
+                    trimmed,
+                  );
                   if (amount == null || amount < 0) {
                     return context.l10n.estimatedValueValid;
                   }
@@ -936,7 +942,9 @@ class _BenefitItemDialogState extends State<BenefitItemDialog> {
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 2,
-                decoration: InputDecoration(labelText: context.l10n.description),
+                decoration: InputDecoration(
+                  labelText: context.l10n.description,
+                ),
               ),
             ],
           ),

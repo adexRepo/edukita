@@ -4,6 +4,7 @@ import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/features/teaching_locations/data/teaching_location_model.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_dialog.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
@@ -55,7 +56,7 @@ class _TeachingLocationFormDialogState
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(
         widget.location == null
             ? context.l10n.addTeachingLocation
@@ -165,16 +166,10 @@ class _TeachingLocationFormDialogState
           createdAt: widget.location?.createdAt,
         ),
       );
-      AppToast.showSubmissionSuccess(
-        action: action,
-        subject: subject,
-      );
+      AppToast.showSubmissionSuccess(action: action, subject: subject);
       if (mounted) Navigator.pop(context);
     } catch (_) {
-      AppToast.showSubmissionFailed(
-        action: action,
-        subject: subject,
-      );
+      AppToast.showSubmissionFailed(action: action, subject: subject);
       if (mounted) setState(() => _isSaving = false);
     }
   }

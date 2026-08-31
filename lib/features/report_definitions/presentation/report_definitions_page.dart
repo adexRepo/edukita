@@ -9,6 +9,7 @@ import 'package:edukita/features/report_definitions/presentation/report_definiti
 import 'package:edukita/features/users/domain/user_authorization.dart';
 import 'package:edukita/features/users/presentation/authorization_helpers.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_dialog.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_error_dialog.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
@@ -119,10 +120,9 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
           title: context.l10n.reportSettings,
           subtitle: context.l10n.reportSettingsSubtitle,
           trailing: ElevatedButton.icon(
-            onPressed:
-                _authorizationLoaded && _canUpdateParameters
-                    ? () => _openForm(context)
-                    : null,
+            onPressed: _authorizationLoaded && _canUpdateParameters
+                ? () => _openForm(context)
+                : null,
             icon: const Icon(Icons.add, size: 17),
             label: Text(context.l10n.addReport),
           ),
@@ -142,7 +142,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
                   prefixIcon: const Icon(Icons.search, size: 18),
                   suffixIcon: state.query.trim().isEmpty
                       ? null
-                        : IconButton(
+                      : IconButton(
                           tooltip: context.l10n.clearSearch,
                           onPressed: () {
                             _searchController.clear();
@@ -410,18 +410,11 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
         : context.l10n.reportSettingActivated;
     final failedTitle = context.l10n.failedUpdateReport;
     try {
-      await cubit.setActive(
-        definition,
-        !definition.isActive,
-      );
+      await cubit.setActive(definition, !definition.isActive);
       AppToast.showSuccess(successMessage);
     } catch (e) {
       if (!context.mounted) return;
-      showErrorToastWithDetails(
-        context,
-        title: failedTitle,
-        error: e,
-      );
+      showErrorToastWithDetails(context, title: failedTitle, error: e);
     }
   }
 
@@ -439,7 +432,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
     final confirmed = await showGuardedDialog<bool>(
       context: context,
       guardKey: 'delete_report_definition_${definition.id}',
-      builder: (context) => AlertDialog(
+      builder: (context) => AppDialog(
         title: AppDialogTitle(context.l10n.deleteReportSettingTitle),
         content: Text(context.l10n.deleteReportSettingMessage(definition.name)),
         actions: [
@@ -448,6 +441,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
             child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
             onPressed: () => Navigator.of(context).pop(true),
             child: Text(context.l10n.buttonDelete),
           ),
@@ -465,11 +459,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
       );
     } catch (e) {
       if (!context.mounted) return;
-      showErrorToastWithDetails(
-        context,
-        title: failedTitle,
-        error: e,
-      );
+      showErrorToastWithDetails(context, title: failedTitle, error: e);
     }
   }
 

@@ -7,6 +7,7 @@ import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_dialog.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 
@@ -72,7 +73,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
   Widget build(BuildContext context) {
     bool isAdd = widget.schoolClass == null;
 
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(
         isAdd ? context.l10n.addClass : context.l10n.editClass,
       ),
