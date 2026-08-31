@@ -1,6 +1,9 @@
-import 'package:edukita/core/router/root_navigator.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
+import 'package:edukita/core/router/root_navigator.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
+import 'package:edukita/widgets/app_dialog.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 
@@ -19,19 +22,35 @@ Future<void> showErrorDetailDialog(
     await showGuardedDialog<void>(
       context: dialogContext,
       guardKey: 'error_detail_${title}_${error.hashCode}',
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title),
-        content: SizedBox(
-          width: 720,
-          height: 360,
-          child: Scrollbar(
-            controller: scrollController,
-            thumbVisibility: true,
-            child: SingleChildScrollView(
+      builder: (dialogContext) => AppDialog(
+        title: AppDialogTitle(title),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minWidth: 420,
+            maxWidth: 680,
+            minHeight: 220,
+            maxHeight: 360,
+          ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceSoft,
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Scrollbar(
               controller: scrollController,
-              child: SelectableText(
-                error.toString(),
-                style: const TextStyle(fontSize: 12, height: 1.35),
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                controller: scrollController,
+                padding: const EdgeInsets.all(14),
+                child: SelectableText(
+                  error.toString(),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: AppTypography.bodySmall,
+                    height: 1.45,
+                  ),
+                ),
               ),
             ),
           ),

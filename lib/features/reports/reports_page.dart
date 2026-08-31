@@ -10,9 +10,9 @@ import 'package:edukita/features/users/presentation/authorization_helpers.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_error_dialog.dart';
 import 'package:edukita/widgets/app_loading.dart';
-import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
+import 'package:edukita/widgets/detail_breadcrumbs.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -37,8 +37,10 @@ class _ReportsPageState extends State<ReportsPage> {
 
   bool get _canViewReports =>
       _authScope.canView(AppMenuAccessRegistry.reports.code);
-  bool get _canExportReports =>
-      _authScope.can(AppMenuAccessRegistry.reports.code, AppPermissionAction.export);
+  bool get _canExportReports => _authScope.can(
+    AppMenuAccessRegistry.reports.code,
+    AppPermissionAction.export,
+  );
 
   @override
   void initState() {
@@ -63,95 +65,94 @@ class _ReportsPageState extends State<ReportsPage> {
   @override
   Widget build(BuildContext context) {
     if (!_authorizationLoaded) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (!_canViewReports) {
-      return AccessDeniedPanel(
-        message: context.l10n.noPermissionViewReports,
+      return const Scaffold(
+        backgroundColor: AppColors.surfaceSoft,
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    return ColoredBox(
-      color: AppColors.surfaceSoft,
-      child: Padding(
-        padding: AppPageHeaderStyle.pagePadding,
-        child: Column(
+    if (!_canViewReports) {
+      return Scaffold(
+        backgroundColor: AppColors.surfaceSoft,
+        body: AccessDeniedPanel(message: context.l10n.noPermissionViewReports),
+      );
+    }
+
+    return BlocBuilder<ReportDefinitionCubit, ReportDefinitionState>(
+      builder: (context, state) {
+        final selected = state.selectedDefinition;
+        return Scaffold(
+          backgroundColor: AppColors.surfaceSoft,
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            title: DetailBreadcrumbs(
+              items: [
+                DetailBreadcrumbItem(label: context.l10n.menuReports),
+                if (selected != null)
+                  DetailBreadcrumbItem(label: selected.name),
+              ],
+            ),
+          ),
+          body: Column(
+            children: [
+              AppLoadingStrip(isLoading: state.isLoading),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+                  child: Column(
+                    children: [
+                      _ReportDetailHeader(
+                        selected: selected,
+                        rowCount: state.resultRows.length,
+                        subtitle: selected == null
+                            ? context.l10n.reportsChooseDefinition
+                            : context.l10n.reportRowsLoaded(
+                                selected.name,
+                                state.resultRows.length,
+                              ),
+                        actions: _buildHeaderActions(context, state),
+                      ),
+                      const SizedBox(height: 10),
+                      Expanded(child: _buildWorkspace(context, state)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildWorkspace(BuildContext context, ReportDefinitionState state) {
+    final reportList = _buildReportList(context, state);
+    final preview = _buildReportPreview(context, state);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 900) {
+          final listHeight = (constraints.maxHeight * 0.36)
+              .clamp(150.0, 220.0)
+              .toDouble();
+          return Column(
+            children: [
+              SizedBox(height: listHeight, child: reportList),
+              const SizedBox(height: 10),
+              Expanded(child: preview),
+            ],
+          );
+        }
+
+        return Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            BlocBuilder<ReportDefinitionCubit, ReportDefinitionState>(
-              buildWhen: (previous, current) {
-                return previous.selectedDefinition?.id !=
-                        current.selectedDefinition?.id ||
-                    previous.resultRows.length != current.resultRows.length ||
-                    previous.isLoading != current.isLoading ||
-                    previous.isRunning != current.isRunning;
-              },
-              builder: (context, state) {
-                final selected = state.selectedDefinition;
-                return AppPageHeader(
-                  title: context.l10n.menuReports,
-                  subtitle: selected == null
-                      ? context.l10n.reportsChooseDefinition
-                      : context.l10n.reportRowsLoaded(
-                          selected.name,
-                          state.resultRows.length,
-                        ),
-                  trailing: _buildHeaderActions(context, state),
-                );
-              },
-            ),
-            BlocSelector<ReportDefinitionCubit, ReportDefinitionState, bool>(
-              selector: (state) => state.isLoading,
-              builder: (context, isLoading) {
-                return AppLoadingStrip(isLoading: isLoading);
-              },
-            ),
-            const SizedBox(height: AppPageHeaderStyle.bottomGap),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    width: 280,
-                    child:
-                        BlocBuilder<
-                          ReportDefinitionCubit,
-                          ReportDefinitionState
-                        >(
-                          buildWhen: (previous, current) {
-                            return previous.definitions !=
-                                    current.definitions ||
-                                previous.selectedDefinition?.id !=
-                                    current.selectedDefinition?.id ||
-                                previous.isLoading != current.isLoading;
-                          },
-                          builder: _buildReportList,
-                        ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child:
-                        BlocBuilder<
-                          ReportDefinitionCubit,
-                          ReportDefinitionState
-                        >(
-                          buildWhen: (previous, current) {
-                            return previous.selectedDefinition?.id !=
-                                    current.selectedDefinition?.id ||
-                                previous.resultRows != current.resultRows ||
-                                previous.isRunning != current.isRunning ||
-                                previous.runError != current.runError;
-                          },
-                          builder: _buildReportPreview,
-                        ),
-                  ),
-                ],
-              ),
-            ),
+            SizedBox(width: 280, child: reportList),
+            const SizedBox(width: 12),
+            Expanded(child: preview),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -170,8 +171,8 @@ class _ReportsPageState extends State<ReportsPage> {
           onPressed: state.isLoading
               ? null
               : () => context.read<ReportDefinitionCubit>().loadDefinitions(
-                    forceRefresh: true,
-                  ),
+                  forceRefresh: true,
+                ),
           icon: const Icon(Icons.refresh),
         ),
         FilledButton.icon(
@@ -207,10 +208,34 @@ class _ReportsPageState extends State<ReportsPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-            child: Text(
-              context.l10n.availableReports,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.folder_copy_outlined,
+                    size: 16,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    context.l10n.availableReports,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           Padding(
@@ -246,20 +271,20 @@ class _ReportsPageState extends State<ReportsPage> {
                     ),
                   )
                 : definitions.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(18),
-                          child: Text(
-                            context.l10n.noReportsMatchSearch,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 12,
-                              height: 1.35,
-                            ),
-                          ),
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Text(
+                        context.l10n.noReportsMatchSearch,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                          height: 1.35,
                         ),
-                      )
+                      ),
+                    ),
+                  )
                 : ListView.separated(
                     padding: const EdgeInsets.all(8),
                     itemCount: definitions.length,
@@ -323,50 +348,10 @@ class _ReportsPageState extends State<ReportsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        selected.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        selected.description?.trim().isNotEmpty == true
-                            ? selected.description!
-                            : selected.code,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          height: 1.35,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 260,
-                  child: TextField(
-                    onChanged: (value) =>
-                        setState(() => _rowSearchQuery = value),
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search, size: 18),
-                      hintText: context.l10n.searchLoadedRows,
-                    ),
-                  ),
-                ),
-              ],
+            _ReportPreviewHeader(
+              definition: selected,
+              onSearchChanged: (value) =>
+                  setState(() => _rowSearchQuery = value),
             ),
             if (state.runError != null) ...[
               const SizedBox(height: 10),
@@ -418,11 +403,7 @@ class _ReportsPageState extends State<ReportsPage> {
       await cubit.runSelectedReport();
     } catch (e) {
       if (!context.mounted) return;
-      showErrorToastWithDetails(
-        context,
-        title: failedTitle,
-        error: e,
-      );
+      showErrorToastWithDetails(context, title: failedTitle, error: e);
     }
   }
 
@@ -460,18 +441,11 @@ class _ReportsPageState extends State<ReportsPage> {
     if (location == null) return;
 
     try {
-      await io.File(location.path).writeAsString(
-        excelHtml,
-        flush: true,
-      );
+      await io.File(location.path).writeAsString(excelHtml, flush: true);
       AppToast.showSuccess(successMessage);
     } catch (e) {
       if (!context.mounted) return;
-      showErrorToastWithDetails(
-        context,
-        title: failedTitle,
-        error: e,
-      );
+      showErrorToastWithDetails(context, title: failedTitle, error: e);
     }
   }
 
@@ -558,8 +532,7 @@ class _ReportsPageState extends State<ReportsPage> {
   String _excelHtml(
     ReportDefinition definition,
     List<ReportColumnDefinition> columns,
-    List<Map<String, Object?>> rows,
-    {
+    List<Map<String, Object?>> rows, {
     required String reportCodeLabel,
     required String descriptionLabel,
     required String exportedAtLabel,
@@ -676,6 +649,283 @@ class _ReportsPageState extends State<ReportsPage> {
         .replaceAll(RegExp(r'\s+'), '-')
         .toLowerCase();
     return safe.trim().isEmpty ? 'report' : safe;
+  }
+}
+
+class _ReportDetailHeader extends StatelessWidget {
+  const _ReportDetailHeader({
+    required this.selected,
+    required this.rowCount,
+    required this.subtitle,
+    required this.actions,
+  });
+
+  final ReportDefinition? selected;
+  final int rowCount;
+  final String subtitle;
+  final Widget actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final definition = selected;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 760;
+          final identity = Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.summarize_outlined,
+                  color: AppColors.primaryDark,
+                  size: 25,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      definition?.name ?? context.l10n.menuReports,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11.5,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (compact) ...[
+                identity,
+                const SizedBox(height: 12),
+                Align(alignment: Alignment.centerRight, child: actions),
+              ] else
+                Row(
+                  children: [
+                    Expanded(child: identity),
+                    const SizedBox(width: 18),
+                    actions,
+                  ],
+                ),
+              if (definition != null) ...[
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _ReportHeaderMetric(
+                      label: context.l10n.reportCode,
+                      value: definition.code,
+                      icon: Icons.tag_outlined,
+                    ),
+                    _ReportHeaderMetric(
+                      label: context.l10n.totalRows,
+                      value: rowCount.toString(),
+                      icon: Icons.table_rows_outlined,
+                    ),
+                    _ReportHeaderMetric(
+                      label: context.l10n.status,
+                      value: definition.isActive
+                          ? context.l10n.statusActive
+                          : context.l10n.statusInactive,
+                      icon: Icons.verified_outlined,
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ReportHeaderMetric extends StatelessWidget {
+  const _ReportHeaderMetric({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 180,
+      constraints: const BoxConstraints(minHeight: 58),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: AppColors.primaryDark, size: 16),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportPreviewHeader extends StatelessWidget {
+  const _ReportPreviewHeader({
+    required this.definition,
+    required this.onSearchChanged,
+  });
+
+  final ReportDefinition definition;
+  final ValueChanged<String> onSearchChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final heading = Row(
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(
+            Icons.preview_outlined,
+            size: 16,
+            color: AppColors.primaryDark,
+          ),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                definition.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                definition.description?.trim().isNotEmpty == true
+                    ? definition.description!
+                    : definition.code,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+    final search = TextField(
+      onChanged: onSearchChanged,
+      decoration: InputDecoration(
+        prefixIcon: const Icon(Icons.search, size: 18),
+        hintText: context.l10n.searchLoadedRows,
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 560) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [heading, const SizedBox(height: 10), search],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: heading),
+            const SizedBox(width: 12),
+            SizedBox(width: 260, child: search),
+          ],
+        );
+      },
+    );
   }
 }
 
