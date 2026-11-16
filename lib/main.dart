@@ -111,16 +111,9 @@ class _EdukitaAppState extends State<EdukitaApp> {
                         AppLocalizations.localizationsDelegates,
                     routerConfig: appRouter,
                     builder: (context, child) {
-                      final mediaQuery = MediaQuery.of(context);
                       return ShadAppBuilder(
-                        child: MediaQuery(
-                          data: mediaQuery.copyWith(
-                            textScaler:
-                                TextScaler.linear(AppTypography.appTextScale),
-                          ),
-                          child: AppToastHost(
-                            child: child ?? const SizedBox.shrink(),
-                          ),
+                        child: AppToastHost(
+                          child: child ?? const SizedBox.shrink(),
                         ),
                       );
                     },
@@ -151,8 +144,8 @@ class _StartupPage extends StatelessWidget {
           buildTitleBar(-1, context),
           Expanded(
             child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Container(
                   width: 440,
                   padding: const EdgeInsets.all(24),
@@ -187,39 +180,39 @@ class _StartupPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 16),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Edukita',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineMedium
-                                    ?.copyWith(
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0,
-                                      color: AppColors.textPrimary,
-                                    ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Foundation Education System',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: AppColors.textSecondary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                              ),
-                            ],
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Edukita',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineMedium
+                                      ?.copyWith(
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Foundation Education System',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.textSecondary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 22),
+                      const SizedBox(height: AppSpacing.lg),
                       Container(height: 1, color: AppColors.border),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: AppSpacing.md),
                       Text(
                         hasError
                             ? context.l10n.startupFailed
@@ -234,7 +227,7 @@ class _StartupPage extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: AppSpacing.lg),
                       if (!hasError)
                         ClipRRect(
                           borderRadius: BorderRadius.circular(999),

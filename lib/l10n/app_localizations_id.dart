@@ -5242,4 +5242,9 @@ class AppLocalizationsId extends AppLocalizations {
   String confirmActionForSubject(Object action, Object subject) {
     return '$action $subject?';
   }
+
+  @override
+  String tablePageSummary(int page, int total) {
+    return 'Halaman $page dari $total';
+  }
 }

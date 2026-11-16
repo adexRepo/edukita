@@ -1835,5 +1835,7 @@
   "reportDataIncompleteMessage": "PDF can still be created, but it is better to use it as a draft until the student data is complete.",
   "downloadDraftPdf": "Download Draft PDF",
   "confirmActionForSubject": "{action} {subject}?",
-  "@confirmActionForSubject": {"placeholders": {"action": {}, "subject": {}}}
+  "@confirmActionForSubject": {"placeholders": {"action": {}, "subject": {}}},
+  "tablePageSummary": "Page {page} of {total}",
+  "@tablePageSummary": {"placeholders": {"page": {"type": "int"}, "total": {"type": "int"}}}
 }

@@ -15,30 +15,48 @@ class AppPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    final heading = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(title, style: AppPageHeaderStyle.titleStyle(context)),
-              if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
-                const SizedBox(height: AppPageHeaderStyle.titleSubtitleGap),
-                Text(
-                  subtitle!,
-                  style: AppPageHeaderStyle.subtitleStyle(context),
-                ),
-              ],
-            ],
-          ),
-        ),
-        if (trailing != null) ...[
-          const SizedBox(width: 12),
-          trailing!,
+        Text(title, style: AppPageHeaderStyle.titleStyle(context)),
+        if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
+          const SizedBox(height: AppPageHeaderStyle.titleSubtitleGap),
+          Text(subtitle!, style: AppPageHeaderStyle.subtitleStyle(context)),
         ],
       ],
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked =
+            constraints.maxWidth < 600 ||
+            MediaQuery.textScalerOf(context).scale(14) > 21;
+        if (stacked) {
+          return SizedBox(
+            width: double.infinity,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                heading,
+                if (trailing != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  trailing!,
+                ],
+              ],
+            ),
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: heading),
+            if (trailing != null) ...[
+              const SizedBox(width: AppSpacing.sm),
+              trailing!,
+            ],
+          ],
+        );
+      },
     );
   }
 }

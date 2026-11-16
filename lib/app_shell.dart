@@ -327,9 +327,7 @@ class _AppShellState extends State<AppShell> {
                         topLeft: Radius.circular(12),
                         bottomLeft: Radius.circular(12),
                       ),
-                      border: Border(
-                        left: BorderSide(color: AppColors.border),
-                      ),
+                      border: Border(left: BorderSide(color: AppColors.border)),
                       color: AppColors.surfaceSoft,
                     ),
                     child: Center(
@@ -391,10 +389,13 @@ class _PrimaryRailState extends State<_PrimaryRail> {
         children: [
           Expanded(
             child: ReorderableListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+              padding: const EdgeInsets.symmetric(
+                vertical: AppSpacing.xs,
+                horizontal: AppSpacing.xs,
+              ),
               itemCount: widget.items.length,
               buildDefaultDragHandles: false,
-              itemExtent: 44,
+              itemExtent: 48,
               onReorder: widget.onReorder,
               proxyDecorator: (child, index, animation) {
                 return Material(
@@ -417,7 +418,7 @@ class _PrimaryRailState extends State<_PrimaryRail> {
 
                 return Padding(
                   key: ValueKey(item.route),
-                  padding: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                   child: _RailTooltip(
                     message: item.localizedLabel(context),
                     child: ReorderableDragStartListener(
@@ -452,7 +453,7 @@ class _PrimaryRailState extends State<_PrimaryRail> {
           ),
           const Divider(height: 1, thickness: 1, color: AppColors.border),
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 10, 8, 5),
+            padding: const EdgeInsets.all(AppSpacing.xs),
             child: _RailTooltip(
               message: context.l10n.menuPreferences,
               child: MouseRegion(
@@ -468,7 +469,7 @@ class _PrimaryRailState extends State<_PrimaryRail> {
                   child: _RailButtonBox(
                     selected: widget.location.startsWith('/settings'),
                     hovered: _settingsHovered,
-                    height: 38,
+                    height: 40,
                     child: _RailButtonContent(
                       icon: Icons.settings_outlined,
                       selected: widget.location.startsWith('/settings'),
@@ -480,7 +481,7 @@ class _PrimaryRailState extends State<_PrimaryRail> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 5, 8, 10),
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
             child: _RailTooltip(
               message: context.l10n.menuLogout,
               child: MouseRegion(
@@ -492,7 +493,7 @@ class _PrimaryRailState extends State<_PrimaryRail> {
                   child: _RailButtonBox(
                     selected: false,
                     hovered: _logoutHovered,
-                    height: 38,
+                    height: 40,
                     child: _RailButtonContent(
                       icon: Icons.logout,
                       selected: false,
@@ -562,7 +563,7 @@ class _RailButtonContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = selected
-        ? AppColors.white
+        ? AppColors.onPrimary
         : hovered
         ? AppColors.primaryDark
         : AppColors.textSecondary;
@@ -571,99 +572,15 @@ class _RailButtonContent extends StatelessWidget {
   }
 }
 
-class _RailTooltip extends StatefulWidget {
+class _RailTooltip extends StatelessWidget {
   const _RailTooltip({required this.message, required this.child});
 
   final String message;
   final Widget child;
 
   @override
-  State<_RailTooltip> createState() => _RailTooltipState();
-}
-
-class _RailTooltipState extends State<_RailTooltip> {
-  OverlayEntry? _entry;
-
-  @override
-  void didUpdateWidget(covariant _RailTooltip oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.message != widget.message && _entry != null) {
-      _entry?.markNeedsBuild();
-    }
-  }
-
-  @override
-  void dispose() {
-    _hide();
-    super.dispose();
-  }
-
-  void _show() {
-    if (_entry != null) return;
-    final overlay = Overlay.maybeOf(context, rootOverlay: true);
-    final targetBox = context.findRenderObject() as RenderBox?;
-    if (overlay == null || targetBox == null || !targetBox.hasSize) return;
-
-    final targetOffset = targetBox.localToGlobal(Offset.zero);
-    final tooltipTop = (targetOffset.dy + (targetBox.size.height - 28) / 2)
-        .clamp(4.0, MediaQuery.sizeOf(context).height - 32.0);
-
-    _entry = OverlayEntry(
-      builder: (context) {
-        return Positioned(
-          left: targetOffset.dx + targetBox.size.width + 8,
-          top: tooltipTop,
-          child: IgnorePointer(
-            child: Material(
-              color: AppColors.transparent,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppColors.black87.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: AppColors.white.withValues(alpha: 0.08),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 6,
-                  ),
-                  child: Text(
-                    widget.message,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      height: 1.1,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-    overlay.insert(_entry!);
-  }
-
-  void _hide() {
-    final entry = _entry;
-    _entry = null;
-    entry?.remove();
-    entry?.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => _show(),
-      onExit: (_) => _hide(),
-      child: widget.child,
-    );
+    return Tooltip(message: message, child: child);
   }
 }
 

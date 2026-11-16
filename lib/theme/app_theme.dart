@@ -6,6 +6,13 @@ class AppColors {
   static const Color primary = Color(0xFF48CFCB);
   static const Color primaryLight = Color(0xFF7FE3DF);
   static const Color primaryDark = Color(0xFF2BA7A3);
+  // Dark turquoise for text and focus on the existing light brand surfaces.
+  static const Color primaryForeground = Color(0xFF176F6C);
+  static const Color onPrimary = textPrimary;
+  static const Color secondary = accentBlue;
+  static const Color accent = accentPurple;
+  static const Color surfaceElevated = card;
+  static const Color info = accentBlue;
 
   static const Color background = Color(0xFFFFFFFF);
   static const Color surface = Color(0xFFF8FAFB);
@@ -52,13 +59,30 @@ class AppColors {
   static const Color contentColorCyan = Color(0xFF50E4FF);
 }
 
+class AppSpacing {
+  AppSpacing._();
+  static const double xxs = 4;
+  static const double xs = 8;
+  static const double sm = 12;
+  static const double md = 16;
+  static const double lg = 24;
+  static const double xl = 32;
+  static const double xxl = 48;
+}
+
+class AppRadii {
+  AppRadii._();
+  static const double control = 12;
+  static const double panel = 16;
+  static const double dialog = 24;
+  static const double menu = 12;
+}
+
 class AppTypography {
   AppTypography._();
 
-  static const double appTextScale = 0.94;
-
   static const double pageTitle = 18;
-  static const double dialogTitle = 15;
+  static const double dialogTitle = 16;
   static const double sectionTitle = 14;
   static const double body = 12;
   static const double bodyLarge = 13;
@@ -84,21 +108,21 @@ class AppTypography {
     color: AppColors.textPrimary,
     fontSize: body,
     fontWeight: FontWeight.w400,
-    height: 1.35,
+    height: 1.45,
   );
 
   static const TextStyle bodyStrongStyle = TextStyle(
     color: AppColors.textPrimary,
     fontSize: body,
     fontWeight: FontWeight.w700,
-    height: 1.35,
+    height: 1.45,
   );
 
   static const TextStyle secondaryStyle = TextStyle(
     color: AppColors.textSecondary,
     fontSize: bodySmall,
     fontWeight: FontWeight.w500,
-    height: 1.35,
+    height: 1.45,
   );
 
   static const TextStyle captionStyle = TextStyle(
@@ -107,6 +131,12 @@ class AppTypography {
     fontWeight: FontWeight.w500,
     height: 1.3,
   );
+
+  static const TextStyle numericStyle = TextStyle(
+    color: AppColors.textPrimary,
+    fontWeight: FontWeight.w600,
+    fontFeatures: [FontFeature.tabularFigures()],
+  );
 }
 
 class AppFormFieldStyle {
@@ -114,11 +144,11 @@ class AppFormFieldStyle {
 
   static const EdgeInsets contentPadding = EdgeInsets.symmetric(
     horizontal: 12,
-    vertical: 10,
+    vertical: AppSpacing.sm,
   );
 
   static const TextStyle hintStyle = TextStyle(
-    color: AppColors.textHint,
+    color: AppColors.textSecondary,
     fontSize: AppTypography.bodySmall,
     fontWeight: FontWeight.w400,
   );
@@ -130,7 +160,7 @@ class AppFormFieldStyle {
   );
 
   static const TextStyle floatingLabelStyle = TextStyle(
-    color: AppColors.primaryDark,
+    color: AppColors.primaryForeground,
     fontSize: AppTypography.bodySmall,
     fontWeight: FontWeight.w600,
   );
@@ -171,7 +201,9 @@ class AppPageHeaderStyle {
 class AppDropdownStyle {
   AppDropdownStyle._();
 
-  static final BorderRadius menuBorderRadius = BorderRadius.circular(6);
+  static final BorderRadius menuBorderRadius = BorderRadius.circular(
+    AppRadii.menu,
+  );
   static const double menuMaxHeight = 320;
   static const double menuMinWidth = 120;
   static const double menuMaxWidth = 560;
@@ -191,11 +223,7 @@ class AppDropdownStyle {
         .map(
           (label) => Align(
             alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         )
         .toList();
@@ -337,75 +365,101 @@ class AppDropdownButtonFormField<T> extends StatelessWidget {
               : effectiveDecoration.floatingLabelBehavior,
         );
 
-        var hovered = false;
-        return StatefulBuilder(
-          builder: (context, setHoverState) {
-            final hoverDecoration = hovered && onChanged != null
-                ? effectiveDecoration.copyWith(
-                    fillColor: AppColors.primaryLight.withValues(alpha: 0.08),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: AppColors.primary.withValues(alpha: 0.55),
-                      ),
-                    ),
-                  )
-                : effectiveDecoration;
-
-            return MouseRegion(
-              onEnter: (_) => setHoverState(() => hovered = true),
-              onExit: (_) => setHoverState(() => hovered = false),
-              child: InputDecorator(
-                decoration: hoverDecoration,
-                isEmpty:
-                    value == null && hint == null && decorationHintText == null,
-                child: Theme(
-                  data: Theme.of(context).copyWith(
-                    focusColor: AppColors.transparent,
-                    highlightColor: AppColors.transparent,
-                    hoverColor: AppColors.primaryLight.withValues(alpha: 0.16),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<T>(
-                      items: items,
-                      selectedItemBuilder: selectedItemBuilder,
-                      value: value,
-                      hint:
-                          hint ??
-                          (decorationHintText == null
-                              ? null
-                              : Text(
-                                  decorationHintText,
-                                  overflow: TextOverflow.ellipsis,
-                                )),
-                      disabledHint: disabledHint,
-                      onChanged: onChanged == null
-                          ? null
-                          : (value) {
-                              field.didChange(value);
-                              onChanged!(value);
-                            },
-                      style: style,
-                      icon: icon,
-                      iconDisabledColor: iconDisabledColor,
-                      iconEnabledColor: iconEnabledColor,
-                      isDense: isDense,
-                      isExpanded: true,
-                      itemHeight: itemHeight,
-                      focusColor: focusColor ?? AppColors.transparent,
-                      dropdownColor: dropdownColor,
-                      menuMaxHeight: menuMaxHeight,
-                      menuWidth: menuWidth,
-                      borderRadius: borderRadius,
-                      alignment: alignment,
-                    ),
-                  ),
-                ),
+        return _AppDropdownDecoration(
+          decoration: effectiveDecoration,
+          enabled: onChanged != null,
+          isEmpty: value == null && hint == null && decorationHintText == null,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              focusColor: AppColors.primary.withValues(alpha: 0.24),
+              highlightColor: AppColors.transparent,
+              hoverColor: AppColors.primaryLight.withValues(alpha: 0.16),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<T>(
+                items: items,
+                selectedItemBuilder: selectedItemBuilder,
+                value: value,
+                hint:
+                    hint ??
+                    (decorationHintText == null
+                        ? null
+                        : Text(
+                            decorationHintText,
+                            overflow: TextOverflow.ellipsis,
+                          )),
+                disabledHint: disabledHint,
+                onChanged: onChanged == null
+                    ? null
+                    : (value) {
+                        field.didChange(value);
+                        onChanged!(value);
+                      },
+                style: style,
+                icon: icon,
+                iconDisabledColor: iconDisabledColor,
+                iconEnabledColor: iconEnabledColor,
+                isDense: isDense,
+                isExpanded: true,
+                itemHeight: itemHeight,
+                focusColor:
+                    focusColor ?? AppColors.primary.withValues(alpha: 0.24),
+                dropdownColor: dropdownColor,
+                menuMaxHeight: menuMaxHeight,
+                menuWidth: menuWidth,
+                borderRadius: borderRadius,
+                alignment: alignment,
               ),
-            );
-          },
+            ),
+          ),
         );
       },
+    );
+  }
+}
+
+/// Tracks focus across FormField rebuilds after selection or validation.
+class _AppDropdownDecoration extends StatefulWidget {
+  const _AppDropdownDecoration({
+    required this.decoration,
+    required this.enabled,
+    required this.isEmpty,
+    required this.child,
+  });
+
+  final InputDecoration decoration;
+  final bool enabled;
+  final bool isEmpty;
+  final Widget child;
+
+  @override
+  State<_AppDropdownDecoration> createState() => _AppDropdownDecorationState();
+}
+
+class _AppDropdownDecorationState extends State<_AppDropdownDecoration> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final decoration = _hovered && widget.enabled
+        ? widget.decoration.copyWith(
+            fillColor: AppColors.primaryLight.withValues(alpha: 0.08),
+          )
+        : widget.decoration;
+    return Focus(
+      canRequestFocus: false,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: InputDecorator(
+          decoration: decoration,
+          isFocused: _focused && widget.enabled,
+          isEmpty: widget.isEmpty,
+          child: widget.child,
+        ),
+      ),
     );
   }
 }
@@ -422,7 +476,7 @@ class _AppDropdownMenuItemLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 38,
+      height: 48,
       width: double.infinity,
       child: DecoratedBox(
         decoration: const BoxDecoration(
@@ -440,7 +494,7 @@ class _AppDropdownMenuItemLabel extends StatelessWidget {
                     ? const Icon(
                         Icons.check,
                         size: 18,
-                        color: AppColors.primaryDark,
+                        color: AppColors.primaryForeground,
                       )
                     : null,
               ),
@@ -469,7 +523,7 @@ class AppTheme {
 
   static final ColorScheme colorScheme = ColorScheme.light(
     primary: AppColors.primary,
-    onPrimary: AppColors.white,
+    onPrimary: AppColors.onPrimary,
     primaryContainer: AppColors.primaryLight,
     onPrimaryContainer: AppColors.textPrimary,
     secondary: AppColors.accentBlue,
@@ -477,10 +531,10 @@ class AppTheme {
     secondaryContainer: AppColors.accentPurple,
     onSecondaryContainer: AppColors.white,
     tertiary: AppColors.success,
-    onTertiary: AppColors.white,
+    onTertiary: AppColors.textPrimary,
     tertiaryContainer: AppColors.successContainer,
-    onTertiaryContainer: AppColors.white,
-    error: AppColors.error,
+    onTertiaryContainer: AppColors.textPrimary,
+    error: AppColors.errorDark,
     onError: AppColors.white,
     surface: AppColors.background,
     onSurface: AppColors.textPrimary,
@@ -510,25 +564,25 @@ class AppTheme {
         ),
         displayMedium: const TextStyle(
           color: AppColors.textPrimary,
-          fontSize: 22,
+          fontSize: 24,
           fontWeight: FontWeight.w700,
           height: 1.2,
         ),
         displaySmall: const TextStyle(
           color: AppColors.textPrimary,
-          fontSize: 20,
+          fontSize: 18,
           fontWeight: FontWeight.w700,
           height: 1.2,
         ),
         headlineLarge: const TextStyle(
           color: AppColors.textPrimary,
-          fontSize: 20,
+          fontSize: 18,
           fontWeight: FontWeight.w700,
           height: 1.2,
         ),
         headlineMedium: const TextStyle(
           color: AppColors.textPrimary,
-          fontSize: 19,
+          fontSize: 18,
           fontWeight: FontWeight.w700,
           height: 1.2,
         ),
@@ -554,12 +608,12 @@ class AppTheme {
     canvasColor: AppColors.background,
     cardColor: AppColors.card,
     dividerColor: AppColors.divider,
-    focusColor: AppColors.primary,
+    focusColor: AppColors.primary.withValues(alpha: 0.24),
     hoverColor: AppColors.primaryLight.withValues(alpha: 0.12),
     highlightColor: AppColors.primaryLight.withValues(alpha: 0.18),
     iconTheme: const IconThemeData(color: AppColors.textPrimary),
     textTheme: textTheme,
-    visualDensity: VisualDensity.compact,
+    visualDensity: VisualDensity.standard,
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       color: AppColors.primary,
       linearTrackColor: AppColors.white,
@@ -576,9 +630,14 @@ class AppTheme {
       surfaceTintColor: AppColors.white,
       elevation: 10,
       shadowColor: AppColors.black.withValues(alpha: 0.16),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      actionsPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.lg,
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.dialog),
+      ),
       titleTextStyle: const TextStyle(
         color: AppColors.textPrimary,
         fontSize: AppTypography.dialogTitle,
@@ -587,43 +646,76 @@ class AppTheme {
       contentTextStyle: const TextStyle(
         color: AppColors.textPrimary,
         fontSize: AppTypography.body,
-        height: 1.35,
+        height: 1.45,
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(minimumSize: const Size(40, 40)),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
+        minimumSize: const Size(40, 40),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.control),
+        ),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.white,
+        foregroundColor: AppColors.onPrimary,
         disabledBackgroundColor: AppColors.primaryLight.withValues(alpha: 0.5),
+        minimumSize: const Size(40, 40),
         shadowColor: AppColors.primaryDark.withValues(alpha: 0.24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.control),
+        ),
         textStyle: AppTypography.bodyStrongStyle,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.primary,
+        foregroundColor: AppColors.primaryForeground,
         side: const BorderSide(color: AppColors.primaryLight),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        minimumSize: const Size(40, 40),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.control),
+        ),
         textStyle: AppTypography.bodyStrongStyle,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: AppColors.primary,
+        foregroundColor: AppColors.primaryForeground,
         textStyle: AppTypography.bodyStrongStyle,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        minimumSize: const Size(40, 40),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
       ),
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(
       style: ButtonStyle(
         foregroundColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return AppColors.white;
+            return AppColors.onPrimary;
           }
-          return AppColors.primary;
+          return AppColors.primaryForeground;
         }),
         backgroundColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
@@ -639,22 +731,22 @@ class AppTheme {
         }),
         iconColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return AppColors.white;
+            return AppColors.onPrimary;
           }
-          return AppColors.primary;
+          return AppColors.primaryForeground;
         }),
       ),
     ),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: AppColors.primary,
-      foregroundColor: AppColors.white,
+      foregroundColor: AppColors.onPrimary,
     ),
     cardTheme: CardThemeData(
       color: AppColors.card,
       elevation: 0,
       surfaceTintColor: AppColors.card,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
         side: const BorderSide(color: AppColors.border, width: 1),
       ),
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -673,24 +765,27 @@ class AppTheme {
       labelStyle: AppFormFieldStyle.labelStyle,
       floatingLabelStyle: AppFormFieldStyle.floatingLabelStyle,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadii.control),
         borderSide: const BorderSide(color: AppColors.border),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadii.control),
         borderSide: const BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primary),
+        borderRadius: BorderRadius.circular(AppRadii.control),
+        borderSide: const BorderSide(
+          color: AppColors.primaryForeground,
+          width: 2,
+        ),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.error),
+        borderRadius: BorderRadius.circular(AppRadii.control),
+        borderSide: const BorderSide(color: AppColors.errorDark),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.error),
+        borderRadius: BorderRadius.circular(AppRadii.control),
+        borderSide: const BorderSide(color: AppColors.errorDark),
       ),
     ),
     dropdownMenuTheme: DropdownMenuThemeData(
@@ -706,7 +801,7 @@ class AppTheme {
         padding: WidgetStateProperty.all(EdgeInsets.zero),
         shape: WidgetStateProperty.all(
           RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(AppRadii.menu),
             side: const BorderSide(color: AppColors.border),
           ),
         ),
@@ -720,16 +815,19 @@ class AppTheme {
         labelStyle: AppFormFieldStyle.labelStyle,
         floatingLabelStyle: AppFormFieldStyle.floatingLabelStyle,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadii.control),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadii.control),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary),
+          borderRadius: BorderRadius.circular(AppRadii.control),
+          borderSide: const BorderSide(
+            color: AppColors.primaryForeground,
+            width: 2,
+          ),
         ),
       ),
     ),
@@ -740,7 +838,7 @@ class AppTheme {
       menuPadding: EdgeInsets.zero,
       shadowColor: AppColors.black.withValues(alpha: 0.18),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(AppRadii.menu),
         side: const BorderSide(color: AppColors.border),
       ),
       textStyle: const TextStyle(
@@ -753,7 +851,7 @@ class AppTheme {
       backgroundColor: AppColors.card,
       selectedItemColor: AppColors.primary,
       unselectedItemColor: AppColors.textSecondary,
-      selectedIconTheme: IconThemeData(color: AppColors.primary),
+      selectedIconTheme: IconThemeData(color: AppColors.primaryForeground),
       unselectedIconTheme: IconThemeData(color: AppColors.textSecondary),
       showUnselectedLabels: true,
       elevation: 0,
@@ -763,7 +861,7 @@ class AppTheme {
       contentTextStyle: const TextStyle(color: AppColors.white),
     ),
     tabBarTheme: const TabBarThemeData(
-      labelColor: AppColors.primary,
+      labelColor: AppColors.primaryForeground,
       unselectedLabelColor: AppColors.textSecondary,
       labelStyle: AppTypography.bodyStrongStyle,
       unselectedLabelStyle: AppTypography.secondaryStyle,

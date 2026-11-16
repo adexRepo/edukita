@@ -1835,5 +1835,6 @@
   "reportDataIncompleteMessage": "PDF tetap bisa dibuat, tetapi sebaiknya dipakai sebagai draft sampai data siswa lengkap.",
   "downloadDraftPdf": "Unduh Draft PDF",
   "confirmActionForSubject": "{action} {subject}?",
-  "@confirmActionForSubject": {"placeholders": {"action": {}, "subject": {}}}
+  "@confirmActionForSubject": {"placeholders": {"action": {}, "subject": {}}},
+  "tablePageSummary": "Halaman {page} dari {total}"
 }

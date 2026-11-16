@@ -53,6 +53,15 @@ class AppTable<T> extends StatefulWidget {
 
 class _AppTableState<T> extends State<AppTable<T>> {
   static const double _horizontalPadding = 24;
+  final _horizontalController = ScrollController();
+  final _verticalController = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalController.dispose();
+    _verticalController.dispose();
+    super.dispose();
+  }
 
   int currentPage = 0;
   int? sortColumnIndex;
@@ -97,7 +106,7 @@ class _AppTableState<T> extends State<AppTable<T>> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
         border: Border.all(color: AppColors.border),
       ),
       child: LayoutBuilder(
@@ -115,17 +124,24 @@ class _AppTableState<T> extends State<AppTable<T>> {
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, bodyConstraints) {
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: SizedBox(
-                        width: tableWidth,
-                        height: bodyConstraints.maxHeight,
-                        child: Column(
-                          children: [
-                            _buildHeader(_columnWidths),
-                            const Divider(height: 1),
-                            Expanded(child: _buildBody(processedData, 0)),
-                          ],
+                    return Scrollbar(
+                      controller: _horizontalController,
+                      thumbVisibility: true,
+                      notificationPredicate: (notification) =>
+                          notification.metrics.axis == Axis.horizontal,
+                      child: SingleChildScrollView(
+                        controller: _horizontalController,
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: tableWidth,
+                          height: bodyConstraints.maxHeight,
+                          child: Column(
+                            children: [
+                              _buildHeader(_columnWidths),
+                              const Divider(height: 1),
+                              Expanded(child: _buildBody(processedData, 0)),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -300,10 +316,12 @@ class _AppTableState<T> extends State<AppTable<T>> {
 
   Widget _buildHeader(List<double> widths) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: const BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadii.panel - 1),
+        ),
       ),
       child: Row(
         children: List.generate(widget.columns.length, (index) {
@@ -330,54 +348,63 @@ class _AppTableState<T> extends State<AppTable<T>> {
                             }
                           });
                         },
-                  child: Tooltip(
-                    message: _sortTooltip(col.title, isSortable, isActiveSort),
-                    waitDuration: const Duration(milliseconds: 450),
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        right:
-                            col.headerTextAlign == TextAlign.center ||
-                                index == widget.columns.length - 1
-                            ? 0
-                            : 16,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 40),
+                    child: Tooltip(
+                      message: _sortTooltip(
+                        col.title,
+                        isSortable,
+                        isActiveSort,
                       ),
-                      child: Align(
-                        alignment: col.headerTextAlign == TextAlign.center
-                            ? Alignment.center
-                            : Alignment.centerLeft,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                col.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: col.headerTextAlign,
-                                style: const TextStyle(
-                                  fontSize: AppTypography.tableHeader,
-                                  height: 1.15,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary,
-                                  letterSpacing: 0,
+                      waitDuration: const Duration(milliseconds: 450),
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          right:
+                              col.headerTextAlign == TextAlign.center ||
+                                  index == widget.columns.length - 1
+                              ? 0
+                              : 16,
+                        ),
+                        child: Align(
+                          alignment: col.headerTextAlign == TextAlign.center
+                              ? Alignment.center
+                              : col.headerTextAlign == TextAlign.right
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  col.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: col.headerTextAlign,
+                                  style: const TextStyle(
+                                    fontSize: AppTypography.tableHeader,
+                                    height: 1.15,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                    letterSpacing: 0,
+                                  ),
                                 ),
                               ),
-                            ),
-                            if (isSortable) ...[
-                              const SizedBox(width: 4),
-                              Icon(
-                                isActiveSort
-                                    ? (ascending
-                                          ? Icons.arrow_upward
-                                          : Icons.arrow_downward)
-                                    : Icons.unfold_more,
-                                size: isActiveSort ? 13 : 15,
-                                color: isActiveSort
-                                    ? AppColors.primaryDark
-                                    : AppColors.textHint,
-                              ),
+                              if (isSortable) ...[
+                                const SizedBox(width: 4),
+                                Icon(
+                                  isActiveSort
+                                      ? (ascending
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward)
+                                      : Icons.unfold_more,
+                                  size: 16,
+                                  color: isActiveSort
+                                      ? AppColors.primaryForeground
+                                      : AppColors.textSecondary,
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -421,65 +448,79 @@ class _AppTableState<T> extends State<AppTable<T>> {
       );
     }
 
-    return ListView.separated(
-      itemCount: data.length,
-      separatorBuilder: (context, index) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final item = data[index];
+    return Scrollbar(
+      controller: _verticalController,
+      child: ListView.separated(
+        controller: _verticalController,
+        itemCount: data.length,
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final item = data[index];
 
-        return _AppTableRow<T>(
-          item: item,
-          columns: widget.columns,
-          columnWidths: _columnWidths,
-          onTap: widget.onRowTap != null
-              ? () => unawaited(_handleRowTap(item))
-              : null,
-        );
-      },
+          return _AppTableRow<T>(
+            item: item,
+            columns: widget.columns,
+            columnWidths: _columnWidths,
+            onTap: widget.onRowTap != null
+                ? () => unawaited(_handleRowTap(item))
+                : null,
+          );
+        },
+      ),
     );
   }
 
   // ================= FOOTER =================
 
   Widget _buildFooter() {
-    int totalPage = widget.pageable == null ? 0 : widget.pageable!.totalPages;
-    int curretPage = widget.pageable == null ? 0 : widget.pageable!.page;
+    final totalPage = widget.pageable?.totalPages ?? 0;
+    final currentPage = totalPage == 0 ? 0 : (widget.pageable?.page ?? 0) + 1;
+    final material = MaterialLocalizations.of(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: AppSpacing.sm,
         children: [
           Text(
-            "Page ${curretPage + 1} of $totalPage",
-            style: AppTypography.secondaryStyle,
+            context.l10n.tablePageSummary(currentPage, totalPage),
+            style: AppTypography.secondaryStyle.merge(
+              AppTypography.numericStyle,
+            ),
           ),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
+                tooltip: material.previousPageTooltip,
                 constraints: const BoxConstraints.tightFor(
-                  width: 32,
-                  height: 32,
+                  width: 40,
+                  height: 40,
                 ),
                 padding: EdgeInsets.zero,
                 icon: const Icon(Icons.chevron_left, size: 18),
-                onPressed: curretPage == 0
+                onPressed: currentPage <= 1 || widget.onPageChanged == null
                     ? null
-                    : () => widget.onPageChanged?.call(curretPage - 1),
+                    : () => widget.onPageChanged?.call(currentPage - 2),
               ),
               IconButton(
+                tooltip: material.nextPageTooltip,
                 constraints: const BoxConstraints.tightFor(
-                  width: 32,
-                  height: 32,
+                  width: 40,
+                  height: 40,
                 ),
                 padding: EdgeInsets.zero,
                 icon: const Icon(Icons.chevron_right, size: 18),
-                onPressed: curretPage >= totalPage - 1
+                onPressed:
+                    currentPage >= totalPage || widget.onPageChanged == null
                     ? null
-                    : () => widget.onPageChanged?.call(curretPage + 1),
+                    : () => widget.onPageChanged?.call(currentPage),
               ),
             ],
           ),
@@ -508,6 +549,7 @@ class _AppTableRow<T> extends StatefulWidget {
 
 class _AppTableRowState<T> extends State<_AppTableRow<T>> {
   bool _hovered = false;
+  bool _focused = false;
 
   void _setHovered(bool value) {
     if (!mounted || _hovered == value) return;
@@ -522,41 +564,59 @@ class _AppTableRowState<T> extends State<_AppTableRow<T>> {
           : SystemMouseCursors.click,
       onEnter: (_) => _setHovered(true),
       onExit: (_) => _setHovered(false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+      child: InkWell(
         onTap: widget.onTap,
+        onFocusChange: (focused) => setState(() => _focused = focused),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 120),
           curve: Curves.easeOut,
-          color: _hovered
-              ? AppColors.primaryLight.withValues(alpha: 0.10)
-              : Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          child: Row(
-            children: List.generate(widget.columns.length, (i) {
-              final col = widget.columns[i];
-              return SizedBox(
-                width: widget.columnWidths[i],
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    right:
-                        col.alignment == Alignment.center ||
-                            i == widget.columns.length - 1
-                        ? 0
-                        : 12,
-                  ),
-                  child: Align(
-                    alignment: col.alignment,
-                    child: SizedBox(
-                      width: col.alignment == Alignment.center
-                          ? double.infinity
-                          : null,
-                      child: col.cell(widget.item),
+          constraints: const BoxConstraints(minHeight: 40),
+          decoration: BoxDecoration(
+            color: _hovered || _focused
+                ? AppColors.primaryLight.withValues(alpha: 0.16)
+                : AppColors.transparent,
+          ),
+          foregroundDecoration: BoxDecoration(
+            border: Border.all(
+              color: _focused
+                  ? AppColors.primaryForeground
+                  : AppColors.transparent,
+              width: 2,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: DefaultTextStyle.merge(
+            style: TextStyle(
+              fontFeatures: AppTypography.numericStyle.fontFeatures,
+            ),
+            child: Row(
+              children: List.generate(widget.columns.length, (i) {
+                final col = widget.columns[i];
+                return SizedBox(
+                  width: widget.columnWidths[i],
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right:
+                          col.alignment == Alignment.center ||
+                              i == widget.columns.length - 1
+                          ? 0
+                          : 12,
+                    ),
+                    child: Align(
+                      alignment: col.alignment,
+                      child: SizedBox(
+                        width: col.alignment == Alignment.center
+                            ? double.infinity
+                            : null,
+                        child: col.cell(widget.item),
+                      ),
                     ),
                   ),
-                ),
-              );
-            }),
+                );
+              }),
+            ),
           ),
         ),
       ),

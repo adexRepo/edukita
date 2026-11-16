@@ -9695,6 +9695,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{action} {subject}?'**
   String confirmActionForSubject(Object action, Object subject);
+
+  /// No description provided for @tablePageSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Page {page} of {total}'**
+  String tablePageSummary(int page, int total);
 }
 
 class _AppLocalizationsDelegate
