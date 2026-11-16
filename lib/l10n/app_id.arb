@@ -1841,5 +1841,6 @@
   "navigationAdministration":"Administrasi",
   "dashboardLoadFailed":"Dashboard belum berhasil dimuat. Coba lagi.",
   "assistanceLoadFailed": "Periode bantuan belum berhasil dimuat. Coba lagi.",
-  "assistanceActionFailed": "Tindakan belum berhasil. Lihat detail lalu coba lagi."
+  "assistanceActionFailed": "Tindakan belum berhasil. Lihat detail lalu coba lagi.",
+  "scheduleLoadFailed": "Jadwal belum berhasil dimuat. Coba lagi."
 }

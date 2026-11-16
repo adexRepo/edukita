@@ -9731,6 +9731,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The action could not be completed. View the details and try again.'**
   String get assistanceActionFailed;
+
+  /// No description provided for @scheduleLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to load schedules. Try again.'**
+  String get scheduleLoadFailed;
 }
 
 class _AppLocalizationsDelegate

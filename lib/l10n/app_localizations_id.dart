@@ -5265,4 +5265,7 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get assistanceActionFailed =>
       'Tindakan belum berhasil. Lihat detail lalu coba lagi.';
+
+  @override
+  String get scheduleLoadFailed => 'Jadwal belum berhasil dimuat. Coba lagi.';
 }

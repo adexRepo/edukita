@@ -7,7 +7,7 @@ Theme, komponen bersama, shell/sidebar, title bar Windows, dan dashboard sudah d
 | Urutan | Halaman / alur | Kebutuhan perubahan | Bukti source dan lingkup berikutnya | Status |
 |---|---|---|---|---|
 | 1 | Periode Bantuan (`assistance_periods_page.dart`) | Sangat besar | Sebelum perubahan: sekitar 4.978 baris; daftar, empat tab detail, target per aturan, review/persetujuan, penerima/bukti, wizard tiga langkah dan beberapa dialog khusus. Header, ringkasan, setup dan review berisiko melebihi jendela; aksi tabel tidak wrap; target kecil; wizard memakai warna navy terpisah dari brand. | Workspace utama dan wizard diterapkan pada tahap ini; lihat verifikasi di bawah |
-| 2 | Jadwal (`schedule_page.dart`) | Sangat besar | Sekitar 3.456 baris; kalender/timeline, overlay pencarian, sinkronisasi scroll dan form jadwal/acara. Perlu penataan toolbar, sel kalender, dialog, focus, serta pengujian setiap mode. | Berikutnya |
+| 2 | Jadwal (`schedule_page.dart`) | Sangat besar | Sekitar 3.456 baris; kalender/timeline, overlay pencarian, sinkronisasi scroll dan form jadwal/acara. Perlu penataan toolbar, sel kalender, dialog, focus, serta pengujian setiap mode. | Workspace, kalender, pencarian dan dialog diterapkan; lihat verifikasi Jadwal |
 | 3 | Detail Aktivitas Mengajar (`teaching_activity_detail_page.dart`) | Besar | Sekitar 3.315 baris; beberapa area data, attendance/nilai/kompetensi, aksi status dan banyak ukuran lokal. Sudah memiliki reflow dan tes fungsional; perlu standardisasi surface, kontrol, dan hierarchy per area. | Belum restyle khusus |
 | 4 | Siswa: daftar, filter, form, tab detail | Besar | Daftar sekitar 1.671 baris, ditambah form/detail terpisah; statistik satu baris, toolbar, dua implementasi dialog filter, form besar, dan row action kecil. | Belum restyle khusus |
 | 5 | Silabus, daftar Aktivitas Mengajar, Laporan/Definisi Laporan, Users | Sedang–besar | Silabus sekitar 1.470 baris, aktivitas 1.288, laporan 1.098, users 1.043. Perlu keseragaman navigasi bagian, toolbar, empty/error, form dan permission matrix; pertahankan grid data. | Belum restyle khusus |
@@ -58,4 +58,48 @@ Dialog sekunder pemilihan aturan, konfirmasi aturan kuota nol, pemilihan kandida
 - Dua tes rendering preview akhir daftar/detail dengan font Poppins: lulus. SDK aktual Flutter 3.47.4 / Dart 3.13.3; versi persis pada panduan 3.41.6 belum diuji.
 - Pengujian widget text scaling bukan pengganti uji DPI Windows, multi-monitor, Narrator, file picker asli, atau pembayaran/distribusi nyata.
 
-Status: perubahan tahap ini belum commit/push. Perubahan lokal awal pada `analysis_options.yaml` dan `pubspec.lock` tetap dipertahankan.
+Status Bantuan: sudah commit `126d391`, belum push. Perubahan lokal awal pada `analysis_options.yaml` dan `pubspec.lock` tetap dipertahankan.
+
+## Prioritas 2 — Jadwal
+
+Tahap Bantuan telah di-commit sebagai `126d391` (`Restyle assistance period workspace and setup wizard`), tanpa push. Berikut audit dan implementasi Jadwal.
+
+### Audit sebelum perubahan
+
+Design system tetap Poppins, turquoise Edukita, Material 3, semantic `AppColors`, spacing 4/8 dan radius bersama. Surface yang diperiksa: header/statistik, toolbar/search, kalender bulanan/rentang, daftar acara terpilih, timeline mingguan/rentang, popup baris, chooser tambah, form jadwal, form acara dan konfirmasi hapus. Penelusuran Cubit/repository/cache hanya untuk memastikan kontrak tetap.
+
+| Severity | Lokasi | Masalah | Rekomendasi dan dampak |
+|---|---|---|---|
+| HIGH | Kalender dan popup timeline | Sel kalender serta target menu 20–28 px; rentang bergantung pointer | Target minimal 40 px, fokus terlihat, panah tanggal dan Shift+panah; pekerjaan dapat dilakukan dengan keyboard |
+| HIGH | Timeline/form/chooser | Tinggi tetap dan judul terbatas memotong teks besar | Konten tumbuh, scroll terarah, pilihan tambah berupa list, tanggal/jam form reflow; mengurangi overflow |
+| MEDIUM | Workspace/statistik | Ringkasan dan kalender mendesak area jadwal pada jendela kecil | Ringkasan compact dapat diperluas, kalender sekunder collapse, timeline tetap dapat diakses |
+| MEDIUM | Pencarian | Overlay dan lifecycle fokus; tanpa pemilihan hasil melalui keyboard | Panel hasil inline, Ctrl+F, panah, Enter, Escape serta clear; menghindari overlay lepas dari layar |
+| MEDIUM | Error dan dialog | Error awal mentah, footer kaku, radius lokal | Pesan actionable dengan Retry/detail, AppDialog/token, footer wrap, Ctrl+S dan busy guard |
+
+### Implementasi
+
+- `schedule_page.dart`: header bersama, statistik adaptif, toolbar, panel hasil pencarian, kalender/timeline, popup dan dialog mengikuti token Edukita. Warna data biru/amber yang sudah ada dipertahankan. Tidak ada palette baru.
+- `schedule_calendar_day.dart`: label tanggal lengkap dan indikator acara/jadwal, selected state, target aman, panah dan Shift+panah. Rentang drag yang ada tetap tersedia.
+- `schedule_workspace.dart`: viewport desktop normal memakai sisa ruang, sedangkan jendela kecil dan teks besar dapat menggulir konten.
+- Form jadwal memakai field tanggal/jam yang reflow. Picker mempunyai tombol berlabel yang dapat difokuskan. Kedua form mempertahankan input setelah kegagalan, mencegah submit ganda dan menahan dismiss saat saving. Callback async picker memeriksa mounted.
+- Popup dan konfirmasi tetap memakai guard/izin yang sama. Cancel mendapat fokus aman. Error load awal memakai pesan lokal EN/ID dan detail terpisah.
+
+### Kontrak yang dipertahankan dan batas
+
+Tidak mengubah model, Cubit, repository, SQL, cache, schema, router, teacher scope, menu/action authorization, validasi bentrok, rentang jam 09–22, perhitungan minggu/rentang, atau callback persistence. Timeline tetap kalender operasional dengan scroll horizontal tersinkron dan tanggal/header menetap; tidak diganti tabel umum. View/edit yang dibatasi izin tetap mengikuti perilaku sebelumnya.
+
+Belum menambahkan dark mode karena proyek belum mempunyai theme gelap lengkap. Tidak merancang ulang algoritme kalender/virtualisasi atau kemampuan read-only baru. Uji DPI Windows fisik, multi-monitor dan Narrator masih perlu dilakukan di lingkungan desktop; widget text scaling tidak mewakili semuanya. Tidak memakai data pribadi untuk tes/preview.
+
+### Verifikasi Jadwal
+
+- Formatter: empat file Dart produksi/test terformat, pemeriksaan akhir menghasilkan 0 perubahan.
+- Analyzer penuh: flutter analyze --no-pub bersih tanpa error, warning, atau info.
+- Full flutter test --no-pub: 122 tes lulus. Termasuk 21 tes Jadwal baru dan tes penghapusan/cache/transaksi Jadwal yang sudah ada.
+- Matriks workspace: 800x600, 1280x800, 1920x1080, 2560x1080; text scaling 100%, 125%, 150%, 200%; EN/ID, label panjang dan data sintetis.
+- Interaksi: Ctrl+F, hasil pencarian/panah/Enter/Escape, kalender panah dan Shift+panah, kedua form pada 800x600 @200%, gagal simpan mempertahankan input, submit ganda diblokir, dismiss saat saving ditahan, error awal/retry, serta indikator loading dan refresh disabled.
+- Preview dengan Poppins dan MaterialIcons diperiksa pada 1280x800 @100% dan 800x600 @200%. Satu tes preview tambahan lulus; tidak dimasukkan ke source test permanen.
+- Diff fungsi pemilihan acara, rentang timeline, pencocokan pencarian, cakupan tanggal dan batas jam dibandingkan dengan commit sebelumnya: identik setelah whitespace dinormalisasi.
+- Tidak ada dependency-boundary script khusus. Import dan diff diperiksa; shared/core tidak memperoleh dependency fitur. git diff --check bersih.
+- flutter build windows --release --no-pub final berhasil (73.1 detik), output build/windows/x64/runner/Release/edukita.exe.
+
+Status: restyle Jadwal belum commit/push. `analysis_options.yaml` dan `pubspec.lock` adalah perubahan lokal awal dan tidak dimasukkan ke commit Bantuan.

@@ -1,4 +1,9 @@
 import 'dart:async';
+import 'dart:math' as math;
+import 'package:edukita/features/schedule/presentation/schedule_workspace.dart';
+import 'package:edukita/features/schedule/presentation/schedule_calendar_day.dart';
+import 'package:edukita/widgets/app_error_dialog.dart';
+import 'package:edukita/widgets/app_dialog.dart';
 
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/router/service_locator.dart';
@@ -61,11 +66,15 @@ class _SchedulePageState extends State<SchedulePage> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  final LayerLink _searchLayerLink = LayerLink();
+  final _pageScrollController = ScrollController();
+  final _timelineVerticalController = ScrollController();
+  final _searchResultsController = ScrollController();
+  final _searchResultKeys = List.generate(8, (_) => GlobalKey());
+  bool _showResults = false;
+  int _searchIndex = 0;
   final ScrollController _timelineHeaderHorizontalController =
       ScrollController();
   final ScrollController _timelineGridHorizontalController = ScrollController();
-  OverlayEntry? _searchOverlayEntry;
   late DateTime _focusedMonth;
   late DateTime _selectedDate;
   DateTime? _rangeStartDate;
@@ -85,9 +94,6 @@ class _SchedulePageState extends State<SchedulePage> {
     final now = DateTime.now();
     _focusedMonth = DateTime(now.year, now.month);
     _selectedDate = DateTime(now.year, now.month, now.day);
-    _searchFocusNode.addListener(() {
-      if (!_searchFocusNode.hasFocus) _hideSearchOverlay();
-    });
     _timelineHeaderHorizontalController.addListener(() {
       _syncTimelineHorizontalScroll(
         _timelineHeaderHorizontalController,
@@ -156,7 +162,9 @@ class _SchedulePageState extends State<SchedulePage> {
 
   @override
   void dispose() {
-    _hideSearchOverlay();
+    _pageScrollController.dispose();
+    _timelineVerticalController.dispose();
+    _searchResultsController.dispose();
     _timelineHeaderHorizontalController.dispose();
     _timelineGridHorizontalController.dispose();
     _searchFocusNode.dispose();
@@ -404,22 +412,29 @@ class _SchedulePageState extends State<SchedulePage> {
       backgroundColor: AppColors.surfaceSoft,
       body: BlocBuilder<ScheduleCubit, ScheduleState>(
         builder: (context, scheduleState) {
-          return Column(
-            children: [
-              _buildTopBar(),
-              AppLoadingStrip(isLoading: scheduleState.isLoading),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
+          return CallbackShortcuts(
+            bindings: {
+              SingleActivator(LogicalKeyboardKey.keyF, control: true):
+                  _searchFocusNode.requestFocus,
+            },
+            child: Focus(
+              autofocus: true,
+              child: Padding(
+                padding: AppPageHeaderStyle.pagePadding,
+                child: ScheduleWorkspace(
+                  header: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      AppPageHeader(title: context.l10n.scheduleCalendar),
+                      AppLoadingStrip(isLoading: scheduleState.isLoading),
+                      const SizedBox(height: AppSpacing.sm),
                       _buildStatsFromState(scheduleState),
                       if (scheduleState.error != null &&
                           scheduleState.hasLoaded) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.xs),
                         _buildRefreshWarning(),
                       ],
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.sm),
                       _buildToolbar(
                         state: scheduleState,
                         classes: classState.classes,
@@ -429,33 +444,24 @@ class _SchedulePageState extends State<SchedulePage> {
                         strategies: strategyState.strategies,
                         schools: schoolState.schools,
                       ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: _buildContent(
-                          scheduleState,
-                          classes: classState.classes,
-                          teachers: teacherState.teachers,
-                          subjects: curriculum.subjects,
-                          units: curriculum.units,
-                          strategies: strategyState.strategies,
-                          schools: schoolState.schools,
-                        ),
-                      ),
+                      const SizedBox(height: AppSpacing.sm),
                     ],
+                  ),
+                  content: _buildContent(
+                    scheduleState,
+                    classes: classState.classes,
+                    teachers: teacherState.teachers,
+                    subjects: curriculum.subjects,
+                    units: curriculum.units,
+                    strategies: strategyState.strategies,
+                    schools: schoolState.schools,
                   ),
                 ),
               ),
-            ],
+            ),
           );
         },
       ),
-    );
-  }
-
-  Widget _buildTopBar() {
-    return Padding(
-      padding: AppPageHeaderStyle.pagePadding,
-      child: AppPageHeader(title: context.l10n.scheduleCalendar),
     );
   }
 
@@ -489,16 +495,15 @@ class _SchedulePageState extends State<SchedulePage> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columnCount = constraints.maxWidth >= 900
-            ? 4
-            : constraints.maxWidth >= 420
-            ? 2
-            : 1;
-        const gap = 8.0;
+        final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+        final columnCount = (constraints.maxWidth / (200 * scale))
+            .floor()
+            .clamp(1, 4);
+        const gap = AppSpacing.sm;
         final cardWidth =
             (constraints.maxWidth - (gap * (columnCount - 1))) / columnCount;
 
-        return Wrap(
+        final summary = Wrap(
           spacing: gap,
           runSpacing: gap,
           children: [
@@ -513,6 +518,39 @@ class _SchedulePageState extends State<SchedulePage> {
               ),
           ],
         );
+        if (constraints.maxWidth / scale >= 720) return summary;
+        return Material(
+          color: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.panel),
+            side: const BorderSide(color: AppColors.border),
+          ),
+          child: ExpansionTile(
+            title: Text(
+              '${context.l10n.total}: ${state.schedules.length + state.events.length}',
+              style: AppTypography.bodyStrongStyle,
+            ),
+            subtitle: Text(
+              '${context.l10n.scheduleCount(state.schedules.length)} · ${context.l10n.eventCount(state.events.length)}',
+            ),
+            childrenPadding: const EdgeInsets.all(AppSpacing.md),
+            children: [
+              Column(
+                children: [
+                  for (final item in items)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                      child: _buildSummaryCard(
+                        item.label,
+                        item.value.toString(),
+                        item.icon,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
       },
     );
   }
@@ -520,10 +558,10 @@ class _SchedulePageState extends State<SchedulePage> {
   Widget _buildSummaryCard(String title, String value, IconData icon) {
     return Container(
       constraints: const BoxConstraints(minHeight: 76),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.control),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
@@ -533,9 +571,9 @@ class _SchedulePageState extends State<SchedulePage> {
             height: 34,
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadii.control),
             ),
-            child: Icon(icon, color: AppColors.primaryDark, size: 18),
+            child: Icon(icon, color: AppColors.primaryForeground, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -545,8 +583,6 @@ class _SchedulePageState extends State<SchedulePage> {
               children: [
                 Text(
                   title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w700,
@@ -556,7 +592,8 @@ class _SchedulePageState extends State<SchedulePage> {
                 Text(
                   value,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontSize: AppTypography.sectionTitle,
+                    fontSize: 18,
+                    fontFeatures: AppTypography.numericStyle.fontFeatures,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
                   ),
@@ -576,7 +613,7 @@ class _SchedulePageState extends State<SchedulePage> {
       decoration: BoxDecoration(
         color: AppColors.warning.withValues(alpha: 0.08),
         border: Border.all(color: AppColors.warning.withValues(alpha: 0.30)),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.control),
       ),
       child: Row(
         children: [
@@ -585,7 +622,7 @@ class _SchedulePageState extends State<SchedulePage> {
             size: 18,
             color: AppColors.warning,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               context.l10n.scheduleShowingCachedData,
@@ -615,95 +652,141 @@ class _SchedulePageState extends State<SchedulePage> {
     required List<Strategy> strategies,
     required List<School> schools,
   }) {
+    final results = _searchResults(
+      state,
+      classes: classes,
+      teachers: teachers,
+      subjects: subjects,
+      units: units,
+      strategies: strategies,
+      schools: schools,
+    );
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 720;
-        final results = _searchResults(
-          state,
-          classes: classes,
-          teachers: teachers,
-          subjects: subjects,
-          units: units,
-          strategies: strategies,
-          schools: schools,
-        );
-        final search = Builder(
-          builder: (fieldContext) {
-            return CompositedTransformTarget(
-              link: _searchLayerLink,
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                onChanged: (value) {
-                  setState(() => _searchQuery = value);
-                  final updatedResults = _searchResults(
-                    state,
-                    classes: classes,
-                    teachers: teachers,
-                    subjects: subjects,
-                    units: units,
-                    strategies: strategies,
-                    schools: schools,
-                  );
-                  _showSearchOverlay(fieldContext, updatedResults);
-                },
-                onTap: () => _showSearchOverlay(fieldContext, results),
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search),
-                  hintText: context.l10n.findScheduleHint,
-                ),
-              ),
-            );
+        final compact =
+            constraints.maxWidth /
+                (MediaQuery.textScalerOf(context).scale(12) / 12) <
+            720;
+        final search = CallbackShortcuts(
+          bindings: {
+            SingleActivator(LogicalKeyboardKey.arrowDown): () =>
+                _moveSearchResult(results, 1),
+            SingleActivator(LogicalKeyboardKey.arrowUp): () =>
+                _moveSearchResult(results, -1),
+            SingleActivator(LogicalKeyboardKey.enter): () {
+              if (_showResults && results.isNotEmpty) {
+                _jumpToSearchResult(
+                  results[_searchIndex.clamp(0, results.length - 1)],
+                );
+              }
+            },
+            SingleActivator(LogicalKeyboardKey.escape): () =>
+                setState(() => _showResults = false),
           },
+          child: TextField(
+            controller: _searchController,
+            focusNode: _searchFocusNode,
+            onChanged: (value) => setState(() {
+              _searchQuery = value;
+              _searchIndex = 0;
+              _showResults = value.trim().isNotEmpty;
+            }),
+            onTap: () =>
+                setState(() => _showResults = _searchQuery.trim().isNotEmpty),
+            onSubmitted: (_) {
+              if (results.isNotEmpty) {
+                _jumpToSearchResult(
+                  results[_searchIndex.clamp(0, results.length - 1)],
+                );
+              }
+            },
+            decoration: InputDecoration(
+              labelText: context.l10n.findScheduleHint,
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchQuery.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: context.l10n.clear,
+                      icon: const Icon(Icons.close),
+                      onPressed: () => setState(() {
+                        _searchQuery = '';
+                        _searchController.clear();
+                        _showResults = false;
+                      }),
+                    ),
+            ),
+          ),
         );
-        final addButton = _canCreateSchedule
-            ? _buildAddButton(
+        final actions = Wrap(
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            if (_canCreateSchedule)
+              _buildAddButton(
                 classes: classes,
                 teachers: teachers,
                 units: units,
                 strategies: strategies,
                 schools: schools,
-              )
-            : const SizedBox.shrink();
-        final refreshButton = IconButton.filled(
-          tooltip: context.l10n.refreshSchedules,
-          onPressed: state.isLoading
-              ? null
-              : () => _reloadSchedules(forceRefresh: true),
-          icon: const Icon(Icons.refresh, color: AppColors.white),
+              ),
+            IconButton.outlined(
+              tooltip: context.l10n.refreshSchedules,
+              onPressed: state.isLoading
+                  ? null
+                  : () => _reloadSchedules(forceRefresh: true),
+              icon: const Icon(Icons.refresh),
+            ),
+          ],
         );
-
-        final toolbarChild = compact
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  search,
-                  const SizedBox(height: 10),
-                  Row(children: [addButton, const Spacer(), refreshButton]),
-                ],
-              )
-            : Row(
-                children: [
-                  addButton,
-                  const SizedBox(width: 12),
-                  Expanded(child: search),
-                  const SizedBox(width: 8),
-                  refreshButton,
-                ],
-              );
-
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: toolbarChild,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceElevated,
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(AppRadii.panel),
+              ),
+              child: compact
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        search,
+                        const SizedBox(height: AppSpacing.sm),
+                        Align(alignment: Alignment.centerRight, child: actions),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(child: search),
+                        const SizedBox(width: AppSpacing.sm),
+                        actions,
+                      ],
+                    ),
+            ),
+            if (_showResults && _searchQuery.trim().isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xs),
+              _buildSearchResults(results),
+            ],
+          ],
         );
       },
     );
+  }
+
+  void _moveSearchResult(List<_ScheduleSearchResult> results, int delta) {
+    if (results.isEmpty) return;
+    setState(() {
+      _showResults = true;
+      _searchIndex = (_searchIndex + delta).clamp(0, results.length - 1);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final target = _searchResultKeys[_searchIndex].currentContext;
+      if (target != null) Scrollable.ensureVisible(target, alignment: 0.5);
+    });
   }
 
   Widget _buildAddButton({
@@ -762,102 +845,57 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 
   Widget _buildSearchResults(List<_ScheduleSearchResult> results) {
-    if (results.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          context.l10n.noMatchingSchedule,
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-        ),
-      );
-    }
-
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 260),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    return Material(
+      color: AppColors.surfaceElevated,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.menu),
+        side: const BorderSide(color: AppColors.border),
       ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        itemCount: results.length,
-        separatorBuilder: (_, _) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          final result = results[index];
-          return ListTile(
-            dense: true,
-            leading: Icon(result.icon, color: result.color, size: 18),
-            title: Text(
-              result.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-            ),
-            subtitle: Text(
-              result.subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11),
-            ),
-            onTap: () => _jumpToSearchResult(result),
-          );
-        },
-      ),
-    );
-  }
-
-  void _showSearchOverlay(
-    BuildContext fieldContext,
-    List<_ScheduleSearchResult> results,
-  ) {
-    _hideSearchOverlay();
-    if (_searchQuery.trim().isEmpty || !_searchFocusNode.hasFocus) return;
-
-    final box = fieldContext.findRenderObject() as RenderBox?;
-    final width = box?.size.width ?? 320;
-    _searchOverlayEntry = OverlayEntry(
-      builder: (context) {
-        return Positioned.fill(
-          child: CompositedTransformFollower(
-            link: _searchLayerLink,
-            showWhenUnlinked: false,
-            targetAnchor: Alignment.bottomLeft,
-            followerAnchor: Alignment.topLeft,
-            offset: const Offset(0, 6),
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: Material(
-                color: AppColors.transparent,
-                child: SizedBox(
-                  width: width,
-                  child: _buildSearchResults(results),
+      child: results.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              child: Text(
+                context.l10n.noMatchingSchedule,
+                style: AppTypography.secondaryStyle,
+              ),
+            )
+          : ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 240),
+              child: Scrollbar(
+                controller: _searchResultsController,
+                child: SingleChildScrollView(
+                  controller: _searchResultsController,
+                  child: Column(
+                    children: [
+                      for (var index = 0; index < results.length; index++)
+                        Semantics(
+                          selected: index == _searchIndex,
+                          child: ListTile(
+                            key: _searchResultKeys[index],
+                            selected: index == _searchIndex,
+                            minVerticalPadding: AppSpacing.xs,
+                            leading: Icon(
+                              results[index].icon,
+                              color: AppColors.primaryForeground,
+                              size: 20,
+                            ),
+                            title: Text(
+                              results[index].title,
+                              style: AppTypography.bodyStrongStyle,
+                            ),
+                            subtitle: Text(
+                              results[index].subtitle,
+                              style: AppTypography.secondaryStyle,
+                            ),
+                            onTap: () => _jumpToSearchResult(results[index]),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      },
     );
-    Overlay.of(context).insert(_searchOverlayEntry!);
-  }
-
-  void _hideSearchOverlay() {
-    _searchOverlayEntry?.remove();
-    _searchOverlayEntry = null;
   }
 
   List<_ScheduleSearchResult> _searchResults(
@@ -936,9 +974,9 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 
   void _jumpToSearchResult(_ScheduleSearchResult result) {
-    _hideSearchOverlay();
     _searchFocusNode.unfocus();
     setState(() {
+      _showResults = false;
       _selectedDate = result.date;
       _focusedMonth = DateTime(result.date.year, result.date.month);
       _clearBlockedDates();
@@ -957,12 +995,47 @@ class _SchedulePageState extends State<SchedulePage> {
     required List<School> schools,
   }) {
     if (state.error != null && !state.hasLoaded) {
-      return Center(child: Text(context.l10n.errorWithDetails(state.error!)));
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.l10n.scheduleLoadFailed,
+              style: AppTypography.bodyStrongStyle,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: state.isLoading
+                      ? null
+                      : () => _reloadSchedules(forceRefresh: true),
+                  icon: const Icon(Icons.refresh),
+                  label: Text(context.l10n.refreshSchedules),
+                ),
+                TextButton(
+                  onPressed: () => showErrorDetailDialog(
+                    context,
+                    title: context.l10n.scheduleCalendar,
+                    error: state.error!,
+                  ),
+                  child: Text(context.l10n.detail),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
     }
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 940;
+        final compact =
+            constraints.maxWidth /
+                (MediaQuery.textScalerOf(context).scale(12) / 12) <
+            1160;
         final leftPanel = _buildLeftPanel(state, schools: schools);
         final timeline = _buildTimeline(
           state,
@@ -976,10 +1049,42 @@ class _SchedulePageState extends State<SchedulePage> {
 
         if (compact) {
           return ListView(
+            controller: _pageScrollController,
             children: [
-              leftPanel,
-              const SizedBox(height: 12),
-              SizedBox(height: 760, child: timeline),
+              Material(
+                color: AppColors.surfaceElevated,
+                borderRadius: BorderRadius.circular(AppRadii.panel),
+                child: ExpansionTile(
+                  maintainState: true,
+                  title: Text(
+                    _monthTitle(context, _focusedMonth),
+                    style: AppTypography.bodyStrongStyle,
+                  ),
+                  subtitle: Text(
+                    _longDate(context, _selectedDate),
+                    style: AppTypography.secondaryStyle,
+                  ),
+                  leading: const Icon(Icons.calendar_month_outlined),
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth:
+                              360 *
+                              (MediaQuery.textScalerOf(context).scale(12) / 12),
+                        ),
+                        child: leftPanel,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(
+                height: math.max(520, constraints.maxHeight * 0.85),
+                child: timeline,
+              ),
             ],
           );
         }
@@ -988,10 +1093,10 @@ class _SchedulePageState extends State<SchedulePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              width: 300,
+              width: 360 * (MediaQuery.textScalerOf(context).scale(12) / 12),
               child: SingleChildScrollView(child: leftPanel),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 16),
             Expanded(child: timeline),
           ],
         );
@@ -1006,18 +1111,18 @@ class _SchedulePageState extends State<SchedulePage> {
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.control),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: _buildMonthCalendar(state),
           ),
           const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 260),
               child: SingleChildScrollView(
@@ -1032,7 +1137,10 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Widget _buildMonthCalendar(ScheduleState state) {
     final days = _calendarDays(_focusedMonth);
-    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    final weekDays = List.generate(
+      7,
+      (index) => _shortWeekday(DateTime(2023, 1, 1 + index)),
+    );
 
     return Column(
       children: [
@@ -1098,7 +1206,10 @@ class _SchedulePageState extends State<SchedulePage> {
           builder: (context, constraints) {
             final rows = (days.length / 7).ceil();
             final cellWidth = constraints.maxWidth / 7;
-            final cellHeight = cellWidth / 1.05;
+            final cellHeight = math.max(
+              44.0,
+              MediaQuery.textScalerOf(context).scale(24) + 20,
+            );
             DateTime? dayAt(Offset position) {
               final col = (position.dx / cellWidth).floor();
               final row = (position.dy / cellHeight).floor();
@@ -1129,9 +1240,9 @@ class _SchedulePageState extends State<SchedulePage> {
                 child: GridView.builder(
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: days.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 7,
-                    childAspectRatio: 1.05,
+                    mainAxisExtent: cellHeight,
                   ),
                   itemBuilder: (context, index) {
                     final day = days[index];
@@ -1147,66 +1258,39 @@ class _SchedulePageState extends State<SchedulePage> {
                     final hasEvent = state.events.any(
                       (event) => _eventCoversDate(event, key),
                     );
-                    final active = selected || blocked;
 
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(8),
-                      onTap: () => setState(() {
+                    return ScheduleCalendarDay(
+                      key: ValueKey(key),
+                      day: day.day,
+                      label: [
+                        _longDate(context, day),
+                        if (hasSchedule) context.l10n.teachingSchedule,
+                        if (hasEvent) context.l10n.events,
+                      ].join(', '),
+                      selected: selected,
+                      inRange: blocked,
+                      today: today,
+                      hasSchedule: hasSchedule,
+                      hasEvent: hasEvent,
+                      onPressed: () => setState(() {
                         _selectedDate = day;
                         _clearBlockedDates();
                       }),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 120),
-                        margin: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: active
-                              ? AppColors.primary
-                              : AppColors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: today && !active
-                                ? AppColors.primaryLight
-                                : AppColors.transparent,
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              '${day.day}',
-                              style: TextStyle(
-                                color: active
-                                    ? AppColors.white
-                                    : AppColors.textPrimary,
-                                fontSize: 12,
-                                fontWeight: active || today
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                if (hasSchedule)
-                                  _calendarDot(
-                                    active
-                                        ? AppColors.white
-                                        : AppColors.accentBlue,
-                                  ),
-                                if (hasSchedule && hasEvent)
-                                  const SizedBox(width: 3),
-                                if (hasEvent)
-                                  _calendarDot(
-                                    active
-                                        ? AppColors.white
-                                        : AppColors.warning,
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
+                      onMove: (delta, extend) => setState(() {
+                        final target = DateTime(
+                          day.year,
+                          day.month,
+                          day.day + delta,
+                        );
+                        if (extend) {
+                          _rangeStartDate ??= day;
+                          _rangeEndDate = target;
+                        } else {
+                          _clearBlockedDates();
+                        }
+                        _selectedDate = target;
+                        _focusedMonth = DateTime(target.year, target.month);
+                      }),
                     );
                   },
                 ),
@@ -1215,14 +1299,6 @@ class _SchedulePageState extends State<SchedulePage> {
           },
         ),
       ],
-    );
-  }
-
-  Widget _calendarDot(Color color) {
-    return Container(
-      width: 5,
-      height: 5,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 
@@ -1254,7 +1330,7 @@ class _SchedulePageState extends State<SchedulePage> {
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         if (events.isEmpty)
           Text(
             context.l10n.noSchoolEventOnDate,
@@ -1278,10 +1354,10 @@ class _SchedulePageState extends State<SchedulePage> {
   }) {
     final school = _findSchool(schools, event.schoolId);
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.control),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
@@ -1302,7 +1378,7 @@ class _SchedulePageState extends State<SchedulePage> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Text(
                   [
                         _visibleEventType(event),
@@ -1325,7 +1401,6 @@ class _SchedulePageState extends State<SchedulePage> {
           ),
           IconButton(
             tooltip: context.l10n.editEvent,
-            visualDensity: VisualDensity.compact,
             onPressed: _canUpdateEvent
                 ? () => _showEventForm(
                     existingEvent: event,
@@ -1368,40 +1443,43 @@ class _SchedulePageState extends State<SchedulePage> {
         .where((event) => dateKeys.any((key) => _eventCoversDate(event, key)))
         .where((event) => _matchesEventSearch(event, schools: schools))
         .toList();
-    const dayColumnWidth = 104.0;
-    const hourColumnWidth = 116.0;
-    const timelineRowHeight = 88.0;
-    const hoursWidth = 14 * hourColumnWidth;
+    final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+    final dayColumnWidth = math.max(112.0, 96 * scale);
+    final hourColumnWidth = math.max(176.0, 152 * scale);
+    final timelineRowHeight = math.max(128.0, 96 * scale);
+    final hoursWidth = 14 * hourColumnWidth;
 
     return Container(
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.control),
       ),
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-            child: Row(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    _timelineTitle(context, dates),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                Text(
+                  _timelineTitle(context, dates),
+                  style: AppTypography.sectionTitleStyle,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    _countBadge(
+                      context.l10n.scheduleCount(visibleSchedules.length),
+                      AppColors.accentBlue,
                     ),
-                  ),
-                ),
-                _countBadge(
-                  context.l10n.scheduleCount(visibleSchedules.length),
-                  AppColors.accentBlue,
-                ),
-                const SizedBox(width: 8),
-                _countBadge(
-                  context.l10n.eventCount(visibleEvents.length),
-                  AppColors.warning,
+                    _countBadge(
+                      context.l10n.eventCount(visibleEvents.length),
+                      AppColors.warning,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1411,18 +1489,27 @@ class _SchedulePageState extends State<SchedulePage> {
             child: Column(
               children: [
                 SizedBox(
-                  height: 40,
+                  height: math.max(
+                    48,
+                    MediaQuery.textScalerOf(context).scale(24) + 16,
+                  ),
                   child: Row(
                     children: [
                       _buildTimelineDateHeader(width: dayColumnWidth),
                       Expanded(
-                        child: SingleChildScrollView(
+                        child: Scrollbar(
                           controller: _timelineHeaderHorizontalController,
-                          scrollDirection: Axis.horizontal,
-                          child: SizedBox(
-                            width: hoursWidth,
-                            child: _buildTimelineTimeHeader(
-                              hourColumnWidth: hourColumnWidth,
+                          thumbVisibility: true,
+                          notificationPredicate: (notification) =>
+                              notification.metrics.axis == Axis.horizontal,
+                          child: SingleChildScrollView(
+                            controller: _timelineHeaderHorizontalController,
+                            scrollDirection: Axis.horizontal,
+                            child: SizedBox(
+                              width: hoursWidth,
+                              child: _buildTimelineTimeHeader(
+                                hourColumnWidth: hourColumnWidth,
+                              ),
                             ),
                           ),
                         ),
@@ -1432,49 +1519,53 @@ class _SchedulePageState extends State<SchedulePage> {
                 ),
                 const Divider(height: 1),
                 Expanded(
-                  child: SingleChildScrollView(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: dayColumnWidth,
-                          child: Column(
-                            children: [
-                              for (final date in dates)
-                                _buildTimelineDateCell(
-                                  date,
-                                  height: timelineRowHeight,
-                                ),
-                            ],
+                  child: Scrollbar(
+                    controller: _timelineVerticalController,
+                    child: SingleChildScrollView(
+                      controller: _timelineVerticalController,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: dayColumnWidth,
+                            child: Column(
+                              children: [
+                                for (final date in dates)
+                                  _buildTimelineDateCell(
+                                    date,
+                                    height: timelineRowHeight,
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            controller: _timelineGridHorizontalController,
-                            scrollDirection: Axis.horizontal,
-                            child: SizedBox(
-                              width: hoursWidth,
-                              child: Column(
-                                children: [
-                                  for (final date in dates)
-                                    _buildTimelineGridRow(
-                                      date,
-                                      schedules: visibleSchedules,
-                                      events: visibleEvents,
-                                      classes: classes,
-                                      teachers: teachers,
-                                      units: units,
-                                      strategies: strategies,
-                                      schools: schools,
-                                      hourColumnWidth: hourColumnWidth,
-                                      height: timelineRowHeight,
-                                    ),
-                                ],
+                          Expanded(
+                            child: SingleChildScrollView(
+                              controller: _timelineGridHorizontalController,
+                              scrollDirection: Axis.horizontal,
+                              child: SizedBox(
+                                width: hoursWidth,
+                                child: Column(
+                                  children: [
+                                    for (final date in dates)
+                                      _buildTimelineGridRow(
+                                        date,
+                                        schedules: visibleSchedules,
+                                        events: visibleEvents,
+                                        classes: classes,
+                                        teachers: teachers,
+                                        units: units,
+                                        strategies: strategies,
+                                        schools: schools,
+                                        hourColumnWidth: hourColumnWidth,
+                                        height: timelineRowHeight,
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1511,7 +1602,7 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Widget _buildTimelineTimeHeader({required double hourColumnWidth}) {
     return SizedBox(
-      height: 40,
+      height: math.max(48, MediaQuery.textScalerOf(context).scale(24) + 16),
       child: Row(
         children: [
           for (var hour = 9; hour <= 22; hour++)
@@ -1559,13 +1650,6 @@ class _SchedulePageState extends State<SchedulePage> {
             right: BorderSide(color: AppColors.border),
             bottom: BorderSide(color: AppColors.border),
           ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0D000000),
-              offset: Offset(1, 0),
-              blurRadius: 4,
-            ),
-          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1574,17 +1658,19 @@ class _SchedulePageState extends State<SchedulePage> {
             Text(
               _shortWeekday(date),
               style: TextStyle(
-                color: active ? AppColors.primaryDark : AppColors.textSecondary,
+                color: active
+                    ? AppColors.primaryForeground
+                    : AppColors.textSecondary,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 4),
             Text(
               '${date.day}',
               style: TextStyle(
                 color: today || active
-                    ? AppColors.primaryDark
+                    ? AppColors.primaryForeground
                     : AppColors.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -1712,84 +1798,89 @@ class _SchedulePageState extends State<SchedulePage> {
     return Tooltip(
       waitDuration: const Duration(milliseconds: 350),
       message: _scheduleTooltip(schedule, title, classes),
-      child: InkWell(
-        onTap:
-            _canUpdateSchedule && _authScope.ownsTeacherData(schedule.teacherId)
-            ? () => _showScheduleForm(
-                existingSchedule: schedule,
-                classes: classes,
-                teachers: teachers,
-                units: units,
-                strategies: strategies,
-              )
-            : null,
-        child: Container(
-          height: 42,
-          margin: EdgeInsets.only(top: startsHere ? 2 : 0),
-          padding: const EdgeInsets.symmetric(horizontal: 7),
-          decoration: BoxDecoration(
-            color: AppColors.accentBlue.withValues(alpha: 0.10),
-            border: Border.all(
-              color: AppColors.accentBlue.withValues(alpha: 0.18),
-            ),
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(startsHere ? 6 : 0),
-              bottom: Radius.circular(endsHere ? 6 : 0),
-            ),
-          ),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.school_outlined,
-                color: AppColors.accentBlue,
-                size: 14,
-              ),
-              const SizedBox(width: 5),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      teacherName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 64),
+        child: Material(
+          color: AppColors.transparent,
+          child: InkWell(
+            onTap:
+                _canUpdateSchedule &&
+                    _authScope.ownsTeacherData(schedule.teacherId)
+                ? () => _showScheduleForm(
+                    existingSchedule: schedule,
+                    classes: classes,
+                    teachers: teachers,
+                    units: units,
+                    strategies: strategies,
+                  )
+                : null,
+            child: Ink(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+              decoration: BoxDecoration(
+                color: AppColors.accentBlue.withValues(alpha: 0.10),
+                border: Border.all(
+                  color: AppColors.accentBlue.withValues(alpha: 0.18),
+                ),
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(startsHere ? AppRadii.control : 0),
+                  bottom: Radius.circular(endsHere ? AppRadii.control : 0),
                 ),
               ),
-              _compactCardMenu(
-                color: AppColors.accentBlue,
-                canEdit:
-                    _canUpdateSchedule &&
-                    _authScope.ownsTeacherData(schedule.teacherId),
-                canDelete:
-                    _canDeleteSchedule &&
-                    _authScope.ownsTeacherData(schedule.teacherId),
-                onEdit: () => _showScheduleForm(
-                  existingSchedule: schedule,
-                  classes: classes,
-                  teachers: teachers,
-                  units: units,
-                  strategies: strategies,
-                ),
-                onDelete: () => _confirmDeleteSchedule(schedule),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.school_outlined,
+                    color: AppColors.accentBlue,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          teacherName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _compactCardMenu(
+                    color: AppColors.accentBlue,
+                    canEdit:
+                        _canUpdateSchedule &&
+                        _authScope.ownsTeacherData(schedule.teacherId),
+                    canDelete:
+                        _canDeleteSchedule &&
+                        _authScope.ownsTeacherData(schedule.teacherId),
+                    onEdit: () => _showScheduleForm(
+                      existingSchedule: schedule,
+                      classes: classes,
+                      teachers: teachers,
+                      units: units,
+                      strategies: strategies,
+                    ),
+                    onDelete: () => _confirmDeleteSchedule(schedule),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -1810,59 +1901,63 @@ class _SchedulePageState extends State<SchedulePage> {
     return Tooltip(
       waitDuration: const Duration(milliseconds: 350),
       message: _eventTooltip(event),
-      child: InkWell(
-        onTap: !_canUpdateEvent
-            ? null
-            : () => _showEventForm(
-                existingEvent: event,
-                schools: schools,
-                isSchoolEvent: _schoolEventTypes.contains(event.type),
-              ),
-        child: Container(
-          height: 28,
-          margin: EdgeInsets.only(top: startsHere ? 2 : 0),
-          padding: const EdgeInsets.symmetric(horizontal: 7),
-          decoration: BoxDecoration(
-            color: AppColors.warning.withValues(alpha: 0.12),
-            border: Border.all(
-              color: AppColors.warning.withValues(alpha: 0.24),
-            ),
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(startsHere ? 6 : 0),
-              bottom: Radius.circular(endsHere ? 6 : 0),
-            ),
-          ),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.event_outlined,
-                color: AppColors.warning,
-                size: 14,
-              ),
-              const SizedBox(width: 5),
-              Expanded(
-                child: Text(
-                  event.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 40),
+        child: Material(
+          color: AppColors.transparent,
+          child: InkWell(
+            onTap: !_canUpdateEvent
+                ? null
+                : () => _showEventForm(
+                    existingEvent: event,
+                    schools: schools,
+                    isSchoolEvent: _schoolEventTypes.contains(event.type),
                   ),
+            child: Ink(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.12),
+                border: Border.all(
+                  color: AppColors.warning.withValues(alpha: 0.24),
+                ),
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(startsHere ? AppRadii.control : 0),
+                  bottom: Radius.circular(endsHere ? AppRadii.control : 0),
                 ),
               ),
-              _compactCardMenu(
-                color: AppColors.warning,
-                canEdit: _canUpdateEvent,
-                canDelete: _canDeleteEvent,
-                onEdit: () => _showEventForm(
-                  existingEvent: event,
-                  schools: schools,
-                  isSchoolEvent: _schoolEventTypes.contains(event.type),
-                ),
-                onDelete: () => _confirmDeleteEvent(event),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.event_outlined,
+                    color: AppColors.warning,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      event.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  _compactCardMenu(
+                    color: AppColors.warning,
+                    canEdit: _canUpdateEvent,
+                    canDelete: _canDeleteEvent,
+                    onEdit: () => _showEventForm(
+                      existingEvent: event,
+                      schools: schools,
+                      isSchoolEvent: _schoolEventTypes.contains(event.type),
+                    ),
+                    onDelete: () => _confirmDeleteEvent(event),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -1878,18 +1973,20 @@ class _SchedulePageState extends State<SchedulePage> {
   }) {
     if (!canEdit && !canDelete) return const SizedBox.shrink();
     return SizedBox(
-      width: 20,
-      height: 24,
+      width: 40,
+      height: 40,
       child: PopupMenuButton<String>(
         tooltip: context.l10n.actions,
         padding: EdgeInsets.zero,
-        iconSize: 15,
+        iconSize: 20,
         color: AppColors.white,
         surfaceTintColor: AppColors.white,
         elevation: 8,
         position: PopupMenuPosition.under,
         constraints: const BoxConstraints(minWidth: 156),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.control),
+        ),
         icon: Icon(Icons.more_vert, color: color),
         onSelected: (value) {
           if (value == 'edit') onEdit();
@@ -1902,7 +1999,7 @@ class _SchedulePageState extends State<SchedulePage> {
               child: Row(
                 children: [
                   const Icon(Icons.edit_outlined, size: 17),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Text(context.l10n.buttonEdit),
                 ],
               ),
@@ -1917,7 +2014,7 @@ class _SchedulePageState extends State<SchedulePage> {
                     size: 17,
                     color: AppColors.errorDark,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Text(
                     context.l10n.buttonDelete,
                     style: const TextStyle(color: AppColors.errorDark),
@@ -1932,15 +2029,18 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Widget _countBadge(String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.xxs,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
-        style: TextStyle(
-          color: color,
+        style: AppTypography.numericStyle.copyWith(
+          color: AppColors.textPrimary,
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
@@ -2325,147 +2425,52 @@ class _ScheduleAddTypeDialog extends StatelessWidget {
         ),
     ];
 
-    return Dialog(
-      backgroundColor: AppColors.white,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 720),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+    return AppDialog(
+      title: Text(context.l10n.addScheduleOrEvent),
+      content: SizedBox(
+        width: 600,
+        child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _CalendarDialogHeader(title: context.l10n.addScheduleOrEvent),
-              const SizedBox(height: 18),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final cardWidth = choices.length == 1
-                      ? constraints.maxWidth
-                      : (constraints.maxWidth - 14 * (choices.length - 1)) /
-                            choices.length;
-                  return Wrap(
-                    spacing: 14,
-                    runSpacing: 14,
-                    children: [
-                      for (final choice in choices)
-                        SizedBox(
-                          width: cardWidth,
-                          height: 150,
-                          child: _ScheduleAddTypeCard(
-                            icon: choice.icon,
-                            title: choice.title,
-                            supportingText: choice.supportingText,
-                            enabled: choice.enabled,
-                            onTap: () => Navigator.of(context).pop(choice.type),
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ScheduleAddTypeCard extends StatefulWidget {
-  const _ScheduleAddTypeCard({
-    required this.icon,
-    required this.title,
-    required this.enabled,
-    required this.onTap,
-    this.supportingText,
-  });
-
-  final IconData icon;
-  final String title;
-  final String? supportingText;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  @override
-  State<_ScheduleAddTypeCard> createState() => _ScheduleAddTypeCardState();
-}
-
-class _ScheduleAddTypeCardState extends State<_ScheduleAddTypeCard> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = widget.enabled && _hovered;
-    return MouseRegion(
-      cursor: widget.enabled
-          ? SystemMouseCursors.click
-          : SystemMouseCursors.forbidden,
-      onEnter: widget.enabled ? (_) => setState(() => _hovered = true) : null,
-      onExit: widget.enabled ? (_) => setState(() => _hovered = false) : null,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: widget.enabled ? widget.onTap : null,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: active
-                ? AppColors.primary.withValues(alpha: 0.08)
-                : AppColors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: active ? AppColors.primary : AppColors.border,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color:
-                      (widget.enabled ? AppColors.primary : AppColors.warning)
-                          .withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  widget.icon,
-                  color: widget.enabled ? AppColors.primary : AppColors.warning,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                widget.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: widget.enabled
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
-                ),
-              ),
-              if (widget.supportingText != null) ...[
-                const SizedBox(height: 5),
-                Text(
-                  widget.supportingText!,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 10,
-                    height: 1.3,
+              for (final choice in choices)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  child: Material(
+                    color: AppColors.surface,
+                    shape: RoundedRectangleBorder(
+                      side: const BorderSide(color: AppColors.border),
+                      borderRadius: BorderRadius.circular(AppRadii.control),
+                    ),
+                    child: ListTile(
+                      minVerticalPadding: AppSpacing.sm,
+                      leading: Icon(
+                        choice.icon,
+                        color: AppColors.primaryForeground,
+                      ),
+                      title: Text(
+                        choice.title,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: choice.supportingText == null
+                          ? null
+                          : Text(choice.supportingText!),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.of(context).pop(choice.type),
+                    ),
                   ),
                 ),
-              ],
             ],
           ),
         ),
       ),
+      actions: [
+        TextButton(
+          autofocus: true,
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.buttonCancel),
+        ),
+      ],
     );
   }
 }
@@ -2483,8 +2488,6 @@ class _CalendarDialogHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w800,
@@ -2516,53 +2519,65 @@ class _CalendarFormDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxHeight = (MediaQuery.sizeOf(context).height - 44)
-        .clamp(360.0, 760.0)
-        .toDouble();
-    return Dialog(
-      backgroundColor: AppColors.white,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: SizedBox(
-        width: 720,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _CalendarDialogHeader(title: title, enabled: !isSaving),
-                const SizedBox(height: 18),
-                Flexible(child: SingleChildScrollView(child: child)),
-                const SizedBox(height: 22),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    OutlinedButton(
-                      onPressed: isSaving
-                          ? null
-                          : () => Navigator.of(context).pop(),
-                      child: Text(context.l10n.buttonCancel),
-                    ),
-                    const SizedBox(width: 10),
-                    FilledButton.icon(
-                      onPressed: isSaving ? null : onSave,
-                      icon: isSaving
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.white,
-                              ),
-                            )
-                          : const Icon(Icons.save_outlined, size: 16),
-                      label: Text(context.l10n.buttonSave),
-                    ),
-                  ],
-                ),
-              ],
+    return PopScope(
+      canPop: !isSaving,
+      child: CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
+            if (!isSaving) onSave();
+          },
+        },
+        child: Dialog(
+          backgroundColor: AppColors.surface,
+          insetPadding: const EdgeInsets.all(AppSpacing.lg),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.dialog),
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 720,
+              maxHeight: math.max(
+                0,
+                MediaQuery.sizeOf(context).height - AppSpacing.xxl,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _CalendarDialogHeader(title: title, enabled: !isSaving),
+                  const SizedBox(height: AppSpacing.md),
+                  Flexible(child: SingleChildScrollView(child: child)),
+                  const SizedBox(height: AppSpacing.lg),
+                  OverflowBar(
+                    alignment: MainAxisAlignment.end,
+                    spacing: AppSpacing.sm,
+                    overflowSpacing: AppSpacing.xs,
+                    children: [
+                      OutlinedButton(
+                        onPressed: isSaving
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                        child: Text(context.l10n.buttonCancel),
+                      ),
+                      FilledButton.icon(
+                        onPressed: isSaving ? null : onSave,
+                        icon: isSaving
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.save_outlined, size: 20),
+                        label: Text(context.l10n.buttonSave),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -2579,74 +2594,30 @@ class _CalendarDeleteDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: AppColors.white,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _CalendarDialogHeader(title: title),
-              const SizedBox(height: 18),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.errorDark.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.delete_outline,
-                      color: AppColors.errorDark,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        message,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: AppTypography.body,
-                          height: 1.45,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: Text(context.l10n.buttonCancel),
-                  ),
-                  const SizedBox(width: 10),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.errorDark,
-                    ),
-                    onPressed: () => Navigator.of(context).pop(true),
-                    icon: const Icon(Icons.delete_outline, size: 16),
-                    label: Text(context.l10n.buttonDelete),
-                  ),
-                ],
-              ),
-            ],
-          ),
+    return AppDialog(
+      title: Text(title),
+      content: SizedBox(
+        width: 480,
+        child: SingleChildScrollView(
+          child: Text(message, style: const TextStyle(height: 1.45)),
         ),
       ),
+      actions: [
+        OutlinedButton(
+          autofocus: true,
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(context.l10n.buttonCancel),
+        ),
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.errorDark,
+            foregroundColor: AppColors.white,
+          ),
+          onPressed: () => Navigator.of(context).pop(true),
+          icon: const Icon(Icons.delete_outline, size: 20),
+          label: Text(context.l10n.buttonDelete),
+        ),
+      ],
     );
   }
 }
@@ -2802,80 +2773,98 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
               isRequired: false,
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _PickerFormField(
-                    label: context.l10n.date,
-                    controller: _dateController,
-                    hint: AppFormFieldStyle.dateFormat,
-                    icon: Icons.calendar_today,
-                    onTap: () async {
-                      final value = await _pickDateValue(
-                        context,
-                        _dateController.text,
-                      );
-                      if (value != null) _dateController.text = value;
-                    },
-                    onSaved: (value) => date = _nullIfBlank(value),
-                    validator: (value) {
-                      if (value?.trim().isEmpty ?? true) {
-                        return context.l10n.fieldRequiredMessage(
-                          context.l10n.date,
-                        );
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _PickerFormField(
-                    label: context.l10n.start,
-                    controller: _startController,
-                    hint: AppFormFieldStyle.timeFormat,
-                    icon: Icons.schedule,
-                    onTap: () async {
-                      final value = await _pickTimeValue(
-                        context,
-                        _startController.text,
-                      );
-                      if (value != null) _startController.text = value;
-                    },
-                    onSaved: (value) => startAt = _nullIfBlank(value),
-                    validator: (_) => null,
-                    isRequired: false,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _PickerFormField(
-                    label: context.l10n.end,
-                    controller: _endController,
-                    hint: AppFormFieldStyle.timeFormat,
-                    icon: Icons.schedule,
-                    onTap: () async {
-                      final value = await _pickTimeValue(
-                        context,
-                        _endController.text,
-                      );
-                      if (value != null) _endController.text = value;
-                    },
-                    onSaved: (value) => endAt = _nullIfBlank(value),
-                    validator: (value) {
-                      final start = _parseLooseTime(_startController.text);
-                      final end = _parseLooseTime(value);
-                      if (start != null &&
-                          end != null &&
-                          _timeOfDayMinutes(end) <= _timeOfDayMinutes(start)) {
-                        return context.l10n.endTimeAfterStartTime;
-                      }
-                      return null;
-                    },
-                    isRequired: false,
-                  ),
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+                final fieldWidth = constraints.maxWidth / scale >= 600
+                    ? (constraints.maxWidth - AppSpacing.lg) / 3
+                    : constraints.maxWidth;
+                return Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.md,
+                  children: [
+                    SizedBox(
+                      width: fieldWidth,
+                      child: _PickerFormField(
+                        label: context.l10n.date,
+                        controller: _dateController,
+                        hint: AppFormFieldStyle.dateFormat,
+                        icon: Icons.calendar_today,
+                        onTap: () async {
+                          final value = await _pickDateValue(
+                            context,
+                            _dateController.text,
+                          );
+                          if (mounted && value != null) {
+                            _dateController.text = value;
+                          }
+                        },
+                        onSaved: (value) => date = _nullIfBlank(value),
+                        validator: (value) {
+                          if (value?.trim().isEmpty ?? true) {
+                            return context.l10n.fieldRequiredMessage(
+                              context.l10n.date,
+                            );
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width: fieldWidth,
+                      child: _PickerFormField(
+                        label: context.l10n.start,
+                        controller: _startController,
+                        hint: AppFormFieldStyle.timeFormat,
+                        icon: Icons.schedule,
+                        onTap: () async {
+                          final value = await _pickTimeValue(
+                            context,
+                            _startController.text,
+                          );
+                          if (mounted && value != null) {
+                            _startController.text = value;
+                          }
+                        },
+                        onSaved: (value) => startAt = _nullIfBlank(value),
+                        validator: (_) => null,
+                        isRequired: false,
+                      ),
+                    ),
+                    SizedBox(
+                      width: fieldWidth,
+                      child: _PickerFormField(
+                        label: context.l10n.end,
+                        controller: _endController,
+                        hint: AppFormFieldStyle.timeFormat,
+                        icon: Icons.schedule,
+                        onTap: () async {
+                          final value = await _pickTimeValue(
+                            context,
+                            _endController.text,
+                          );
+                          if (mounted && value != null) {
+                            _endController.text = value;
+                          }
+                        },
+                        onSaved: (value) => endAt = _nullIfBlank(value),
+                        validator: (value) {
+                          final start = _parseLooseTime(_startController.text);
+                          final end = _parseLooseTime(value);
+                          if (start != null &&
+                              end != null &&
+                              _timeOfDayMinutes(end) <=
+                                  _timeOfDayMinutes(start)) {
+                            return context.l10n.endTimeAfterStartTime;
+                          }
+                          return null;
+                        },
+                        isRequired: false,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 16),
             CommonFormWidgets.textField(
@@ -2894,6 +2883,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   }
 
   Future<void> _submit() async {
+    if (_isSaving) return;
     if (!_formKey.currentState!.validate()) return;
 
     final action = widget.schedule == null
@@ -3104,7 +3094,7 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                         context,
                         _startDateController.text,
                       );
-                      if (value == null) return;
+                      if (!mounted || value == null) return;
                       setState(() {
                         _startDateController.text = value;
                         if (_endDateController.text.compareTo(value) < 0) {
@@ -3139,7 +3129,7 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                         context,
                         _endDateController.text,
                       );
-                      if (value == null) return;
+                      if (!mounted || value == null) return;
                       setState(() {
                         _endDateController.text = value;
                         if (_startDateController.text.compareTo(value) > 0) {
@@ -3203,7 +3193,9 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                         context,
                         _startTimeController.text,
                       );
-                      if (value != null) _startTimeController.text = value;
+                      if (mounted && value != null) {
+                        _startTimeController.text = value;
+                      }
                     },
                     onSaved: (value) => startAt = _nullIfBlank(value),
                     validator: (_) => null,
@@ -3223,7 +3215,9 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
                         context,
                         _endTimeController.text,
                       );
-                      if (value != null) _endTimeController.text = value;
+                      if (mounted && value != null) {
+                        _endTimeController.text = value;
+                      }
                     },
                     onSaved: (value) => endAt = _nullIfBlank(value),
                     validator: (value) {
@@ -3263,6 +3257,7 @@ class _ScheduleEventFormDialogState extends State<ScheduleEventFormDialog> {
   }
 
   Future<void> _submit() async {
+    if (_isSaving) return;
     if (!_formKey.currentState!.validate()) return;
 
     final action = widget.event == null
@@ -3343,7 +3338,11 @@ class _PickerFormField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        suffixIcon: Icon(icon),
+        suffixIcon: IconButton(
+          tooltip: label,
+          onPressed: enabled ? onTap : null,
+          icon: Icon(icon),
+        ),
         border: const OutlineInputBorder(),
         contentPadding: AppFormFieldStyle.contentPadding,
       ),

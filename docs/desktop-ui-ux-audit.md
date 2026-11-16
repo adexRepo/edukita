@@ -84,3 +84,5 @@ Verifikasi lanjutan:
 
 Yang masih terbuka: restyle per halaman form/tabel, penanganan error halaman guru, penyatuan dialog filter siswa, dark mode, serta pengujian runtime DPI/multi-monitor/Narrator dan semua role. Pengujian widget scaling tidak menggantikan pengujian display scaling Windows.
 Tahap lanjutan prioritas berdasarkan besarnya perubahan: lihat [ui-restyle-priorities.md](ui-restyle-priorities.md). Workspace Periode Bantuan dan wizard telah direstyle; hasil verifikasi akhir dicatat pada dokumen tersebut.
+
+Tahap Jadwal: workspace, kalender, toolbar/pencarian keyboard, timeline dan dialog direstyle. Audit severity, batas kontrak, dan hasil verifikasinya dicatat dalam [ui-restyle-priorities.md](ui-restyle-priorities.md). Perubahan Bantuan sebelumnya sudah di-commit `126d391`.

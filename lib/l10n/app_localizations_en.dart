@@ -5254,4 +5254,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get assistanceActionFailed =>
       'The action could not be completed. View the details and try again.';
+
+  @override
+  String get scheduleLoadFailed => 'Unable to load schedules. Try again.';
 }
