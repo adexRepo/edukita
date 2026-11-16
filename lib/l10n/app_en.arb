@@ -1840,5 +1840,7 @@
   "@tablePageSummary": {"placeholders": {"page": {"type": "int"}, "total": {"type": "int"}}},
   "navigationOperations":"Operations",
   "navigationAdministration":"Administration",
-  "dashboardLoadFailed":"Unable to load the dashboard. Try again."
+  "dashboardLoadFailed":"Unable to load the dashboard. Try again.",
+  "assistanceLoadFailed": "Unable to load assistance periods. Try again.",
+  "assistanceActionFailed": "The action could not be completed. View the details and try again."
 }

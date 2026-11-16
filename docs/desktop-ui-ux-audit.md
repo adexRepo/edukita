@@ -83,3 +83,4 @@ Verifikasi lanjutan:
 - Tidak ada perubahan repository, Cubit, SQL, schema, cache, perhitungan KPI, atau izin. Scope perubahan data hanya preferensi urutan menu UI pada format route yang sudah ada.
 
 Yang masih terbuka: restyle per halaman form/tabel, penanganan error halaman guru, penyatuan dialog filter siswa, dark mode, serta pengujian runtime DPI/multi-monitor/Narrator dan semua role. Pengujian widget scaling tidak menggantikan pengujian display scaling Windows.
+Tahap lanjutan prioritas berdasarkan besarnya perubahan: lihat [ui-restyle-priorities.md](ui-restyle-priorities.md). Workspace Periode Bantuan dan wizard telah direstyle; hasil verifikasi akhir dicatat pada dokumen tersebut.

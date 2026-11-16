@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
@@ -6,7 +7,7 @@ class DetailTabBar extends StatelessWidget {
     super.key,
     required this.tabs,
     this.filledStyle = true,
-    this.height = 34,
+    this.height = 40,
     this.controller,
   });
 
@@ -31,7 +32,7 @@ class DetailTabBar extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
         border: Border.all(color: AppColors.border),
       ),
       child: TabBar(
@@ -40,25 +41,32 @@ class DetailTabBar extends StatelessWidget {
         tabAlignment: TabAlignment.start,
         dividerColor: AppColors.transparent,
         indicatorSize: TabBarIndicatorSize.tab,
-        labelPadding: const EdgeInsets.symmetric(horizontal: 14),
-        labelColor: AppColors.white,
+        labelPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        labelColor: AppColors.onPrimary,
         unselectedLabelColor: AppColors.textSecondary,
-        labelStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
+        labelStyle: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+        unselectedLabelStyle: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
         indicator: BoxDecoration(
           color: AppColors.primary,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(
+            AppRadii.panel - AppSpacing.xxs - 1,
+          ),
         ),
         tabs: [
           for (final tab in tabs)
             Tab(
-              height: height,
+              height: math.max(
+                40,
+                math.max(
+                  height,
+                  MediaQuery.textScalerOf(context).scale(12) * 1.45 +
+                      AppSpacing.md,
+                ),
+              ),
               child: Text(tab, overflow: TextOverflow.ellipsis),
             ),
         ],

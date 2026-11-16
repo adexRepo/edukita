@@ -1,6 +1,6 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:io' as io;
-import 'dart:typed_data';
 
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
@@ -18,6 +18,7 @@ import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_loading.dart';
 import 'package:edukita/widgets/app_page_header.dart';
+import 'package:edukita/features/assistance/presentation/assistance_workspace.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/app_error_dialog.dart';
@@ -25,6 +26,7 @@ import 'package:edukita/widgets/detail_tab_bar.dart';
 import 'package:edukita/widgets/step_process.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AssistancePeriodsPage extends StatefulWidget {
@@ -36,6 +38,7 @@ class AssistancePeriodsPage extends StatefulWidget {
 
 class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
   AssistancePeriod? _selectedPeriod;
   String _query = '';
   String _programFilter = '';
@@ -90,6 +93,7 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -129,40 +133,67 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
       );
     }
 
-    return ColoredBox(
-      color: AppColors.surfaceSoft,
-      child: Padding(
-        padding: AppPageHeaderStyle.pagePadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppPageHeader(
-              title: context.l10n.assistancePeriodsTitle,
-              subtitle: context.l10n.assistancePeriodsSubtitle,
-              trailing: FilledButton.icon(
-                onPressed: programs.isEmpty || !_canCreate
-                    ? null
-                    : () => _showCreatePeriodDialog(context, programs),
-                icon: const Icon(Icons.add),
-                label: Text(context.l10n.create),
+    return CallbackShortcuts(
+      bindings: {
+        SingleActivator(LogicalKeyboardKey.keyF, control: true):
+            _searchFocus.requestFocus,
+      },
+      child: Focus(
+        autofocus: true,
+        child: ColoredBox(
+          color: AppColors.surfaceSoft,
+          child: Padding(
+            padding: AppPageHeaderStyle.pagePadding,
+            child: AssistanceWorkspace(
+              key: const PageStorageKey('assistance-period-list'),
+              header: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AppPageHeader(
+                    title: context.l10n.assistancePeriodsTitle,
+                    subtitle: context.l10n.assistancePeriodsSubtitle,
+                    trailing: FilledButton.icon(
+                      onPressed: programs.isEmpty || !_canCreate
+                          ? null
+                          : () => _showCreatePeriodDialog(context, programs),
+                      icon: const Icon(Icons.add),
+                      label: Text(context.l10n.create),
+                    ),
+                  ),
+                  AppLoadingStrip(
+                    isLoading: programState.isLoading || planState.isLoading,
+                  ),
+                  const SizedBox(height: AppPageHeaderStyle.bottomGap),
+                  _buildSummaryCards(planState.periods),
+                  const SizedBox(height: 12),
+                  _buildFilters(programs),
+                  const SizedBox(height: 12),
+                  if (planState.error != null ||
+                      programState.error != null) ...[
+                    _AssistanceLoadError(
+                      error: planState.error ?? programState.error!,
+                      onRetry: () async {
+                        await Future.wait([
+                          context.read<AssistanceProgramCubit>().loadPrograms(
+                            forceRefresh: true,
+                          ),
+                          context.read<AssistancePlanCubit>().loadModule(
+                            forceRefresh: true,
+                          ),
+                        ]);
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                ],
               ),
-            ),
-            AppLoadingStrip(
-              isLoading: programState.isLoading || planState.isLoading,
-            ),
-            const SizedBox(height: AppPageHeaderStyle.bottomGap),
-            _buildSummaryCards(planState.periods),
-            const SizedBox(height: 12),
-            _buildFilters(programs),
-            const SizedBox(height: 12),
-            Expanded(
-              child: _buildPeriodTable(
+              content: _buildPeriodTable(
                 context,
                 periods: _filteredPeriods(planState.periods, programs),
                 programs: programs,
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -189,74 +220,14 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
         )
         .length;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        var cardWidth = (constraints.maxWidth - 48) / 5;
-        if (cardWidth < 160) cardWidth = (constraints.maxWidth - 12) / 2;
-        if (cardWidth < 160) cardWidth = constraints.maxWidth;
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            SizedBox(
-              width: cardWidth,
-              child: _summaryCard(context.l10n.draft, '$draft'),
-            ),
-            SizedBox(
-              width: cardWidth,
-              child: _summaryCard(context.l10n.targeted, '$targeted'),
-            ),
-            SizedBox(
-              width: cardWidth,
-              child: _summaryCard(context.l10n.approved, '$approved'),
-            ),
-            SizedBox(
-              width: cardWidth,
-              child: _summaryCard(context.l10n.distributed, '$distributed'),
-            ),
-            SizedBox(
-              width: cardWidth,
-              child: _summaryCard(
-                context.l10n.thisMonth,
-                context.l10n.activeCount(thisMonth),
-              ),
-            ),
-          ],
-        );
+    return AssistanceSummaryCards(
+      values: {
+        context.l10n.draft: '$draft',
+        context.l10n.targeted: '$targeted',
+        context.l10n.approved: '$approved',
+        context.l10n.distributed: '$distributed',
+        context.l10n.thisMonth: context.l10n.activeCount(thisMonth),
       },
-    );
-  }
-
-  Widget _summaryCard(String title, String value) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: AppTypography.sectionTitleStyle.copyWith(
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -272,22 +243,21 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.control),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          crossAxisAlignment: WrapCrossAlignment.center,
+        child: AssistanceFilterFields(
           children: [
             SizedBox(
               width: 320,
               child: TextField(
                 controller: _searchController,
+                focusNode: _searchFocus,
                 onChanged: (value) => setState(() => _query = value),
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.search),
+                  labelText: context.l10n.searchPeriodProgramMonth,
                   hintText: context.l10n.searchPeriodProgramMonth,
                 ),
               ),
@@ -414,10 +384,14 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
         ),
         AppTableColumn(
           title: context.l10n.target,
+          alignment: Alignment.centerRight,
+          headerTextAlign: TextAlign.right,
           cell: (period) => _text('${period.targetQuota}'),
         ),
         AppTableColumn(
           title: context.l10n.selected,
+          alignment: Alignment.centerRight,
+          headerTextAlign: TextAlign.right,
           cell: (period) =>
               _text('${_selectedCount(period)}/${period.targetQuota}'),
         ),
@@ -431,8 +405,9 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
           title: context.l10n.action,
           flex: 3,
           minWidth: 170,
-          cell: (period) => Row(
-            mainAxisSize: MainAxisSize.min,
+          cell: (period) => Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xxs,
             children: [
               TextButton(
                 onPressed: () {
@@ -499,7 +474,9 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
       await cubit.deletePeriod(period.id);
       AppToast.showSuccess(successMessage);
     } catch (e) {
-      AppToast.showFailed(e.toString());
+      if (context.mounted) {
+        _showAssistanceActionError(context, e);
+      }
     }
   }
 
@@ -546,7 +523,7 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
         child: Text(
           label,
           style: const TextStyle(
-            color: AppColors.primaryDark,
+            color: AppColors.primaryForeground,
             fontSize: 11,
             fontWeight: FontWeight.w700,
           ),
@@ -575,6 +552,60 @@ class _AssistancePeriodsPageState extends State<AssistancePeriodsPage> {
       ),
     );
   }
+}
+
+void _showAssistanceActionError(BuildContext context, Object error) {
+  if (!context.mounted) return;
+  showErrorToastWithDetails(
+    context,
+    title: context.l10n.errorSomethingWentWrong,
+    message: context.l10n.assistanceActionFailed,
+    error: error,
+  );
+}
+
+class _AssistanceLoadError extends StatelessWidget {
+  const _AssistanceLoadError({required this.error, required this.onRetry});
+  final String error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(AppSpacing.sm),
+    decoration: BoxDecoration(
+      color: AppColors.error.withValues(alpha: 0.06),
+      border: Border.all(color: AppColors.errorDark.withValues(alpha: 0.3)),
+      borderRadius: BorderRadius.circular(AppRadii.control),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.assistanceLoadFailed,
+          style: AppTypography.bodyStrongStyle,
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Wrap(
+          spacing: AppSpacing.xs,
+          children: [
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh, size: 20),
+              label: Text(context.l10n.retry),
+            ),
+            TextButton(
+              onPressed: () => showErrorDetailDialog(
+                context,
+                title: context.l10n.assistancePeriodsTitle,
+                error: error,
+              ),
+              child: Text(context.l10n.detail),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
 }
 
 class _AssistancePeriodDetail extends StatefulWidget {
@@ -642,180 +673,89 @@ class _AssistancePeriodDetailState extends State<_AssistancePeriodDetail>
       color: AppColors.surfaceSoft,
       child: Padding(
         padding: AppPageHeaderStyle.pagePadding,
-        child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+        child: AssistanceWorkspace(
+          key: PageStorageKey(widget.period.id),
+          minimumContentHeight: 480,
+          header: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            program.name,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppPageHeaderStyle.titleStyle(context),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        _statusChip(
-                          translateAssistancePeriodStatus(
-                            context,
-                            widget.period.status,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppPageHeaderStyle.titleSubtitleGap),
-                    Text(
-                      '${widget.period.label} | ${_periodDateRange(widget.period)} | '
-                      '${context.l10n.target}: ${widget.period.targetQuota}\n'
-                      '${context.l10n.minimumAttendance}: '
-                      '${widget.period.minimumAttendancePercentage.toStringAsFixed(0)}% | '
-                      '${context.l10n.calculation}: ${_calculationRange(widget.period)}',
-                      style: AppPageHeaderStyle.subtitleStyle(context),
-                    ),
-                  ],
+              AppPageHeader(
+                title: program.name,
+                subtitle:
+                    '${widget.period.label} | ${_periodDateRange(widget.period)}\n${context.l10n.minimumAttendance}: ${widget.period.minimumAttendancePercentage.toStringAsFixed(0)}% | ${context.l10n.calculation}: ${_calculationRange(widget.period)}',
+                trailing: OutlinedButton.icon(
+                  onPressed: widget.onBack,
+                  icon: const Icon(Icons.arrow_back),
+                  label: Text(context.l10n.back),
                 ),
               ),
-              const SizedBox(width: 12),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: widget.onBack,
-                    icon: const Icon(Icons.arrow_back),
-                    label: Text(context.l10n.back),
+              AppLoadingStrip(isLoading: widget.state.isLoading),
+              const SizedBox(height: AppSpacing.sm),
+              if (widget.state.error != null) ...[
+                _AssistanceLoadError(
+                  error: widget.state.error!,
+                  onRetry: () => context.read<AssistancePlanCubit>().loadModule(
+                    selectedPeriodId: widget.period.id,
+                    forceRefresh: true,
                   ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: AppPageHeaderStyle.bottomGap),
-          Row(
-            children: [
-              Expanded(
-                child: _summaryCard(
-                  context.l10n.target,
-                  '${widget.period.targetQuota}',
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: _summaryCard(context.l10n.selected, '$selected')),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _summaryCard(context.l10n.remaining, '$remaining'),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _summaryCard(
-                  context.l10n.status,
-                  translateAssistancePeriodStatus(
+                const SizedBox(height: AppSpacing.sm),
+              ],
+              AssistanceSummaryCards(
+                values: {
+                  context.l10n.target: '${widget.period.targetQuota}',
+                  context.l10n.selected: '$selected',
+                  context.l10n.remaining: '$remaining',
+                  context.l10n.status: translateAssistancePeriodStatus(
                     context,
                     widget.period.status,
                   ),
-                ),
+                },
               ),
+              const SizedBox(height: AppSpacing.sm),
+              DetailTabBar(
+                controller: _tabController,
+                tabs: [
+                  context.l10n.setup,
+                  context.l10n.targetCandidates,
+                  context.l10n.reviewApproval,
+                  context.l10n.report,
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
             ],
           ),
-          const SizedBox(height: 12),
-          DetailTabBar(
+          content: TabBarView(
             controller: _tabController,
-            tabs: [
-              context.l10n.setup,
-              context.l10n.targetCandidates,
-              context.l10n.reviewApproval,
-              context.l10n.report,
+            children: [
+              _SetupTab(period: widget.period, state: widget.state),
+              _TargetsTab(
+                period: widget.period,
+                state: widget.state,
+                canUpdate:
+                    widget.canUpdate &&
+                    !_periodLocksTargetPlan(widget.period.status),
+                canDelete:
+                    widget.canDelete &&
+                    !_periodLocksTargetPlan(widget.period.status),
+              ),
+              _ReviewApprovalTab(
+                period: widget.period,
+                state: widget.state,
+                canUpdate: widget.canUpdate,
+                canExport: widget.canExport,
+                canApprove: widget.canApprove,
+              ),
+              _RecipientsTab(
+                period: widget.period,
+                state: widget.state,
+                program: program,
+                canUpdate: widget.canUpdate,
+                canApprove: widget.canApprove,
+                canExport: widget.canExport,
+              ),
             ],
           ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _SetupTab(period: widget.period, state: widget.state),
-                _TargetsTab(
-                  period: widget.period,
-                  state: widget.state,
-                  canUpdate:
-                      widget.canUpdate &&
-                      !_periodLocksTargetPlan(widget.period.status),
-                  canDelete:
-                      widget.canDelete &&
-                      !_periodLocksTargetPlan(widget.period.status),
-                ),
-                _ReviewApprovalTab(
-                  period: widget.period,
-                  state: widget.state,
-                  canUpdate: widget.canUpdate,
-                  canExport: widget.canExport,
-                  canApprove: widget.canApprove,
-                ),
-                _RecipientsTab(
-                  period: widget.period,
-                  state: widget.state,
-                  program: program,
-                  canUpdate: widget.canUpdate,
-                  canApprove: widget.canApprove,
-                  canExport: widget.canExport,
-                ),
-              ],
-            ),
-          ),
-        ],
-        ),
-      ),
-    );
-  }
-
-  Widget _summaryCard(String title, String value) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _statusChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: AppColors.primaryDark,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -830,17 +770,16 @@ class _SetupTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return ListView(
       children: [
         DecoratedBox(
           decoration: BoxDecoration(
             color: AppColors.white,
             border: Border.all(color: AppColors.greyMedium, width: 1.4),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadii.control),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -853,8 +792,8 @@ class _SetupTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
                   children: [
                     _SetupInfoTile(
                       label: context.l10n.periodName,
@@ -905,13 +844,14 @@ class _SetupTab extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         Text(
           context.l10n.rulesUsed,
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 8),
-        Expanded(
+        SizedBox(
+          height: 400,
           child: AppTable<AssistancePeriodRule>(
             data: state.periodRules,
             pageable: Pageable(
@@ -980,69 +920,73 @@ class _SetupInfoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: wide ? 430 : 210,
-      child: Material(
-        color: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: const BorderSide(color: AppColors.border),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Row(
-              children: [
-                Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
+    return LayoutBuilder(
+      builder: (context, constraints) => SizedBox(
+        width: math.min(wide ? 432 : 208, constraints.maxWidth),
+        child: Material(
+          color: onTap == null ? AppColors.transparent : AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.control),
+            side: onTap == null
+                ? BorderSide.none
+                : const BorderSide(color: AppColors.border),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(AppRadii.control),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 16,
+                      color: AppColors.primaryForeground,
+                    ),
                   ),
-                  child: Icon(icon, size: 16, color: AppColors.primaryDark),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        value,
-                        maxLines: wide ? 2 : 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
+                        const SizedBox(height: 4),
+                        Text(
+                          value,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                if (onTap != null) ...[
-                  const SizedBox(width: 6),
-                  const Icon(
-                    Icons.chevron_right,
-                    size: 18,
-                    color: AppColors.textSecondary,
-                  ),
+                  if (onTap != null) ...[
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 18,
+                      color: AppColors.textSecondary,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -1074,52 +1018,55 @@ class _TargetsTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _sectionTitle(
-                '${context.l10n.targetCandidates}\n'
-                '${context.l10n.selected}: $selected / ${period.targetQuota}',
-              ),
-            ),
-            if (canUpdate)
-              ElevatedButton.icon(
-                onPressed: () async {
-                  final cubit = context.read<AssistancePlanCubit>();
-                  try {
-                    await cubit.generateSelectedPeriod();
-                    if (!context.mounted) return;
-                    AppToast.showSuccess(context.l10n.autoTargetsGenerated);
-                  } catch (e) {
-                    if (!context.mounted) return;
-                    showErrorToastWithDetails(
-                      context,
-                      title: context.l10n.autoTargetFailed,
-                      error: e,
-                    );
-                  }
-                },
-                icon: const Icon(Icons.auto_awesome),
-                label: Text(context.l10n.autoTarget),
-              ),
-            if (canUpdate) const SizedBox(width: 8),
-            if (canUpdate)
-              FilledButton.icon(
-                onPressed: () async {
-                  final cubit = context.read<AssistancePlanCubit>();
-                  try {
-                    await cubit.markPlanTargeted();
-                    if (!context.mounted) return;
-                    AppToast.showSuccess(context.l10n.targetPlanSaved);
-                  } catch (e) {
-                    if (!context.mounted) return;
-                    AppToast.showFailed(e.toString());
-                  }
-                },
-                icon: const Icon(Icons.save),
-                label: Text(context.l10n.saveTargetPlan),
-              ),
-          ],
+        AppPageHeader(
+          title: context.l10n.targetCandidates,
+          subtitle:
+              '${context.l10n.selected}: $selected / ${period.targetQuota}',
+          trailing: Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            children: [
+              if (canUpdate)
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final cubit = context.read<AssistancePlanCubit>();
+                    try {
+                      await cubit.generateSelectedPeriod();
+                      if (!context.mounted) return;
+                      AppToast.showSuccess(context.l10n.autoTargetsGenerated);
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      showErrorToastWithDetails(
+                        context,
+                        title: context.l10n.autoTargetFailed,
+                        error: e,
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.auto_awesome),
+                  label: Text(context.l10n.autoTarget),
+                ),
+              if (canUpdate) const SizedBox(width: 8),
+              if (canUpdate)
+                FilledButton.icon(
+                  onPressed: () async {
+                    final cubit = context.read<AssistancePlanCubit>();
+                    try {
+                      await cubit.markPlanTargeted();
+                      if (!context.mounted) return;
+                      AppToast.showSuccess(context.l10n.targetPlanSaved);
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      if (context.mounted) {
+                        _showAssistanceActionError(context, e);
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.save),
+                  label: Text(context.l10n.saveTargetPlan),
+                ),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         Expanded(
@@ -1168,7 +1115,7 @@ class _RuleTargetSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.control),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -1266,7 +1213,7 @@ class _RuleTargetSection extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             SizedBox(
               height: rows.isEmpty ? 90 : 220,
               child: rows.isEmpty
@@ -1388,7 +1335,9 @@ class _RuleTargetSection extends StatelessWidget {
       );
       AppToast.showSuccess(successMessage);
     } catch (e) {
-      AppToast.showFailed(e.toString());
+      if (context.mounted) {
+        _showAssistanceActionError(context, e);
+      }
     }
   }
 
@@ -1430,11 +1379,7 @@ class _RuleTargetSection extends StatelessWidget {
       AppToast.showSuccess(successMessage);
     } catch (e) {
       if (!context.mounted) return;
-      showErrorToastWithDetails(
-        context,
-        title: errorTitle,
-        error: e,
-      );
+      showErrorToastWithDetails(context, title: errorTitle, error: e);
     }
   }
 }
@@ -1504,10 +1449,7 @@ class _ReviewTab extends StatelessWidget {
               AppTableColumn(
                 title: context.l10n.source,
                 cell: (item) => _text(
-                  translateAssistanceSelectionMode(
-                    context,
-                    item.selectionMode,
-                  ),
+                  translateAssistanceSelectionMode(context, item.selectionMode),
                 ),
               ),
               AppTableColumn(
@@ -1585,7 +1527,9 @@ class _ReviewTab extends StatelessWidget {
                       await cubit.markPlanSubmitted();
                       AppToast.showSuccess(successMessage);
                     } catch (e) {
-                      AppToast.showFailed(e.toString());
+                      if (context.mounted) {
+                        _showAssistanceActionError(context, e);
+                      }
                     }
                   },
                   icon: const Icon(Icons.send),
@@ -1618,7 +1562,10 @@ class _ReviewApprovalTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final stacked = constraints.maxWidth < 980;
+        final stacked =
+            constraints.maxWidth /
+                (MediaQuery.textScalerOf(context).scale(12) / 12) <
+            980;
         final review = _ReviewTab(
           period: period,
           state: state,
@@ -1635,7 +1582,13 @@ class _ReviewApprovalTab extends StatelessWidget {
         if (stacked) {
           return ListView(
             children: [
-              SizedBox(height: 430, child: review),
+              SizedBox(
+                height: math.max(
+                  480,
+                  MediaQuery.textScalerOf(context).scale(360),
+                ),
+                child: review,
+              ),
               const SizedBox(height: 12),
               approval,
             ],
@@ -1665,7 +1618,7 @@ class _RejectedPeriodPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.error.withValues(alpha: 0.05),
         border: Border.all(color: AppColors.error.withValues(alpha: 0.28)),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.control),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1676,7 +1629,7 @@ class _RejectedPeriodPanel extends StatelessWidget {
             Row(
               children: [
                 const Icon(Icons.block_outlined, color: AppColors.errorDark),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Text(
                   context.l10n.statusRejected,
                   style: const TextStyle(
@@ -1696,8 +1649,8 @@ class _RejectedPeriodPanel extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
               children: [
                 _SetupInfoTile(
                   label: context.l10n.rejectedBy,
@@ -1762,10 +1715,10 @@ class _ApprovalTabState extends State<_ApprovalTab> {
             decoration: BoxDecoration(
               color: AppColors.white,
               border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadii.control),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(AppSpacing.md),
               child: Row(
                 children: [
                   Container(
@@ -1781,7 +1734,9 @@ class _ApprovalTabState extends State<_ApprovalTab> {
                       locked
                           ? Icons.verified_outlined
                           : Icons.pending_actions_outlined,
-                      color: locked ? AppColors.success : AppColors.primaryDark,
+                      color: locked
+                          ? AppColors.success
+                          : AppColors.primaryForeground,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1800,7 +1755,9 @@ class _ApprovalTabState extends State<_ApprovalTab> {
                         Text(
                           locked
                               ? approved
-                                    ? context.l10n.approvalDocumentUploadedDescription
+                                    ? context
+                                          .l10n
+                                          .approvalDocumentUploadedDescription
                                     : context.l10n.assistancePeriodLocked
                               : context.l10n.approvalDocumentUploadDescription,
                           style: const TextStyle(
@@ -1845,7 +1802,7 @@ class _ApprovalTabState extends State<_ApprovalTab> {
       child: Text(
         label,
         style: TextStyle(
-          color: locked ? AppColors.success : AppColors.primaryDark,
+          color: AppColors.textPrimary,
           fontSize: 12,
           fontWeight: FontWeight.w800,
         ),
@@ -1858,10 +1815,10 @@ class _ApprovalTabState extends State<_ApprovalTab> {
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.control),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1871,8 +1828,8 @@ class _ApprovalTabState extends State<_ApprovalTab> {
             ),
             const SizedBox(height: 12),
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
               children: [
                 _SetupInfoTile(
                   label: context.l10n.file,
@@ -1924,10 +1881,10 @@ class _ApprovalTabState extends State<_ApprovalTab> {
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.control),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1935,29 +1892,29 @@ class _ApprovalTabState extends State<_ApprovalTab> {
               context.l10n.approvalDecision,
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             InkWell(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadii.control),
               onTap: _saving || !widget.canApprove ? null : _pickFile,
               child: Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadii.control),
                 ),
                 child: Row(
                   children: [
                     Container(
                       width: 38,
-                      height: 38,
+                      constraints: const BoxConstraints(minHeight: 40),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(
                         Icons.upload_file,
-                        color: AppColors.primaryDark,
+                        color: AppColors.primaryForeground,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1975,7 +1932,7 @@ class _ApprovalTabState extends State<_ApprovalTab> {
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 4),
                           Text(
                             context.l10n.approvalDocumentFileType,
                             style: const TextStyle(
@@ -2235,13 +2192,13 @@ class _RecipientsTabState extends State<_RecipientsTab> {
           decoration: BoxDecoration(
             color: AppColors.white,
             border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadii.control),
           ),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 SizedBox(
@@ -2395,7 +2352,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: recipientTableHeight,
+          height: math.max(recipientTableHeight, 320),
           child: AppTable<AssistanceRecipient>(
             data: recipients,
             emptyMessage: widget.state.recipients.isEmpty
@@ -2517,122 +2474,50 @@ class _RecipientsTabState extends State<_RecipientsTab> {
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.control),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.l10n.reportFinalized,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        finalStatus
-                            ? context.l10n.assistancePeriodFinalizedMessage
-                            : context.l10n.distributionFinalizeInstruction,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+            AppPageHeader(
+              title: context.l10n.reportFinalized,
+              subtitle: finalStatus
+                  ? context.l10n.assistancePeriodFinalizedMessage
+                  : context.l10n.distributionFinalizeInstruction,
+              trailing: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _distributionStatusPill(
+                    translateAssistancePeriodStatus(
+                      context,
+                      widget.period.status,
+                    ),
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    _distributionStatusPill(
-                      translateAssistancePeriodStatus(
-                        context,
-                        widget.period.status,
+                  if (editable && widget.canApprove) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    FilledButton.icon(
+                      onPressed: _finalizing
+                          ? null
+                          : () => _handleFinalizeAction(
+                              _FinalizeDistributionAction.finalizeDistribution,
+                            ),
+                      icon: const Icon(Icons.task_alt, size: 20),
+                      label: Text(
+                        _finalizing
+                            ? context.l10n.finalizing
+                            : context.l10n.finalizeDistribution,
                       ),
                     ),
-                    if (editable && widget.canApprove) ...[
-                      const SizedBox(height: 8),
-                      PopupMenuButton<_FinalizeDistributionAction>(
-                        enabled: !_finalizing,
-                        tooltip: context.l10n.finalizeActions,
-                        onSelected: _handleFinalizeAction,
-                        itemBuilder: (_) => [
-                          PopupMenuItem(
-                            value: _FinalizeDistributionAction
-                                .finalizeDistribution,
-                            child: ListTile(
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                              leading: const Icon(Icons.done_all),
-                              title: Text(context.l10n.finalizeDistribution),
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: _FinalizeDistributionAction.cancelPeriod,
-                            child: ListTile(
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                              leading: const Icon(
-                                Icons.cancel_outlined,
-                                color: AppColors.error,
-                              ),
-                              title: Text(context.l10n.cancelPeriod),
-                            ),
-                          ),
-                        ],
-                        child: Container(
-                          height: 38,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.task_alt,
-                                size: 18,
-                                color: AppColors.white,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _finalizing
-                                    ? context.l10n.finalizing
-                                    : context.l10n.finalizeAction,
-                                style: const TextStyle(
-                                  color: AppColors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Icon(
-                                Icons.arrow_drop_down,
-                                size: 18,
-                                color: AppColors.white,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _SetupInfoTile(
@@ -2686,6 +2571,25 @@ class _RecipientsTabState extends State<_RecipientsTab> {
               Text(
                 context.l10n.maximumDistributionEvidence,
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+            ],
+            if (editable && widget.canApprove) ...[
+              const SizedBox(height: AppSpacing.lg),
+              const Divider(),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _finalizing
+                      ? null
+                      : () => _handleFinalizeAction(
+                          _FinalizeDistributionAction.cancelPeriod,
+                        ),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.errorDark,
+                  ),
+                  icon: const Icon(Icons.cancel_outlined, size: 20),
+                  label: Text(context.l10n.cancelPeriod),
+                ),
               ),
             ],
           ],
@@ -2752,7 +2656,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.control),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -2830,8 +2734,8 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                               ),
                               padding: const EdgeInsets.all(4),
                               constraints: const BoxConstraints.tightFor(
-                                width: 32,
-                                height: 32,
+                                width: 40,
+                                height: 40,
                               ),
                               icon: const Icon(
                                 Icons.download_outlined,
@@ -2847,8 +2751,8 @@ class _RecipientsTabState extends State<_RecipientsTab> {
                                           _deleteDistributionDocument(document),
                                 padding: const EdgeInsets.all(4),
                                 constraints: const BoxConstraints.tightFor(
-                                  width: 32,
-                                  height: 32,
+                                  width: 40,
+                                  height: 40,
                                 ),
                                 icon: const Icon(
                                   Icons.delete_outline,
@@ -2880,7 +2784,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
       child: Text(
         label,
         style: const TextStyle(
-          color: AppColors.primaryDark,
+          color: AppColors.primaryForeground,
           fontSize: 12,
           fontWeight: FontWeight.w800,
         ),
@@ -2986,9 +2890,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
       guardKey: 'mark_all_assistance_recipients_${widget.period.id}',
       builder: (dialogContext) => AlertDialog(
         title: Text(l10n.markAllRecipientsTitle),
-        content: Text(
-          l10n.markAllRecipientsMessage,
-        ),
+        content: Text(l10n.markAllRecipientsMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -3107,9 +3009,7 @@ class _RecipientsTabState extends State<_RecipientsTab> {
       guardKey: 'reset_all_assistance_recipients_${widget.period.id}',
       builder: (dialogContext) => AlertDialog(
         title: Text(l10n.resetAllRecipientStatusesTitle),
-        content: Text(
-          l10n.resetAllRecipientStatusesMessage,
-        ),
+        content: Text(l10n.resetAllRecipientStatusesMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -3161,7 +3061,9 @@ class _RecipientsTabState extends State<_RecipientsTab> {
       );
       AppToast.showSuccess(l10n.recipientStatusUpdated);
     } catch (e) {
-      AppToast.showFailed(e.toString());
+      if (mounted) {
+        _showAssistanceActionError(context, e);
+      }
     }
   }
 
@@ -3266,7 +3168,9 @@ class _RecipientsTabState extends State<_RecipientsTab> {
       AppToast.showSuccess(l10n.assistancePeriodCancelledSuccess);
       if (mounted) setState(() => _finalizing = false);
     } catch (e) {
-      AppToast.showFailed(e.toString());
+      if (mounted) {
+        _showAssistanceActionError(context, e);
+      }
       if (mounted) setState(() => _finalizing = false);
     }
   }
@@ -3487,11 +3391,7 @@ class _SelectStudentsDialogState extends State<_SelectStudentsDialog> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
-      showErrorToastWithDetails(
-        context,
-        title: errorTitle,
-        error: e,
-      );
+      showErrorToastWithDetails(context, title: errorTitle, error: e);
       if (mounted) setState(() => _saving = false);
     }
   }
@@ -3542,37 +3442,44 @@ class _CreateAssistancePeriodDialogState
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: AppColors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      child: Form(
-        key: _formKey,
-        child: StepProcessCard(
-          title: context.l10n.createAssistancePeriod,
-          continueText: context.l10n.next,
-          completedText: _saving
-              ? context.l10n.creating
-              : context.l10n.createPeriod,
-          backText: context.l10n.back,
-          onClose: _saving ? null : () => Navigator.pop(context),
-          onContinueRequested: _onStepContinue,
-          onCompleted: () {
-            _create();
-          },
-          steps: [
-            ProcessStepItem(
-              title: context.l10n.periodInfoStep,
-              content: _periodInfoStep(),
-            ),
-            ProcessStepItem(
-              title: context.l10n.rulesQuota,
-              content: _rulesStep(),
-            ),
-            ProcessStepItem(
-              title: context.l10n.reviewSetup,
-              content: _reviewStep(),
-            ),
-          ],
+    return PopScope(
+      canPop: !_saving,
+      child: Dialog(
+        backgroundColor: AppColors.transparent,
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.lg,
+        ),
+        child: Form(
+          key: _formKey,
+          child: StepProcessCard(
+            isBusy: _saving,
+            title: context.l10n.createAssistancePeriod,
+            continueText: context.l10n.next,
+            completedText: _saving
+                ? context.l10n.creating
+                : context.l10n.createPeriod,
+            backText: context.l10n.back,
+            onClose: _saving ? null : () => Navigator.pop(context),
+            onContinueRequested: _onStepContinue,
+            onCompleted: () {
+              _create();
+            },
+            steps: [
+              ProcessStepItem(
+                title: context.l10n.periodInfoStep,
+                content: _periodInfoStep(),
+              ),
+              ProcessStepItem(
+                title: context.l10n.rulesQuota,
+                content: _rulesStep(),
+              ),
+              ProcessStepItem(
+                title: context.l10n.reviewSetup,
+                content: _reviewStep(),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -3597,7 +3504,7 @@ class _CreateAssistancePeriodDialogState
           },
           onSaved: (program) => _program = program ?? _program,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         CommonFormWidgets.textField(
           label: context.l10n.periodName,
           value: _periodName,
@@ -3606,7 +3513,7 @@ class _CreateAssistancePeriodDialogState
               ? context.l10n.periodNameRequired
               : null,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
@@ -3626,7 +3533,7 @@ class _CreateAssistancePeriodDialogState
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
@@ -3680,23 +3587,34 @@ class _CreateAssistancePeriodDialogState
     DateTime value,
     ValueChanged<DateTime> onSaved,
   ) {
-    return TextFormField(
-      readOnly: true,
-      controller: TextEditingController(text: _formatDisplayDate(value)),
-      decoration: InputDecoration(
-        labelText: label,
-        suffixIcon: const Icon(Icons.calendar_month),
-      ),
-      onTap: () async {
-        final picked = await showDatePicker(
+    Future<void> pickDate() async {
+      final picked = await AppActionGuard.run<DateTime>(
+        'assistance_date_$label',
+        () => showDatePicker(
           context: context,
           initialDate: value,
           firstDate: DateTime(2020),
           lastDate: DateTime(2035),
-        );
-        if (picked == null) return;
-        setState(() => onSaved(picked));
-      },
+        ),
+      );
+      if (!mounted || picked == null) return;
+      setState(() => onSaved(picked));
+    }
+
+    return TextFormField(
+      readOnly: true,
+      key: ValueKey([label, value].join()),
+      initialValue: _formatDisplayDate(value),
+      decoration: InputDecoration(
+        labelText: label,
+        suffixIcon: IconButton(
+          tooltip: label,
+          onPressed: pickDate,
+          icon: const Icon(Icons.calendar_month),
+        ),
+      ),
+      onTap: pickDate,
+      onFieldSubmitted: (_) => pickDate(),
     );
   }
 
@@ -3707,10 +3625,9 @@ class _CreateAssistancePeriodDialogState
         ? '${context.l10n.remaining}: $_remaining'
         : '${context.l10n.overAllocated}: ${-_remaining}';
     final statusColor = _remaining == 0
-        ? AppColors.primaryDark
+        ? AppColors.primaryForeground
         : AppColors.errorDark;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return ListView(
       children: [
         Row(
           children: [
@@ -3740,7 +3657,7 @@ class _CreateAssistancePeriodDialogState
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Text(
           context.l10n.dragRowsPriority,
           style: const TextStyle(
@@ -3750,12 +3667,16 @@ class _CreateAssistancePeriodDialogState
           ),
         ),
         const SizedBox(height: 12),
-        Expanded(
+        SizedBox(
+          height: math.max(280, MediaQuery.textScalerOf(context).scale(200)),
           child: _RuleTableFrame(
             child: Column(
               children: [
                 Container(
-                  height: 42,
+                  height: math.max(
+                    48,
+                    MediaQuery.textScalerOf(context).scale(32),
+                  ),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: const BoxDecoration(
                     color: AppColors.surface,
@@ -3821,9 +3742,8 @@ class _CreateAssistancePeriodDialogState
                       );
                     },
                     itemCount: _rules.length,
-                    onReorder: (oldIndex, newIndex) {
+                    onReorderItem: (oldIndex, newIndex) {
                       setState(() {
-                        if (newIndex > oldIndex) newIndex--;
                         final item = _rules.removeAt(oldIndex);
                         _rules.insert(newIndex, item);
                       });
@@ -3832,7 +3752,10 @@ class _CreateAssistancePeriodDialogState
                       final rule = _rules[index];
                       return Container(
                         key: ValueKey(rule.id),
-                        height: 56,
+                        height: math.max(
+                          64,
+                          MediaQuery.textScalerOf(context).scale(40),
+                        ),
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
                           color: AppColors.white,
@@ -3855,8 +3778,8 @@ class _CreateAssistancePeriodDialogState
                                   child: Tooltip(
                                     message: context.l10n.dragToReorder,
                                     child: Container(
-                                      width: 28,
-                                      height: 28,
+                                      width: 40,
+                                      height: 40,
                                       alignment: Alignment.center,
                                       decoration: BoxDecoration(
                                         color: AppColors.surface,
@@ -3967,10 +3890,10 @@ class _CreateAssistancePeriodDialogState
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.control),
       ),
-      child: RichText(
-        text: TextSpan(
+      child: Text.rich(
+        TextSpan(
           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           children: [
             TextSpan(text: '$label: '),
@@ -3991,11 +3914,10 @@ class _CreateAssistancePeriodDialogState
         ? context.l10n.remainingCount(_remaining)
         : context.l10n.overAllocatedCount(-_remaining);
     final statusColor = _remaining == 0
-        ? AppColors.primaryDark
+        ? AppColors.primaryForeground
         : AppColors.errorDark;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return ListView(
       children: [
         Wrap(
           spacing: 8,
@@ -4010,7 +3932,10 @@ class _CreateAssistancePeriodDialogState
               '${_minimumAttendance.toStringAsFixed(0)}%',
             ),
             _reviewBadge(context.l10n.calculation, _calculationRangeDraft()),
-            _reviewBadge(context.l10n.allocation, '$_allocated / $_targetQuota'),
+            _reviewBadge(
+              context.l10n.allocation,
+              '$_allocated / $_targetQuota',
+            ),
             _reviewBadge(
               context.l10n.status,
               statusText,
@@ -4018,18 +3943,22 @@ class _CreateAssistancePeriodDialogState
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         Text(
           context.l10n.rules,
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 8),
-        Expanded(
+        SizedBox(
+          height: math.max(280, MediaQuery.textScalerOf(context).scale(200)),
           child: _RuleTableFrame(
             child: Column(
               children: [
                 Container(
-                  height: 42,
+                  height: math.max(
+                    48,
+                    MediaQuery.textScalerOf(context).scale(32),
+                  ),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: const BoxDecoration(
                     color: AppColors.surface,
@@ -4072,7 +4001,10 @@ class _CreateAssistancePeriodDialogState
                     itemBuilder: (context, index) {
                       final rule = _rules[index];
                       return Container(
-                        height: 48,
+                        height: math.max(
+                          64,
+                          MediaQuery.textScalerOf(context).scale(40),
+                        ),
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
                           border: Border(
@@ -4152,7 +4084,7 @@ class _CreateAssistancePeriodDialogState
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.control),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4166,7 +4098,7 @@ class _CreateAssistancePeriodDialogState
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 4),
           Text(
             value,
             maxLines: 2,
@@ -4200,7 +4132,7 @@ class _CreateAssistancePeriodDialogState
         child: Text(
           translateAssistanceSelectionMode(context, mode),
           style: TextStyle(
-            color: auto ? AppColors.primaryDark : AppColors.textSecondary,
+            color: auto ? AppColors.primaryForeground : AppColors.textSecondary,
             fontSize: 11,
             fontWeight: FontWeight.w800,
           ),
@@ -4297,11 +4229,7 @@ class _CreateAssistancePeriodDialogState
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        showErrorToastWithDetails(
-          context,
-          title: errorTitle,
-          error: e,
-        );
+        showErrorToastWithDetails(context, title: errorTitle, error: e);
       }
       if (mounted) setState(() => _saving = false);
     }
@@ -4337,9 +4265,7 @@ class _CreateAssistancePeriodDialogState
                             }
                           });
                         },
-                        title: Text(
-                          translateAssistanceRuleType(context, type),
-                        ),
+                        title: Text(translateAssistanceRuleType(context, type)),
                         subtitle: Text(
                           translateAssistanceSelectionMode(
                             context,
@@ -4410,10 +4336,7 @@ Future<void> _downloadStoredDocument({
   final location = await getSaveLocation(
     suggestedName: generatedFileName(fileName),
     acceptedTypeGroups: [
-      XTypeGroup(
-        label: fileLabel,
-        extensions: [extension],
-      ),
+      XTypeGroup(label: fileLabel, extensions: [extension]),
     ],
   );
   if (location == null) return;
@@ -4450,9 +4373,7 @@ Future<void> _exportPlan({
   );
   if (location == null) return;
 
-  final bytes = isPdf
-      ? _simplePdfBytes(lines)
-      : utf8.encode(html);
+  final bytes = isPdf ? _simplePdfBytes(lines) : utf8.encode(html);
   await io.File(location.path).writeAsBytes(bytes);
   if (!context.mounted) return;
   try {
@@ -4492,9 +4413,7 @@ Future<void> _exportRecipients({
   );
   if (location == null) return;
 
-  final bytes = isPdf
-      ? _simplePdfBytes(lines)
-      : utf8.encode(html);
+  final bytes = isPdf ? _simplePdfBytes(lines) : utf8.encode(html);
   await io.File(location.path).writeAsBytes(bytes);
   AppToast.showSuccess(exportedMessage);
 }

@@ -5257,4 +5257,12 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get dashboardLoadFailed =>
       'Dashboard belum berhasil dimuat. Coba lagi.';
+
+  @override
+  String get assistanceLoadFailed =>
+      'Periode bantuan belum berhasil dimuat. Coba lagi.';
+
+  @override
+  String get assistanceActionFailed =>
+      'Tindakan belum berhasil. Lihat detail lalu coba lagi.';
 }

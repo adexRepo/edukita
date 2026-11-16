@@ -93,6 +93,7 @@ class AppRadii {
 
 class AppTypography {
   AppTypography._();
+  static const String fontFamily = 'Poppins';
 
   static const double pageTitle = 18;
   static const double dialogTitle = 16;
@@ -104,6 +105,7 @@ class AppTypography {
   static const double tableHeader = 11;
 
   static const TextStyle pageTitleStyle = TextStyle(
+    fontFamily: fontFamily,
     color: AppColors.textPrimary,
     fontSize: pageTitle,
     fontWeight: FontWeight.w700,
@@ -111,6 +113,7 @@ class AppTypography {
   );
 
   static const TextStyle sectionTitleStyle = TextStyle(
+    fontFamily: fontFamily,
     color: AppColors.textPrimary,
     fontSize: sectionTitle,
     fontWeight: FontWeight.w700,
@@ -118,6 +121,7 @@ class AppTypography {
   );
 
   static const TextStyle bodyStyle = TextStyle(
+    fontFamily: fontFamily,
     color: AppColors.textPrimary,
     fontSize: body,
     fontWeight: FontWeight.w400,
@@ -125,6 +129,7 @@ class AppTypography {
   );
 
   static const TextStyle bodyStrongStyle = TextStyle(
+    fontFamily: fontFamily,
     color: AppColors.textPrimary,
     fontSize: body,
     fontWeight: FontWeight.w700,
@@ -132,6 +137,7 @@ class AppTypography {
   );
 
   static const TextStyle secondaryStyle = TextStyle(
+    fontFamily: fontFamily,
     color: AppColors.textSecondary,
     fontSize: bodySmall,
     fontWeight: FontWeight.w500,
@@ -139,6 +145,7 @@ class AppTypography {
   );
 
   static const TextStyle captionStyle = TextStyle(
+    fontFamily: fontFamily,
     color: AppColors.textSecondary,
     fontSize: caption,
     fontWeight: FontWeight.w500,
@@ -146,6 +153,7 @@ class AppTypography {
   );
 
   static const TextStyle numericStyle = TextStyle(
+    fontFamily: fontFamily,
     color: AppColors.textPrimary,
     fontWeight: FontWeight.w600,
     fontFeatures: [FontFeature.tabularFigures()],
@@ -222,6 +230,7 @@ class AppDropdownStyle {
   static const double menuMaxWidth = 560;
 
   static const TextStyle textStyle = TextStyle(
+    fontFamily: AppTypography.fontFamily,
     color: AppColors.textPrimary,
     fontSize: AppTypography.body,
     fontWeight: FontWeight.w500,
@@ -408,7 +417,7 @@ class AppDropdownButtonFormField<T> extends StatelessWidget {
                         field.didChange(value);
                         onChanged!(value);
                       },
-                style: style,
+                style: style ?? AppDropdownStyle.textStyle,
                 icon: icon,
                 iconDisabledColor: iconDisabledColor,
                 iconEnabledColor: iconEnabledColor,
@@ -615,7 +624,7 @@ class AppTheme {
 
   static final ThemeData theme = ThemeData(
     useMaterial3: true,
-    fontFamily: 'Poppins',
+    fontFamily: AppTypography.fontFamily,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: AppColors.background,
     canvasColor: AppColors.background,

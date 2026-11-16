@@ -9719,6 +9719,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unable to load the dashboard. Try again.'**
   String get dashboardLoadFailed;
+
+  /// No description provided for @assistanceLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to load assistance periods. Try again.'**
+  String get assistanceLoadFailed;
+
+  /// No description provided for @assistanceActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The action could not be completed. View the details and try again.'**
+  String get assistanceActionFailed;
 }
 
 class _AppLocalizationsDelegate

@@ -5246,4 +5246,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dashboardLoadFailed => 'Unable to load the dashboard. Try again.';
+
+  @override
+  String get assistanceLoadFailed =>
+      'Unable to load assistance periods. Try again.';
+
+  @override
+  String get assistanceActionFailed =>
+      'The action could not be completed. View the details and try again.';
 }
