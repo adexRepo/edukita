@@ -5257,4 +5257,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scheduleLoadFailed => 'Unable to load schedules. Try again.';
+
+  @override
+  String get teachingReportOperationFailed =>
+      'The operation could not be completed. Try again. Your input has been kept.';
+
+  @override
+  String teachingRatingValue(String value) {
+    return 'Rating $value of 5';
+  }
+
+  @override
+  String get studentsLoadFailed => 'Unable to refresh student data. Try again.';
+
+  @override
+  String get studentsSearchNameHint => 'Search student name';
+
+  @override
+  String get studentSaveFailed =>
+      'Unable to save the student. Try again. Your input has been kept.';
 }

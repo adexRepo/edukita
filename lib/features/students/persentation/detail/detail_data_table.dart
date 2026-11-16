@@ -2,84 +2,135 @@ import 'package:edukita/features/students/persentation/detail/detail_empty_secti
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
-class DetailDataTable extends StatelessWidget {
+class DetailDataTable extends StatefulWidget {
   const DetailDataTable({
     super.key,
     required this.columns,
     required this.rows,
     required this.emptyText,
+    this.numericColumns = const {},
   });
 
   final List<String> columns;
   final List<List<String>> rows;
   final String emptyText;
+  final Set<int> numericColumns;
+
+  @override
+  State<DetailDataTable> createState() => _DetailDataTableState();
+}
+
+class _DetailDataTableState extends State<DetailDataTable> {
+  final _horizontal = ScrollController();
+  List<String> get columns => widget.columns;
+  List<List<String>> get rows => widget.rows;
+  String get emptyText => widget.emptyText;
+  @override
+  void dispose() {
+    _horizontal.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (rows.isEmpty) {
-      return DetailEmptySectionText(emptyText);
-    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadii.control),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(AppRadii.control),
+              color: AppColors.white,
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final minTableWidth =
+                    columns.length *
+                    160.0 *
+                    (MediaQuery.textScalerOf(context).scale(12) / 12);
+                final tableWidth = constraints.maxWidth > minTableWidth
+                    ? constraints.maxWidth
+                    : minTableWidth;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(10),
-          color: AppColors.white,
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final minTableWidth = columns.length * 132.0;
-            final tableWidth = constraints.maxWidth > minTableWidth
-                ? constraints.maxWidth
-                : minTableWidth;
-
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: tableWidth,
-                child: Table(
-                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                  border: const TableBorder(
-                    horizontalInside: BorderSide(color: AppColors.divider),
-                    verticalInside: BorderSide(color: AppColors.divider),
-                  ),
-                  columnWidths: {
-                    for (var index = 0; index < columns.length; index++)
-                      index: const FlexColumnWidth(),
-                  },
-                  children: [
-                    TableRow(
-                      decoration: const BoxDecoration(
-                        color: AppColors.surfaceSoft,
-                      ),
-                      children: columns.map(_headerCell).toList(),
-                    ),
-                    for (final row in rows)
-                      TableRow(
-                        children: List.generate(
-                          columns.length,
-                          (index) =>
-                              _bodyCell(index < row.length ? row[index] : '-'),
+                return Scrollbar(
+                  controller: _horizontal,
+                  notificationPredicate: (notification) =>
+                      notification.metrics.axis == Axis.horizontal,
+                  child: SingleChildScrollView(
+                    controller: _horizontal,
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: tableWidth,
+                      child: Table(
+                        defaultVerticalAlignment:
+                            TableCellVerticalAlignment.middle,
+                        border: const TableBorder(
+                          horizontalInside: BorderSide(
+                            color: AppColors.divider,
+                          ),
+                          verticalInside: BorderSide(color: AppColors.divider),
                         ),
+                        columnWidths: {
+                          for (var index = 0; index < columns.length; index++)
+                            index: const FlexColumnWidth(),
+                        },
+                        children: [
+                          TableRow(
+                            decoration: const BoxDecoration(
+                              color: AppColors.surfaceSoft,
+                            ),
+                            children: [
+                              for (final (index, column) in columns.indexed)
+                                _headerCell(
+                                  column,
+                                  numeric: widget.numericColumns.contains(
+                                    index,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          for (final row in rows)
+                            TableRow(
+                              children: List.generate(
+                                columns.length,
+                                (index) => _bodyCell(
+                                  index < row.length ? row[index] : '-',
+                                  numeric: widget.numericColumns.contains(
+                                    index,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                  ],
-                ),
-              ),
-            );
-          },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
         ),
-      ),
+        if (rows.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: DetailEmptySectionText(emptyText),
+          ),
+      ],
     );
   }
 
-  Widget _headerCell(String value) {
+  Widget _headerCell(String value, {bool numeric = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.sm,
+      ),
       child: Text(
         value,
-        overflow: TextOverflow.ellipsis,
+        textAlign: numeric ? TextAlign.right : TextAlign.left,
+
         style: const TextStyle(
           color: AppColors.textSecondary,
           fontSize: 11,
@@ -89,17 +140,19 @@ class DetailDataTable extends StatelessWidget {
     );
   }
 
-  Widget _bodyCell(String value) {
+  Widget _bodyCell(String value, {bool numeric = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.sm,
+      ),
       child: Text(
         value,
-        overflow: TextOverflow.ellipsis,
-        maxLines: 2,
-        style: const TextStyle(
+
+        style: AppTypography.numericStyle.copyWith(
           color: AppColors.textPrimary,
           fontSize: 12,
-          height: 1.25,
+          height: 1.45,
         ),
       ),
     );

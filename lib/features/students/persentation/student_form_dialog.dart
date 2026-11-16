@@ -8,9 +8,9 @@ import 'package:edukita/features/students/persentation/student_form_card.dart';
 import 'package:edukita/features/teaching_locations/data/teaching_location_model.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:edukita/widgets/app_shad_theme.dart';
 
-class StudentFormDialog extends StatelessWidget {
+class StudentFormDialog extends StatefulWidget {
   const StudentFormDialog({
     super.key,
     required this.availableSchools,
@@ -35,58 +35,75 @@ class StudentFormDialog extends StatelessWidget {
   final StudentSiblingLookupCallback? onSiblingLookup;
 
   @override
-  Widget build(BuildContext context) {
-    final isEditing = initialStudent != null;
-    final dialogWidth = (MediaQuery.sizeOf(context).width - 80)
-        .clamp(360.0, 920.0)
-        .toDouble();
+  State<StudentFormDialog> createState() => _StudentFormDialogState();
+}
 
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
-      child: ShadCard(
-        width: dialogWidth,
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                isEditing ? context.l10n.editStudent : context.l10n.addStudent,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            ShadButton.ghost(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Icon(Icons.close, size: 18),
-            ),
-          ],
+class _StudentFormDialogState extends State<StudentFormDialog> {
+  bool _saving = false;
+  @override
+  Widget build(BuildContext context) => AppShadTheme(
+    child: PopScope(
+      canPop: !_saving,
+      child: Dialog(
+        backgroundColor: AppColors.surfaceElevated,
+        insetPadding: const EdgeInsets.all(AppSpacing.lg),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.dialog),
         ),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: (MediaQuery.sizeOf(context).height - 170)
-                .clamp(360.0, 760.0)
-                .toDouble(),
+            maxWidth: 720,
+            maxHeight: MediaQuery.sizeOf(context).height - AppSpacing.xxl,
           ),
-          child: SingleChildScrollView(
-            child: StudentFormCard(
-              availableSchools: availableSchools,
-              availableClasses: availableClasses,
-              availableTeachingLocations: availableTeachingLocations,
-              generatedStudentNo: generatedStudentNo,
-              initialStudent: initialStudent,
-              initialGuardians: initialGuardians,
-              initialAdvancedData: initialAdvancedData,
-              isEditing: isEditing,
-              onSubmit: onSubmit,
-              onSiblingLookup: onSiblingLookup,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 16, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.initialStudent == null
+                            ? context.l10n.addStudent
+                            : context.l10n.editStudent,
+                        style: AppTypography.sectionTitleStyle,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: context.l10n.buttonClose,
+                      onPressed: _saving
+                          ? null
+                          : () => Navigator.of(context).maybePop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: StudentFormCard(
+                    availableSchools: widget.availableSchools,
+                    availableClasses: widget.availableClasses,
+                    availableTeachingLocations:
+                        widget.availableTeachingLocations,
+                    generatedStudentNo: widget.generatedStudentNo,
+                    initialStudent: widget.initialStudent,
+                    initialGuardians: widget.initialGuardians,
+                    initialAdvancedData: widget.initialAdvancedData,
+                    isEditing: widget.initialStudent != null,
+                    onSubmit: widget.onSubmit,
+                    onSiblingLookup: widget.onSiblingLookup,
+                    onSavingChanged: (value) {
+                      if (mounted) setState(() => _saving = value);
+                    },
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
 }

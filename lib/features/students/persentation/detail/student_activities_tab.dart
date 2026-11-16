@@ -17,6 +17,7 @@ class StudentActivitiesTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DetailTabScroll(
+      key: PageStorageKey('student_activities_tab.dart-${student.id}'),
       children: [
         FutureBuilder<List<StudentActivityFormData>>(
           future: context.read<StudentDetailCubit>().loadActivities(student.id),

@@ -9737,6 +9737,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unable to load schedules. Try again.'**
   String get scheduleLoadFailed;
+
+  /// No description provided for @teachingReportOperationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The operation could not be completed. Try again. Your input has been kept.'**
+  String get teachingReportOperationFailed;
+
+  /// No description provided for @teachingRatingValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating {value} of 5'**
+  String teachingRatingValue(String value);
+
+  /// No description provided for @studentsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to refresh student data. Try again.'**
+  String get studentsLoadFailed;
+
+  /// No description provided for @studentsSearchNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search student name'**
+  String get studentsSearchNameHint;
+
+  /// No description provided for @studentSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to save the student. Try again. Your input has been kept.'**
+  String get studentSaveFailed;
 }
 
 class _AppLocalizationsDelegate

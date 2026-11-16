@@ -18,6 +18,7 @@ class StudentFamilyTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DetailTabScroll(
+      key: PageStorageKey('student_family_tab.dart-${student.id}'),
       children: [
         _GuardianTable(studentId: student.id),
         _HouseholdProfileSection(studentId: student.id),
@@ -35,7 +36,9 @@ class _HouseholdProfileSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<StudentAdvancedFormData>(
-      future: context.read<StudentDetailCubit>().loadAdvancedFormData(studentId),
+      future: context.read<StudentDetailCubit>().loadAdvancedFormData(
+        studentId,
+      ),
       builder: (context, snapshot) {
         final household =
             snapshot.data?.householdProfile ??
@@ -59,9 +62,15 @@ class _HouseholdProfileSection extends StatelessWidget {
               _formatCurrency(household.dailySchoolTransportCost),
             ],
           if (household.fatherIncome != null)
-            [context.l10n.fatherIncome, _formatCurrency(household.fatherIncome)],
+            [
+              context.l10n.fatherIncome,
+              _formatCurrency(household.fatherIncome),
+            ],
           if (household.motherIncome != null)
-            [context.l10n.motherIncome, _formatCurrency(household.motherIncome)],
+            [
+              context.l10n.motherIncome,
+              _formatCurrency(household.motherIncome),
+            ],
           if (household.educationArrears != null)
             [
               context.l10n.educationArrears,
@@ -168,6 +177,7 @@ class _GuardianTable extends StatelessWidget {
               DetailEmptySectionText(context.l10n.loadingGuardianInformation)
             else
               DetailDataTable(
+                numericColumns: const {6},
                 columns: [
                   context.l10n.relationship,
                   context.l10n.primary,
@@ -183,9 +193,7 @@ class _GuardianTable extends StatelessWidget {
                     .map(
                       (guardian) => [
                         _relationshipLabel(context, guardian.relationship),
-                        guardian.isPrimary
-                            ? context.l10n.yes
-                            : context.l10n.no,
+                        guardian.isPrimary ? context.l10n.yes : context.l10n.no,
                         _textOrDash(guardian.fullName),
                         _textOrDash(guardian.mobileNo),
                         _textOrDash(guardian.email),

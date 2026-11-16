@@ -5268,4 +5268,24 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get scheduleLoadFailed => 'Jadwal belum berhasil dimuat. Coba lagi.';
+
+  @override
+  String get teachingReportOperationFailed =>
+      'Tindakan belum berhasil. Coba lagi. Input Anda tetap disimpan.';
+
+  @override
+  String teachingRatingValue(String value) {
+    return 'Penilaian $value dari 5';
+  }
+
+  @override
+  String get studentsLoadFailed =>
+      'Data siswa belum dapat diperbarui. Coba lagi.';
+
+  @override
+  String get studentsSearchNameHint => 'Cari nama siswa';
+
+  @override
+  String get studentSaveFailed =>
+      'Siswa belum dapat disimpan. Coba lagi. Input Anda tetap disimpan.';
 }

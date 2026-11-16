@@ -32,9 +32,9 @@ class DetailMetricCard extends StatelessWidget {
               color: AppColors.primary.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: AppColors.primaryDark, size: 18),
+            child: Icon(icon, color: AppColors.primaryForeground, size: 18),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,18 +42,15 @@ class DetailMetricCard extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 10.5,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   value,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 2,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 13.5,

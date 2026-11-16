@@ -345,10 +345,7 @@ class _ExamScoreGroupTable extends StatelessWidget {
     return labels.join('\n');
   }
 
-  String _scopeSemesterText(
-    BuildContext context,
-    StudentExamScoreGroup group,
-  ) {
+  String _scopeSemesterText(BuildContext context, StudentExamScoreGroup group) {
     final scope = group.isSchool
         ? context.l10n.scopeSchool
         : context.l10n.scopeInternal;
@@ -530,7 +527,7 @@ class _ExamScoreActionCell extends StatelessWidget {
               child: IconButton(
                 onPressed: () => onEdit(group),
                 icon: const Icon(Icons.edit_outlined, size: 18),
-                color: AppColors.primaryDark,
+                color: AppColors.primaryForeground,
                 visualDensity: VisualDensity.compact,
               ),
             ),

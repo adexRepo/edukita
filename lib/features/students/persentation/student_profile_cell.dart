@@ -13,50 +13,56 @@ class StudentProfileCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final photoPath = student.photoPath?.trim();
 
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 15,
-          backgroundColor: AppColors.primaryLight.withValues(alpha: 0.22),
-          child: photoPath == null || photoPath.isEmpty
-              ? _initialsText()
-              : ClipOval(
-                  child: Image.file(
-                    io.File(photoPath),
-                    width: 30,
-                    height: 30,
-                    cacheWidth: 64,
-                    cacheHeight: 64,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        _initialsText(),
+    return Tooltip(
+      message: '${student.fullName} · ${student.studentNo}',
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 15,
+            backgroundColor: AppColors.primaryLight.withValues(alpha: 0.22),
+            child: photoPath == null || photoPath.isEmpty
+                ? _initialsText()
+                : ClipOval(
+                    child: Image.file(
+                      io.File(photoPath),
+                      width: 30,
+                      height: 30,
+                      cacheWidth: 64,
+                      cacheHeight: 64,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _initialsText(),
+                    ),
+                  ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  student.fullName,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                student.fullName,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                const SizedBox(height: 1),
+                Text(
+                  _buildSubtitle(student),
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.grey600,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                _buildSubtitle(student),
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 10, color: AppColors.grey600),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

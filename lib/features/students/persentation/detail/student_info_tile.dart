@@ -1,5 +1,4 @@
 import 'dart:io' as io;
-import 'dart:math' as math;
 
 import 'package:edukita/core/helper/image_helper.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
@@ -24,8 +23,6 @@ class StudentInfoTile extends StatefulWidget {
 }
 
 class _StudentInfoTileState extends State<StudentInfoTile> {
-  bool _photoHovered = false;
-
   Future<void> _downloadPhoto(BuildContext context) async {
     final unavailableMessage = context.l10n.studentPhotoUnavailable;
     final notFoundMessage = context.l10n.studentPhotoNotFound;
@@ -93,16 +90,23 @@ class _StudentInfoTileState extends State<StudentInfoTile> {
 
   Widget _duafaStatusBadge(BuildContext context) {
     return FutureBuilder<List<StudentGuardianFormData>>(
-      future: context.read<StudentDetailCubit>().loadGuardians(widget.student.id),
+      future: context.read<StudentDetailCubit>().loadGuardians(
+        widget.student.id,
+      ),
       initialData: const [],
       builder: (context, snapshot) {
         final status = snapshot.hasError
-            ? context.l10n.studentStatusDhuafa
+            ? context.l10n.failed
+            : snapshot.connectionState == ConnectionState.waiting
+            ? context.l10n.loadingStudentSnapshot
             : _duafaStatus(context, snapshot.data ?? const []);
 
         return Container(
           constraints: const BoxConstraints(minWidth: 58),
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xs,
+            vertical: AppSpacing.xxs,
+          ),
           decoration: BoxDecoration(
             color: AppColors.warning.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(999),
@@ -113,7 +117,7 @@ class _StudentInfoTileState extends State<StudentInfoTile> {
           child: Text(
             status,
             style: const TextStyle(
-              color: AppColors.warning,
+              color: AppColors.textPrimary,
               fontSize: 10,
               fontWeight: FontWeight.w700,
             ),
@@ -125,154 +129,63 @@ class _StudentInfoTileState extends State<StudentInfoTile> {
 
   @override
   Widget build(BuildContext context) {
-    final photoPath = widget.student.photoPath?.trim();
-    final canDownloadPhoto = photoPath != null && photoPath.isNotEmpty;
-    final locationName = widget.student.teachingLocationName?.trim();
-    final hasLocation =
-        locationName != null && locationName.isNotEmpty && locationName != '-';
-
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final photoSize = math
-              .min(constraints.maxWidth * 0.55, constraints.maxHeight * 0.58)
-              .clamp(56.0, 120.0)
-              .toDouble();
-
-          return Stack(
-            children: [
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Tooltip(
-                      message: context.l10n.download,
-                      child: MouseRegion(
-                        cursor: canDownloadPhoto
-                            ? SystemMouseCursors.click
-                            : MouseCursor.defer,
-                        onEnter: (_) => setState(() => _photoHovered = true),
-                        onExit: (_) => setState(() => _photoHovered = false),
-                        child: GestureDetector(
-                          onTap: canDownloadPhoto
-                              ? () => _downloadPhoto(context)
-                              : null,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(photoSize / 2),
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Image(
-                                  image: getImageByLocalPath(
-                                    widget.student.photoPath,
-                                    cacheWidth: (photoSize * 2).round(),
-                                    cacheHeight: (photoSize * 2).round(),
-                                  ),
-                                  width: photoSize,
-                                  height: photoSize,
-                                  fit: BoxFit.cover,
-                                ),
-                                AnimatedOpacity(
-                                  duration: const Duration(milliseconds: 120),
-                                  opacity: canDownloadPhoto && _photoHovered
-                                      ? 1
-                                      : 0,
-                                  child: Container(
-                                    width: photoSize,
-                                    height: photoSize,
-                                    color: AppColors.black.withValues(
-                                      alpha: 0.34,
-                                    ),
-                                    child: const Icon(
-                                      Icons.download_outlined,
-                                      color: AppColors.white,
-                                      size: 28,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          widget.student.nickName,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.student.fullName,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.grey600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${widget.student.age} ${context.l10n.years}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.grey600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+    final canDownloadPhoto =
+        widget.student.photoPath?.trim().isNotEmpty == true;
+    final location = widget.student.teachingLocationName?.trim();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Wrap(
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            _duafaStatusBadge(context),
+            if (location != null && location.isNotEmpty && location != '-')
+              Text(location, style: AppTypography.secondaryStyle),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Container(
+          width: 120,
+          height: 120,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.border),
+          ),
+          child: ClipOval(
+            child: Image(
+              image: getImageByLocalPath(
+                widget.student.photoPath,
+                cacheWidth: 240,
+                cacheHeight: 240,
               ),
-              Positioned(left: 0, top: 0, child: _duafaStatusBadge(context)),
-              if (hasLocation)
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Tooltip(
-                    message: locationName,
-                    child: Container(
-                      constraints: const BoxConstraints(maxWidth: 128),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.26),
-                        ),
-                      ),
-                      child: Text(
-                        locationName,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.primaryDark,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          );
-        },
-      ),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          widget.student.fullName,
+          textAlign: TextAlign.center,
+          style: AppTypography.bodyStrongStyle,
+        ),
+        if (widget.student.nickName.isNotEmpty)
+          Text(
+            widget.student.nickName,
+            textAlign: TextAlign.center,
+            style: AppTypography.secondaryStyle,
+          ),
+        Text(
+          '${widget.student.age} ${context.l10n.years}',
+          style: AppTypography.numericStyle,
+        ),
+        OutlinedButton.icon(
+          onPressed: canDownloadPhoto ? () => _downloadPhoto(context) : null,
+          icon: const Icon(Icons.download_outlined, size: 20),
+          label: Text(context.l10n.download),
+        ),
+      ],
     );
   }
 }

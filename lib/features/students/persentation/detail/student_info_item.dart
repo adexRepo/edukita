@@ -2,11 +2,7 @@ import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class StudentInfoItem extends StatelessWidget {
-  const StudentInfoItem({
-    super.key,
-    required this.label,
-    required this.value,
-  });
+  const StudentInfoItem({super.key, required this.label, required this.value});
 
   final String label;
   final String value;
@@ -15,25 +11,25 @@ class StudentInfoItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(minHeight: 50),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             label,
-            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: AppSpacing.xxs),
           Text(
             value,
-            overflow: TextOverflow.ellipsis,
-            maxLines: 2,
             style: const TextStyle(
               color: AppColors.textPrimary,
               fontSize: 12,

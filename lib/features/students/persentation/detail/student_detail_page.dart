@@ -1,3 +1,6 @@
+import 'package:edukita/widgets/app_shad_theme.dart';
+import 'package:edukita/widgets/app_loading.dart';
+import 'package:edukita/widgets/app_error_dialog.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
@@ -74,68 +77,98 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.surfaceSoft,
-      appBar: AppBar(
-        leadingWidth: 40,
-        leading: const DetailAppBarBackButton(fallbackRoute: '/students'),
-        title: BlocBuilder<StudentDetailCubit, FeatureState<StudentDetailData>>(
+    return AppShadTheme(
+      child: Scaffold(
+        backgroundColor: AppColors.surfaceSoft,
+        appBar: AppBar(
+          leadingWidth: 40,
+          leading: const DetailAppBarBackButton(fallbackRoute: '/students'),
+          title:
+              BlocBuilder<StudentDetailCubit, FeatureState<StudentDetailData>>(
+                builder: (context, state) {
+                  final title = _authorizationLoaded && _canViewStudents
+                      ? state.data?.fullName ?? context.l10n.studentDetail
+                      : context.l10n.studentDetail;
+                  return Tooltip(
+                    message: title,
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                },
+              ),
+        ),
+        body: BlocBuilder<StudentDetailCubit, FeatureState<StudentDetailData>>(
           builder: (context, state) {
-            return DetailBreadcrumbs(
-              items: [
-                DetailBreadcrumbItem(
-                  label: context.l10n.menuStudents,
-                  route: '/students',
+            if (!_authorizationLoaded) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (!_canViewStudents) {
+              return Center(
+                child: Text(
+                  context.l10n.studentAccessDenied,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                DetailBreadcrumbItem(
-                  label: state.data?.fullName ?? context.l10n.studentDetail,
+              );
+            }
+
+            if (state.loading && state.data == null) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (!state.loading && state.data == null) {
+              return Center(
+                child: Wrap(
+                  spacing: AppSpacing.sm,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(context.l10n.studentsLoadFailed),
+                    TextButton(
+                      onPressed: () => context.read<StudentDetailCubit>().init(
+                        widget.studentId,
+                      ),
+                      child: Text(context.l10n.retry),
+                    ),
+                    TextButton(
+                      onPressed: () => showErrorDetailDialog(
+                        context,
+                        title: context.l10n.studentDetail,
+                        error: state.message ?? context.l10n.failed,
+                      ),
+                      child: Text(context.l10n.detail),
+                    ),
+                  ],
                 ),
+              );
+            }
+
+            return Column(
+              children: [
+                AppLoadingStrip(isLoading: state.loading),
+                Expanded(child: _buildContent(state.data!)),
               ],
             );
           },
         ),
-      ),
-      body: BlocBuilder<StudentDetailCubit, FeatureState<StudentDetailData>>(
-        builder: (context, state) {
-          if (!_authorizationLoaded) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (!_canViewStudents) {
-            return Center(
-              child: Text(
-                context.l10n.studentAccessDenied,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            );
-          }
-
-          if (state.loading && state.data == null) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (!state.loading && state.data == null) {
-            return Center(child: Text(state.message ?? context.l10n.failed));
-          }
-
-          return _buildContent(state.data!);
-        },
       ),
     );
   }
 
   Widget _buildContent(StudentDetailData student) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       child: DefaultTabController(
         initialIndex: 0,
         length: 7,
         child: Column(
           children: <Widget>[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.sm),
             DetailTabBar(
               filledStyle: true,
               tabs: [

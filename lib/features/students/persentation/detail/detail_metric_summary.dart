@@ -13,7 +13,10 @@ class DetailMetricSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 680;
+        final isNarrow =
+            constraints.maxWidth /
+                (MediaQuery.textScalerOf(context).scale(12) / 12) <
+            1000;
         final cards = [
           DetailMetricCard(
             label: context.l10n.className,

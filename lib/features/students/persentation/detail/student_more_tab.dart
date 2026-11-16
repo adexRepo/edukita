@@ -26,6 +26,7 @@ class StudentMoreTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DetailTabScroll(
+      key: PageStorageKey('student_more_tab.dart-${student.id}'),
       children: [
         _RegistrationFormSection(studentId: student.id),
         _GeneratedReportsSection(studentId: student.id),
@@ -79,7 +80,9 @@ class _RegistrationFormSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<StudentAdvancedFormData>(
-      future: context.read<StudentDetailCubit>().loadAdvancedFormData(studentId),
+      future: context.read<StudentDetailCubit>().loadAdvancedFormData(
+        studentId,
+      ),
       builder: (context, snapshot) {
         final document = snapshot.data?.registrationForm;
         return DetailSectionCard(
@@ -96,7 +99,10 @@ class _RegistrationFormSection extends StatelessWidget {
             else
               Row(
                 children: [
-                  const Icon(Icons.description_outlined, color: AppColors.primary),
+                  const Icon(
+                    Icons.description_outlined,
+                    color: AppColors.primary,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -260,8 +266,7 @@ class _GeneratedReportsSectionState extends State<_GeneratedReportsSection> {
     return FutureBuilder<List<StudentGeneratedReportFile>>(
       future: _reportsFuture,
       builder: (context, snapshot) {
-        final reports =
-            snapshot.data ?? const <StudentGeneratedReportFile>[];
+        final reports = snapshot.data ?? const <StudentGeneratedReportFile>[];
         return DetailSectionCard(
           title: 'Generated Report History',
           icon: Icons.history_edu_outlined,
@@ -377,10 +382,9 @@ class _GeneratedReportsTable extends StatelessWidget {
                                 children: [
                                   IconButton(
                                     tooltip: 'Report detail',
-                                    constraints:
-                                        const BoxConstraints.tightFor(
-                                      width: 30,
-                                      height: 30,
+                                    constraints: const BoxConstraints.tightFor(
+                                      width: 40,
+                                      height: 40,
                                     ),
                                     padding: EdgeInsets.zero,
                                     onPressed: () => onDetail(report),
@@ -392,25 +396,23 @@ class _GeneratedReportsTable extends StatelessWidget {
                                   ),
                                   IconButton(
                                     tooltip: 'Download report',
-                                    constraints:
-                                        const BoxConstraints.tightFor(
-                                      width: 30,
-                                      height: 30,
+                                    constraints: const BoxConstraints.tightFor(
+                                      width: 40,
+                                      height: 40,
                                     ),
                                     padding: EdgeInsets.zero,
                                     onPressed: () => onDownload(report),
                                     icon: const Icon(
                                       Icons.download_outlined,
                                       size: 18,
-                                      color: AppColors.primaryDark,
+                                      color: AppColors.primaryForeground,
                                     ),
                                   ),
                                   IconButton(
                                     tooltip: 'Archive report',
-                                    constraints:
-                                        const BoxConstraints.tightFor(
-                                      width: 30,
-                                      height: 30,
+                                    constraints: const BoxConstraints.tightFor(
+                                      width: 40,
+                                      height: 40,
                                     ),
                                     padding: EdgeInsets.zero,
                                     onPressed: () => onArchive(report),
@@ -561,7 +563,6 @@ class _GoalsTable extends StatelessWidget {
       },
     );
   }
-
 }
 
 bool _hasText(String? value) {

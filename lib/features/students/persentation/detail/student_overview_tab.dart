@@ -29,6 +29,7 @@ class StudentOverviewTab extends StatelessWidget {
       builder: (context, snapshot) {
         final insights = snapshot.data;
         return DetailTabScroll(
+          key: PageStorageKey('student_overview_tab.dart-${student.id}'),
           children: [
             StudentHeaderDetail(
               student: student,

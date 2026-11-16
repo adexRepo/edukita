@@ -14,6 +14,7 @@ class StudentPersonalTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DetailTabScroll(
+      key: PageStorageKey('student_personal_tab.dart-${student.id}'),
       children: [
         StudentInformationSection(student: student),
         DetailSectionCard(

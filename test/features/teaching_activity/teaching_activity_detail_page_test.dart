@@ -1,3 +1,5 @@
+import 'package:flutter/services.dart';
+import 'package:edukita/widgets/app_toast.dart';
 import 'dart:async';
 
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
@@ -62,7 +64,7 @@ STORAGE_PATH=storage
     repository.detailCompleter.complete(_emptyDetail());
     await _pumpUntil(tester, () => cubit.state.detail != null);
     expect(find.text('No students available.'), findsOneWidget);
-    expect(tester.takeException(), isNull);
+    _expectNoLayoutErrors(tester);
   });
 
   testWidgets('keeps a failed detail load visible with retry', (tester) async {
@@ -104,7 +106,10 @@ STORAGE_PATH=storage
       find.byKey(const ValueKey('session-information-collapsed')),
       findsOneWidget,
     );
-    await tester.tap(find.byKey(const ValueKey('session-information-toggle')));
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('session-information-toggle')),
+    );
     await tester.pumpAndSettle();
 
     expect(
@@ -112,7 +117,7 @@ STORAGE_PATH=storage
       findsOneWidget,
     );
     expect(find.text('Session Notes'), findsWidgets);
-    expect(tester.takeException(), isNull);
+    _expectNoLayoutErrors(tester);
   });
 
   testWidgets('changes attendance through the Shadcn select', (tester) async {
@@ -130,18 +135,19 @@ STORAGE_PATH=storage
     repository.detailCompleter.complete(_populatedDetail());
     await _pumpUntil(tester, () => cubit.state.detail != null);
 
-    await tester.tap(
+    await _tapVisible(
+      tester,
       find.byKey(const ValueKey('attendance-select-student-a-present-true')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Absent'));
+    await _tapVisible(tester, find.text('Absent'));
     await tester.pumpAndSettle();
 
     expect(
       find.byKey(const ValueKey('attendance-select-student-a-absent-true')),
       findsOneWidget,
     );
-    expect(tester.takeException(), isNull);
+    _expectNoLayoutErrors(tester);
   });
 
   testWidgets(
@@ -161,15 +167,26 @@ STORAGE_PATH=storage
       repository.detailCompleter.complete(_populatedDetail());
       await _pumpUntil(tester, () => cubit.state.detail != null);
 
-      await tester.tap(
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('teaching-student-student-a')),
+      );
+      await _tapVisible(
+        tester,
         find.byKey(const ValueKey('teaching-student-student-a')),
       );
       await tester.pump();
       expect(_scoreText(tester, 'student-a'), '90');
 
-      await tester.tap(find.text('Students & Attendance'));
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
       await tester.pump();
-      await tester.tap(
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('teaching-student-student-b')),
+      );
+      await _tapVisible(
+        tester,
         find.byKey(const ValueKey('teaching-student-student-b')),
       );
       await tester.pump();
@@ -203,14 +220,21 @@ STORAGE_PATH=storage
       await tester.pump();
       expect(position.pixels, greaterThan(0));
 
-      await tester.tap(find.text('Students & Attendance'));
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
       await tester.pump();
-      await tester.tap(
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('teaching-student-student-a')),
+      );
+      await _tapVisible(
+        tester,
         find.byKey(const ValueKey('teaching-student-student-a')),
       );
       await tester.pump();
       expect(_scoreText(tester, 'student-a'), '90');
-      expect(tester.takeException(), isNull);
+      _expectNoLayoutErrors(tester);
     },
   );
 
@@ -231,7 +255,11 @@ STORAGE_PATH=storage
       repository.detailCompleter.complete(_singleCompetencyDetail());
       await _pumpUntil(tester, () => cubit.state.detail != null);
 
-      await tester.tap(
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('teaching-student-student-b')),
+      );
+      await _tapVisible(
+        tester,
         find.byKey(const ValueKey('teaching-student-student-b')),
       );
       await tester.pump();
@@ -242,9 +270,16 @@ STORAGE_PATH=storage
         '75',
       );
 
-      await tester.tap(find.text('Students & Attendance'));
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
       await tester.pump();
-      await tester.tap(
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('teaching-student-student-a')),
+      );
+      await _tapVisible(
+        tester,
         find.byKey(const ValueKey('teaching-student-student-a')),
       );
       await tester.pump();
@@ -253,7 +288,7 @@ STORAGE_PATH=storage
         'Arrived after a family appointment',
       );
       await tester.ensureVisible(find.text('Save Reporting'));
-      await tester.tap(find.text('Save Reporting'));
+      await _tapVisible(tester, find.text('Save Reporting'));
       await _pumpUntil(tester, () => repository.reportingSaveCalls == 1);
       await _pumpUntil(tester, () => !cubit.state.isSaving);
 
@@ -264,9 +299,16 @@ STORAGE_PATH=storage
         'Arrived after a family appointment',
       );
 
-      await tester.tap(find.text('Students & Attendance'));
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
       await tester.pump();
-      await tester.tap(
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('teaching-student-student-b')),
+      );
+      await _tapVisible(
+        tester,
         find.byKey(const ValueKey('teaching-student-student-b')),
       );
       await tester.pump();
@@ -290,9 +332,9 @@ STORAGE_PATH=storage
       repository.detailCompleter.complete(_emptyDetail());
       await _pumpUntil(tester, () => cubit.state.detail != null);
 
-      await tester.tap(find.text('Complete Report'));
+      await _tapVisible(tester, find.text('Complete Report'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Confirm & Complete'));
+      await _tapVisible(tester, find.text('Confirm & Complete'));
       await _pumpUntil(tester, () => repository.completeCalls == 1);
       await tester.pumpAndSettle();
 
@@ -322,10 +364,10 @@ STORAGE_PATH=storage
     await _pumpUntil(tester, () => cubit.state.detail != null);
 
     expect(find.text('Sync 1 New'), findsOneWidget);
-    await tester.tap(find.text('Sync 1 New'));
+    await _tapVisible(tester, find.text('Sync 1 New'));
     await tester.pumpAndSettle();
     expect(find.text('Add New Students to This Session?'), findsOneWidget);
-    await tester.tap(find.text('Sync New Students'));
+    await _tapVisible(tester, find.text('Sync New Students'));
     await _pumpUntil(tester, () => repository.syncCalls == 1);
     await _pumpUntil(
       tester,
@@ -335,9 +377,297 @@ STORAGE_PATH=storage
 
     expect(find.text('Sync 1 New'), findsNothing);
     expect(find.text('Student C'), findsWidgets);
-    expect(tester.takeException(), isNull);
+    _expectNoLayoutErrors(tester);
     await tester.pump(const Duration(seconds: 4));
   });
+  for (final size in [
+    const Size(800, 600),
+    const Size(1280, 800),
+    const Size(1920, 1080),
+    const Size(2560, 1080),
+  ]) {
+    for (final scale in [1.0, 1.25, 1.5, 2.0]) {
+      testWidgets('Teaching detail $size text $scale', (tester) async {
+        await tester.binding.setSurfaceSize(size);
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final repository = _DetailRepository(database);
+        final cubit = TeachingActivityDetailCubit(
+          repository,
+          TeachingActivityCacheService(),
+        );
+        addTearDown(cubit.close);
+        await tester.pumpWidget(
+          _testApp(cubit, scale: scale, locale: scale == 1.5 ? 'id' : 'en'),
+        );
+        await _pumpUntil(tester, () => repository.loadStarted.isCompleted);
+        repository.detailCompleter.complete(_longDetail());
+        await _pumpUntil(tester, () => cubit.state.detail != null);
+        await tester.pumpAndSettle();
+        _expectNoLayoutErrors(tester);
+        final selector = find.byKey(
+          const ValueKey('teaching-workspace-pane-selector'),
+        );
+        if (selector.evaluate().isNotEmpty) {
+          await tester.ensureVisible(selector);
+          await _tapVisible(
+            tester,
+            find.descendant(
+              of: selector,
+              matching: find.text(scale == 1.5 ? 'Pelaporan' : 'Reporting'),
+            ),
+          );
+          await tester.pumpAndSettle();
+        }
+        _expectNoLayoutErrors(tester);
+        final score = find.byKey(
+          const ValueKey('competency-score-student-a-competency-1-quiz'),
+        );
+        await tester.ensureVisible(score);
+        await tester.enterText(score, '83');
+        await tester.pumpAndSettle();
+        final toggle = find.byKey(const ValueKey('session-information-toggle'));
+        await tester.ensureVisible(toggle);
+        await _tapVisible(tester, toggle);
+        await tester.pumpAndSettle();
+        _expectNoLayoutErrors(tester);
+        await _tapVisible(tester, toggle);
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(score);
+        expect(_scoreText(tester, 'student-a'), '83');
+        _expectNoLayoutErrors(tester);
+        AppToast.instance.dismiss();
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpAndSettle();
+      });
+    }
+  }
+  testWidgets(
+    'History and focused note edit at 800x600 200% preserve input and block duplicate save',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repository = _DetailRepository(database);
+      final cubit = TeachingActivityDetailCubit(
+        repository,
+        TeachingActivityCacheService(),
+      );
+      addTearDown(cubit.close);
+      final detail = _populatedDetail();
+      final withNotes = TeachingActivityDetailData(
+        activity: detail.activity,
+        students: detail.students,
+        attendances: detail.attendances,
+        assessments: detail.assessments,
+        competencies: detail.competencies,
+        studentNotes: [
+          StudentSessionNoteRecord(
+            id: 'synthetic-note',
+            teachingActivityId: 'activity-1',
+            studentId: 'student-a',
+            noteType: StudentSessionNoteType.values.first,
+            comment: 'Synthetic note for editing',
+            followUpNeeded: false,
+            rawScore: 3,
+            createdAt: '2026-11-16T09:00:00',
+            createdByTeacherName: 'Synthetic Teacher',
+          ),
+        ],
+      );
+      await tester.pumpWidget(_testApp(cubit, scale: 2));
+      await _pumpUntil(tester, () => repository.loadStarted.isCompleted);
+      repository.detailCompleter.complete(withNotes);
+      await _pumpUntil(tester, () => cubit.state.detail != null);
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('teaching-student-student-a')),
+      );
+      await tester.pumpAndSettle();
+      await _tapVisible(tester, find.text('Note History'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await _tapVisible(tester, find.byTooltip('Edit'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      final comment = find
+          .descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(EditableText),
+          )
+          .first;
+      await tester.ensureVisible(comment);
+      await tester.enterText(comment, '');
+      await _tapVisible(tester, find.text('Update Note'));
+      await tester.pumpAndSettle();
+      expect(repository.noteSaves, 0);
+      expect(find.text('Comment is required.'), findsOneWidget);
+      await tester.enterText(comment, 'Synthetic edited comment');
+      await _tapVisible(tester, find.text('Update Note'));
+      await tester.pumpAndSettle();
+      expect(repository.noteSaves, 1);
+      expect(find.text('Synthetic edited comment'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsOneWidget);
+      repository.failNoteSave = false;
+      repository.pendingNoteSave = Completer<void>();
+      await _tapVisible(tester, find.text('Update Note'));
+      await tester.pump();
+      expect(repository.noteSaves, 2);
+      await tester.tap(find.text('Update Note'));
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(repository.noteSaves, 2);
+      expect(find.byType(AlertDialog), findsOneWidget);
+      repository.pendingNoteSave!.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(tester.takeException(), isNull);
+      AppToast.instance.dismiss();
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
+  testWidgets(
+    'Complete confirmation fits 800x600 200% and cancel preserves the session',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repository = _DetailRepository(database);
+      final cubit = TeachingActivityDetailCubit(
+        repository,
+        TeachingActivityCacheService(),
+      );
+      addTearDown(cubit.close);
+      await tester.pumpWidget(_testApp(cubit, scale: 2));
+      await _pumpUntil(tester, () => repository.loadStarted.isCompleted);
+      repository.detailCompleter.complete(_longDetail());
+      await _pumpUntil(tester, () => cubit.state.detail != null);
+      await _tapVisible(tester, find.text('Complete Report'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await _tapVisible(tester, find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(repository.completeCalls, 0);
+      expect(find.byType(AlertDialog), findsNothing);
+      AppToast.instance.dismiss();
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'Ctrl F focuses search and Ctrl S saves the focused reporting draft, preserving failed input',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1280, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repository = _DetailRepository(database)..failReporting = true;
+      final cubit = TeachingActivityDetailCubit(
+        repository,
+        TeachingActivityCacheService(),
+      );
+      addTearDown(cubit.close);
+      await tester.pumpWidget(_testApp(cubit));
+      await _pumpUntil(tester, () => repository.loadStarted.isCompleted);
+      repository.detailCompleter.complete(_singleCompetencyDetail());
+      await _pumpUntil(tester, () => cubit.state.detail != null);
+      await tester.pumpAndSettle();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+      final search = find.byType(EditableText).first;
+      expect(tester.widget<EditableText>(search).focusNode.hasFocus, isTrue);
+      final score = find.byKey(
+        const ValueKey('competency-score-student-a-competency-1-quiz'),
+      );
+      await tester.ensureVisible(score);
+      await tester.enterText(score, '84');
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+      expect(repository.reportingSaveCalls, 1);
+      expect(_scoreText(tester, 'student-a'), '84');
+      expect(
+        AppToast.instance.current!.message,
+        contains('Your input has been kept.'),
+      );
+      repository.failReporting = false;
+      await tester.enterText(score, '85');
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+      expect(repository.reportingSaveCalls, 2);
+      expect(_scoreText(tester, 'student-a'), '85');
+      expect(tester.takeException(), isNull);
+      AppToast.instance.dismiss();
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
+  for (final status in [
+    TeachingActivityStatus.completed,
+    TeachingActivityStatus.cancelled,
+  ]) {
+    testWidgets('Read-only reporting remains readable for $status', (
+      tester,
+    ) async {
+      final repository = _DetailRepository(database);
+      final cubit = TeachingActivityDetailCubit(
+        repository,
+        TeachingActivityCacheService(),
+      );
+      addTearDown(cubit.close);
+      final original = _singleCompetencyDetail();
+      final detail = TeachingActivityDetailData(
+        activity: TeachingActivityListItem(
+          scheduleId: 'schedule-1',
+          activityId: 'activity-1',
+          activityDate: '2026-11-16',
+          status: status,
+          assessmentType: TeachingAssessmentType.quiz,
+        ),
+        students: original.students,
+        attendances: original.attendances,
+        assessments: original.assessments,
+        studentNotes: original.studentNotes,
+        competencies: original.competencies,
+      );
+      await tester.pumpWidget(_testApp(cubit));
+      await _pumpUntil(tester, () => repository.loadStarted.isCompleted);
+      repository.detailCompleter.complete(detail);
+      await _pumpUntil(tester, () => cubit.state.detail != null);
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('teaching-student-student-a')),
+      );
+      await tester.pumpAndSettle();
+      final score = find.byKey(
+        const ValueKey('competency-score-student-a-competency-1-quiz'),
+      );
+      expect(tester.widget<ShadInputFormField>(score).enabled, isFalse);
+      expect(find.text('Complete Report'), findsNothing);
+      expect(repository.reportingSaveCalls, 0);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    });
+  }
+}
+
+void _expectNoLayoutErrors(WidgetTester tester) {
+  final error = tester.takeException();
+  if (error is FlutterError) {
+    debugPrint(error.diagnostics.map((node) => node.toStringDeep()).join('\n'));
+  }
+  expect(error, isNull);
+}
+
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await Scrollable.ensureVisible(tester.element(finder), alignment: 0.5);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
 }
 
 String _scoreText(WidgetTester tester, String studentId) {
@@ -362,16 +692,25 @@ Future<void> _pumpUntil(WidgetTester tester, bool Function() condition) async {
   fail('Timed out waiting for the expected asynchronous UI state.');
 }
 
-Widget _testApp(TeachingActivityDetailCubit cubit) {
+Widget _testApp(
+  TeachingActivityDetailCubit cubit, {
+  double scale = 1,
+  String locale = 'en',
+}) {
   return BlocProvider.value(
     value: cubit,
     child: ShadApp.custom(
       appBuilder: (context) => MaterialApp(
         theme: AppTheme.theme,
-        locale: const Locale('en'),
+        locale: Locale(locale),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        builder: (context, child) => ShadAppBuilder(child: child!),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(scale)),
+          child: ShadAppBuilder(child: child!),
+        ),
         home: const Scaffold(
           body: TeachingActivityDetailPage(activityId: 'activity-1'),
         ),
@@ -515,6 +854,50 @@ TeachingActivityDetailData _detailWithMissingStudent() {
   );
 }
 
+TeachingActivityDetailData _longDetail() {
+  final original = _populatedDetail();
+  return TeachingActivityDetailData(
+    activity: const TeachingActivityListItem(
+      scheduleId: 'schedule-1',
+      activityId: 'activity-1',
+      activityDate: '2026-11-16',
+      status: TeachingActivityStatus.inProgress,
+      teacherId: 'teacher-1',
+      teacherName: 'Synthetic teacher with a long full name',
+      className: 'Synthetic foundation education class with a long name',
+      subjectName: 'Synthetic subject with a long descriptive name',
+      unitName: 'Synthetic teaching material with a long descriptive name',
+      assessmentType: TeachingAssessmentType.quiz,
+    ),
+    students: [
+      const ClassStudentOption(
+        id: 'student-a',
+        studentNo: 'SYNTHETIC-A-001',
+        fullName: 'Synthetic Student With A Long Full Name For Accessibility',
+      ),
+      original.students.last,
+      ...List.generate(
+        198,
+        (i) => ClassStudentOption(
+          id: 'synthetic-student-$i',
+          studentNo: 'SYN-$i',
+          fullName: 'Synthetic Student $i',
+        ),
+      ),
+    ],
+    attendances: original.attendances,
+    assessments: original.assessments,
+    studentNotes: original.studentNotes,
+    competencies: List.generate(
+      6,
+      (i) => CompetencyOption(
+        id: 'competency-${i + 1}',
+        label: 'Synthetic competency with a long description ${i + 1}',
+      ),
+    ),
+  );
+}
+
 class _DetailRepository extends TeachingActivityRepository {
   _DetailRepository(super.database, {this.fail = false}) : super.forDatabase();
 
@@ -525,9 +908,13 @@ class _DetailRepository extends TeachingActivityRepository {
   TeachingActivityDetailData? _currentDetail;
   List<TeachingAttendanceRecord>? savedAttendanceRecords;
   int reportingSaveCalls = 0;
+  bool failReporting = false;
   int completeCalls = 0;
   int syncCalls = 0;
   int loadCalls = 0;
+  int noteSaves = 0;
+  bool failNoteSave = true;
+  Completer<void>? pendingNoteSave;
 
   @override
   Future<TeachingActivityDetailData> getDetail(String activityId) async {
@@ -547,6 +934,7 @@ class _DetailRepository extends TeachingActivityRepository {
     required List<StudentSessionNoteInput> notes,
   }) async {
     reportingSaveCalls++;
+    if (failReporting) throw Exception("Synthetic internal reporting failure");
     savedAttendanceRecords = List.of(attendanceRecords);
   }
 
@@ -571,5 +959,22 @@ class _DetailRepository extends TeachingActivityRepository {
       competencies: detail.competencies,
     );
     return detail.missingStudents.length;
+  }
+
+  @override
+  Future<void> updateStudentNote({
+    required String id,
+    required String studentId,
+    required String noteType,
+    required String comment,
+    required String scoreMode,
+    double? rawScore,
+    double? normalizedScore,
+    required bool followUpNeeded,
+    String? followUpNotes,
+  }) async {
+    noteSaves++;
+    if (failNoteSave) throw Exception('Synthetic internal save failure');
+    await pendingNoteSave?.future;
   }
 }

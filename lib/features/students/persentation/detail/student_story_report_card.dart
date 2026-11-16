@@ -81,7 +81,9 @@ class _StudentStoryReportCardState extends State<StudentStoryReportCard> {
       final activities = await cubit.loadActivities(widget.student.id);
       final insights = await cubit.loadDetailInsights(widget.student.id);
       final examScores = await cubit.loadStudentExamScores(widget.student.id);
-      final latestSpecialNote = await cubit.loadLatestSpecialNote(widget.student.id);
+      final latestSpecialNote = await cubit.loadLatestSpecialNote(
+        widget.student.id,
+      );
 
       return _StudentStorySnapshot(
         student: latestStudent,
@@ -131,7 +133,9 @@ class _StudentStoryReportCardState extends State<StudentStoryReportCard> {
     }
     final snapshot = await _loadSnapshot();
     if (!mounted || snapshot == null) return;
-    await _downloadPdf(_StudentStoryReportBuilder.build(snapshot, _storyText(context)));
+    await _downloadPdf(
+      _StudentStoryReportBuilder.build(snapshot, _storyText(context)),
+    );
   }
 
   Future<void> _showCompletenessChecklist() async {
@@ -164,15 +168,16 @@ class _StudentStoryReportCardState extends State<StudentStoryReportCard> {
         builder: (dialogContext) => _FullRegistrationLoaderDialog(
           loadFuture: loadFuture,
           onClose: () => Navigator.of(dialogContext).pop(),
-          onSubmit: (data, updatedStudent, schoolId, guardians, advanced) async {
-            await cubit.updateStudent(
-              updatedStudent,
-              schoolId,
-              guardians,
-              advanced,
-            );
-            _completenessFuture = _loadCompleteness();
-          },
+          onSubmit:
+              (data, updatedStudent, schoolId, guardians, advanced) async {
+                await cubit.updateStudent(
+                  updatedStudent,
+                  schoolId,
+                  guardians,
+                  advanced,
+                );
+                _completenessFuture = _loadCompleteness();
+              },
         ),
       );
       if (!mounted) return;
@@ -333,19 +338,34 @@ class _StudentStoryReportCardState extends State<StudentStoryReportCard> {
                 pw.TableRow(
                   children: [
                     _pdfInfoCell(report.text.student, report.student.fullName),
-                    _pdfInfoCell(report.text.studentNo, report.student.studentNo),
+                    _pdfInfoCell(
+                      report.text.studentNo,
+                      report.student.studentNo,
+                    ),
                   ],
                 ),
                 pw.TableRow(
                   children: [
-                    _pdfInfoCell(report.text.classSchool, '${report.student.className} / ${report.student.schoolName}'),
-                    _pdfInfoCell(report.text.teachingLocation, _orDash(report.student.teachingLocationName)),
+                    _pdfInfoCell(
+                      report.text.classSchool,
+                      '${report.student.className} / ${report.student.schoolName}',
+                    ),
+                    _pdfInfoCell(
+                      report.text.teachingLocation,
+                      _orDash(report.student.teachingLocationName),
+                    ),
                   ],
                 ),
                 pw.TableRow(
                   children: [
-                    _pdfInfoCell(report.text.profileStatus, _profileStatus(report.student.profileStatus)),
-                    _pdfInfoCell(report.text.dataCompleteness, '${report.completeness.label} ${report.completeness.total > 0 ? '(${report.completeness.scoreLabel})' : ''}'),
+                    _pdfInfoCell(
+                      report.text.profileStatus,
+                      _profileStatus(report.student.profileStatus),
+                    ),
+                    _pdfInfoCell(
+                      report.text.dataCompleteness,
+                      '${report.completeness.label} ${report.completeness.total > 0 ? '(${report.completeness.scoreLabel})' : ''}',
+                    ),
                   ],
                 ),
                 pw.TableRow(
@@ -389,7 +409,9 @@ class _StudentStoryReportCardState extends State<StudentStoryReportCard> {
             ),
             pw.SizedBox(height: 10),
             ...report.sections
-                .where((section) => section.title != report.text.executiveSummary)
+                .where(
+                  (section) => section.title != report.text.executiveSummary,
+                )
                 .toList()
                 .asMap()
                 .entries
@@ -408,11 +430,20 @@ class _StudentStoryReportCardState extends State<StudentStoryReportCard> {
             pw.SizedBox(height: 24),
             pw.Row(
               children: [
-                _pdfSignatureBox(report.text.preparedBy, report.text.nameSignature),
+                _pdfSignatureBox(
+                  report.text.preparedBy,
+                  report.text.nameSignature,
+                ),
                 pw.SizedBox(width: 12),
-                _pdfSignatureBox(report.text.reviewedBy, report.text.nameSignature),
+                _pdfSignatureBox(
+                  report.text.reviewedBy,
+                  report.text.nameSignature,
+                ),
                 pw.SizedBox(width: 12),
-                _pdfSignatureBox(report.text.parentGuardian, report.text.nameSignature),
+                _pdfSignatureBox(
+                  report.text.parentGuardian,
+                  report.text.nameSignature,
+                ),
               ],
             ),
             pw.SizedBox(height: 10),
@@ -470,7 +501,7 @@ class _StudentStoryReportCardState extends State<StudentStoryReportCard> {
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.white,
+              foregroundColor: AppColors.onPrimary,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(
               controller.text.trim().isEmpty
@@ -511,7 +542,7 @@ class _StudentStoryReportCardState extends State<StudentStoryReportCard> {
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.white,
+              foregroundColor: AppColors.onPrimary,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(context.l10n.downloadDraftPdf),
@@ -597,7 +628,7 @@ class _StudentStoryReportCardState extends State<StudentStoryReportCard> {
                           onPressed: _loading ? null : _download,
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.primary,
-                            foregroundColor: AppColors.white,
+                            foregroundColor: AppColors.onPrimary,
                           ),
                           icon: const Icon(Icons.download_outlined, size: 17),
                           label: Text(context.l10n.downloadPdf),
@@ -607,9 +638,7 @@ class _StudentStoryReportCardState extends State<StudentStoryReportCard> {
                         TextButton.icon(
                           onPressed: _showCompletenessChecklist,
                           icon: const Icon(Icons.playlist_add_check, size: 17),
-                          label: Text(
-                            'Lengkapi Profil',
-                          ),
+                          label: Text('Lengkapi Profil'),
                         ),
                     ],
                   );
@@ -694,7 +723,10 @@ class _StudentStoryLoaderDialog extends StatelessWidget {
             ),
           );
         }
-        final report = _StudentStoryReportBuilder.build(data, _storyText(context));
+        final report = _StudentStoryReportBuilder.build(
+          data,
+          _storyText(context),
+        );
         return _StudentStoryDialog(
           report: report,
           onDownload: () => onDownload(report),
@@ -833,11 +865,15 @@ class _StudentStoryDialog extends StatelessWidget {
                 children: [
                   _StoryExecutiveCard(report: report),
                   const SizedBox(height: 16),
-                  for (final entry in report.sections
-                      .where((section) => section.title != report.text.executiveSummary)
-                      .toList()
-                      .asMap()
-                      .entries) ...[
+                  for (final entry
+                      in report.sections
+                          .where(
+                            (section) =>
+                                section.title != report.text.executiveSummary,
+                          )
+                          .toList()
+                          .asMap()
+                          .entries) ...[
                     _StorySectionCard(
                       index: entry.key + 1,
                       section: entry.value,
@@ -913,10 +949,7 @@ class _StoryExecutiveCard extends StatelessWidget {
 }
 
 class _StorySectionCard extends StatelessWidget {
-  const _StorySectionCard({
-    required this.index,
-    required this.section,
-  });
+  const _StorySectionCard({required this.index, required this.section});
 
   final int index;
   final _StudentStorySection section;
@@ -1227,10 +1260,7 @@ _StudentStoryText _storyText(BuildContext context) {
 }
 
 class _StudentStorySection {
-  const _StudentStorySection({
-    required this.title,
-    required this.paragraphs,
-  });
+  const _StudentStorySection({required this.title, required this.paragraphs});
 
   final String title;
   final List<String> paragraphs;
@@ -1312,19 +1342,21 @@ class _StudentDataCompleteness {
     required List<StudentGuardianFormData> guardians,
   }) {
     final checks = <String, bool>{
-      'data dasar': _hasText(student.fullName) &&
+      'data dasar':
+          _hasText(student.fullName) &&
           _hasText(student.studentNo) &&
           _hasText(student.className) &&
           _hasText(student.schoolName),
       'lokasi binaan': _hasText(student.teachingLocationName),
       'kontak siswa': _hasText(student.mobileNo) || _hasText(student.emailAddr),
-      'atribut fisik': student.height != null ||
+      'atribut fisik':
+          student.height != null ||
           student.weight != null ||
           _hasText(student.shoesSize) ||
           _hasText(student.uniformSize) ||
           _hasText(student.pantsSize),
-      'minat dan cita-cita': _hasText(advanced.hobby) ||
-          _hasText(advanced.aspiration),
+      'minat dan cita-cita':
+          _hasText(advanced.hobby) || _hasText(advanced.aspiration),
       'orang tua/wali': guardians.any((item) => item.hasData),
       'profil rumah tangga': advanced.householdProfile.hasData,
       'aktivitas': advanced.activities.any((item) => item.hasData),
@@ -1433,9 +1465,7 @@ class _CompletenessChecklistDialog extends StatelessWidget {
                   ),
                   if (completeness.isQuickRegistered) ...[
                     const SizedBox(height: 12),
-                    _quickRegisterNotice(
-                      onPressed: onCompleteProfile,
-                    ),
+                    _quickRegisterNotice(onPressed: onCompleteProfile),
                   ],
                   const SizedBox(height: 14),
                   if (completeness.missingItems.isEmpty)
@@ -1462,7 +1492,7 @@ class _CompletenessChecklistDialog extends StatelessWidget {
                         onPressed: onCompleteProfile,
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          foregroundColor: AppColors.white,
+                          foregroundColor: AppColors.onPrimary,
                         ),
                         icon: const Icon(Icons.edit_outlined, size: 17),
                         label: const Text('Lengkapi Profil'),
@@ -1509,11 +1539,7 @@ class _CompletenessChecklistDialog extends StatelessWidget {
           if (compact) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                text,
-                const SizedBox(height: 8),
-                button,
-              ],
+              children: [text, const SizedBox(height: 8), button],
             );
           }
           return Row(
@@ -1565,7 +1591,8 @@ class _FullRegistrationLoaderDialog extends StatelessWidget {
     String schoolId,
     List<StudentGuardianFormData> guardians,
     StudentAdvancedFormData advancedData,
-  ) onSubmit;
+  )
+  onSubmit;
 
   @override
   Widget build(BuildContext context) {
@@ -1875,16 +1902,23 @@ class _StudentStoryReportBuilder {
         'Minat dan tujuan yang tercatat: hobi ${_orDash(advanced.hobby)} dan cita-cita ${_orDash(advanced.aspiration)}.',
     ];
 
-    return _StudentStorySection(title: 'Profil dan Data Dasar', paragraphs: paragraphs);
+    return _StudentStorySection(
+      title: 'Profil dan Data Dasar',
+      paragraphs: paragraphs,
+    );
   }
 
   static _StudentStorySection _family(_StudentStorySnapshot data) {
     final guardians = data.guardians.where((item) => item.hasData).toList();
     final fatherDeceased = guardians.any(
-      (item) => _isRelationship(item.relationship, 'FATHER') && item.isDeceased == true,
+      (item) =>
+          _isRelationship(item.relationship, 'FATHER') &&
+          item.isDeceased == true,
     );
     final motherDeceased = guardians.any(
-      (item) => _isRelationship(item.relationship, 'MOTHER') && item.isDeceased == true,
+      (item) =>
+          _isRelationship(item.relationship, 'MOTHER') &&
+          item.isDeceased == true,
     );
     final duafaStatus = _duafaStatus(fatherDeceased, motherDeceased);
     final primary = guardians.where((item) => item.isPrimary).toList();
@@ -1902,7 +1936,10 @@ class _StudentStoryReportBuilder {
         'Relasi saudara yang tercatat: ${relations.map(_relationSummary).join('; ')}.',
     ];
 
-    return _StudentStorySection(title: 'Keluarga dan Wali', paragraphs: paragraphs);
+    return _StudentStorySection(
+      title: 'Keluarga dan Wali',
+      paragraphs: paragraphs,
+    );
   }
 
   static _StudentStorySection _household(_StudentStorySnapshot data) {
@@ -1934,7 +1971,9 @@ class _StudentStoryReportBuilder {
       ..sort((a, b) => b.averageScore.compareTo(a.averageScore));
     final recentExams = examGroups.take(5).map(_examSummary).toList();
     final trend = _examScoreTrend(examGroups);
-    final topCompetency = bestCompetencies.isEmpty ? null : bestCompetencies.first;
+    final topCompetency = bestCompetencies.isEmpty
+        ? null
+        : bestCompetencies.first;
 
     final paragraphs = <String>[
       if (learning.assessmentCount > 0)
@@ -1945,15 +1984,17 @@ class _StudentStoryReportBuilder {
         'Kompetensi yang terlihat kuat: ${bestCompetencies.take(3).map((item) => '${item.label} (${item.averageScore.toStringAsFixed(0)})').join(', ')}.${topCompetency == null ? '' : ' Area ini dapat menjadi pintu masuk untuk membangun rasa percaya diri belajar.'}',
       if (recentExams.isNotEmpty)
         'Nilai ujian sekolah/internal yang tercatat: ${recentExams.join('; ')}.',
-      if (trend.hasData)
-        'Arah nilai: ${trend.description}',
+      if (trend.hasData) 'Arah nilai: ${trend.description}',
       if (_hasText(household.academicAchievement))
         'Pencapaian akademik: ${household.academicAchievement}. Pencapaian ini perlu tetap diapresiasi sebagai bagian dari motivasi belajar siswa.',
       if (_hasText(household.nonAcademicAchievement))
         'Pencapaian non-akademik: ${household.nonAcademicAchievement}. Catatan ini menunjukkan potensi siswa tidak hanya dibaca dari nilai akademik.',
     ];
 
-    return _StudentStorySection(title: 'Akademik dan Pencapaian', paragraphs: paragraphs);
+    return _StudentStorySection(
+      title: 'Akademik dan Pencapaian',
+      paragraphs: paragraphs,
+    );
   }
 
   static _StudentStorySection _attendance(_StudentStorySnapshot data) {
@@ -1986,8 +2027,12 @@ class _StudentStoryReportBuilder {
   static _StudentStorySection _teacherNotes(_StudentStorySnapshot data) {
     final notes = data.insights.recentTeacherNotes;
     final distribution = data.insights.noteTypeCounts;
-    final positiveNotes = notes.where((note) => (note.rawScore ?? 0) >= 4).toList();
-    final supportNotes = notes.where((note) => (note.rawScore ?? 5) <= 2).toList();
+    final positiveNotes = notes
+        .where((note) => (note.rawScore ?? 0) >= 4)
+        .toList();
+    final supportNotes = notes
+        .where((note) => (note.rawScore ?? 5) <= 2)
+        .toList();
     final latest = notes.isEmpty ? null : notes.first;
     final paragraphs = <String>[
       if (notes.isEmpty)
@@ -2005,10 +2050,15 @@ class _StudentStoryReportBuilder {
         'Sebaran tipe catatan: ${distribution.map((item) => '${item.type} ${item.count}').join(', ')}. Sebaran ini membantu melihat apakah observasi lebih banyak menyangkut progres belajar, perilaku, kehadiran, dukungan, atau pencapaian.',
     ];
 
-    return _StudentStorySection(title: 'Catatan Guru dan Observasi', paragraphs: paragraphs);
+    return _StudentStorySection(
+      title: 'Catatan Guru dan Observasi',
+      paragraphs: paragraphs,
+    );
   }
 
-  static _StudentStorySection _specialManagementNote(_StudentStorySnapshot data) {
+  static _StudentStorySection _specialManagementNote(
+    _StudentStorySnapshot data,
+  ) {
     final note = data.latestSpecialNote;
     if (note == null) {
       return const _StudentStorySection(
@@ -2030,7 +2080,9 @@ class _StudentStoryReportBuilder {
     );
   }
 
-  static _StudentStorySection _activitiesAndAssistance(_StudentStorySnapshot data) {
+  static _StudentStorySection _activitiesAndAssistance(
+    _StudentStorySnapshot data,
+  ) {
     final activities = data.activities.where((item) => item.hasData).toList();
     final assistance = data.insights.assistanceHistory;
     final paragraphs = <String>[
@@ -2053,7 +2105,8 @@ class _StudentStoryReportBuilder {
   ) {
     final attendanceAvailable = data.insights.attendance.totalRecords > 0;
     final academicAvailable =
-        data.insights.learning.assessmentCount > 0 || data.examScores.isNotEmpty;
+        data.insights.learning.assessmentCount > 0 ||
+        data.examScores.isNotEmpty;
     final notesAvailable = data.insights.recentTeacherNotes.isNotEmpty;
     final available = <String>[
       if (attendanceAvailable) 'kehadiran',
@@ -2162,7 +2215,8 @@ class _StudentStoryReportBuilder {
 
   static _StudentStorySection _missingData(_StudentStorySnapshot data) {
     final missing = <String>[
-      if (data.guardians.where((item) => item.hasData).isEmpty) 'data orang tua/wali',
+      if (data.guardians.where((item) => item.hasData).isEmpty)
+        'data orang tua/wali',
       if (!data.advanced.householdProfile.hasData) 'profil rumah tangga',
       if (!_hasText(data.student.teachingLocationName)) 'lokasi binaan',
       if (!_hasText(data.student.mobileNo) && !_hasText(data.student.emailAddr))
@@ -2174,8 +2228,12 @@ class _StudentStoryReportBuilder {
     return _StudentStorySection(
       title: 'Data Profil yang Perlu Dilengkapi',
       paragraphs: missing.isEmpty
-          ? ['Data profil utama siswa sudah cukup lengkap. Data belajar seperti kehadiran, nilai, dan catatan guru akan bertambah otomatis setelah kegiatan belajar berjalan.']
-          : ['Agar profil siswa lebih utuh, data yang sebaiknya dilengkapi adalah ${_joinNatural(missing)}. Data belajar seperti kehadiran, nilai, dan catatan guru tidak dihitung sebagai kekurangan profil karena berasal dari aktivitas belajar.'],
+          ? [
+              'Data profil utama siswa sudah cukup lengkap. Data belajar seperti kehadiran, nilai, dan catatan guru akan bertambah otomatis setelah kegiatan belajar berjalan.',
+            ]
+          : [
+              'Agar profil siswa lebih utuh, data yang sebaiknya dilengkapi adalah ${_joinNatural(missing)}. Data belajar seperti kehadiran, nilai, dan catatan guru tidak dihitung sebagai kekurangan profil karena berasal dari aktivitas belajar.',
+            ],
     );
   }
 }
@@ -2189,7 +2247,8 @@ String _executiveSummaryText(
   final learning = data.insights.learning;
   final notes = data.insights.recentTeacherNotes;
   final assistanceCount = data.insights.assistanceHistory.length;
-  final achievement = data.advanced.householdProfile.academicAchievement ??
+  final achievement =
+      data.advanced.householdProfile.academicAchievement ??
       data.advanced.householdProfile.nonAcademicAchievement;
   final attendanceText = attendance == null
       ? 'kehadiran belum memiliki data cukup'
@@ -2225,7 +2284,9 @@ String _relationSummary(StudentRelationFormData relation) {
 }
 
 String _examSummary(StudentExamScoreGroup group) {
-  final avg = group.averagePercent == null ? '-' : '${group.averagePercent!.toStringAsFixed(0)}%';
+  final avg = group.averagePercent == null
+      ? '-'
+      : '${group.averagePercent!.toStringAsFixed(0)}%';
   final subjects = group.items
       .map((item) => _orDash(item.subjectName ?? item.unitName))
       .where((item) => item != '-')
@@ -2240,7 +2301,9 @@ String _attendanceSummary(StudentAttendanceRecordView record) {
 }
 
 String _noteSummary(StudentTeacherNoteInsight note) {
-  final score = note.rawScore == null ? '' : ' (${note.rawScore!.toStringAsFixed(1)}/5)';
+  final score = note.rawScore == null
+      ? ''
+      : ' (${note.rawScore!.toStringAsFixed(1)}/5)';
   final teacher = _hasText(note.teacherName) ? ' oleh ${note.teacherName}' : '';
   final source = note.source == 'manual' ? 'catatan manual' : 'catatan sesi';
   return '${note.date}: ${note.type}$score$teacher ($source) - ${note.comment}.';
@@ -2259,10 +2322,7 @@ String _assistanceSummary(StudentAssistanceHistoryInsight item) {
 }
 
 class _ProgressSignal {
-  const _ProgressSignal({
-    required this.hasData,
-    required this.description,
-  });
+  const _ProgressSignal({required this.hasData, required this.description});
 
   final bool hasData;
   final String description;
@@ -2275,10 +2335,7 @@ _ProgressSignal _attendanceTrend(List<double?> monthlyAttendance) {
     if (value != null) points.add(MapEntry(i + 1, value));
   }
   if (points.length < 2) {
-    return const _ProgressSignal(
-      hasData: false,
-      description: '',
-    );
+    return const _ProgressSignal(hasData: false, description: '');
   }
   final first = points.first;
   final last = points.last;
@@ -2292,15 +2349,15 @@ _ProgressSignal _attendanceTrend(List<double?> monthlyAttendance) {
 }
 
 _ProgressSignal _examScoreTrend(List<StudentExamScoreGroup> groups) {
-  final datedScores = groups
-      .where((group) => group.averagePercent != null && _hasText(group.examDate))
-      .toList()
-    ..sort((a, b) => a.examDate.compareTo(b.examDate));
+  final datedScores =
+      groups
+          .where(
+            (group) => group.averagePercent != null && _hasText(group.examDate),
+          )
+          .toList()
+        ..sort((a, b) => a.examDate.compareTo(b.examDate));
   if (datedScores.length < 2) {
-    return const _ProgressSignal(
-      hasData: false,
-      description: '',
-    );
+    return const _ProgressSignal(hasData: false, description: '');
   }
   final first = datedScores.first;
   final last = datedScores.last;
@@ -2316,19 +2373,16 @@ _ProgressSignal _examScoreTrend(List<StudentExamScoreGroup> groups) {
 }
 
 _ProgressSignal _teacherNoteScoreSignal(List<StudentTeacherNoteInsight> notes) {
-  final scoredNotes = notes
-      .where((note) => note.rawScore != null && _hasText(note.date))
-      .toList()
-    ..sort((a, b) => a.date.compareTo(b.date));
+  final scoredNotes =
+      notes
+          .where((note) => note.rawScore != null && _hasText(note.date))
+          .toList()
+        ..sort((a, b) => a.date.compareTo(b.date));
   if (scoredNotes.isEmpty) {
-    return const _ProgressSignal(
-      hasData: false,
-      description: '',
-    );
+    return const _ProgressSignal(hasData: false, description: '');
   }
-  final average = scoredNotes
-          .map((note) => note.rawScore!)
-          .reduce((a, b) => a + b) /
+  final average =
+      scoredNotes.map((note) => note.rawScore!).reduce((a, b) => a + b) /
       scoredNotes.length;
   if (scoredNotes.length < 2) {
     return _ProgressSignal(
@@ -2428,16 +2482,22 @@ String _incomeSummary(
 ) {
   final items = <String>[];
   if (household.fatherIncome != null) {
-    items.add('penghasilan ayah ${_formatCurrency(household.fatherIncome)} (${_incomeLevel(household.fatherIncome)})');
+    items.add(
+      'penghasilan ayah ${_formatCurrency(household.fatherIncome)} (${_incomeLevel(household.fatherIncome)})',
+    );
   }
   if (household.motherIncome != null) {
-    items.add('penghasilan ibu ${_formatCurrency(household.motherIncome)} (${_incomeLevel(household.motherIncome)})');
+    items.add(
+      'penghasilan ibu ${_formatCurrency(household.motherIncome)} (${_incomeLevel(household.motherIncome)})',
+    );
   }
   for (final guardian in guardians) {
     if (guardian.income != null &&
         !_isRelationship(guardian.relationship, 'FATHER') &&
         !_isRelationship(guardian.relationship, 'MOTHER')) {
-      items.add('penghasilan ${_relationship(guardian.relationship).toLowerCase()} ${_formatCurrency(guardian.income)} (${_incomeLevel(guardian.income)})');
+      items.add(
+        'penghasilan ${_relationship(guardian.relationship).toLowerCase()} ${_formatCurrency(guardian.income)} (${_incomeLevel(guardian.income)})',
+      );
     }
   }
   if (items.isEmpty) return '';

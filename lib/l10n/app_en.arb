@@ -1843,5 +1843,17 @@
   "dashboardLoadFailed":"Unable to load the dashboard. Try again.",
   "assistanceLoadFailed": "Unable to load assistance periods. Try again.",
   "assistanceActionFailed": "The action could not be completed. View the details and try again.",
-  "scheduleLoadFailed": "Unable to load schedules. Try again."
+  "scheduleLoadFailed": "Unable to load schedules. Try again.",
+  "teachingReportOperationFailed": "The operation could not be completed. Try again. Your input has been kept.",
+  "teachingRatingValue": "Rating {value} of 5",
+  "@teachingRatingValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "studentsLoadFailed": "Unable to refresh student data. Try again.",
+  "studentsSearchNameHint": "Search student name",
+  "studentSaveFailed": "Unable to save the student. Try again. Your input has been kept."
 }

@@ -1,3 +1,8 @@
+import 'package:edukita/widgets/app_shad_theme.dart';
+import 'dart:math' as math;
+import 'package:edukita/widgets/app_desktop_workspace.dart';
+import 'package:edukita/widgets/app_dialog.dart';
+import 'package:edukita/features/teaching_activity/presentation/teaching_rating_input.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
@@ -116,20 +121,25 @@ class _TeachingActivityDetailPageState
     final confirmed = await showGuardedDialog<bool>(
       context: context,
       guardKey: 'sync_session_students_${detail.activity.activityId}',
-      builder: (dialogContext) => AlertDialog(
-        title: AppDialogTitle(dialogContext.l10n.syncNewStudentsTitle),
-        content: Text(dialogContext.l10n.syncNewStudentsConfirm(missingCount)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(dialogContext.l10n.buttonCancel),
+      builder: (dialogContext) => ShadTheme(
+        data: appShadControlsTheme(dialogContext),
+        child: AppDialog(
+          title: AppDialogTitle(dialogContext.l10n.syncNewStudentsTitle),
+          content: Text(
+            dialogContext.l10n.syncNewStudentsConfirm(missingCount),
           ),
-          FilledButton.icon(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            icon: const Icon(Icons.group_add_outlined, size: 18),
-            label: Text(dialogContext.l10n.syncNewStudents),
-          ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(dialogContext.l10n.buttonCancel),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              icon: const Icon(Icons.group_add_outlined, size: 18),
+              label: Text(dialogContext.l10n.syncNewStudents),
+            ),
+          ],
+        ),
       ),
     );
     if (confirmed != true || !mounted) return;
@@ -150,284 +160,309 @@ class _TeachingActivityDetailPageState
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<
-      TeachingActivityDetailCubit,
-      TeachingActivityDetailState
-    >(
-      listenWhen: (previous, current) => previous.error != current.error,
-      listener: (context, state) {
-        if (state.error != null) {
-          showErrorToastWithDetails(
-            context,
-            title: context.l10n.teachingActivityError,
-            error: state.error!,
-            message: state.error!.replaceFirst('Exception: ', ''),
-          );
-        }
-      },
-      child: BlocBuilder<TeachingActivityDetailCubit, TeachingActivityDetailState>(
-        builder: (context, state) {
-          if (_authLoading || (state.isLoading && state.detail == null)) {
-            return const Scaffold(
-              backgroundColor: AppColors.surfaceSoft,
-              body: Center(child: CircularProgressIndicator()),
+    return ShadTheme(
+      data: appShadControlsTheme(context),
+      child: BlocListener<TeachingActivityDetailCubit, TeachingActivityDetailState>(
+        listenWhen: (previous, current) => previous.error != current.error,
+        listener: (context, state) {
+          if (state.error != null) {
+            showErrorToastWithDetails(
+              context,
+              title: context.l10n.teachingActivityError,
+              error: state.error!,
+              message: context.l10n.teachingReportOperationFailed,
             );
           }
+        },
+        child:
+            BlocBuilder<
+              TeachingActivityDetailCubit,
+              TeachingActivityDetailState
+            >(
+              builder: (context, state) {
+                if (_authLoading || (state.isLoading && state.detail == null)) {
+                  return const Scaffold(
+                    backgroundColor: AppColors.surfaceSoft,
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
 
-          if (_authorizationError != null) {
-            return Scaffold(
-              backgroundColor: AppColors.surfaceSoft,
-              body: _TeachingActivityDetailErrorState(
-                onRetry: _loadAuthorization,
-              ),
-            );
-          }
-
-          if (!_canView) {
-            return AccessDeniedPanel(
-              message: context.l10n.teachingReportAccessDenied,
-            );
-          }
-
-          final detail = state.detail;
-          if (detail == null) {
-            if (state.error != null &&
-                !state.error!.toLowerCase().contains('not found')) {
-              return Scaffold(
-                backgroundColor: AppColors.surfaceSoft,
-                body: _TeachingActivityDetailErrorState(
-                  onRetry: () => context
-                      .read<TeachingActivityDetailCubit>()
-                      .loadDetail(widget.activityId),
-                ),
-              );
-            }
-            return Scaffold(
-              backgroundColor: AppColors.surfaceSoft,
-              body: Center(child: Text(context.l10n.teachingActivityNotFound)),
-            );
-          }
-
-          if (!_authScope.ownsTeacherData(detail.activity.teacherId)) {
-            return Scaffold(
-              backgroundColor: AppColors.surfaceSoft,
-              body: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.lock_outline,
-                      size: 38,
-                      color: AppColors.textSecondary,
+                if (_authorizationError != null) {
+                  return Scaffold(
+                    backgroundColor: AppColors.surfaceSoft,
+                    body: _TeachingActivityDetailErrorState(
+                      onRetry: _loadAuthorization,
                     ),
-                    const SizedBox(height: 12),
-                    Text(context.l10n.teachingReportNoAccess),
-                    const SizedBox(height: 12),
-                    OutlinedButton(
+                  );
+                }
+
+                if (!_canView) {
+                  return AccessDeniedPanel(
+                    message: context.l10n.teachingReportAccessDenied,
+                  );
+                }
+
+                final detail = state.detail;
+                if (detail == null) {
+                  if (state.error != null &&
+                      !state.error!.toLowerCase().contains('not found')) {
+                    return Scaffold(
+                      backgroundColor: AppColors.surfaceSoft,
+                      body: _TeachingActivityDetailErrorState(
+                        onRetry: () => context
+                            .read<TeachingActivityDetailCubit>()
+                            .loadDetail(widget.activityId),
+                      ),
+                    );
+                  }
+                  return Scaffold(
+                    backgroundColor: AppColors.surfaceSoft,
+                    body: Center(
+                      child: Text(context.l10n.teachingActivityNotFound),
+                    ),
+                  );
+                }
+
+                if (!_authScope.ownsTeacherData(detail.activity.teacherId)) {
+                  return Scaffold(
+                    backgroundColor: AppColors.surfaceSoft,
+                    body: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.lock_outline,
+                            size: 38,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(context.l10n.teachingReportNoAccess),
+                          const SizedBox(height: 12),
+                          OutlinedButton(
+                            onPressed: () => context.go('/teaching-activities'),
+                            child: Text(context.l10n.backToTeachingActivity),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                final isCancelled =
+                    detail.activity.status == TeachingActivityStatus.cancelled;
+                final readOnly =
+                    isCancelled ||
+                    detail.activity.status ==
+                        TeachingActivityStatus.completed ||
+                    !_canManageReports;
+                final title = Row(
+                  children: [
+                    IconButton(
+                      tooltip: context.l10n.buttonBack,
                       onPressed: () => context.go('/teaching-activities'),
-                      child: Text(context.l10n.backToTeachingActivity),
+                      icon: const Icon(Icons.arrow_back),
                     ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          final isCancelled =
-              detail.activity.status == TeachingActivityStatus.cancelled;
-          final readOnly =
-              isCancelled ||
-              detail.activity.status == TeachingActivityStatus.completed ||
-              !_canManageReports;
-          final title = Row(
-            children: [
-              IconButton(
-                tooltip: context.l10n.buttonBack,
-                onPressed: () => context.go('/teaching-activities'),
-                icon: const Icon(Icons.arrow_back),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.l10n.teachingSessionReport,
-                      style: AppPageHeaderStyle.titleStyle(context),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${detail.activity.className ?? '-'} | ${detail.activity.subjectName ?? '-'} | ${detail.activity.activityDate}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppPageHeaderStyle.subtitleStyle(context),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
-          final actions = <Widget>[
-            if (_canManageReports &&
-                detail.activity.status == TeachingActivityStatus.inProgress &&
-                detail.missingStudents.isNotEmpty)
-              ShadButton.outline(
-                onPressed: state.isSaving
-                    ? null
-                    : () => _syncNewStudents(detail),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.group_add_outlined, size: 18),
                     const SizedBox(width: 8),
-                    Text(
-                      context.l10n.syncNewStudentsCount(
-                        detail.missingStudents.length,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.l10n.teachingSessionReport,
+                            style: AppPageHeaderStyle.titleStyle(context),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${detail.activity.className ?? '-'} | ${detail.activity.subjectName ?? '-'} | ${detail.activity.activityDate}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppPageHeaderStyle.subtitleStyle(context),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ),
-              ),
-            if (_canManageReports &&
-                !isCancelled &&
-                detail.activity.status != TeachingActivityStatus.completed)
-              ShadButton(
-                onPressed: state.isSaving
-                    ? null
-                    : () async {
-                        try {
-                          final records = _workspaceKey.currentState
-                              ?.attendanceRecordsFromUi();
-                          if (records == null) return;
-                          final confirmed = await _confirmCompleteReport(
-                            context,
-                            records,
-                          );
-                          if (!confirmed || !context.mounted) return;
-                          await context
-                              .read<TeachingActivityDetailCubit>()
-                              .completeActivityWithAttendance(records);
-                          if (!context.mounted) return;
-                          AppToast.showSuccess(
-                            context.l10n.teachingReportCompleted,
-                          );
-                          context.go('/teaching-activities');
-                        } catch (_) {}
-                      },
-                backgroundColor: AppColors.primary,
-                hoverBackgroundColor: AppColors.primaryDark,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.check_circle_outline, size: 18),
-                    const SizedBox(width: 8),
-                    Text(context.l10n.completeReport),
-                  ],
-                ),
-              ),
-            ShadButton.outline(
-              onPressed: state.isSaving || isCancelled || !_canResetReports
-                  ? null
-                  : () async {
-                      final cubit = context.read<TeachingActivityDetailCubit>();
-                      final successMessage = context.l10n.teachingReportReset;
-                      final confirmed = await _confirmResetReport(context);
-                      if (!confirmed || !context.mounted) return;
-                      try {
-                        await cubit.resetReport();
-                        _workspaceKey.currentState
-                            ?.resetDraftsFromPersistedDetail();
-                        AppToast.showSuccess(successMessage);
-                      } catch (_) {}
-                    },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.restart_alt_outlined, size: 18),
-                  const SizedBox(width: 8),
-                  Text(context.l10n.resetReport),
-                ],
-              ),
-            ),
-          ];
-          final header = LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth < 760) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    title,
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Wrap(spacing: 8, runSpacing: 8, children: actions),
-                    ),
-                  ],
                 );
-              }
-              return Row(
-                children: [
-                  Expanded(child: title),
-                  const SizedBox(width: 12),
-                  Wrap(spacing: 8, runSpacing: 8, children: actions),
-                ],
-              );
-            },
-          );
-
-          return Scaffold(
-            backgroundColor: AppColors.surfaceSoft,
-            body: Column(
-              children: [
-                Padding(padding: AppPageHeaderStyle.pagePadding, child: header),
-                AppLoadingStrip(isLoading: state.isLoading || state.isSaving),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final compactHeight = constraints.maxHeight < 650;
-                        final maxExpandedHeight = compactHeight
-                            ? (constraints.maxHeight - 150)
-                                  .clamp(160.0, 420.0)
-                                  .toDouble()
-                            : (constraints.maxHeight * 0.42)
-                                  .clamp(240.0, 360.0)
-                                  .toDouble();
-                        final panel = _SessionInformationPanel(
-                          detail: detail,
-                          disabled: readOnly,
-                          expanded: _sessionInformationExpanded,
-                          maxExpandedHeight: maxExpandedHeight,
-                          onToggle: () => setState(
-                            () => _sessionInformationExpanded =
-                                !_sessionInformationExpanded,
-                          ),
-                        );
-                        if (compactHeight && _sessionInformationExpanded) {
-                          return panel;
-                        }
-                        return Column(
-                          children: [
-                            panel,
-                            const SizedBox(height: 12),
-                            Expanded(
-                              child: _TeachingSessionWorkspace(
-                                key: _workspaceKey,
-                                detail: detail,
-                                readOnly: readOnly,
-                              ),
+                final actions = <Widget>[
+                  if (_canManageReports &&
+                      detail.activity.status ==
+                          TeachingActivityStatus.inProgress &&
+                      detail.missingStudents.isNotEmpty)
+                    ShadButton.outline(
+                      onPressed: state.isSaving
+                          ? null
+                          : () => _syncNewStudents(detail),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.group_add_outlined, size: 18),
+                          const SizedBox(width: 8),
+                          Text(
+                            context.l10n.syncNewStudentsCount(
+                              detail.missingStudents.length,
                             ),
-                          ],
-                        );
-                      },
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_canManageReports &&
+                      !isCancelled &&
+                      detail.activity.status !=
+                          TeachingActivityStatus.completed)
+                    ShadButton(
+                      onPressed: state.isSaving
+                          ? null
+                          : () async {
+                              try {
+                                final records = _workspaceKey.currentState
+                                    ?.attendanceRecordsFromUi();
+                                if (records == null) return;
+                                final confirmed = await _confirmCompleteReport(
+                                  context,
+                                  records,
+                                );
+                                if (!confirmed || !context.mounted) return;
+                                await context
+                                    .read<TeachingActivityDetailCubit>()
+                                    .completeActivityWithAttendance(records);
+                                if (!context.mounted) return;
+                                AppToast.showSuccess(
+                                  context.l10n.teachingReportCompleted,
+                                );
+                                context.go('/teaching-activities');
+                              } catch (_) {}
+                            },
+                      backgroundColor: AppColors.primary,
+                      hoverBackgroundColor: AppColors.primaryLight,
+                      foregroundColor: AppColors.onPrimary,
+                      hoverForegroundColor: AppColors.onPrimary,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.check_circle_outline, size: 18),
+                          const SizedBox(width: 8),
+                          Text(context.l10n.completeReport),
+                        ],
+                      ),
+                    ),
+                  ShadButton.outline(
+                    foregroundColor: AppColors.errorDark,
+                    onPressed:
+                        state.isSaving || isCancelled || !_canResetReports
+                        ? null
+                        : () async {
+                            final cubit = context
+                                .read<TeachingActivityDetailCubit>();
+                            final successMessage =
+                                context.l10n.teachingReportReset;
+                            final confirmed = await _confirmResetReport(
+                              context,
+                            );
+                            if (!confirmed || !context.mounted) return;
+                            try {
+                              await cubit.resetReport();
+                              _workspaceKey.currentState
+                                  ?.resetDraftsFromPersistedDetail();
+                              AppToast.showSuccess(successMessage);
+                            } catch (_) {}
+                          },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.restart_alt_outlined, size: 18),
+                        const SizedBox(width: 8),
+                        Text(context.l10n.resetReport),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                ];
+                final resetAction = actions.removeLast();
+                final header = LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth /
+                            (MediaQuery.textScalerOf(context).scale(12) / 12) <
+                        1200) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          title,
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: actions,
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(child: title),
+                        const SizedBox(width: 12),
+                        Wrap(spacing: 8, runSpacing: 8, children: actions),
+                      ],
+                    );
+                  },
+                );
+
+                return Scaffold(
+                  backgroundColor: AppColors.surfaceSoft,
+                  body: CallbackShortcuts(
+                    bindings: {
+                      const SingleActivator(
+                        LogicalKeyboardKey.keyF,
+                        control: true,
+                      ): () =>
+                          _workspaceKey.currentState?.focusStudentSearch(),
+                    },
+                    child: Focus(
+                      autofocus: true,
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        child: AppDesktopWorkspace(
+                          header: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              header,
+                              AppLoadingStrip(
+                                isLoading: state.isLoading || state.isSaving,
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              _SessionInformationPanel(
+                                detail: detail,
+                                disabled: readOnly || state.isSaving,
+                                expanded: _sessionInformationExpanded,
+                                secondaryAction: resetAction,
+                                maxExpandedHeight: math.max(
+                                  160,
+                                  math.min(
+                                    480,
+                                    MediaQuery.sizeOf(context).height * 0.5,
+                                  ),
+                                ),
+                                onToggle: () => setState(
+                                  () => _sessionInformationExpanded =
+                                      !_sessionInformationExpanded,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                            ],
+                          ),
+                          content: _TeachingSessionWorkspace(
+                            key: _workspaceKey,
+                            detail: detail,
+                            readOnly: readOnly || state.isSaving,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-          );
-        },
       ),
     );
   }
@@ -472,125 +507,89 @@ class _SessionInformationPanel extends StatelessWidget {
     required this.expanded,
     required this.maxExpandedHeight,
     required this.onToggle,
+    required this.secondaryAction,
   });
-
   final TeachingActivityDetailData detail;
-  final bool disabled;
-  final bool expanded;
+  final bool disabled, expanded;
   final double maxExpandedHeight;
   final VoidCallback onToggle;
-
+  final Widget secondaryAction;
   @override
   Widget build(BuildContext context) {
     final activity = detail.activity;
-    final presentCount = detail.attendances
-        .where((item) => item.status == TeachingAttendanceStatus.present)
-        .length;
-    final totalStudents = detail.students.length;
-
-    return ShadCard(
-      width: double.infinity,
-      title: Row(
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.event_note_outlined,
-              color: AppColors.primaryDark,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+          Row(
+            children: [
+              Expanded(
+                child: Text(
                   context.l10n.sessionOverview,
                   style: AppTypography.sectionTitleStyle,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '${activity.className ?? '-'} | ${activity.subjectName ?? '-'} | '
-                  '${activity.activityDate} | ${activity.displayTime} | '
-                  '${context.l10n.attendancePresent}: $presentCount/$totalStudents | '
-                  '${context.l10n.completion}: ${activity.lessonCompletionPercent == null ? '-' : '${activity.lessonCompletionPercent}%'}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.secondaryStyle,
+              ),
+              Semantics(
+                expanded: expanded,
+                child: IconButton(
+                  key: const ValueKey('session-information-toggle'),
+                  tooltip: context.l10n.sessionOverview,
+                  onPressed: onToggle,
+                  icon: Icon(expanded ? Icons.expand_less : Icons.expand_more),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          _StatusBadge(status: activity.status),
-          const SizedBox(width: 6),
-          Tooltip(
-            message: context.l10n.sessionOverview,
-            child: Semantics(
-              button: true,
-              expanded: expanded,
-              child: ShadButton.ghost(
-                key: const ValueKey('session-information-toggle'),
-                onPressed: onToggle,
-                child: AnimatedRotation(
-                  turns: expanded ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 160),
-                  child: const Icon(Icons.keyboard_arrow_down, size: 20),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _StatusBadge(status: activity.status),
+              Text(activity.activityDate, style: AppTypography.secondaryStyle),
+              Text(activity.displayTime, style: AppTypography.secondaryStyle),
+            ],
+          ),
+          Visibility(
+            visible: expanded,
+            maintainState: true,
+            child: Padding(
+              key: const ValueKey('session-information-expanded'),
+              padding: const EdgeInsets.only(top: AppSpacing.sm),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: maxExpandedHeight),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _SessionOverview(detail: detail),
+                      const SizedBox(height: AppSpacing.md),
+                      const Divider(height: 1),
+                      const SizedBox(height: AppSpacing.md),
+                      _SessionNotesForm(
+                        key: ValueKey(
+                          'session-notes-${activity.activityId}-${activity.lessonCompletionPercent}-${activity.materialCovered}-${activity.classCondition}-${activity.teachingChallenges}-${activity.followUpPlan}-${activity.sessionNotes}',
+                        ),
+                        detail: detail,
+                        disabled: disabled,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      const Divider(height: 1),
+                      const SizedBox(height: AppSpacing.md),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: secondaryAction,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 160),
-            child: expanded
-                ? Padding(
-                    key: const ValueKey('session-information-expanded'),
-                    padding: const EdgeInsets.only(top: 4),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(maxHeight: maxExpandedHeight),
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const Divider(height: 1),
-                            const SizedBox(height: 14),
-                            _SessionOverview(detail: detail),
-                            const SizedBox(height: 14),
-                            const Divider(height: 1),
-                            const SizedBox(height: 14),
-                            _SessionNotesForm(
-                              key: ValueKey(
-                                'session-notes-${activity.activityId}-'
-                                '${activity.lessonCompletionPercent}-'
-                                '${activity.materialCovered}-'
-                                '${activity.classCondition}-'
-                                '${activity.teachingChallenges}-'
-                                '${activity.followUpPlan}-'
-                                '${activity.sessionNotes}',
-                              ),
-                              detail: detail,
-                              disabled: disabled,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  )
-                : const SizedBox.shrink(
-                    key: ValueKey('session-information-collapsed'),
-                  ),
-          ),
+          if (!expanded)
+            const SizedBox.shrink(
+              key: ValueKey('session-information-collapsed'),
+            ),
         ],
       ),
     );
@@ -616,7 +615,7 @@ class _SessionOverview extends StatelessWidget {
       children: [
         Wrap(
           spacing: 12,
-          runSpacing: 10,
+          runSpacing: AppSpacing.sm,
           children: [
             _InfoTile(label: context.l10n.date, value: activity.activityDate),
             _InfoTile(label: context.l10n.time, value: activity.displayTime),
@@ -653,12 +652,12 @@ class _SessionOverview extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         const Divider(height: 1),
         const SizedBox(height: 12),
         Wrap(
-          spacing: 10,
-          runSpacing: 10,
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
           children: [
             _SummaryMetric(
               label: context.l10n.students,
@@ -730,6 +729,8 @@ class _TeachingSessionWorkspace extends StatefulWidget {
 
 class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
   final TextEditingController _searchController = TextEditingController();
+  final _searchFocus = FocusNode();
+  final _studentScroll = ScrollController();
   final Map<String, String> _attendanceStatus = {};
   final Map<String, TextEditingController> _attendanceNotes = {};
   final Map<String, Map<String, String>> _competencyScores = {};
@@ -739,6 +740,13 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
   String? _selectedStudentId;
   int _compactPaneIndex = 0;
   late String _assessmentType;
+
+  void focusStudentSearch() {
+    setState(() => _compactPaneIndex = 0);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocus.requestFocus();
+    });
+  }
 
   String _assessmentTypeFromDetail() {
     return widget.detail.activity.assessmentType ??
@@ -837,6 +845,8 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocus.dispose();
+    _studentScroll.dispose();
     _disposeReportControllers();
     super.dispose();
   }
@@ -991,233 +1001,312 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
   Widget build(BuildContext context) {
     final selectedStudent = _selectedStudent;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 980;
-        final left = _buildStudentPanel();
-        final right = selectedStudent == null
-            ? _Panel(
-                child: Center(
-                  child: Text(
-                    context.l10n.noStudentsAvailable,
-                    style: const TextStyle(color: AppColors.textSecondary),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
+          focusStudentSearch();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
+          if (_disabled) return;
+          if (_compactPaneIndex == 0) {
+            saveAttendanceFromUi();
+          } else if (_selectedStudent != null) {
+            _saveReporting(_selectedStudent!);
+          }
+        },
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+          final compact = constraints.maxWidth / scale < 1100;
+          final left = _buildStudentPanel();
+          final right = selectedStudent == null
+              ? _Panel(
+                  child: Center(
+                    child: Text(
+                      context.l10n.noStudentsAvailable,
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ),
+                )
+              : _buildStudentReportPanel(selectedStudent);
+
+          if (compact) {
+            return Column(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<int>(
+                    key: const ValueKey('teaching-workspace-pane-selector'),
+                    style: ButtonStyle(
+                      minimumSize: WidgetStatePropertyAll(
+                        Size(
+                          40,
+                          math.max(
+                            40,
+                            MediaQuery.textScalerOf(context).scale(24) +
+                                AppSpacing.md,
+                          ),
+                        ),
+                      ),
+                      padding: const WidgetStatePropertyAll(
+                        EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.xs,
+                        ),
+                      ),
+                    ),
+                    showSelectedIcon: false,
+                    segments: [
+                      ButtonSegment<int>(
+                        value: 0,
+                        icon: const Icon(Icons.groups_2_outlined, size: 18),
+                        label: Text(context.l10n.studentsAttendance),
+                      ),
+                      ButtonSegment<int>(
+                        value: 1,
+                        icon: const Icon(Icons.assignment_outlined, size: 18),
+                        label: Text(context.l10n.reporting),
+                      ),
+                    ],
+                    selected: {_compactPaneIndex},
+                    onSelectionChanged: (selection) {
+                      setState(() => _compactPaneIndex = selection.first);
+                    },
                   ),
                 ),
-              )
-            : _buildStudentReportPanel(selectedStudent);
+                const SizedBox(height: 12),
+                Expanded(
+                  child: IndexedStack(
+                    index: _compactPaneIndex,
+                    children: [left, right],
+                  ),
+                ),
+              ],
+            );
+          }
 
-        if (compact) {
-          return Column(
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<int>(
-                  key: const ValueKey('teaching-workspace-pane-selector'),
-                  showSelectedIcon: false,
-                  segments: [
-                    ButtonSegment<int>(
-                      value: 0,
-                      icon: const Icon(Icons.groups_2_outlined, size: 18),
-                      label: Text(context.l10n.studentsAttendance),
-                    ),
-                    ButtonSegment<int>(
-                      value: 1,
-                      icon: const Icon(Icons.assignment_outlined, size: 18),
-                      label: Text(context.l10n.reporting),
-                    ),
-                  ],
-                  selected: {_compactPaneIndex},
-                  onSelectionChanged: (selection) {
-                    setState(() => _compactPaneIndex = selection.first);
-                  },
-                ),
-              ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: IndexedStack(
-                  index: _compactPaneIndex,
-                  children: [left, right],
-                ),
-              ),
+              SizedBox(width: 360 * scale, child: left),
+              const SizedBox(width: 12),
+              Expanded(child: right),
             ],
           );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(width: 360, child: left),
-            const SizedBox(width: 12),
-            Expanded(child: right),
-          ],
-        );
-      },
+        },
+      ),
     );
   }
 
   Widget _buildStudentPanel() {
     final students = _filteredStudents;
-    return _Panel(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _SectionHeader(
-                  title: context.l10n.studentsAttendance,
-                  subtitle: context.l10n.studentsAttendanceSubtitle,
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ShadFieldInset(
-                        child: ShadInputFormField(
-                          controller: _searchController,
-                          placeholder: Text(context.l10n.studentSearchHint),
-                          leading: const Icon(Icons.search, size: 18),
-                          onChanged: (_) => setState(() {}),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
+          if (!_disabled) saveAttendanceFromUi();
+        },
+      },
+      child: _Panel(
+        padding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SectionHeader(
+                    title: context.l10n.studentsAttendance,
+                    subtitle: context.l10n.studentsAttendanceSubtitle,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ShadFieldInset(
+                          child: ShadInputFormField(
+                            controller: _searchController,
+                            focusNode: _searchFocus,
+                            label: Text(context.l10n.studentSearchHint),
+                            placeholder: Text(context.l10n.studentSearchHint),
+                            leading: const Icon(Icons.search, size: 18),
+                            onChanged: (_) => setState(() {}),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Tooltip(
-                      message: context.l10n.saveAttendance,
-                      child: ShadButton.outline(
+                      const SizedBox(width: 8),
+                      Tooltip(
+                        message: context.l10n.saveAttendance,
+                        child: ShadButton.outline(
+                          onPressed: _disabled
+                              ? null
+                              : () => saveAttendanceFromUi(),
+                          child: const Icon(Icons.save_outlined, size: 18),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.xs,
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      ShadButton.ghost(
                         onPressed: _disabled
                             ? null
-                            : () => saveAttendanceFromUi(),
-                        child: const Icon(Icons.save_outlined, size: 18),
+                            : () {
+                                setState(() {
+                                  for (final student
+                                      in widget.detail.students) {
+                                    _attendanceStatus[student.id] =
+                                        TeachingAttendanceStatus.present;
+                                  }
+                                });
+                              },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.done_all, size: 16),
+                            const SizedBox(width: 8),
+                            Text(context.l10n.allPresent),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    ShadButton.ghost(
-                      onPressed: _disabled
-                          ? null
-                          : () {
-                              setState(() {
-                                for (final student in widget.detail.students) {
-                                  _attendanceStatus[student.id] =
-                                      TeachingAttendanceStatus.present;
-                                }
-                              });
-                            },
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.done_all, size: 16),
-                          const SizedBox(width: 8),
-                          Text(context.l10n.allPresent),
-                        ],
+
+                      Text(
+                        '${students.length} ${context.l10n.shown}',
+                        style: AppTypography.secondaryStyle,
                       ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      '${students.length} ${context.l10n.shown}',
-                      style: AppTypography.secondaryStyle,
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          const Divider(height: 1),
-          Container(
-            color: AppColors.surface,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            child: Row(
-              children: [
-                Expanded(child: _TableHeaderText(context.l10n.student)),
-                SizedBox(
-                  width: 144,
-                  child: _TableHeaderText(context.l10n.attendance),
-                ),
-              ],
+            const Divider(height: 1),
+            Container(
+              color: AppColors.surface,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+              child: Row(
+                children: [
+                  Expanded(child: _TableHeaderText(context.l10n.student)),
+                  SizedBox(
+                    width:
+                        160 * (MediaQuery.textScalerOf(context).scale(12) / 12),
+                    child: _TableHeaderText(context.l10n.attendance),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: students.isEmpty
-                ? Center(
-                    child: Text(
-                      widget.detail.students.isEmpty
-                          ? context.l10n.noStudentsAvailable
-                          : context.l10n.noStudentsMatchSearch,
-                      style: const TextStyle(color: AppColors.textSecondary),
-                    ),
-                  )
-                : ListView.separated(
-                    itemCount: students.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final student = students[index];
-                      final selected = student.id == _selectedStudent?.id;
-                      return InkWell(
-                        key: ValueKey('teaching-student-${student.id}'),
-                        onTap: () => setState(() {
-                          _selectedStudentId = student.id;
-                          _compactPaneIndex = 1;
-                        }),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 120),
-                          color: selected
-                              ? AppColors.primaryLight.withValues(alpha: 0.14)
-                              : AppColors.transparent,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 3,
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: _StudentIdentity(student: student),
-                              ),
-                              SizedBox(
-                                width: 144,
-                                child: _CompactAttendanceMenu(
-                                  studentId: student.id,
-                                  value:
-                                      _attendanceStatus[student.id] ??
-                                      TeachingAttendanceStatus.present,
-                                  enabled: !_disabled,
-                                  onChanged: (value) => setState(() {
-                                    _attendanceStatus[student.id] = value;
-                                  }),
+            const Divider(height: 1),
+            Expanded(
+              child: students.isEmpty
+                  ? Center(
+                      child: Text(
+                        widget.detail.students.isEmpty
+                            ? context.l10n.noStudentsAvailable
+                            : context.l10n.noStudentsMatchSearch,
+                        style: const TextStyle(color: AppColors.textSecondary),
+                      ),
+                    )
+                  : Scrollbar(
+                      controller: _studentScroll,
+                      child: ListView.separated(
+                        controller: _studentScroll,
+                        itemCount: students.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final student = students[index];
+                          final selected = student.id == _selectedStudent?.id;
+                          return Material(
+                            color: AppColors.transparent,
+                            child: Semantics(
+                              selected: selected,
+                              child: InkWell(
+                                key: ValueKey('teaching-student-${student.id}'),
+                                onTap: () => setState(() {
+                                  _selectedStudentId = student.id;
+                                  _compactPaneIndex = 1;
+                                }),
+                                child: Ink(
+                                  color: selected
+                                      ? AppColors.primaryLight.withValues(
+                                          alpha: 0.14,
+                                        )
+                                      : AppColors.transparent,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: AppSpacing.xxs,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: _StudentIdentity(
+                                          student: student,
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width:
+                                            160 *
+                                            (MediaQuery.textScalerOf(
+                                                  context,
+                                                ).scale(12) /
+                                                12),
+                                        child: _CompactAttendanceMenu(
+                                          studentId: student.id,
+                                          value:
+                                              _attendanceStatus[student.id] ??
+                                              TeachingAttendanceStatus.present,
+                                          enabled: !_disabled,
+                                          onChanged: (value) => setState(() {
+                                            _attendanceStatus[student.id] =
+                                                value;
+                                          }),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildStudentReportPanel(ClassStudentOption student) {
-    return _Panel(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
+          if (!_disabled) _saveReporting(student);
+        },
+      },
+      child: _Panel(
+        padding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
                         context.l10n.reporting,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
@@ -1225,59 +1314,60 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
                               color: AppColors.textPrimary,
                             ),
                       ),
-                    ),
-                    ShadButton.outline(
-                      onPressed: () => _showNoteHistory(student),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.history_outlined, size: 18),
-                          const SizedBox(width: 8),
-                          Text(context.l10n.noteHistory),
-                        ],
+                      ShadButton.outline(
+                        onPressed: () => _showNoteHistory(student),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.history_outlined, size: 18),
+                            Text(context.l10n.noteHistory),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    ShadButton(
-                      onPressed: _disabled
-                          ? null
-                          : () => _saveReporting(student),
-                      backgroundColor: AppColors.primary,
-                      hoverBackgroundColor: AppColors.primaryDark,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.save_outlined, size: 18),
-                          const SizedBox(width: 8),
-                          Text(context.l10n.saveReporting),
-                        ],
+                      const SizedBox(width: 8),
+                      ShadButton(
+                        onPressed: _disabled
+                            ? null
+                            : () => _saveReporting(student),
+                        backgroundColor: AppColors.primary,
+                        hoverBackgroundColor: AppColors.primaryLight,
+                        foregroundColor: AppColors.onPrimary,
+                        hoverForegroundColor: AppColors.onPrimary,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.save_outlined, size: 18),
+                            const SizedBox(width: 8),
+                            Text(context.l10n.saveReporting),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                _StudentIdentity(student: student),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: SingleChildScrollView(
-              key: ValueKey('teaching-report-scroll-${student.id}'),
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildAttendanceNoteBox(student),
-                  const SizedBox(height: 12),
-                  _buildCompetencyScoreBox(student),
-                  const SizedBox(height: 12),
-                  _buildObservationBox(student),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _StudentIdentity(student: student),
                 ],
               ),
             ),
-          ),
-        ],
+            const Divider(height: 1),
+            Expanded(
+              child: SingleChildScrollView(
+                key: ValueKey('teaching-report-scroll-${student.id}'),
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildAttendanceNoteBox(student),
+                    const SizedBox(height: 12),
+                    _buildCompetencyScoreBox(student),
+                    const SizedBox(height: 12),
+                    _buildObservationBox(student),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1296,6 +1386,7 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
             children: [
               _ShadFieldInset(
                 child: ShadSelectFormField<String>(
+                  trailing: const Icon(Icons.expand_more, size: 20),
                   initialValue: _assessmentType,
                   key: ValueKey('competency-assessment-type-$_assessmentType'),
                   enabled: !_disabled,
@@ -1322,7 +1413,7 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           _AssessmentModeBanner(
             label: _teachingAssessmentTypeLabel(context, _assessmentType),
             usesNumericScore: _usesNumericScore,
@@ -1414,7 +1505,7 @@ class _TeachingSessionWorkspaceState extends State<_TeachingSessionWorkspace> {
             ? context.l10n.attendanceNoteRequired
             : context.l10n.attendanceNote,
         enabled: !_disabled,
-        showLabel: false,
+        showLabel: true,
       ),
     );
   }
@@ -1609,12 +1700,8 @@ class _SubPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
+    return Material(
+      color: AppColors.transparent,
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: AppColors.transparent),
         child: ExpansionTile(
@@ -1635,7 +1722,7 @@ class _SubPanel extends StatelessWidget {
             ),
           ),
           subtitle: Padding(
-            padding: const EdgeInsets.only(top: 2),
+            padding: const EdgeInsets.only(top: AppSpacing.xxs),
             child: Text(
               subtitle,
               style: const TextStyle(
@@ -1670,11 +1757,12 @@ class _CompactAttendanceMenu extends StatelessWidget {
       message: context.l10n.attendance,
       child: _ShadFieldInset(
         child: ShadSelect<String>(
+          trailing: const Icon(Icons.expand_more, size: 20),
           key: ValueKey('attendance-select-$studentId-$value-$enabled'),
           initialValue: value,
           enabled: enabled,
-          minWidth: 180,
-          maxWidth: 240,
+          minWidth: 144,
+          maxWidth: math.max(240, MediaQuery.textScalerOf(context).scale(240)),
           maxHeight: AppDropdownStyle.menuMaxHeight,
           selectedOptionBuilder: (context, status) =>
               _AttendanceSelectLabel(status: status),
@@ -1721,7 +1809,7 @@ class _AttendanceSelectLabel extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: color,
+              color: AppColors.textPrimary,
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),
@@ -1770,7 +1858,7 @@ class _CompetencyScoreRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scoreField = usesNumericScore
         ? SizedBox(
-            width: 110,
+            width: 160,
             child: _ShadFieldInset(
               child: ShadInputFormField(
                 key: ValueKey(
@@ -1780,14 +1868,15 @@ class _CompetencyScoreRow extends StatelessWidget {
                 enabled: enabled,
                 keyboardType: TextInputType.number,
                 inputFormatters: _numericScoreInputFormatters,
+                label: Text(context.l10n.assessment),
                 placeholder: const Text('0-100'),
                 onChanged: onScoreChanged,
               ),
             ),
           )
         : SizedBox(
-            width: 190,
-            child: _StarRatingInput(
+            width: 320,
+            child: TeachingRatingInput(
               value: double.tryParse(score),
               enabled: enabled,
               onChanged: (value) => onScoreChanged(_formatScore(value)),
@@ -1796,7 +1885,10 @@ class _CompetencyScoreRow extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 720;
+        final compact =
+            constraints.maxWidth /
+                (MediaQuery.textScalerOf(context).scale(12) / 12) <
+            880;
         final title = Text(
           competency.label,
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
@@ -1807,7 +1899,7 @@ class _CompetencyScoreRow extends StatelessWidget {
             enabled: enabled,
             minLines: 1,
             maxLines: 2,
-            placeholder: Text(context.l10n.assessmentNote),
+            label: Text(context.l10n.assessmentNote),
           ),
         );
 
@@ -1828,9 +1920,9 @@ class _CompetencyScoreRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(child: title),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             scoreField,
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(child: note),
           ],
         );
@@ -1858,15 +1950,18 @@ class _ObservationNoteRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 720;
+        final compact =
+            constraints.maxWidth /
+                (MediaQuery.textScalerOf(context).scale(12) / 12) <
+            880;
         final title = Text(
           label,
           softWrap: true,
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
         );
         final stars = SizedBox(
-          width: 190,
-          child: _StarRatingInput(
+          width: 320,
+          child: TeachingRatingInput(
             value: rating,
             enabled: enabled,
             onChanged: onRatingChanged,
@@ -1878,7 +1973,7 @@ class _ObservationNoteRow extends StatelessWidget {
             enabled: enabled,
             minLines: 1,
             maxLines: 2,
-            placeholder: Text(context.l10n.notes),
+            label: Text(context.l10n.notes),
           ),
         );
 
@@ -1899,9 +1994,9 @@ class _ObservationNoteRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(flex: 2, child: title),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             stars,
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(flex: 3, child: note),
           ],
         );
@@ -1928,11 +2023,11 @@ class _StudentNoteHistoryDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final groups = _studentNoteHistoryGroups(context, notes, teacherName);
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(context.l10n.teacherNotesHistory),
       content: SizedBox(
         width: 640,
-        height: 460,
+        height: math.min(460, MediaQuery.sizeOf(context).height * 0.55),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1950,7 +2045,7 @@ class _StudentNoteHistoryDialog extends StatelessWidget {
                     )
                   : ListView.separated(
                       itemCount: groups.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final group = groups[index];
                         return _StudentNoteHistoryCard(
@@ -2006,7 +2101,7 @@ class _StudentNoteHistoryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2019,15 +2114,15 @@ class _StudentNoteHistoryCard extends StatelessWidget {
                 height: 34,
                 decoration: BoxDecoration(
                   color: AppColors.primaryLight.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadii.panel),
                 ),
                 child: const Icon(
                   Icons.forum_outlined,
                   size: 18,
-                  color: AppColors.primaryDark,
+                  color: AppColors.primaryForeground,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2040,7 +2135,7 @@ class _StudentNoteHistoryCard extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
                       context.l10n.addedByName(group.teacherName),
                       style: const TextStyle(
@@ -2053,7 +2148,7 @@ class _StudentNoteHistoryCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           for (final note in group.notes) ...[
             _StudentNoteCommentBlock(
               note: note,
@@ -2084,11 +2179,11 @@ class _StudentNoteCommentBlock extends StatelessWidget {
     final followUpNotes = _emptyToNull(note.followUpNotes);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2110,7 +2205,6 @@ class _StudentNoteCommentBlock extends StatelessWidget {
               IconButton(
                 tooltip: context.l10n.edit,
                 onPressed: disabled ? null : onEdit,
-                visualDensity: VisualDensity.compact,
                 icon: const Icon(Icons.edit_outlined, size: 18),
               ),
             ],
@@ -2231,7 +2325,7 @@ class _SessionNotesFormState extends State<_SessionNotesForm> {
         return Align(
           alignment: Alignment.topCenter,
           child: SizedBox(
-            width: constraints.maxWidth,
+            width: math.min(720, constraints.maxWidth),
             child: _SessionNotesFields(
               disabled: disabled,
               completion: _completion,
@@ -2305,15 +2399,15 @@ class _SessionNotesFields extends StatelessWidget {
               height: 34,
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppRadii.panel),
               ),
               child: const Icon(
                 Icons.edit_note_outlined,
-                color: AppColors.primaryDark,
+                color: AppColors.primaryForeground,
                 size: 18,
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 context.l10n.sessionNotes,
@@ -2328,19 +2422,23 @@ class _SessionNotesFields extends StatelessWidget {
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
-            final twoColumns = constraints.maxWidth >= 720;
+            final twoColumns =
+                constraints.maxWidth /
+                    (MediaQuery.textScalerOf(context).scale(12) / 12) >=
+                720;
             final fieldWidth = twoColumns
                 ? (constraints.maxWidth - 12) / 2
                 : constraints.maxWidth;
 
             return Wrap(
               spacing: 12,
-              runSpacing: 10,
+              runSpacing: AppSpacing.sm,
               children: [
                 SizedBox(
                   width: fieldWidth,
                   child: _ShadFieldInset(
                     child: ShadSelectFormField<int>(
+                      trailing: const Icon(Icons.expand_more, size: 20),
                       initialValue: completion,
                       key: ValueKey('completion-${completion ?? ''}'),
                       enabled: !disabled,
@@ -2411,7 +2509,9 @@ class _SessionNotesFields extends StatelessWidget {
           child: ShadButton(
             onPressed: disabled ? null : onSave,
             backgroundColor: AppColors.primary,
-            hoverBackgroundColor: AppColors.primaryDark,
+            hoverBackgroundColor: AppColors.primaryLight,
+            foregroundColor: AppColors.onPrimary,
+            hoverForegroundColor: AppColors.onPrimary,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -2439,7 +2539,7 @@ class _Panel extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.card,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
       ),
       child: Padding(padding: padding, child: child),
     );
@@ -2467,7 +2567,7 @@ class _SectionHeader extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
             subtitle,
             maxLines: 2,
@@ -2498,16 +2598,19 @@ class _SummaryMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 148,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      width: 200 * (MediaQuery.textScalerOf(context).scale(12) / 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppColors.primaryDark),
+          Icon(icon, size: 18, color: AppColors.primaryForeground),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -2548,27 +2651,30 @@ class _StudentIdentity extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          student.displayName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          student.studentNo,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
+    return Tooltip(
+      message: student.displayName,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            student.displayName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            student.studentNo,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2586,18 +2692,21 @@ class _AssessmentModeBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: AppColors.primary.withValues(alpha: 0.08),
         border: Border.all(color: AppColors.primaryLight),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
       ),
       child: Row(
         children: [
           Icon(
             usesNumericScore ? Icons.pin_outlined : Icons.star_rate_rounded,
             size: 18,
-            color: AppColors.primaryDark,
+            color: AppColors.primaryForeground,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -2613,74 +2722,6 @@ class _AssessmentModeBanner extends StatelessWidget {
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StarRatingInput extends StatelessWidget {
-  const _StarRatingInput({
-    required this.value,
-    required this.enabled,
-    required this.onChanged,
-    this.label,
-  });
-
-  final double? value;
-  final bool enabled;
-  final ValueChanged<double> onChanged;
-  final String? label;
-
-  @override
-  Widget build(BuildContext context) {
-    final rating = value ?? 0;
-    final stars = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (index) {
-        final starNo = index + 1;
-        final icon = rating >= starNo
-            ? Icons.star_rounded
-            : rating >= starNo - 0.5
-            ? Icons.star_half_rounded
-            : Icons.star_border_rounded;
-        return GestureDetector(
-          onTapDown: enabled
-              ? (details) {
-                  final half = details.localPosition.dx < 12;
-                  onChanged(index + (half ? 0.5 : 1.0));
-                }
-              : null,
-          child: Padding(
-            padding: const EdgeInsets.only(right: 2),
-            child: Icon(
-              icon,
-              size: 24,
-              color: enabled ? AppColors.warning : AppColors.textHint,
-            ),
-          ),
-        );
-      }),
-    );
-
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: label,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          stars,
-          const SizedBox(width: 6),
-          Text(
-            rating == 0 ? '-' : _formatScore(rating),
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -2707,6 +2748,8 @@ class _StudentNoteDialog extends StatefulWidget {
 }
 
 class _StudentNoteDialogState extends State<_StudentNoteDialog> {
+  bool _saving = false;
+  bool _commentInvalid = false;
   late String _noteType;
   late double _rating;
   late bool _followUpNeeded;
@@ -2734,105 +2777,129 @@ class _StudentNoteDialogState extends State<_StudentNoteDialog> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.note != null;
-    return AlertDialog(
-      title: AppDialogTitle(
-        isEditing ? context.l10n.editStudentNote : context.l10n.addStudentNote,
-      ),
-      content: SizedBox(
-        width: 520,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _StudentIdentity(student: widget.student),
-              const SizedBox(height: 14),
-              _ShadFieldInset(
-                child: ShadSelectFormField<String>(
-                  key: ValueKey('dialog-note-type-$_noteType'),
-                  initialValue: _noteType,
-                  enabled: !widget.disabled,
-                  label: Text(context.l10n.type),
-                  selectedOptionBuilder: (context, type) => Text(
-                    _studentNoteTypeLabel(context, type),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  options: StudentSessionNoteType.values
-                      .map(
-                        (type) => ShadOption<String>(
-                          value: type,
-                          child: Text(
-                            _studentNoteTypeLabel(context, type),
-                            overflow: TextOverflow.ellipsis,
+    final disabled = widget.disabled || _saving;
+    return PopScope(
+      canPop: !_saving,
+      child: AppDialog(
+        title: AppDialogTitle(
+          isEditing
+              ? context.l10n.editStudentNote
+              : context.l10n.addStudentNote,
+        ),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _StudentIdentity(student: widget.student),
+                const SizedBox(height: 16),
+                _ShadFieldInset(
+                  child: ShadSelectFormField<String>(
+                    trailing: const Icon(Icons.expand_more, size: 20),
+                    key: ValueKey('dialog-note-type-$_noteType'),
+                    initialValue: _noteType,
+                    enabled: !disabled,
+                    label: Text(context.l10n.type),
+                    selectedOptionBuilder: (context, type) => Text(
+                      _studentNoteTypeLabel(context, type),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    options: StudentSessionNoteType.values
+                        .map(
+                          (type) => ShadOption<String>(
+                            value: type,
+                            child: Text(
+                              _studentNoteTypeLabel(context, type),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
+                        )
+                        .toList(),
+                    onChanged: disabled
+                        ? null
+                        : (value) =>
+                              setState(() => _noteType = value ?? _noteType),
+                    maxHeight: AppDropdownStyle.menuMaxHeight,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TeachingRatingInput(
+                  value: _rating,
+                  enabled: !disabled,
+                  onChanged: (value) => setState(() => _rating = value),
+                  label: context.l10n.socialBehaviorRating,
+                ),
+                const SizedBox(height: 12),
+                _NoteField(
+                  controller: _commentController,
+                  label: context.l10n.comment,
+                  enabled: !disabled,
+                ),
+                if (_commentInvalid)
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      context.l10n.commentRequired,
+                      style: const TextStyle(color: AppColors.errorDark),
+                    ),
+                  ),
+                SwitchListTile(
+                  value: _followUpNeeded,
                   onChanged: widget.disabled
                       ? null
-                      : (value) =>
-                            setState(() => _noteType = value ?? _noteType),
-                  maxHeight: AppDropdownStyle.menuMaxHeight,
+                      : (value) => setState(() => _followUpNeeded = value),
+                  title: Text(context.l10n.followUpNeeded),
+                  contentPadding: EdgeInsets.zero,
                 ),
-              ),
-              const SizedBox(height: 10),
-              _StarRatingInput(
-                value: _rating,
-                enabled: !widget.disabled,
-                onChanged: (value) => setState(() => _rating = value),
-                label: context.l10n.socialBehaviorRating,
-              ),
-              const SizedBox(height: 10),
-              _NoteField(
-                controller: _commentController,
-                label: context.l10n.comment,
-                enabled: !widget.disabled,
-              ),
-              SwitchListTile(
-                value: _followUpNeeded,
-                onChanged: widget.disabled
-                    ? null
-                    : (value) => setState(() => _followUpNeeded = value),
-                title: Text(context.l10n.followUpNeeded),
-                contentPadding: EdgeInsets.zero,
-              ),
-              _NoteField(
-                controller: _followUpController,
-                label: context.l10n.followUpNotes,
-                enabled: !widget.disabled,
-              ),
-            ],
+                _NoteField(
+                  controller: _followUpController,
+                  label: context.l10n.followUpNotes,
+                  enabled: !disabled,
+                ),
+              ],
+            ),
           ),
         ),
+        actions: [
+          ShadButton.ghost(
+            onPressed: _saving ? null : () => Navigator.of(context).pop(),
+            child: Text(context.l10n.buttonCancel),
+          ),
+          ShadButton(
+            onPressed: disabled ? null : _save,
+            backgroundColor: AppColors.primary,
+            hoverBackgroundColor: AppColors.primaryLight,
+            foregroundColor: AppColors.onPrimary,
+            hoverForegroundColor: AppColors.onPrimary,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(isEditing ? Icons.save_outlined : Icons.add, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  isEditing ? context.l10n.updateNote : context.l10n.addNote,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
-      actions: [
-        ShadButton.ghost(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.l10n.buttonCancel),
-        ),
-        ShadButton(
-          onPressed: widget.disabled ? null : _save,
-          backgroundColor: AppColors.primary,
-          hoverBackgroundColor: AppColors.primaryDark,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(isEditing ? Icons.save_outlined : Icons.add, size: 18),
-              const SizedBox(width: 8),
-              Text(isEditing ? context.l10n.updateNote : context.l10n.addNote),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
   Future<void> _save() async {
+    if (_saving || widget.disabled) return;
     if (_commentController.text.trim().isEmpty) {
-      AppToast.showFailed(context.l10n.commentRequired);
+      setState(() => _commentInvalid = true);
       return;
     }
 
+    setState(() {
+      _saving = true;
+      _commentInvalid = false;
+    });
     final normalizedScore = _rating * 20;
     final addedMessage = context.l10n.studentNoteAdded;
     final updatedMessage = context.l10n.studentNoteUpdated;
@@ -2864,14 +2931,16 @@ class _StudentNoteDialogState extends State<_StudentNoteDialog> {
         AppToast.showSuccess(updatedMessage);
       }
       if (mounted) Navigator.of(context).pop();
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 }
 
 class _ShadFieldInset extends StatelessWidget {
   const _ShadFieldInset({required this.child});
 
-  static const EdgeInsets padding = EdgeInsets.all(6);
+  static const EdgeInsets padding = EdgeInsets.all(AppSpacing.xs);
 
   final Widget child;
 
@@ -2942,8 +3011,6 @@ class _InfoTile extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppColors.textPrimary,
               fontSize: 13,
@@ -2970,7 +3037,10 @@ class _StatusBadge extends StatelessWidget {
       _ => AppColors.warning,
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.xxs,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
@@ -2978,7 +3048,7 @@ class _StatusBadge extends StatelessWidget {
       child: Text(
         _teachingStatusLabel(context, status),
         style: TextStyle(
-          color: color,
+          color: AppColors.textPrimary,
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
@@ -3065,7 +3135,7 @@ Future<bool> _confirmResetReport(BuildContext context) async {
     context: context,
     guardKey: 'teaching_reset_report',
     builder: (context) {
-      return AlertDialog(
+      return AppDialog(
         title: AppDialogTitle(context.l10n.resetTeachingReport),
         content: Text(context.l10n.resetTeachingReportMessage),
         actions: [
@@ -3075,7 +3145,9 @@ Future<bool> _confirmResetReport(BuildContext context) async {
           ),
           ShadButton(
             onPressed: () => Navigator.of(context).pop(true),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.errorDark,
+            foregroundColor: AppColors.white,
+            hoverForegroundColor: AppColors.white,
             hoverBackgroundColor: AppColors.errorDark,
             child: Text(context.l10n.resetAll),
           ),
@@ -3106,51 +3178,55 @@ Future<bool> _confirmCompleteReport(
     context: context,
     guardKey: 'teaching_complete_report',
     builder: (context) {
-      return AlertDialog(
+      return AppDialog(
         title: AppDialogTitle(context.l10n.confirmCompleteTeachingReport),
         content: SizedBox(
           width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(context.l10n.confirmCompleteTeachingReportMessage),
-              const SizedBox(height: 16),
-              ...statusOrder
-                  .where((status) => (counts[status] ?? 0) > 0)
-                  .map(
-                    (status) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 10,
-                            height: 10,
-                            decoration: BoxDecoration(
-                              color: _attendanceColor(status),
-                              shape: BoxShape.circle,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(context.l10n.confirmCompleteTeachingReportMessage),
+                const SizedBox(height: 16),
+                ...statusOrder
+                    .where((status) => (counts[status] ?? 0) > 0)
+                    .map(
+                      (status) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: _attendanceColor(status),
+                                shape: BoxShape.circle,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _attendanceStatusLabel(context, status),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _attendanceStatusLabel(context, status),
+                              ),
                             ),
-                          ),
-                          Text(
-                            '${counts[status]}',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ],
+                            Text(
+                              '${counts[status]}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
+                if (records.isEmpty)
+                  Text(
+                    context.l10n.noActiveStudentsInClass,
+                    style: AppTypography.secondaryStyle,
                   ),
-              if (records.isEmpty)
-                Text(
-                  context.l10n.noActiveStudentsInClass,
-                  style: AppTypography.secondaryStyle,
-                ),
-            ],
+              ],
+            ),
           ),
         ),
         actions: [
@@ -3161,7 +3237,9 @@ Future<bool> _confirmCompleteReport(
           ShadButton(
             onPressed: () => Navigator.of(context).pop(true),
             backgroundColor: AppColors.primary,
-            hoverBackgroundColor: AppColors.primaryDark,
+            hoverBackgroundColor: AppColors.primaryLight,
+            foregroundColor: AppColors.onPrimary,
+            hoverForegroundColor: AppColors.onPrimary,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -3183,7 +3261,7 @@ Future<bool> _confirmAssessmentTypeChange(BuildContext context) async {
     context: context,
     guardKey: 'teaching_assessment_type_change',
     builder: (context) {
-      return AlertDialog(
+      return AppDialog(
         title: AppDialogTitle(context.l10n.changeAssessmentType),
         content: Text(context.l10n.changeAssessmentTypeMessage),
         actions: [
@@ -3194,7 +3272,9 @@ Future<bool> _confirmAssessmentTypeChange(BuildContext context) async {
           ShadButton(
             onPressed: () => Navigator.of(context).pop(true),
             backgroundColor: AppColors.primary,
-            hoverBackgroundColor: AppColors.primaryDark,
+            hoverBackgroundColor: AppColors.primaryLight,
+            foregroundColor: AppColors.onPrimary,
+            hoverForegroundColor: AppColors.onPrimary,
             child: Text(context.l10n.changeType),
           ),
         ],

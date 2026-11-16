@@ -3,7 +3,6 @@ import 'package:edukita/features/students/persentation/detail/attendance_line_ch
 import 'package:edukita/features/students/persentation/detail/student_info_tile.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 
 class StudentHeaderDetail extends StatelessWidget {
   const StudentHeaderDetail({
@@ -16,64 +15,40 @@ class StudentHeaderDetail extends StatelessWidget {
   final List<double?>? monthlyAttendance;
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableWidth = constraints.maxWidth;
-        final isNarrow = availableWidth < 520;
-        final isMedium = availableWidth < 920;
-        final cardHeight = (availableWidth * 0.24)
-            .clamp(190.0, 260.0)
-            .toDouble();
-        final studentFlex = isMedium ? 2 : 1;
-        final chartFlex = isMedium ? 4 : 3;
-
-        return ShadCard(
-          width: double.infinity,
-          child: SizedBox(
-            height: isNarrow ? 430 : cardHeight,
-            child: isNarrow
-                ? Column(
-                    children: [
-                      SizedBox(
-                        height: 165,
-                        child: StudentInfoTile(student: student),
-                      ),
-                      const Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: AppColors.border,
-                      ),
-                      Expanded(
-                        child: AttendanceLineChart(
-                          monthlyAttendance: monthlyAttendance,
-                        ),
-                      ),
-                    ],
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        flex: studentFlex,
-                        child: StudentInfoTile(student: student),
-                      ),
-                      const VerticalDivider(
-                        width: 1,
-                        thickness: 1,
-                        color: AppColors.border,
-                      ),
-                      Expanded(
-                        flex: chartFlex,
-                        child: AttendanceLineChart(
-                          monthlyAttendance: monthlyAttendance,
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-        );
-      },
-    );
-  }
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+      final info = StudentInfoTile(student: student);
+      final chart = SizedBox(
+        height: 300 * scale,
+        child: AttendanceLineChart(monthlyAttendance: monthlyAttendance),
+      );
+      return Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(AppRadii.panel),
+        ),
+        child: constraints.maxWidth / scale < 1000
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  info,
+                  const SizedBox(height: AppSpacing.md),
+                  const Divider(),
+                  chart,
+                ],
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(width: 320 * scale, child: info),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(child: chart),
+                ],
+              ),
+      );
+    },
+  );
 }

@@ -33,6 +33,7 @@ class StudentAcademicTab extends StatelessWidget {
       builder: (context, snapshot) {
         final insights = snapshot.data;
         return DetailTabScroll(
+          key: PageStorageKey('student_academic_tab.dart-${student.id}'),
           children: [
             DetailMetricSummary(student: student),
             DetailSectionCard(
@@ -79,6 +80,7 @@ class StudentAcademicTab extends StatelessWidget {
                   DetailEmptySectionText(context.l10n.loadingCompetencyRecords)
                 else
                   DetailDataTable(
+                    numericColumns: const {1, 2},
                     columns: [
                       context.l10n.competency,
                       context.l10n.averageScore,

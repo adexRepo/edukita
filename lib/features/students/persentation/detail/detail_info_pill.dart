@@ -2,11 +2,7 @@ import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class DetailInfoPill extends StatelessWidget {
-  const DetailInfoPill({
-    super.key,
-    required this.label,
-    required this.value,
-  });
+  const DetailInfoPill({super.key, required this.label, required this.value});
 
   final String label;
   final String value;
@@ -15,11 +11,9 @@ class DetailInfoPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(minHeight: 58),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -27,21 +21,18 @@ class DetailInfoPill extends StatelessWidget {
         children: [
           Text(
             label,
-            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppColors.textSecondary,
-              fontSize: 10.5,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            overflow: TextOverflow.ellipsis,
-            maxLines: 2,
             style: const TextStyle(
               color: AppColors.textPrimary,
-              fontSize: 12.5,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
           ),

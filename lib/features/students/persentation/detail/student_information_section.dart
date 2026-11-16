@@ -55,12 +55,14 @@ class StudentInformationSection extends StatelessWidget {
           return LayoutBuilder(
             builder: (context, constraints) {
               final width = constraints.maxWidth;
+              final effective =
+                  width / (MediaQuery.textScalerOf(context).scale(12) / 12);
               var columnCount = 1;
-              if (width >= 1100) {
+              if (effective >= 1100) {
                 columnCount = 4;
-              } else if (width >= 760) {
+              } else if (effective >= 760) {
                 columnCount = 3;
-              } else if (width >= 520) {
+              } else if (effective >= 520) {
                 columnCount = 2;
               }
               const spacing = 10.0;
@@ -77,7 +79,7 @@ class StudentInformationSection extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpacing.sm),
                   Wrap(
                     spacing: spacing,
                     runSpacing: 8,

@@ -1,3 +1,7 @@
+import 'package:flutter/services.dart';
+import 'package:edukita/widgets/app_dialog.dart';
+import 'package:edukita/widgets/app_error_dialog.dart';
+import 'package:edukita/widgets/app_desktop_workspace.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/localization/localized_display.dart';
 import 'package:edukita/core/helper/com_enum.dart';
@@ -62,7 +66,7 @@ class _StudentFilterButtonState extends State<StudentFilterButton> {
       ),
     );
 
-    if (result != null) {
+    if (mounted && result != null) {
       setState(() => activeFilters = result);
       widget.onApply(result);
     }
@@ -70,39 +74,19 @@ class _StudentFilterButtonState extends State<StudentFilterButton> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        FilledButton.icon(
-          onPressed: _openFilter,
-          icon: const Icon(Icons.filter_list),
-          label: const Text('Filter'),
-        ),
-        if (activeFilters.isNotEmpty)
-          Positioned(
-            right: -6,
-            top: -6,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: const BoxDecoration(
-                color: AppColors.errorDark,
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                activeFilters.length.toString(),
-                style: const TextStyle(
-                  color: AppColors.white,
-                  fontSize: AppTypography.body,
-                ),
-              ),
-            ),
-          ),
-      ],
+    return OutlinedButton.icon(
+      onPressed: _openFilter,
+      icon: const Icon(Icons.filter_list),
+      label: Text(
+        activeFilters.isEmpty
+            ? context.l10n.filterStudents
+            : '${context.l10n.filterStudents} (${activeFilters.length})',
+      ),
     );
   }
 }
 
-class StudentFilterDialog extends StatefulWidget {
+class StudentFilterDialog extends StatelessWidget {
   const StudentFilterDialog({
     super.key,
     required this.title,
@@ -110,286 +94,17 @@ class StudentFilterDialog extends StatefulWidget {
     required this.fields,
     this.initialFilters = const [],
   });
-
   final String title;
   final FilterField field;
   final List<FilterField> fields;
   final List<MultiFilterItem> initialFilters;
-
   @override
-  State<StudentFilterDialog> createState() => _StudentFilterDialogState();
-}
-
-class _StudentFilterDialogState extends State<StudentFilterDialog> {
-  late FilterField selectedField;
-  FilterOperator operator = FilterOperator.isEqual;
-  String selectedValue = '';
-  late final TextEditingController _valueController;
-  late List<MultiFilterItem> draftFilters;
-
-  @override
-  void initState() {
-    super.initState();
-    selectedField = widget.field;
-    selectedValue = selectedField.options?.firstOrNull ?? '';
-    _valueController = TextEditingController(text: selectedValue);
-    draftFilters = [...widget.initialFilters];
-  }
-
-  @override
-  void dispose() {
-    _valueController.dispose();
-    super.dispose();
-  }
-
-  void _addFilter() {
-    final value = selectedField.options?.isNotEmpty == true
-        ? selectedValue
-        : _valueController.text.trim();
-
-    if (value.trim().isEmpty) return;
-
-    setState(() {
-      draftFilters.add(
-        MultiFilterItem(
-          fieldCode: selectedField.code,
-          label: selectedField.label,
-          operator: operator,
-          value: value,
-        ),
-      );
-      selectedValue = selectedField.options?.firstOrNull ?? '';
-      _valueController.text = selectedValue;
-    });
-  }
-
-  void _done() {
-    Navigator.pop(context, draftFilters);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: SizedBox(
-              width: 360,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Berdasarkan',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedField.code,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                    ),
-                    items: widget.fields
-                        .map(
-                          (field) => DropdownMenuItem<String>(
-                            value: field.code,
-                            child: Text(field.label),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      final field = widget.fields.firstWhere(
-                        (entry) => entry.code == value,
-                        orElse: () => widget.field,
-                      );
-                      setState(() {
-                        selectedField = field;
-                        selectedValue = field.options?.firstOrNull ?? '';
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Operator',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      _operatorButton('=', 'Is Equal', FilterOperator.isEqual),
-                      _operatorButton('≠', 'Is Not', FilterOperator.isNot),
-                      _operatorButton('∋', 'Contains', FilterOperator.contains),
-                      _operatorButton(
-                        '✓',
-                        'Has Any Value',
-                        FilterOperator.hasAnyValue,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Data',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  if (selectedField.options?.isNotEmpty == true)
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedValue.isEmpty
-                          ? null
-                          : selectedValue,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                      ),
-                      items: (selectedField.options ?? []).map((option) {
-                        return DropdownMenuItem<String>(
-                          value: option,
-                          child: Text(option),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          selectedValue = value ?? '';
-                          _valueController.text = value ?? '';
-                        });
-                      },
-                    )
-                  else
-                    TextFormField(
-                      controller: _valueController,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  const SizedBox(height: 16),
-                  if (draftFilters.isNotEmpty) ...[
-                    const Text(
-                      'Filter yang ditambahkan',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 8),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 140),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: draftFilters.length,
-                        itemBuilder: (context, index) {
-                          final filter = draftFilters[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.surfaceSoft,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: AppColors.greyMedium,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      '${filter.label} ${_operatorLabel(filter.operator)} ${filter.value ?? "-"}',
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  tooltip: 'Hapus',
-                                  onPressed: () {
-                                    setState(
-                                      () => draftFilters.removeAt(index),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.close),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _addFilter,
-                          child: const Text('Add Filter'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: _done,
-                          child: const Text('Done'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: IconButton(
-              tooltip: 'Close',
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.close),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _operatorLabel(FilterOperator operator) {
-    return switch (operator) {
-      FilterOperator.isEqual => '=',
-      FilterOperator.isNot => '≠',
-      FilterOperator.contains => '∋',
-      FilterOperator.hasAnyValue => '✓',
-    };
-  }
-
-  Widget _operatorButton(
-    String label,
-    String description,
-    FilterOperator value,
-  ) {
-    final selected = operator == value;
-    return Tooltip(
-      message: description,
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          backgroundColor: selected ? AppColors.primary : null,
-          foregroundColor: selected ? AppColors.white : null,
-          side: BorderSide(
-            color: selected ? AppColors.primary : AppColors.greyMedium,
-          ),
-        ),
-        onPressed: () => setState(() => operator = value),
-        child: Text(label),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => StudentFilterDialogV2(
+    title: title,
+    field: field,
+    fields: fields,
+    initialFilters: initialFilters,
+  );
 }
 
 class StudentFilterDialogV2 extends StatefulWidget {
@@ -458,41 +173,29 @@ class _StudentFilterDialogV2State extends State<StudentFilterDialogV2> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: SizedBox(
-              width: 720,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _buildInputPanel(context)),
-                  const SizedBox(width: 18),
-                  SizedBox(
-                    width: 300,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 28),
-                      child: _buildActiveFiltersPanel(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+    return AppDialog(
+      title: Text(widget.title),
+      content: SizedBox(
+        width: 720,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildInputPanel(context),
+              const SizedBox(height: AppSpacing.lg),
+              _buildActiveFiltersPanel(),
+            ],
           ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: IconButton(
-              tooltip: context.l10n.buttonClose,
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.close),
-            ),
-          ),
-        ],
+        ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.buttonCancel),
+        ),
+        FilledButton(onPressed: _done, child: Text(context.l10n.done)),
+      ],
     );
   }
 
@@ -514,6 +217,7 @@ class _StudentFilterDialogV2State extends State<StudentFilterDialogV2> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
+          isExpanded: true,
           initialValue: selectedField.code,
           decoration: const InputDecoration(border: OutlineInputBorder()),
           items: widget.fields
@@ -537,7 +241,7 @@ class _StudentFilterDialogV2State extends State<StudentFilterDialogV2> {
             });
           },
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.md),
         Text(
           context.l10n.filterOperator,
           style: const TextStyle(fontWeight: FontWeight.w600),
@@ -569,7 +273,7 @@ class _StudentFilterDialogV2State extends State<StudentFilterDialogV2> {
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.md),
         Text(
           context.l10n.value,
           style: const TextStyle(fontWeight: FontWeight.w600),
@@ -600,10 +304,10 @@ class _StudentFilterDialogV2State extends State<StudentFilterDialogV2> {
             controller: _valueController,
             decoration: const InputDecoration(border: OutlineInputBorder()),
           ),
-        const SizedBox(height: 18),
+        const SizedBox(height: AppSpacing.md),
         SizedBox(
           width: double.infinity,
-          child: FilledButton.icon(
+          child: OutlinedButton.icon(
             onPressed: _addFilter,
             icon: const Icon(Icons.add),
             label: Text(context.l10n.addFilter),
@@ -613,117 +317,42 @@ class _StudentFilterDialogV2State extends State<StudentFilterDialogV2> {
     );
   }
 
-  Widget _buildActiveFiltersPanel() {
-    return SizedBox(
-      height: 430,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceSoft,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.max,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    context.l10n.activeFilters,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                TextButton(
-                  onPressed: draftFilters.isEmpty
-                      ? null
-                      : () => setState(() => draftFilters.clear()),
-                  child: Text(context.l10n.clear),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: draftFilters.isEmpty
-                  ? Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Align(
-                        alignment: Alignment.topLeft,
-                        child: Text(
-                          context.l10n.noFiltersYet,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: EdgeInsets.zero,
-                      itemCount: draftFilters.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final filter = draftFilters[index];
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '${filter.label} ${_operatorLabel(filter.operator)} ${_displayFilterValue(filter.fieldCode, filter.value)}',
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 2,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    height: 1.25,
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                visualDensity: VisualDensity.compact,
-                                tooltip: context.l10n.buttonRemove,
-                                onPressed: () {
-                                  setState(() => draftFilters.removeAt(index));
-                                },
-                                icon: const Icon(Icons.close, size: 18),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _done,
-                child: Text(context.l10n.done),
-              ),
-            ),
-          ],
-        ),
+  Widget _buildActiveFiltersPanel() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        spacing: AppSpacing.sm,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            context.l10n.activeFilters,
+            style: AppTypography.bodyStrongStyle,
+          ),
+          TextButton(
+            onPressed: draftFilters.isEmpty
+                ? null
+                : () => setState(() => draftFilters.clear()),
+            child: Text(context.l10n.clear),
+          ),
+        ],
       ),
-    );
-  }
+      if (draftFilters.isEmpty)
+        Text(context.l10n.noFiltersYet, style: AppTypography.secondaryStyle),
+      for (final (index, filter) in draftFilters.indexed)
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            '${filter.label} ${_operatorLabel(filter.operator)} ${_displayFilterValue(filter.fieldCode, filter.value)}',
+          ),
+          trailing: IconButton(
+            tooltip: context.l10n.buttonRemove,
+            onPressed: () => setState(() => draftFilters.removeAt(index)),
+            icon: const Icon(Icons.close),
+          ),
+        ),
+    ],
+  );
 
   String _operatorLabel(FilterOperator operator) {
     return switch (operator) {
@@ -787,156 +416,42 @@ class _StudentCreationModeDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: SizedBox(
-        width: 620,
-        child: Padding(
-          padding: const EdgeInsets.all(22),
+    return AppDialog(
+      title: Text(context.l10n.addStudent),
+      content: SizedBox(
+        width: 600,
+        child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.l10n.addStudent,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          context.l10n.chooseStudentCreationMode,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: context.l10n.buttonClose,
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
+              ListTile(
+                minVerticalPadding: AppSpacing.sm,
+                leading: const Icon(Icons.person_add_alt_1_outlined),
+                title: Text(context.l10n.addFullStudent),
+                subtitle: Text(context.l10n.fullStudentDescription),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => onSelected(_StudentCreationMode.full),
               ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 170,
-                      child: _CreationModeCard(
-                        icon: Icons.person_add_alt_1_outlined,
-                        title: context.l10n.addFullStudent,
-                        description: context.l10n.fullStudentDescription,
-                        onTap: () => onSelected(_StudentCreationMode.full),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: SizedBox(
-                      height: 170,
-                      child: _CreationModeCard(
-                        icon: Icons.flash_on_outlined,
-                        title: context.l10n.quickRegisterStudent,
-                        description: context.l10n.quickRegisterStudentDescription,
-                        onTap: () => onSelected(_StudentCreationMode.quick),
-                      ),
-                    ),
-                  ),
-                ],
+              const Divider(),
+              ListTile(
+                minVerticalPadding: AppSpacing.sm,
+                leading: const Icon(Icons.flash_on_outlined),
+                title: Text(context.l10n.quickRegisterStudent),
+                subtitle: Text(context.l10n.quickRegisterStudentDescription),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => onSelected(_StudentCreationMode.quick),
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-}
-
-class _CreationModeCard extends StatefulWidget {
-  const _CreationModeCard({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
-  final VoidCallback onTap;
-
-  @override
-  State<_CreationModeCard> createState() => _CreationModeCardState();
-}
-
-class _CreationModeCardState extends State<_CreationModeCard> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      cursor: SystemMouseCursors.click,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: _hovered
-                ? AppColors.primary.withValues(alpha: 0.08)
-                : AppColors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: _hovered ? AppColors.primary : AppColors.border,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(widget.icon, color: AppColors.primary),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                widget.title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                widget.description,
-                style: const TextStyle(
-                  fontSize: 12,
-                  height: 1.35,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
+      actions: [
+        TextButton(
+          autofocus: true,
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.buttonCancel),
         ),
-      ),
+      ],
     );
   }
 }
@@ -951,6 +466,16 @@ class StudentsPage extends StatefulWidget {
 class _StudentsPageState extends State<StudentsPage> {
   String? sortColumn;
   StudentFilter _filter = const StudentFilter();
+  List<MultiFilterItem> _activeFilters = [];
+  final _searchController = TextEditingController();
+  final _searchFocus = FocusNode();
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocus.dispose();
+    super.dispose();
+  }
+
   List<TeachingLocation> _teachingLocations = const [];
   bool isAscending = true;
   int? _observedCacheRevision;
@@ -1007,7 +532,9 @@ class _StudentsPageState extends State<StudentsPage> {
   }
 
   void _refreshIfStudentCacheChanged() {
-    if (!_authorizationLoaded || !_canViewStudents || _externalRefreshScheduled) {
+    if (!_authorizationLoaded ||
+        !_canViewStudents ||
+        _externalRefreshScheduled) {
       return;
     }
     final cubit = context.read<StudentPageCubit>();
@@ -1032,6 +559,16 @@ class _StudentsPageState extends State<StudentsPage> {
 
   void _inquiry() {
     if (!_canViewStudents) return;
+    _filter = buildStudentFilter([
+      ..._activeFilters,
+      if (_searchController.text.trim().isNotEmpty)
+        MultiFilterItem(
+          fieldCode: StudentFilterCodes.name.name,
+          label: context.l10n.name,
+          operator: FilterOperator.contains,
+          value: _searchController.text.trim(),
+        ),
+    ]);
     context.read<StudentPageCubit>().applyFilter(_filter);
   }
 
@@ -1248,50 +785,72 @@ class _StudentsPageState extends State<StudentsPage> {
       backgroundColor: AppColors.surfaceSoft,
       body: BlocBuilder<StudentPageCubit, FeatureState<StudentPageData>>(
         builder: (context, state) {
-          return Column(
-            children: [
-              _buildTopBar(),
-              AppLoadingStrip(isLoading: state.loading),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
+          return CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.keyF, control: true):
+                  _searchFocus.requestFocus,
+            },
+            child: Focus(
+              autofocus: true,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: AppDesktopWorkspace(
+                  header: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      AppPageHeader(title: context.l10n.menuStudents),
+                      AppLoadingStrip(isLoading: state.loading),
+                      const SizedBox(height: AppSpacing.sm),
                       _buildStatsFromState(
                         state.data ?? StudentPageData.empty(),
                       ),
-
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.sm),
                       _buildHeader(),
-                      const SizedBox(height: 8),
-
-                      Expanded(child: _buildTableSection(state)),
+                      if (state.message != null) _studentError(state),
+                      const SizedBox(height: AppSpacing.sm),
                     ],
                   ),
+                  content: _buildTableSection(state),
                 ),
               ),
-            ],
+            ),
           );
         },
       ),
     );
   }
 
-  // ================= TOP BAR =================
-  Widget _buildTopBar() {
-    return Padding(
-      padding: AppPageHeaderStyle.pagePadding,
-      child: AppPageHeader(title: context.l10n.menuStudents),
-    );
-  }
+  Widget _studentError(FeatureState<StudentPageData> state) => Wrap(
+    spacing: AppSpacing.xs,
+    runSpacing: AppSpacing.xs,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: [
+      Text(
+        context.l10n.studentsLoadFailed,
+        style: AppTypography.bodyStrongStyle,
+      ),
+      TextButton(
+        onPressed: state.loading ? null : _inquiry,
+        child: Text(context.l10n.retry),
+      ),
+      TextButton(
+        onPressed: () => showErrorDetailDialog(
+          context,
+          title: context.l10n.menuStudents,
+          error: state.message!,
+        ),
+        child: Text(context.l10n.detail),
+      ),
+    ],
+  );
 
   Widget _buildCard(String title, String value) {
     return Container(
       constraints: const BoxConstraints(minHeight: 76),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
@@ -1301,11 +860,11 @@ class _StudentsPageState extends State<StudentsPage> {
             height: 34,
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadii.panel),
             ),
             child: const Icon(
               Icons.people_alt_outlined,
-              color: AppColors.primaryDark,
+              color: AppColors.primaryForeground,
               size: 18,
             ),
           ),
@@ -1341,84 +900,115 @@ class _StudentsPageState extends State<StudentsPage> {
   }
 
   // ================= STATS =================
-  Widget _buildStatsFromState(StudentPageData state) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildCard(context.l10n.total, state.totalStudents.toString()),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _buildCard(
-            context.l10n.genderMale,
-            state.maleStudents.toString(),
+  Widget _buildStatsFromState(StudentPageData state) => LayoutBuilder(
+    builder: (context, constraints) {
+      final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+      final values = [
+        (context.l10n.total, state.totalStudents),
+        (context.l10n.genderMale, state.maleStudents),
+        (context.l10n.genderFemale, state.femaleStudents),
+        (context.l10n.statusActive, state.activeStudents),
+      ];
+      if (constraints.maxWidth / scale < 720) {
+        return ExpansionTile(
+          title: Text(
+            '${context.l10n.total}: ${state.totalStudents}',
+            style: AppTypography.bodyStrongStyle,
           ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _buildCard(
-            context.l10n.genderFemale,
-            state.femaleStudents.toString(),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _buildCard(
-            context.l10n.statusActive,
-            state.activeStudents.toString(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ================= SEARCH =================
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
+          children: [
+            for (final item in values) _buildCard(item.$1, item.$2.toString()),
+          ],
+        );
+      }
+      final count = (constraints.maxWidth / (220 * scale)).floor().clamp(1, 4);
+      final width =
+          (constraints.maxWidth - (count - 1) * AppSpacing.sm) / count;
+      return Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
         children: [
+          for (final item in values)
+            SizedBox(
+              width: width,
+              child: _buildCard(item.$1, item.$2.toString()),
+            ),
+        ],
+      );
+    },
+  );
+
+  Widget _buildHeader() => LayoutBuilder(
+    builder: (context, constraints) {
+      final search = TextField(
+        controller: _searchController,
+        focusNode: _searchFocus,
+        onSubmitted: (_) => _inquiry(),
+        decoration: InputDecoration(
+          labelText: context.l10n.studentsSearchNameHint,
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: IconButton(
+            tooltip: context.l10n.clear,
+            onPressed: () {
+              _searchController.clear();
+              _inquiry();
+            },
+            icon: const Icon(Icons.close),
+          ),
+        ),
+      );
+      final actions = Wrap(
+        spacing: AppSpacing.xs,
+        runSpacing: AppSpacing.xs,
+        children: [
+          StudentFilterButton(
+            title: context.l10n.filterStudents,
+            fields: _studentFilterFields(),
+            onApply: (filters) {
+              _activeFilters = filters;
+              _inquiry();
+            },
+          ),
+          OutlinedButton(
+            onPressed: _inquiry,
+            child: Text(context.l10n.buttonSearch),
+          ),
           if (_canCreateStudents)
             FilledButton.icon(
               onPressed: _showAddStudentDialog,
               icon: const Icon(Icons.add),
               label: Text(context.l10n.addStudent),
-            )
-          else
-            const SizedBox.shrink(),
-          const Spacer(),
-          StudentFilterButton(
-            title: context.l10n.filterStudents,
-            fields: _studentFilterFields(),
-            onApply: (filters) {
-              setState(() {
-                _filter = buildStudentFilter(filters);
-              });
-            },
-          ),
-          const SizedBox(width: 8),
-          IconButton.filled(
-            tooltip: context.l10n.searchStudent,
-            onPressed: _inquiry,
-            icon: const Icon(Icons.search, color: AppColors.white),
-          ),
+            ),
         ],
-      ),
-    );
-  }
+      );
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          search,
+          const SizedBox(height: AppSpacing.xs),
+          Align(alignment: Alignment.centerRight, child: actions),
+        ],
+      );
+    },
+  );
 
   Widget _buildTableSection(FeatureState<StudentPageData> state) {
+    final rows = state.data?.students ?? const <StudentTable>[];
+    final byName = [...rows]
+      ..sort(
+        (a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
+      );
+    final byClass = [...rows]
+      ..sort(
+        (a, b) =>
+            a.className.toLowerCase().compareTo(b.className.toLowerCase()),
+      );
+    final names = {for (final (index, row) in byName.indexed) row.id: index};
+    final classes = {for (final (index, row) in byClass.indexed) row.id: index};
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
         border: Border.all(color: AppColors.border),
       ),
       clipBehavior: Clip.antiAlias,
@@ -1433,18 +1023,15 @@ class _StudentsPageState extends State<StudentsPage> {
         columns: [
           AppTableColumn(
             title: context.l10n.studentProfile,
+            minWidth: 280,
             flex: 5,
-            sortValue: (data) => data.fullName.isEmpty
-                ? 0
-                : data.fullName.toLowerCase().codeUnitAt(0),
+            sortValue: (data) => names[data.id] ?? 0,
             cell: (s) => StudentProfileCell(student: s),
           ),
           AppTableColumn(
             title: context.l10n.classSchool,
             flex: 3,
-            sortValue: (data) => data.className.isEmpty
-                ? 0
-                : data.className.toLowerCase().codeUnitAt(0),
+            sortValue: (data) => classes[data.id] ?? 0,
             cell: (s) => Text(
               '${s.className}\n${s.schoolName}',
               style: const TextStyle(fontSize: 12, height: 1.2),
@@ -1482,6 +1069,8 @@ class _StudentsPageState extends State<StudentsPage> {
           ),
           AppTableColumn(
             title: context.l10n.scoreStatus,
+            alignment: Alignment.centerRight,
+            headerTextAlign: TextAlign.right,
             flex: 2,
             sortValue: (data) => data.averageScore?.round() ?? -1,
             cell: (s) => Text(
@@ -1498,6 +1087,7 @@ class _StudentsPageState extends State<StudentsPage> {
           ),
           AppTableColumn(
             title: context.l10n.actions,
+            minWidth: 128,
             flex: 2,
             cell: (s) => Align(
               alignment: Alignment.centerLeft,
@@ -1510,8 +1100,8 @@ class _StudentsPageState extends State<StudentsPage> {
                         ? () => _showEditStudentDialog(s)
                         : null,
                     constraints: const BoxConstraints.tightFor(
-                      width: 28,
-                      height: 28,
+                      width: 40,
+                      height: 40,
                     ),
                     padding: EdgeInsets.zero,
                     icon: const Icon(Icons.edit, size: 16),
@@ -1524,8 +1114,8 @@ class _StudentsPageState extends State<StudentsPage> {
                         ? () => _confirmToggleStudentStatus(s)
                         : null,
                     constraints: const BoxConstraints.tightFor(
-                      width: 28,
-                      height: 28,
+                      width: 40,
+                      height: 40,
                     ),
                     padding: EdgeInsets.zero,
                     icon: Icon(
@@ -1552,7 +1142,10 @@ class _StudentsPageState extends State<StudentsPage> {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.xs,
+          vertical: AppSpacing.xxs,
+        ),
         decoration: BoxDecoration(
           color: complete
               ? AppColors.success.withValues(alpha: 0.10)
@@ -1572,7 +1165,7 @@ class _StudentsPageState extends State<StudentsPage> {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: complete ? AppColors.success : AppColors.warning,
+            color: AppColors.textPrimary,
           ),
         ),
       ),
@@ -1580,12 +1173,13 @@ class _StudentsPageState extends State<StudentsPage> {
   }
 
   List<FilterField> _studentFilterFields() {
-    final locationNames = _teachingLocations
-        .map((location) => location.name.trim())
-        .where((name) => name.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    final locationNames =
+        _teachingLocations
+            .map((location) => location.name.trim())
+            .where((name) => name.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
     return [
       FilterField(

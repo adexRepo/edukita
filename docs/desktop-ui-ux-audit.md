@@ -86,3 +86,7 @@ Yang masih terbuka: restyle per halaman form/tabel, penanganan error halaman gur
 Tahap lanjutan prioritas berdasarkan besarnya perubahan: lihat [ui-restyle-priorities.md](ui-restyle-priorities.md). Workspace Periode Bantuan dan wizard telah direstyle; hasil verifikasi akhir dicatat pada dokumen tersebut.
 
 Tahap Jadwal: workspace, kalender, toolbar/pencarian keyboard, timeline dan dialog direstyle. Audit severity, batas kontrak, dan hasil verifikasinya dicatat dalam [ui-restyle-priorities.md](ui-restyle-priorities.md). Perubahan Bantuan sebelumnya sudah di-commit `126d391`.
+
+Prioritas 3 — Detail Aktivitas Mengajar: audit dan implementasi workspace adaptif, pemeliharaan draft saat ringkasan dibuka, kontrol rating keyboard, font Shadcn, dialog catatan dan hierarki aksi dicatat dalam [ui-restyle-priorities.md](ui-restyle-priorities.md). Tidak ada perubahan persistence atau aturan penilaian.
+
+Prioritas 4 — Siswa: daftar, filter tunggal, form cepat/lengkap dan komponen tujuh tab detail direstyle. Audit severity, pengujian, batas kontrak data serta alur native yang belum diuji tersedia dalam [ui-restyle-priorities.md](ui-restyle-priorities.md).

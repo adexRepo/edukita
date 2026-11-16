@@ -1,3 +1,5 @@
+import 'package:edukita/widgets/app_shad_theme.dart';
+import 'package:edukita/widgets/app_error_dialog.dart';
 import 'package:edukita/core/helper/com_enum.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/localization/localized_display.dart';
@@ -54,7 +56,7 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_saving || !_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
     try {
@@ -77,6 +79,15 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
       await widget.onSubmit(student, null);
       if (!mounted) return;
       Navigator.of(context).pop();
+    } catch (error) {
+      if (mounted) {
+        showErrorToastWithDetails(
+          context,
+          title: context.l10n.quickRegisterStudent,
+          error: error,
+          message: context.l10n.studentSaveFailed,
+        );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -84,170 +95,211 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: AppColors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 720),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context.l10n.quickRegisterStudent,
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary,
-                                ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            context.l10n.quickRegisterStudentDescription,
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    ShadButton.ghost(
-                      onPressed: _saving ? null : () => Navigator.pop(context),
-                      child: const Icon(Icons.close, size: 18),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                _fieldGrid([
-                  _shadInputField(
-                    label: context.l10n.studentNo,
-                    controller: _studentNoController,
-                    readOnly: true,
-                  ),
-                  _shadInputField(
-                    label: context.l10n.fullName,
-                    isRequired: true,
-                    controller: _fullNameController,
-                    autofocus: true,
-                    inputFormatters: [LengthLimitingTextInputFormatter(80)],
-                    validator: (value) {
-                      final text = value?.trim() ?? '';
-                      if (text.isEmpty) {
-                        return context.l10n.fieldRequiredMessage(
-                          context.l10n.fullName,
-                        );
-                      }
-                      if (text.length < 3) {
-                        return context.l10n.fullNameMinimumThree;
-                      }
-                      return null;
-                    },
-                  ),
-                  _shadSelectField<Gender>(
-                    label: context.l10n.gender,
-                    isRequired: true,
-                    value: _selectedGender,
-                    values: Gender.values,
-                    optionLabel: (gender) =>
-                        translateGender(context, gender.name),
-                    onChanged: _saving
-                        ? null
-                        : (value) => setState(() => _selectedGender = value),
-                    validator: (value) => value == null
-                        ? context.l10n.fieldRequiredMessage(context.l10n.gender)
-                        : null,
-                  ),
-                  _shadSelectField<String>(
-                    label: context.l10n.className,
-                    isRequired: true,
-                    value: _selectedClassId,
-                    values: widget.availableClasses.map(
-                      (schoolClass) => schoolClass.id,
-                    ),
-                    optionLabel: (id) {
-                      final schoolClass = widget.availableClasses.firstWhere(
-                        (schoolClass) => schoolClass.id == id,
-                      );
-                      if (schoolClass.level == 0) {
-                        return '0 - ${schoolLevelLabel(0)}';
-                      }
-                      return schoolClass.className;
-                    },
-                    onChanged: _saving
-                        ? null
-                        : (value) => setState(() => _selectedClassId = value),
-                    validator: (value) => value == null || value.isEmpty
-                        ? context.l10n.selectClassRequired
-                        : null,
-                  ),
-                  _shadSelectField<String>(
-                    label: context.l10n.studentLocation,
-                    isRequired: true,
-                    value: _selectedTeachingLocationId,
-                    values: widget.availableTeachingLocations.map(
-                      (location) => location.id,
-                    ),
-                    optionLabel: (id) {
-                      final location = widget.availableTeachingLocations
-                          .firstWhere((location) => location.id == id);
-                      return '${location.code} - ${location.name}';
-                    },
-                    onChanged: _saving
-                        ? null
-                        : (value) => setState(
-                            () => _selectedTeachingLocationId = value,
-                          ),
-                    validator: (value) => value == null || value.isEmpty
-                        ? context.l10n.selectStudentLocationRequired
-                        : null,
-                  ),
-                ]),
-                const SizedBox(height: 22),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    ShadButton.outline(
-                      onPressed: _saving ? null : () => Navigator.pop(context),
-                      child: Text(context.l10n.buttonCancel),
-                    ),
-                    const SizedBox(width: 10),
-                    ShadButton(
-                      onPressed: _saving ? null : _submit,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (_saving) ...[
-                            const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.white,
+    return AppShadTheme(
+      child: PopScope(
+        canPop: !_saving,
+        child: CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.keyS, control: true):
+                _submit,
+          },
+          child: Dialog(
+            insetPadding: const EdgeInsets.all(AppSpacing.lg),
+            backgroundColor: AppColors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadii.dialog),
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 720,
+                maxHeight: MediaQuery.sizeOf(context).height - AppSpacing.xxl,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    context.l10n.quickRegisterStudent,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    context
+                                        .l10n
+                                        .quickRegisterStudentDescription,
+                                    style: const TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                          ] else ...[
-                            const Icon(Icons.save_outlined, size: 16),
-                            const SizedBox(width: 8),
+                            IconButton(
+                              tooltip: context.l10n.buttonClose,
+                              onPressed: _saving
+                                  ? null
+                                  : () => Navigator.pop(context),
+                              icon: const Icon(Icons.close, size: 20),
+                            ),
                           ],
-                          Text(context.l10n.buttonSave),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _fieldGrid([
+                          _shadInputField(
+                            label: context.l10n.studentNo,
+                            controller: _studentNoController,
+                            readOnly: true,
+                          ),
+                          _shadInputField(
+                            label: context.l10n.fullName,
+                            isRequired: true,
+                            controller: _fullNameController,
+                            autofocus: true,
+                            inputFormatters: [
+                              LengthLimitingTextInputFormatter(80),
+                            ],
+                            validator: (value) {
+                              final text = value?.trim() ?? '';
+                              if (text.isEmpty) {
+                                return context.l10n.fieldRequiredMessage(
+                                  context.l10n.fullName,
+                                );
+                              }
+                              if (text.length < 3) {
+                                return context.l10n.fullNameMinimumThree;
+                              }
+                              return null;
+                            },
+                          ),
+                          _shadSelectField<Gender>(
+                            label: context.l10n.gender,
+                            isRequired: true,
+                            value: _selectedGender,
+                            values: Gender.values,
+                            optionLabel: (gender) =>
+                                translateGender(context, gender.name),
+                            onChanged: _saving
+                                ? null
+                                : (value) =>
+                                      setState(() => _selectedGender = value),
+                            validator: (value) => value == null
+                                ? context.l10n.fieldRequiredMessage(
+                                    context.l10n.gender,
+                                  )
+                                : null,
+                          ),
+                          _shadSelectField<String>(
+                            label: context.l10n.className,
+                            isRequired: true,
+                            value: _selectedClassId,
+                            values: widget.availableClasses.map(
+                              (schoolClass) => schoolClass.id,
+                            ),
+                            optionLabel: (id) {
+                              final schoolClass = widget.availableClasses
+                                  .firstWhere(
+                                    (schoolClass) => schoolClass.id == id,
+                                  );
+                              if (schoolClass.level == 0) {
+                                return '0 - ${schoolLevelLabel(0)}';
+                              }
+                              return schoolClass.className;
+                            },
+                            onChanged: _saving
+                                ? null
+                                : (value) =>
+                                      setState(() => _selectedClassId = value),
+                            validator: (value) => value == null || value.isEmpty
+                                ? context.l10n.selectClassRequired
+                                : null,
+                          ),
+                          _shadSelectField<String>(
+                            label: context.l10n.studentLocation,
+                            isRequired: true,
+                            value: _selectedTeachingLocationId,
+                            values: widget.availableTeachingLocations.map(
+                              (location) => location.id,
+                            ),
+                            optionLabel: (id) {
+                              final location = widget.availableTeachingLocations
+                                  .firstWhere((location) => location.id == id);
+                              return '${location.code} - ${location.name}';
+                            },
+                            onChanged: _saving
+                                ? null
+                                : (value) => setState(
+                                    () => _selectedTeachingLocationId = value,
+                                  ),
+                            validator: (value) => value == null || value.isEmpty
+                                ? context.l10n.selectStudentLocationRequired
+                                : null,
+                          ),
+                        ]),
+                        const SizedBox(height: AppSpacing.lg),
+                        OverflowBar(
+                          alignment: MainAxisAlignment.end,
+                          spacing: AppSpacing.sm,
+                          overflowSpacing: AppSpacing.xs,
+                          children: [
+                            ShadButton.outline(
+                              onPressed: _saving
+                                  ? null
+                                  : () => Navigator.pop(context),
+                              child: Text(context.l10n.buttonCancel),
+                            ),
+
+                            ShadButton(
+                              backgroundColor: AppColors.primary,
+                              hoverBackgroundColor: AppColors.primaryLight,
+                              foregroundColor: AppColors.onPrimary,
+                              hoverForegroundColor: AppColors.onPrimary,
+                              onPressed: _saving ? null : _submit,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (_saving) ...[
+                                    const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ] else ...[
+                                    const Icon(Icons.save_outlined, size: 16),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  Text(context.l10n.buttonSave),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -258,15 +310,21 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
   Widget _fieldGrid(List<Widget> children) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 620 ? 2 : 1;
+        final columns =
+            constraints.maxWidth /
+                    (MediaQuery.textScalerOf(context).scale(12) / 12) >=
+                620
+            ? 2
+            : 1;
         return Wrap(
-          spacing: 14,
-          runSpacing: 14,
+          spacing: AppSpacing.md,
+          runSpacing: AppSpacing.md,
           children: children
               .map(
                 (child) => SizedBox(
                   width:
-                      (constraints.maxWidth - (14 * (columns - 1))) / columns,
+                      (constraints.maxWidth - (AppSpacing.md * (columns - 1))) /
+                      columns,
                   child: child,
                 ),
               )
@@ -320,6 +378,7 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
       label: _shadFieldLabel(label, isRequired: isRequired),
       autofocus: autofocus,
       readOnly: readOnly,
+      enabled: !_saving,
       inputFormatters: inputFormatters,
       validator: validator,
     );
@@ -337,6 +396,7 @@ class _QuickStudentFormDialogState extends State<QuickStudentFormDialog> {
     final optionValues = values.toList();
     final selectedValue = optionValues.contains(value) ? value : null;
     return ShadSelectFormField<T>(
+      trailing: const Icon(Icons.expand_more, size: 20),
       key: ValueKey('${label}_${selectedValue}_${optionValues.length}'),
       label: _shadFieldLabel(label, isRequired: isRequired),
       initialValue: selectedValue,

@@ -20,6 +20,7 @@ class StudentBehaviorTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DetailTabScroll(
+      key: PageStorageKey('student_behavior_tab.dart-${student.id}'),
       children: [
         _SpecialNotesSection(studentId: student.id),
         _TeacherInsightsSections(studentId: student.id),
@@ -39,7 +40,8 @@ class _TeacherInsightsSections extends StatefulWidget {
   final String studentId;
 
   @override
-  State<_TeacherInsightsSections> createState() => _TeacherInsightsSectionsState();
+  State<_TeacherInsightsSections> createState() =>
+      _TeacherInsightsSectionsState();
 }
 
 class _TeacherInsightsSectionsState extends State<_TeacherInsightsSections> {
@@ -53,7 +55,9 @@ class _TeacherInsightsSectionsState extends State<_TeacherInsightsSections> {
   }
 
   Future<StudentDetailInsights> _load() {
-    return context.read<StudentDetailCubit>().loadDetailInsights(widget.studentId);
+    return context.read<StudentDetailCubit>().loadDetailInsights(
+      widget.studentId,
+    );
   }
 
   void _refresh() {
@@ -69,10 +73,8 @@ class _TeacherInsightsSectionsState extends State<_TeacherInsightsSections> {
     final cubit = context.read<StudentDetailCubit>();
     final added = await showDialog<bool>(
       context: context,
-      builder: (_) => _ManualTeacherNoteDialog(
-        studentId: widget.studentId,
-        cubit: cubit,
-      ),
+      builder: (_) =>
+          _ManualTeacherNoteDialog(studentId: widget.studentId, cubit: cubit),
     );
     if (added == true && mounted) _refresh();
   }
@@ -215,7 +217,8 @@ class _ManualTeacherNoteDialogState extends State<_ManualTeacherNoteDialog> {
   }
 
   Future<void> _pickDate() async {
-    final initialDate = DateTime.tryParse(_dateController.text) ?? DateTime.now();
+    final initialDate =
+        DateTime.tryParse(_dateController.text) ?? DateTime.now();
     final picked = await showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -295,7 +298,9 @@ class _ManualTeacherNoteDialogState extends State<_ManualTeacherNoteDialog> {
                           .map(
                             (value) => DropdownMenuItem(
                               value: value,
-                              child: Text(_studentNoteTypeLabel(context, value)),
+                              child: Text(
+                                _studentNoteTypeLabel(context, value),
+                              ),
                             ),
                           )
                           .toList(),
@@ -346,7 +351,8 @@ class _ManualTeacherNoteDialogState extends State<_ManualTeacherNoteDialog> {
                 controlAffinity: ListTileControlAffinity.leading,
                 onChanged: _saving
                     ? null
-                    : (value) => setState(() => _followUpNeeded = value ?? false),
+                    : (value) =>
+                          setState(() => _followUpNeeded = value ?? false),
               ),
               if (_followUpNeeded)
                 TextField(
@@ -396,7 +402,9 @@ class _SpecialNotesSectionState extends State<_SpecialNotesSection> {
   }
 
   Future<List<StudentSpecialNote>> _load() {
-    return context.read<StudentDetailCubit>().loadSpecialNotes(widget.studentId);
+    return context.read<StudentDetailCubit>().loadSpecialNotes(
+      widget.studentId,
+    );
   }
 
   void _refresh() {
@@ -412,10 +420,8 @@ class _SpecialNotesSectionState extends State<_SpecialNotesSection> {
     final cubit = context.read<StudentDetailCubit>();
     final added = await showDialog<bool>(
       context: context,
-      builder: (_) => _SpecialNoteDialog(
-        studentId: widget.studentId,
-        cubit: cubit,
-      ),
+      builder: (_) =>
+          _SpecialNoteDialog(studentId: widget.studentId, cubit: cubit),
     );
     if (added == true && mounted) _refresh();
   }
@@ -488,16 +494,15 @@ class _SpecialNotesSectionState extends State<_SpecialNotesSection> {
               return DetailEmptySectionText(context.l10n.loadingSpecialNotes);
             }
             if (snapshot.hasError) {
-              return DetailEmptySectionText(context.l10n.failedLoadSpecialNotes);
+              return DetailEmptySectionText(
+                context.l10n.failedLoadSpecialNotes,
+              );
             }
             final notes = snapshot.data ?? const <StudentSpecialNote>[];
             if (notes.isEmpty) {
               return DetailEmptySectionText(context.l10n.noSpecialNotes);
             }
-            return _SpecialNotesTable(
-              notes: notes,
-              onArchive: _archiveNote,
-            );
+            return _SpecialNotesTable(notes: notes, onArchive: _archiveNote);
           },
         ),
       ],
@@ -506,10 +511,7 @@ class _SpecialNotesSectionState extends State<_SpecialNotesSection> {
 }
 
 class _SpecialNotesTable extends StatelessWidget {
-  const _SpecialNotesTable({
-    required this.notes,
-    required this.onArchive,
-  });
+  const _SpecialNotesTable({required this.notes, required this.onArchive});
 
   final List<StudentSpecialNote> notes;
   final ValueChanged<StudentSpecialNote> onArchive;
@@ -558,7 +560,9 @@ class _SpecialNotesTable extends StatelessWidget {
                       TableRow(
                         children: [
                           _bodyCell(note.noteDate),
-                          _bodyCell(_specialNoteTypeLabel(context, note.noteType)),
+                          _bodyCell(
+                            _specialNoteTypeLabel(context, note.noteType),
+                          ),
                           _bodyCell(_textOrDash(note.createdBy)),
                           _bodyCell(note.note),
                           _bodyCell(
@@ -629,10 +633,7 @@ class _SpecialNotesTable extends StatelessWidget {
 }
 
 class _SpecialNoteDialog extends StatefulWidget {
-  const _SpecialNoteDialog({
-    required this.studentId,
-    required this.cubit,
-  });
+  const _SpecialNoteDialog({required this.studentId, required this.cubit});
 
   final String studentId;
   final StudentDetailCubit cubit;
@@ -664,7 +665,8 @@ class _SpecialNoteDialogState extends State<_SpecialNoteDialog> {
   }
 
   Future<void> _pickDate() async {
-    final initialDate = DateTime.tryParse(_dateController.text) ?? DateTime.now();
+    final initialDate =
+        DateTime.tryParse(_dateController.text) ?? DateTime.now();
     final picked = await showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -738,12 +740,16 @@ class _SpecialNoteDialogState extends State<_SpecialNoteDialog> {
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       initialValue: _type,
-                      decoration: InputDecoration(labelText: context.l10n.noteType),
+                      decoration: InputDecoration(
+                        labelText: context.l10n.noteType,
+                      ),
                       items: StudentSpecialNoteTypeOptions.values
                           .map(
                             (value) => DropdownMenuItem(
                               value: value,
-                              child: Text(_specialNoteTypeLabel(context, value)),
+                              child: Text(
+                                _specialNoteTypeLabel(context, value),
+                              ),
                             ),
                           )
                           .toList(),
@@ -775,7 +781,8 @@ class _SpecialNoteDialogState extends State<_SpecialNoteDialog> {
                 controlAffinity: ListTileControlAffinity.leading,
                 onChanged: _saving
                     ? null
-                    : (value) => setState(() => _followUpNeeded = value ?? false),
+                    : (value) =>
+                          setState(() => _followUpNeeded = value ?? false),
               ),
               if (_followUpNeeded)
                 TextField(

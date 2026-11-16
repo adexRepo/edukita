@@ -1842,5 +1842,17 @@
   "dashboardLoadFailed":"Dashboard belum berhasil dimuat. Coba lagi.",
   "assistanceLoadFailed": "Periode bantuan belum berhasil dimuat. Coba lagi.",
   "assistanceActionFailed": "Tindakan belum berhasil. Lihat detail lalu coba lagi.",
-  "scheduleLoadFailed": "Jadwal belum berhasil dimuat. Coba lagi."
+  "scheduleLoadFailed": "Jadwal belum berhasil dimuat. Coba lagi.",
+  "teachingReportOperationFailed": "Tindakan belum berhasil. Coba lagi. Input Anda tetap disimpan.",
+  "teachingRatingValue": "Penilaian {value} dari 5",
+  "@teachingRatingValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "studentsLoadFailed": "Data siswa belum dapat diperbarui. Coba lagi.",
+  "studentsSearchNameHint": "Cari nama siswa",
+  "studentSaveFailed": "Siswa belum dapat disimpan. Coba lagi. Input Anda tetap disimpan."
 }
