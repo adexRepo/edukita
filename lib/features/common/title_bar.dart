@@ -16,7 +16,7 @@ Widget buildTitleBar(
       selectedIndex >= 0 && selectedIndex < navigationPageItems.length;
 
   return Container(
-    height: 50,
+    height: 48,
     padding: const EdgeInsets.symmetric(horizontal: 12),
     decoration: const BoxDecoration(color: AppColors.surface),
     child: Row(
@@ -27,7 +27,7 @@ Widget buildTitleBar(
             onPanStart: (_) => unawaited(windowManager.startDragging()),
             onDoubleTap: () => unawaited(_maximizeOrRestoreWindow()),
             child: SizedBox(
-              height: 50,
+              height: 48,
               child: Row(
                 children: [
                   Image.asset(
@@ -54,9 +54,18 @@ Widget buildTitleBar(
                   Container(width: 1, height: 16, color: AppColors.border),
                   const SizedBox(width: 12),
                   if (!isLoginPage && (pageTitle != null || hasSelectedPage))
-                    Text(
-                      pageTitle ?? navigationPageItems[selectedIndex].label,
-                      style: AppTypography.secondaryStyle,
+                    Flexible(
+                      child: Tooltip(
+                        message:
+                            pageTitle ??
+                            navigationPageItems[selectedIndex].label,
+                        child: Text(
+                          pageTitle ?? navigationPageItems[selectedIndex].label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.secondaryStyle,
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -149,6 +158,7 @@ class _WindowButtonsState extends State<WindowButtons>
           tooltip: context.l10n.close,
           hoverColor: AppColors.errorDark,
           pressedColor: AppColors.errorAccent,
+          activeForeground: AppColors.white,
           onPressed: windowManager.close,
         ),
       ],
@@ -166,13 +176,14 @@ Future<void> _maximizeOrRestoreWindow() async {
   }
 }
 
-class _TitleBarButton extends StatefulWidget {
+class _TitleBarButton extends StatelessWidget {
   const _TitleBarButton({
     required this.icon,
     required this.tooltip,
     required this.onPressed,
     this.hoverColor = AppColors.primary,
     this.pressedColor = AppColors.primaryDark,
+    this.activeForeground = AppColors.onPrimary,
   });
 
   final IconData icon;
@@ -180,50 +191,38 @@ class _TitleBarButton extends StatefulWidget {
   final Future<void> Function() onPressed;
   final Color hoverColor;
   final Color pressedColor;
+  final Color activeForeground;
 
   @override
-  State<_TitleBarButton> createState() => _TitleBarButtonState();
-}
-
-class _TitleBarButtonState extends State<_TitleBarButton> {
-  bool _isHovered = false;
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final backgroundColor = _isPressed
-        ? widget.pressedColor
-        : _isHovered
-        ? widget.hoverColor
-        : AppColors.transparent;
-    final iconColor = _isHovered || _isPressed
-        ? AppColors.white
-        : AppColors.textSecondary;
-
-    return Tooltip(
-      message: widget.tooltip,
-      waitDuration: const Duration(milliseconds: 500),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() {
-          _isHovered = false;
-          _isPressed = false;
-        }),
-        child: GestureDetector(
-          onTap: widget.onPressed,
-          onTapDown: (_) => setState(() => _isPressed = true),
-          onTapUp: (_) => setState(() => _isPressed = false),
-          onTapCancel: () => setState(() => _isPressed = false),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            width: 46,
-            height: 50,
-            alignment: Alignment.center,
-            color: backgroundColor,
-            child: Icon(widget.icon, size: 16, color: iconColor),
-          ),
-        ),
+  Widget build(BuildContext context) => IconButton(
+    tooltip: tooltip,
+    onPressed: () => unawaited(onPressed()),
+    icon: Icon(icon, size: 16),
+    constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+    style: ButtonStyle(
+      padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+      shape: const WidgetStatePropertyAll(RoundedRectangleBorder()),
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.pressed)) return pressedColor;
+        if (states.contains(WidgetState.hovered) ||
+            states.contains(WidgetState.focused)) {
+          return hoverColor;
+        }
+        return AppColors.transparent;
+      }),
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.hovered) ||
+            states.contains(WidgetState.focused) ||
+            states.contains(WidgetState.pressed)) {
+          return activeForeground;
+        }
+        return AppColors.textSecondary;
+      }),
+      side: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.focused)
+            ? const BorderSide(color: AppColors.primaryForeground, width: 2)
+            : BorderSide.none,
       ),
-    );
-  }
+    ),
+  );
 }

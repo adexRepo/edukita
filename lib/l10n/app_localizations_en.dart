@@ -5237,4 +5237,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String tablePageSummary(int page, int total) {
     return 'Page $page of $total';
   }
+
+  @override
+  String get navigationOperations => 'Operations';
+
+  @override
+  String get navigationAdministration => 'Administration';
+
+  @override
+  String get dashboardLoadFailed => 'Unable to load the dashboard. Try again.';
 }

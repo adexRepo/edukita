@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:edukita/app_sidebar.dart';
 import 'dart:convert';
 import 'dart:io' as io;
 
@@ -11,6 +12,7 @@ import 'package:edukita/features/users/domain/user_authorization.dart';
 import 'package:edukita/features/users/domain/user_management_repository.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
@@ -25,7 +27,6 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  static const double _railWidth = 56;
   static const Duration _navigationCooldown = Duration(milliseconds: 180);
 
   static const List<_SidebarItem> _menuItems = [
@@ -111,8 +112,9 @@ class _AppShellState extends State<AppShell> {
   Future<void> _logout(BuildContext context) async {
     FocusManager.instance.primaryFocus?.unfocus();
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showGuardedDialog<bool>(
       context: context,
+      guardKey: 'logout_confirmation',
       builder: (dialogContext) {
         return AlertDialog(
           title: AppDialogTitle(context.l10n.logoutTitle),
@@ -226,25 +228,19 @@ class _AppShellState extends State<AppShell> {
     return io.File(p.join(dir.path, 'sidebar_menu_order.json'));
   }
 
-  void _reorderMenu(int oldIndex, int newIndex) {
-    final visibleItems = _visibleMenuItems;
-    if (oldIndex < 0 || oldIndex >= visibleItems.length) return;
+  void _reorderMenu(List<String> routes) {
+    final byRoute = {for (final item in _orderedMenuItems) item.route: item};
+    final reordered = routes
+        .map((route) => byRoute[route])
+        .whereType<_SidebarItem>()
+        .iterator;
     setState(() {
-      if (newIndex > oldIndex) newIndex -= 1;
-      final item = visibleItems[oldIndex];
-      _orderedMenuItems.removeWhere((menuItem) => menuItem.route == item.route);
-      final targetRoute = newIndex >= visibleItems.length
-          ? null
-          : visibleItems[newIndex].route;
-      final insertIndex = targetRoute == null
-          ? _orderedMenuItems.length
-          : _orderedMenuItems.indexWhere(
-              (menuItem) => menuItem.route == targetRoute,
-            );
-      _orderedMenuItems.insert(
-        insertIndex < 0 ? _orderedMenuItems.length : insertIndex,
-        item,
-      );
+      for (var index = 0; index < _orderedMenuItems.length; index++) {
+        if (routes.contains(_orderedMenuItems[index].route) &&
+            reordered.moveNext()) {
+          _orderedMenuItems[index] = reordered.current;
+        }
+      }
     });
     _saveMenuOrder();
   }
@@ -310,10 +306,20 @@ class _AppShellState extends State<AppShell> {
           Expanded(
             child: Row(
               children: [
-                _PrimaryRail(
-                  width: _railWidth,
-                  items: visibleMenuItems,
-                  selectedIndex: selectedIndex,
+                AppSidebar(
+                  expanded: MediaQuery.sizeOf(context).width >= 1200,
+                  destinations: [
+                    for (final item in visibleMenuItems)
+                      SidebarDestination(
+                        route: item.route,
+                        label: item.localizedLabel(context),
+                        icon: item.icon,
+                        selectedIcon: item.selectedIcon,
+                        administration:
+                            item.permissionCode == 'parameters' ||
+                            item.permissionCode == 'users',
+                      ),
+                  ],
                   location: location,
                   navigationLocked: _navigationLocked,
                   onNavigate: _navigateTo,
@@ -330,12 +336,7 @@ class _AppShellState extends State<AppShell> {
                       border: Border(left: BorderSide(color: AppColors.border)),
                       color: AppColors.surfaceSoft,
                     ),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1200),
-                        child: widget.child,
-                      ),
-                    ),
+                    child: widget.child,
                   ),
                 ),
               ],
@@ -344,243 +345,6 @@ class _AppShellState extends State<AppShell> {
         ],
       ),
     );
-  }
-}
-
-class _PrimaryRail extends StatefulWidget {
-  const _PrimaryRail({
-    required this.width,
-    required this.items,
-    required this.selectedIndex,
-    required this.location,
-    required this.navigationLocked,
-    required this.onNavigate,
-    required this.onLogout,
-    required this.onReorder,
-  });
-
-  final double width;
-  final List<_SidebarItem> items;
-  final int selectedIndex;
-  final String location;
-  final bool navigationLocked;
-  final ValueChanged<String> onNavigate;
-  final VoidCallback onLogout;
-  final ReorderCallback onReorder;
-
-  @override
-  State<_PrimaryRail> createState() => _PrimaryRailState();
-}
-
-class _PrimaryRailState extends State<_PrimaryRail> {
-  String? _hoveredRoute;
-  bool _settingsHovered = false;
-  bool _logoutHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: widget.width,
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceSoft,
-        border: Border(right: BorderSide(color: AppColors.border)),
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: ReorderableListView.builder(
-              padding: const EdgeInsets.symmetric(
-                vertical: AppSpacing.xs,
-                horizontal: AppSpacing.xs,
-              ),
-              itemCount: widget.items.length,
-              buildDefaultDragHandles: false,
-              itemExtent: 48,
-              onReorder: widget.onReorder,
-              proxyDecorator: (child, index, animation) {
-                return Material(
-                  color: AppColors.transparent,
-                  child: ScaleTransition(
-                    scale: Tween<double>(begin: 1, end: 1.04).animate(
-                      CurvedAnimation(
-                        parent: animation,
-                        curve: Curves.easeOutCubic,
-                      ),
-                    ),
-                    child: child,
-                  ),
-                );
-              },
-              itemBuilder: (context, index) {
-                final item = widget.items[index];
-                final selected = widget.selectedIndex == index;
-                final hovered = _hoveredRoute == item.route;
-
-                return Padding(
-                  key: ValueKey(item.route),
-                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                  child: _RailTooltip(
-                    message: item.localizedLabel(context),
-                    child: ReorderableDragStartListener(
-                      index: index,
-                      child: MouseRegion(
-                        onEnter: (_) =>
-                            setState(() => _hoveredRoute = item.route),
-                        onExit: (_) => setState(() => _hoveredRoute = null),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(8),
-                          onTap:
-                              widget.navigationLocked ||
-                                  widget.location.startsWith(item.route)
-                              ? null
-                              : () => widget.onNavigate(item.route),
-                          child: _RailButtonBox(
-                            selected: selected,
-                            hovered: hovered,
-                            child: _RailButtonContent(
-                              icon: item.icon,
-                              selected: selected,
-                              hovered: hovered,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.xs),
-            child: _RailTooltip(
-              message: context.l10n.menuPreferences,
-              child: MouseRegion(
-                onEnter: (_) => setState(() => _settingsHovered = true),
-                onExit: (_) => setState(() => _settingsHovered = false),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap:
-                      widget.navigationLocked ||
-                          widget.location.startsWith('/settings')
-                      ? null
-                      : () => widget.onNavigate('/settings'),
-                  child: _RailButtonBox(
-                    selected: widget.location.startsWith('/settings'),
-                    hovered: _settingsHovered,
-                    height: 40,
-                    child: _RailButtonContent(
-                      icon: Icons.settings_outlined,
-                      selected: widget.location.startsWith('/settings'),
-                      hovered: _settingsHovered,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-            child: _RailTooltip(
-              message: context.l10n.menuLogout,
-              child: MouseRegion(
-                onEnter: (_) => setState(() => _logoutHovered = true),
-                onExit: (_) => setState(() => _logoutHovered = false),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: widget.onLogout,
-                  child: _RailButtonBox(
-                    selected: false,
-                    hovered: _logoutHovered,
-                    height: 40,
-                    child: _RailButtonContent(
-                      icon: Icons.logout,
-                      selected: false,
-                      hovered: _logoutHovered,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RailButtonBox extends StatelessWidget {
-  const _RailButtonBox({
-    required this.selected,
-    required this.hovered,
-    required this.child,
-    this.height,
-  });
-
-  final bool selected;
-  final bool hovered;
-  final Widget child;
-  final double? height;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      alignment: Alignment.center,
-      width: double.infinity,
-      height: height,
-      decoration: BoxDecoration(
-        color: selected
-            ? AppColors.primary
-            : hovered
-            ? AppColors.white
-            : AppColors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: selected
-              ? AppColors.primary
-              : hovered
-              ? AppColors.border
-              : AppColors.transparent,
-        ),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _RailButtonContent extends StatelessWidget {
-  const _RailButtonContent({
-    required this.icon,
-    required this.selected,
-    required this.hovered,
-  });
-
-  final IconData icon;
-  final bool selected;
-  final bool hovered;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected
-        ? AppColors.onPrimary
-        : hovered
-        ? AppColors.primaryDark
-        : AppColors.textSecondary;
-
-    return Icon(icon, size: 19, color: color);
-  }
-}
-
-class _RailTooltip extends StatelessWidget {
-  const _RailTooltip({required this.message, required this.child});
-
-  final String message;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(message: message, child: child);
   }
 }
 
@@ -596,6 +360,19 @@ class _SidebarItem {
   final IconData icon;
   final String route;
   final String permissionCode;
+
+  IconData get selectedIcon => switch (permissionCode) {
+    'dashboard' => Icons.space_dashboard,
+    'students' => Icons.groups,
+    'teachers' => Icons.co_present,
+    'parameters' => Icons.tune,
+    'schedules' => Icons.calendar_month,
+    'teaching_activities' => Icons.fact_check,
+    'assistance_programs' => Icons.volunteer_activism,
+    'reports' => Icons.analytics,
+    'users' => Icons.manage_accounts,
+    _ => icon,
+  };
 
   String localizedLabel(BuildContext context) {
     return switch (permissionCode) {

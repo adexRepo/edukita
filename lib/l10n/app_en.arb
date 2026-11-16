@@ -1837,5 +1837,8 @@
   "confirmActionForSubject": "{action} {subject}?",
   "@confirmActionForSubject": {"placeholders": {"action": {}, "subject": {}}},
   "tablePageSummary": "Page {page} of {total}",
-  "@tablePageSummary": {"placeholders": {"page": {"type": "int"}, "total": {"type": "int"}}}
+  "@tablePageSummary": {"placeholders": {"page": {"type": "int"}, "total": {"type": "int"}}},
+  "navigationOperations":"Operations",
+  "navigationAdministration":"Administration",
+  "dashboardLoadFailed":"Unable to load the dashboard. Try again."
 }

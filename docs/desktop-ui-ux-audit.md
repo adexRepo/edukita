@@ -31,17 +31,17 @@ Audit source mendalam: bootstrap/startup, theme, router, sidebar, AppTable beser
 | MEDIUM | app_shell.dart, _RailTooltip / rail controls | Tooltip overlay hanya hover dan tidak menambahkan nama aksesibel; tombol 38 px | Tooltip native yang mendukung semantics, rail item/tombol minimum 40; selesai |
 | MEDIUM | main.dart, _StartupPage | Smoke test menemukan overflow kanan 5.8 px pada baris logo/nama | Flexible pada teks brand dan konten dapat digulir; selesai |
 | MEDIUM | app_theme.dart / app_dialog.dart | Spacing/radius berbeda-beda | Token terpusat; default dialog/menu/input/button dan komponen yang disentuh diselaraskan; migrasi local override masih terbuka |
-| MEDIUM | app_shell.dart, _menuItems | 9 tujuan utama berupa ikon; grouping kerja belum diterapkan | Rancang ulang grouping dan label bersama verifikasi role serta menu-order tersimpan; belum diubah |
-| MEDIUM | dashboard_page.dart, _dashboardMetricCardHeight / _MetricRangeFilter | Panel tinggi tetap 374 dan filter 34 px berisiko pada teks besar | Audit layout runtime per panel dan data realistis sebelum mengganti struktur; belum diubah |
+| MEDIUM | app_shell.dart, _menuItems | 9 tujuan utama berupa ikon; grouping kerja belum diterapkan | Selesai pada tahap lanjutan: label adaptif, tujuh tujuan operasional dan dua tujuan administrasi; filter izin tetap milik shell; urutan relatif per kelompok tetap tersimpan |
+| MEDIUM | dashboard_page.dart, _dashboardMetricCardHeight / _MetricRangeFilter | Panel tinggi tetap 374 dan filter 34 px berisiko pada teks besar | Selesai pada tahap lanjutan: panel dinamis, controls >=40 px, legend wrap, breakpoint mengikuti text scaling; area plot chart tetap dibatasi secara sengaja |
 | MEDIUM | teachers_page.dart, _buildContent | Error mengganti seluruh konten dan memakai errorWithDetails | Pisahkan kegagalan awal/refresh, simpan data lama dan pesan aman; memerlukan perubahan state/data, belum diubah |
 | MEDIUM | students_page.dart, dialog filter; multi_filter.dart | Pola dialog filter berulang dan label campuran bahasa | Satukan hanya setelah menyamakan perilaku filter dan lifecycle; belum diubah |
 | LOW | fitur dengan override AppColors.white / primary | Override lokal dapat mempertahankan kontras lama | Migrasi terarah per surface dengan tes, bukan penggantian string global; belum diubah |
 
 ## Kontrak yang dijaga
 
-Tidak ada perubahan SQL, schema/migration/seed, repository, Cubit, cache, penyimpanan dokumen, izin, route, atau callback save/delete. Sorting lokal, paging 0-based, click-to-open, dan pengunci aksi tabel dipertahankan. Urutan menu dan hak akses tetap. Tidak menambahkan dependency, framework, layanan jaringan, atau motion dekoratif.
+Tidak ada perubahan SQL, schema/migration/seed, repository, Cubit, cache, penyimpanan dokumen, izin, route, atau callback save/delete. Sorting lokal, paging 0-based, click-to-open, dan pengunci aksi tabel dipertahankan. Hak akses tetap. Format penyimpanan urutan route tetap; pengelompokan visual dan urutan relatif per kelompok diterapkan pada tahap lanjutan. Tidak menambahkan dependency, framework, layanan jaringan, atau motion dekoratif.
 
-Perubahan lokal awal pengguna pada `analysis_options.yaml` dan `pubspec.lock` dipertahankan. Tidak dibuat commit atau push.
+Perubahan lokal awal pengguna pada `analysis_options.yaml` dan `pubspec.lock` dipertahankan. Fondasi UI disimpan pada commit `d722c59`; belum push. Restyle lanjutan disimpan terpisah setelah verifikasi.
 
 ## Verifikasi
 
@@ -58,3 +58,28 @@ Environment aktual: Flutter 3.47.4 / Dart 3.13.3; nama folder SDK lama tidak men
 - Tidak ditemukan dependency-boundary check khusus pada tool/scripts/test/CI. Batas dependency diperiksa melalui diff/import: komponen bersama tidak mendapat dependency fitur atau akses database.
 
 Batas pengujian: text scaling widget bukan penggantian pengujian DPI Windows 125/150/200%, perpindahan monitor, Narrator, atau keyboard-only walkthrough seluruh aplikasi. Loading/error/saving/success dan izin semua role belum diuji menyeluruh; suite lama mencakup sebagian alur form guru, startup, jadwal, registrasi siswa, serta aktivitas mengajar. Tidak mengklaim sertifikasi WCAG AA seluruh aplikasi atau dukungan dark mode.
+
+## Tahap lanjutan — sidebar, dashboard, dan title bar Windows
+
+Permintaan lanjutan pengguna: commit fondasi lalu lanjutkan restyle. Commit fondasi: `d722c59`.
+
+Temuan tambahan: shell membatasi seluruh konten ke 1200 px sehingga tabel/dashboard tidak memanfaatkan jendela lebar; title bar memakai teks tanpa Flexible dan tombol GestureDetector tanpa aktivasi keyboard. Perbaikan menghilangkan batas global shell, memberi judul panjang tooltip/ellipsis yang dibatasi dengan Flexible, serta memakai IconButton 48 px dengan focus indicator. Kontrak minimize/maximize/restore/close, drag title bar, dan double-click maximize tetap menggunakan window_manager yang sama.
+
+Perubahan:
+
+- `lib/app_sidebar.dart`: navigasi presentasi terpisah dari pembacaan izin/session. Label terlihat mulai lebar 1200 px; rail 56 px pada jendela kecil. Label dapat wrap saat text scaling membesar, ikon selected memakai filled variant, dan fokus memakai outline gelap. Tujuh tujuan operasional tetap langsung tersedia; Parameter/Pengguna dipisah ke Administrasi. Preferences dan Logout tetap di bagian bawah.
+- `lib/app_shell.dart`: tetap memasok hanya menu yang diizinkan, menyimpan list route yang sama, dan menerapkan reorder hanya pada slot anggota kelompok terkait. Route yang tidak disediakan sidebar tidak ditambahkan; slot menu lain tetap. Logout memakai dialog guard bersama untuk mencegah konfirmasi bertumpuk.
+- `dashboard_page.dart`: KPI tanpa fixed height, grid berdasarkan ruang efektif setelah text scaling, metric header/legend responsif, daftar jadwal/peringkat tumbuh sesuai isinya, angka tabular, baris peringkat memakai InkWell/tooltip, dan scrollbar dengan controller yang sama. Refresh memakai progress bar pada slot stabil sehingga data lama tidak tertutup overlay. Error menampilkan pesan lokal generik dengan Retry dan detail diagnostik melalui helper yang sudah tersedia.
+- `AppChartPalette`: memusatkan warna chart yang sudah ada tanpa mengubah nilai warnanya. Tidak ada warna brand baru atau dependency baru.
+- `title_bar.dart`: judul panjang tidak mendorong tombol jendela keluar; tombol dapat dipakai dengan Tab/Enter dan mempunyai tooltip/fokus. Window manager tetap boundary platform yang sama.
+- ARB Indonesia/Inggris dan generated localization diperbarui untuk judul kelompok serta pesan kegagalan dashboard.
+
+Verifikasi lanjutan:
+
+- 20 tes dashboard/sidebar lulus pada iterasi awal: 800x600, 1280x800, 1920x1080, 2560x1080; text scaling 100/125/150/200%; scroll sampai panel terakhir; data sintetis panjang; empty/loading/error/retry; keyboard; serta drag reorder terbatas pada kelompoknya.
+- Tes tambahan title bar memverifikasi label panjang pada text scaling 200% dan pemanggilan minimize melalui Tab/Enter dengan mock window_manager. Tidak menjalankan aksi jendela pengguna saat test.
+- Analyzer terarah untuk tujuh file produksi/test: tidak ada issue. Verifikasi akhir: full `flutter test --no-pub` 82 tes lulus; full `flutter analyze --no-pub --no-fatal-infos` exit 0 tanpa error/warning, dengan satu info deprecation lama pada assistance_periods_page.dart:3824; `flutter build windows --release --no-pub` berhasil (65.1 detik). Strict analyzer masih exit 1 karena info lama tersebut.
+- Preview Poppins/MaterialIcons diperiksa pada 800x600 @200%, 1280x800 @100%, dan 1920x1080 @100%. Preview memakai data sintetis; label sidebar pada fixture bukan data pengguna.
+- Tidak ada perubahan repository, Cubit, SQL, schema, cache, perhitungan KPI, atau izin. Scope perubahan data hanya preferensi urutan menu UI pada format route yang sudah ada.
+
+Yang masih terbuka: restyle per halaman form/tabel, penanganan error halaman guru, penyatuan dialog filter siswa, dark mode, serta pengujian runtime DPI/multi-monitor/Narrator dan semua role. Pengujian widget scaling tidak menggantikan pengujian display scaling Windows.

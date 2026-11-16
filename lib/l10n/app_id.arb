@@ -1836,5 +1836,8 @@
   "downloadDraftPdf": "Unduh Draft PDF",
   "confirmActionForSubject": "{action} {subject}?",
   "@confirmActionForSubject": {"placeholders": {"action": {}, "subject": {}}},
-  "tablePageSummary": "Halaman {page} dari {total}"
+  "tablePageSummary": "Halaman {page} dari {total}",
+  "navigationOperations":"Operasional",
+  "navigationAdministration":"Administrasi",
+  "dashboardLoadFailed":"Dashboard belum berhasil dimuat. Coba lagi."
 }

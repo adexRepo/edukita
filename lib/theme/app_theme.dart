@@ -59,6 +59,19 @@ class AppColors {
   static const Color contentColorCyan = Color(0xFF50E4FF);
 }
 
+/// Existing dashboard chart colors, kept separate from action/status colors.
+class AppChartPalette {
+  AppChartPalette._();
+  static const categoryBlueLight = Color(0xFFBDEEFF);
+  static const categoryYellowLight = Color(0xFFFFDF68);
+  static const series = [
+    Color(0xFF4F46E5),
+    Color(0xFF7C3AED),
+    Color(0xFF38A9E8),
+    Color(0xFFFFC857),
+  ];
+}
+
 class AppSpacing {
   AppSpacing._();
   static const double xxs = 4;

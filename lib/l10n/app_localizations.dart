@@ -9701,6 +9701,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Page {page} of {total}'**
   String tablePageSummary(int page, int total);
+
+  /// No description provided for @navigationOperations.
+  ///
+  /// In en, this message translates to:
+  /// **'Operations'**
+  String get navigationOperations;
+
+  /// No description provided for @navigationAdministration.
+  ///
+  /// In en, this message translates to:
+  /// **'Administration'**
+  String get navigationAdministration;
+
+  /// No description provided for @dashboardLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to load the dashboard. Try again.'**
+  String get dashboardLoadFailed;
 }
 
 class _AppLocalizationsDelegate

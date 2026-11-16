@@ -5247,4 +5247,14 @@ class AppLocalizationsId extends AppLocalizations {
   String tablePageSummary(int page, int total) {
     return 'Halaman $page dari $total';
   }
+
+  @override
+  String get navigationOperations => 'Operasional';
+
+  @override
+  String get navigationAdministration => 'Administrasi';
+
+  @override
+  String get dashboardLoadFailed =>
+      'Dashboard belum berhasil dimuat. Coba lagi.';
 }

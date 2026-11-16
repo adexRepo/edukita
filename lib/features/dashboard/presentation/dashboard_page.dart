@@ -5,12 +5,12 @@ import 'package:edukita/features/dashboard/domain/dashboard_cubit.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_page_header.dart';
+import 'package:edukita/widgets/app_error_dialog.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-const double _dashboardMetricCardHeight = 374;
 const double _dashboardPanelContentHeight = 300;
 
 class DashboardPage extends StatefulWidget {
@@ -21,6 +21,14 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+  final _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<DashboardCubit, DashboardStat>(
@@ -28,40 +36,59 @@ class _DashboardPageState extends State<DashboardPage> {
         final cubit = context.read<DashboardCubit>();
         return Scaffold(
           backgroundColor: AppColors.surfaceSoft,
-          body: Padding(
-            padding: AppPageHeaderStyle.pagePadding,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AppPageHeader(
-                  title: context.l10n.menuDashboard,
-                  subtitle: context.l10n.dashboardSubtitle,
-                  trailing: IconButton(
-                    tooltip: context.l10n.dashboardRefresh,
-                    onPressed: state.isLoading ? null : cubit.refreshCounters,
-                    icon: const Icon(Icons.refresh),
+          body: DefaultTextStyle.merge(
+            style: TextStyle(
+              fontFeatures: AppTypography.numericStyle.fontFeatures,
+            ),
+            child: Padding(
+              padding: AppPageHeaderStyle.pagePadding,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppPageHeader(
+                    title: context.l10n.menuDashboard,
+                    subtitle: context.l10n.dashboardSubtitle,
+                    trailing: IconButton(
+                      tooltip: context.l10n.dashboardRefresh,
+                      onPressed: state.isLoading ? null : cubit.refreshCounters,
+                      icon: const Icon(Icons.refresh),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                _DashboardFilters(
-                  state: state,
-                  onLevelsChanged: cubit.setLevels,
-                ),
-                const SizedBox(height: AppPageHeaderStyle.bottomGap),
-                Expanded(
-                  child: Stack(
-                    children: [
-                      RefreshIndicator(
+                  const SizedBox(height: 12),
+                  _DashboardFilters(
+                    state: state,
+                    onLevelsChanged: cubit.setLevels,
+                  ),
+                  const SizedBox(height: AppPageHeaderStyle.bottomGap),
+                  SizedBox(
+                    height: AppSpacing.xxs,
+                    child: state.isLoading
+                        ? LinearProgressIndicator(
+                            semanticsLabel: context.l10n.loading,
+                          )
+                        : null,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Expanded(
+                    child: Scrollbar(
+                      controller: _scrollController,
+                      child: RefreshIndicator(
                         onRefresh: cubit.refreshCounters,
                         child: ListView(
+                          controller: _scrollController,
                           padding: EdgeInsets.zero,
                           children: [
                             if (state.error != null) ...[
-                              _DashboardErrorBanner(error: state.error!),
-                              const SizedBox(height: 12),
+                              _DashboardErrorBanner(
+                                error: state.error!,
+                                onRetry: state.isLoading
+                                    ? null
+                                    : cubit.refreshCounters,
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
                             ],
                             _KpiStrip(state: state),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: AppSpacing.md),
                             _DashboardOverviewGrid(
                               state: state,
                               onRangeChanged: cubit.setRange,
@@ -69,25 +96,10 @@ class _DashboardPageState extends State<DashboardPage> {
                           ],
                         ),
                       ),
-                      if (state.isLoading)
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceSoft.withValues(
-                                  alpha: 0.58,
-                                ),
-                              ),
-                              child: const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -105,8 +117,8 @@ class _DashboardFilters extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         _FilterBox(
@@ -136,28 +148,31 @@ class _LevelFilterButton extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: () => _openLevelDialog(context),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 220),
-            child: Text(
-              _localizedLevelsLabel(context, state.levels),
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 40),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 220),
+              child: Text(
+                _localizedLevelsLabel(context, state.levels),
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 6),
-          const Icon(
-            Icons.keyboard_arrow_down,
-            size: 18,
-            color: AppColors.textSecondary,
-          ),
-        ],
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.keyboard_arrow_down,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -204,7 +219,7 @@ class _LevelFilterButton extends StatelessWidget {
                   maxHeight: 560,
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -223,7 +238,7 @@ class _LevelFilterButton extends StatelessWidget {
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                SizedBox(height: 2),
+                                SizedBox(height: 4),
                                 Text(
                                   context.l10n.dashboardSelectLevelsDescription,
                                   style: TextStyle(
@@ -288,7 +303,7 @@ class _LevelFilterButton extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       Row(
                         children: [
                           Expanded(
@@ -352,7 +367,7 @@ class _LevelCheckTile extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       controlAffinity: ListTileControlAffinity.leading,
       activeColor: AppColors.primary,
-      checkColor: AppColors.white,
+      checkColor: AppColors.onPrimary,
       title: Text(
         title,
         style: const TextStyle(
@@ -382,7 +397,10 @@ class _FilterBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(minHeight: 40),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xxs,
+      ),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(8),
@@ -398,7 +416,7 @@ class _FilterBox extends StatelessWidget {
               color: AppColors.primary.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(7),
             ),
-            child: Icon(icon, size: 15, color: AppColors.primaryDark),
+            child: Icon(icon, size: 15, color: AppColors.primaryForeground),
           ),
           const SizedBox(width: 8),
           Text(
@@ -418,37 +436,57 @@ class _FilterBox extends StatelessWidget {
 }
 
 class _DashboardErrorBanner extends StatelessWidget {
-  const _DashboardErrorBanner({required this.error});
-
+  const _DashboardErrorBanner({required this.error, required this.onRetry});
   final String error;
-
+  final VoidCallback? onRetry;
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.error.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.28)),
+        borderRadius: BorderRadius.circular(AppRadii.control),
+        border: Border.all(color: AppColors.errorDark.withValues(alpha: 0.28)),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline, color: AppColors.error, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              error,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                Icons.error_outline,
                 color: AppColors.errorDark,
-                fontSize: 12,
-                height: 1.35,
-                fontWeight: FontWeight.w600,
+                size: 20,
               ),
-            ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  context.l10n.dashboardLoadFailed,
+                  style: AppTypography.bodyStrongStyle,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Wrap(
+            spacing: AppSpacing.xs,
+            children: [
+              OutlinedButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh, size: 20),
+                label: Text(context.l10n.retry),
+              ),
+              TextButton(
+                onPressed: () => showErrorDetailDialog(
+                  context,
+                  title: context.l10n.menuDashboard,
+                  error: error,
+                ),
+                child: Text(context.l10n.detail),
+              ),
+            ],
           ),
         ],
       ),
@@ -475,7 +513,6 @@ class _KpiStrip extends StatelessWidget {
         title: context.l10n.dashboardActiveStudents,
         value: _formatInt(state.studentCount),
         note: '',
-        color: AppColors.primary,
       ),
       _KpiItem(
         icon: Icons.fact_check_outlined,
@@ -483,7 +520,6 @@ class _KpiStrip extends StatelessWidget {
         value: attendance == null ? '-' : '${attendance.toStringAsFixed(0)}%',
         note:
             '${_formatInt(state.attendanceTotal)} ${context.l10n.dashboardAttendanceRecords}',
-        color: AppColors.success,
       ),
       _KpiItem(
         icon: Icons.school_outlined,
@@ -491,59 +527,33 @@ class _KpiStrip extends StatelessWidget {
         value: academic == null ? '-' : '${academic.toStringAsFixed(0)}%',
         note:
             '${_formatInt(state.academicAverages.length)} ${context.l10n.dashboardActiveSubjects}',
-        color: AppColors.accentBlue,
       ),
       _KpiItem(
         icon: Icons.event_available_outlined,
         title: context.l10n.dashboardTeachingSessions,
         value: _formatInt(sessionTotal),
         note: _localizedRangeLabel(context, state.range),
-        color: AppColors.warning,
       ),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        const spacing = 12.0;
-        if (constraints.maxWidth < 760) {
-          return Column(
-            children: [
-              for (var index = 0; index < items.length; index++) ...[
-                _KpiCard(item: items[index]),
-                if (index != items.length - 1) const SizedBox(height: spacing),
-              ],
-            ],
-          );
-        }
-
-        if (constraints.maxWidth < 1080) {
-          return Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(child: _KpiCard(item: items[0])),
-                  const SizedBox(width: spacing),
-                  Expanded(child: _KpiCard(item: items[1])),
-                ],
-              ),
-              const SizedBox(height: spacing),
-              Row(
-                children: [
-                  Expanded(child: _KpiCard(item: items[2])),
-                  const SizedBox(width: spacing),
-                  Expanded(child: _KpiCard(item: items[3])),
-                ],
-              ),
-            ],
-          );
-        }
-
-        return Row(
+        final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+        final columns = (constraints.maxWidth / (240 * scale)).floor().clamp(
+          1,
+          4,
+        );
+        final width =
+            (constraints.maxWidth - AppSpacing.sm * (columns - 1)) / columns;
+        return Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
           children: [
-            for (var index = 0; index < items.length; index++) ...[
-              Expanded(child: _KpiCard(item: items[index])),
-              if (index != items.length - 1) const SizedBox(width: spacing),
-            ],
+            for (final item in items)
+              SizedBox(
+                width: width,
+                child: _KpiCard(item: item),
+              ),
           ],
         );
       },
@@ -553,62 +563,34 @@ class _KpiStrip extends StatelessWidget {
 
 class _KpiCard extends StatelessWidget {
   const _KpiCard({required this.item});
-
   final _KpiItem item;
-
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 92,
-      padding: const EdgeInsets.all(12),
+      constraints: const BoxConstraints(minHeight: 112),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: _panelDecoration(),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: item.color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(item.icon, color: item.color, size: 18),
-          ),
-          const SizedBox(width: 12),
+          Icon(item.icon, color: AppColors.primaryForeground, size: 20),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(item.title, style: AppTypography.secondaryStyle),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
-                  item.title,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 10.5,
+                  item.value,
+                  style: AppTypography.numericStyle.copyWith(
+                    fontSize: 24,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  item.value,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 21,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
                 if (item.note.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    item.note,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: item.color,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(item.note, style: AppTypography.secondaryStyle),
                 ],
               ],
             ),
@@ -625,14 +607,12 @@ class _KpiItem {
     required this.title,
     required this.value,
     required this.note,
-    required this.color,
   });
 
   final IconData icon;
   final String title;
   final String value;
   final String note;
-  final Color color;
 }
 
 class _DashboardOverviewGrid extends StatelessWidget {
@@ -648,10 +628,12 @@ class _DashboardOverviewGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        const spacing = 12.0;
+        final width =
+            constraints.maxWidth /
+            (MediaQuery.textScalerOf(context).scale(12) / 12);
+        const spacing = AppSpacing.md;
 
-        if (width < 760) {
+        if (width < 960) {
           return Column(
             children: [
               _AcademicAverageScoreCard(
@@ -680,7 +662,7 @@ class _DashboardOverviewGrid extends StatelessWidget {
           );
         }
 
-        if (width < 1080) {
+        if (width < 1440) {
           return Column(
             children: [
               Row(
@@ -825,34 +807,34 @@ class _StudentGenderCardState extends State<_StudentGenderCard> {
     final items = _mode == _StudentCompositionMode.gender
         ? [
             _StudentChartItem(
-              color: const Color(0xFFBDEEFF),
+              color: AppChartPalette.categoryBlueLight,
               value: widget.state.maleStudentCount,
               label: context.l10n.dashboardBoys,
             ),
             _StudentChartItem(
-              color: const Color(0xFFFFDF68),
+              color: AppChartPalette.categoryYellowLight,
               value: widget.state.femaleStudentCount,
               label: context.l10n.dashboardGirls,
             ),
           ]
         : [
             _StudentChartItem(
-              color: const Color(0xFF48CFCB),
+              color: AppColors.primary,
               value: widget.state.duafaStudentCount,
               label: context.l10n.studentStatusDhuafa,
             ),
             _StudentChartItem(
-              color: const Color(0xFFF59E0B),
+              color: AppColors.warning,
               value: widget.state.yatimStudentCount,
               label: context.l10n.studentStatusYatim,
             ),
             _StudentChartItem(
-              color: const Color(0xFF3B82F6),
+              color: AppColors.accentBlue,
               value: widget.state.piatuStudentCount,
               label: context.l10n.studentStatusPiatu,
             ),
             _StudentChartItem(
-              color: const Color(0xFF8B5CF6),
+              color: AppColors.accentPurple,
               value: widget.state.yatimPiatuStudentCount,
               label: context.l10n.studentStatusYatimPiatu,
             ),
@@ -862,54 +844,39 @@ class _StudentGenderCardState extends State<_StudentGenderCard> {
 
     return Container(
       width: double.infinity,
-      height: _dashboardMetricCardHeight,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: _panelDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _MetricCardTitle(
-                  title: context.l10n.dashboardStudentsTitle,
-                  description: _mode == _StudentCompositionMode.gender
-                      ? context.l10n.dashboardStudentsDescription
-                      : context.l10n.dashboardStudentsStatusDescription,
+          _MetricHeader(
+            title: _MetricCardTitle(
+              title: context.l10n.dashboardStudentsTitle,
+              description: _mode == _StudentCompositionMode.gender
+                  ? context.l10n.dashboardStudentsDescription
+                  : context.l10n.dashboardStudentsStatusDescription,
+            ),
+            controls: SegmentedButton<_StudentCompositionMode>(
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(
+                  value: _StudentCompositionMode.gender,
+                  label: Text(context.l10n.gender),
                 ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 172,
-                child: SegmentedButton<_StudentCompositionMode>(
-                  showSelectedIcon: false,
-                  style: SegmentedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    textStyle: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  segments: [
-                    ButtonSegment(
-                      value: _StudentCompositionMode.gender,
-                      label: Text(context.l10n.gender),
-                    ),
-                    ButtonSegment(
-                      value: _StudentCompositionMode.status,
-                      label: Text(context.l10n.status),
-                    ),
-                  ],
-                  selected: {_mode},
-                  onSelectionChanged: (value) {
-                    setState(() => _mode = value.first);
-                  },
+                ButtonSegment(
+                  value: _StudentCompositionMode.status,
+                  label: Text(context.l10n.status),
                 ),
-              ),
-            ],
+              ],
+              selected: {_mode},
+              onSelectionChanged: (values) =>
+                  setState(() => _mode = values.first),
+            ),
           ),
+
           const SizedBox(height: 12),
-          Expanded(
+          SizedBox(
+            height: 240,
             child: Center(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -964,7 +931,7 @@ class _StudentGenderCardState extends State<_StudentGenderCard> {
                                   offset: Offset(-chartSize * 0.058, 0),
                                   child: Icon(
                                     Icons.person,
-                                    color: const Color(0xFFBDEEFF),
+                                    color: AppChartPalette.categoryBlueLight,
                                     size: chartSize * 0.17,
                                   ),
                                 ),
@@ -972,7 +939,7 @@ class _StudentGenderCardState extends State<_StudentGenderCard> {
                                   offset: Offset(chartSize * 0.058, 0),
                                   child: Icon(
                                     Icons.person,
-                                    color: const Color(0xFFFFDF68),
+                                    color: AppChartPalette.categoryYellowLight,
                                     size: chartSize * 0.17,
                                   ),
                                 ),
@@ -1007,67 +974,93 @@ class _StudentGenderCardState extends State<_StudentGenderCard> {
 
 class _StudentCompositionLegend extends StatelessWidget {
   const _StudentCompositionLegend({required this.items, required this.total});
-
   final List<_StudentChartItem> items;
   final int total;
-
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        for (var index = 0; index < items.length; index++) ...[
-          if (index > 0) const SizedBox(width: 6),
-          Expanded(
-            child: _StudentGenderLegend(
-              color: items[index].color,
-              value: _formatInt(items[index].value),
-              label: items[index].label,
-              percent: total == 0
-                  ? 0
-                  : ((items[index].value / total) * 100).round(),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
+  Widget build(BuildContext context) => _MetricLegendLayout(
+    children: [
+      for (final item in items)
+        _StudentGenderLegend(
+          color: item.color,
+          value: _formatInt(item.value),
+          label: item.label,
+          percent: total == 0 ? 0 : ((item.value / total) * 100).round(),
+        ),
+    ],
+  );
 }
 
 class _MetricCardTitle extends StatelessWidget {
   const _MetricCardTitle({required this.title, required this.description});
-
   final String title;
   final String description;
-
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          title,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          description,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(
+        title,
+        style: AppTypography.sectionTitleStyle.copyWith(fontSize: 16),
+      ),
+      const SizedBox(height: AppSpacing.xxs),
+      Text(description, style: AppTypography.secondaryStyle),
+    ],
+  );
+}
+
+class _MetricHeader extends StatelessWidget {
+  const _MetricHeader({required this.title, this.controls});
+  final Widget title;
+  final Widget? controls;
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      if (controls == null) return title;
+      if (constraints.maxWidth < 520 ||
+          MediaQuery.textScalerOf(context).scale(12) > 18) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            title,
+            const SizedBox(height: AppSpacing.sm),
+            controls!,
+          ],
+        );
+      }
+      return Row(
+        children: [
+          Expanded(child: title),
+          const SizedBox(width: AppSpacing.sm),
+          controls!,
+        ],
+      );
+    },
+  );
+}
+
+class _MetricLegendLayout extends StatelessWidget {
+  const _MetricLegendLayout({required this.children});
+  final List<Widget> children;
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+      final columns = (constraints.maxWidth / (104 * scale)).floor().clamp(
+        1,
+        children.length,
+      );
+      final width =
+          (constraints.maxWidth - AppSpacing.xs * (columns - 1)) / columns;
+      return Wrap(
+        spacing: AppSpacing.xs,
+        runSpacing: AppSpacing.md,
+        children: [
+          for (final child in children) SizedBox(width: width, child: child),
+        ],
+      );
+    },
+  );
 }
 
 class _StudentGenderLegend extends StatelessWidget {
@@ -1094,7 +1087,7 @@ class _StudentGenderLegend extends StatelessWidget {
           height: 11,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(
           '$value ($percent%)',
           textAlign: TextAlign.center,
@@ -1104,7 +1097,7 @@ class _StudentGenderLegend extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Text(
           label,
           textAlign: TextAlign.center,
@@ -1146,27 +1139,26 @@ class _AttendanceDonutCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      height: _dashboardMetricCardHeight,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: _panelDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _MetricCardTitle(
-                  title: context.l10n.dashboardAttendanceTitle,
-                  description:
-                      '${_localizedRangeLabel(context, state.range)} ${context.l10n.dashboardAttendanceRecords}.',
-                ),
-              ),
-              const SizedBox(width: 10),
-              _MetricRangeFilter(value: state.range, onChanged: onRangeChanged),
-            ],
+          _MetricHeader(
+            title: _MetricCardTitle(
+              title: context.l10n.dashboardAttendanceTitle,
+              description:
+                  '${_localizedRangeLabel(context, state.range)} ${context.l10n.dashboardAttendanceRecords}.',
+            ),
+            controls: _MetricRangeFilter(
+              value: state.range,
+              onChanged: onRangeChanged,
+            ),
           ),
+
           const SizedBox(height: 12),
-          Expanded(
+          SizedBox(
+            height: 240,
             child: Center(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -1236,11 +1228,11 @@ class _AttendanceDonutCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: AppColors.textPrimary,
-                                fontSize: 22,
+                                fontSize: 24,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 4),
                             Text(
                               context.l10n.dashboardRecords,
                               style: const TextStyle(
@@ -1259,38 +1251,29 @@ class _AttendanceDonutCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          SizedBox(
-            height: 76,
-            child: GridView.count(
-              crossAxisCount: 4,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 4,
-              crossAxisSpacing: 6,
-              childAspectRatio: 0.86,
-              children: [
-                _AttendanceLegend(
-                  color: AppColors.success,
-                  label: context.l10n.attendancePresent,
-                  percent: presentPercent,
-                ),
-                _AttendanceLegend(
-                  color: AppColors.error,
-                  label: context.l10n.attendanceAbsent,
-                  percent: absentPercent,
-                ),
-                _AttendanceLegend(
-                  color: AppColors.accentBlue,
-                  label: context.l10n.attendanceSick,
-                  percent: sickPercent,
-                ),
-                _AttendanceLegend(
-                  color: AppColors.accentPurple,
-                  label: context.l10n.attendancePermission,
-                  percent: permissionPercent,
-                ),
-              ],
-            ),
+          _MetricLegendLayout(
+            children: [
+              _AttendanceLegend(
+                color: AppColors.success,
+                label: context.l10n.attendancePresent,
+                percent: presentPercent,
+              ),
+              _AttendanceLegend(
+                color: AppColors.error,
+                label: context.l10n.attendanceAbsent,
+                percent: absentPercent,
+              ),
+              _AttendanceLegend(
+                color: AppColors.accentBlue,
+                label: context.l10n.attendanceSick,
+                percent: sickPercent,
+              ),
+              _AttendanceLegend(
+                color: AppColors.accentPurple,
+                label: context.l10n.attendancePermission,
+                percent: permissionPercent,
+              ),
+            ],
           ),
         ],
       ),
@@ -1321,17 +1304,17 @@ class _AttendanceLegend extends StatelessWidget {
           height: 11,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(
           '$percent%',
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: AppColors.textPrimary,
-            fontSize: 15,
+            fontSize: 16,
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Text(
           label,
           textAlign: TextAlign.center,
@@ -1424,35 +1407,29 @@ class _AcademicAverageScoreCardState extends State<_AcademicAverageScoreCard> {
 
     return Container(
       width: double.infinity,
-      height: _dashboardMetricCardHeight,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: _panelDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _MetricCardTitle(
-                  title: context.l10n.dashboardAcademicAverageScore,
-                  description:
-                      '${_localizedRangeLabel(context, widget.state.range)} ${context.l10n.dashboardSubjectScoreAverage}',
-                ),
-              ),
-              const SizedBox(width: 10),
-              _MetricRangeFilter(
-                value: widget.state.range,
-                onChanged: widget.onRangeChanged,
-              ),
-            ],
+          _MetricHeader(
+            title: _MetricCardTitle(
+              title: context.l10n.dashboardAcademicAverageScore,
+              description:
+                  '${_localizedRangeLabel(context, widget.state.range)} ${context.l10n.dashboardSubjectScoreAverage}',
+            ),
+            controls: _MetricRangeFilter(
+              value: widget.state.range,
+              onChanged: widget.onRangeChanged,
+            ),
           ),
-          const SizedBox(height: 10),
+
+          const SizedBox(height: 12),
           if (averages.isEmpty)
-            Expanded(
-              child: _EmptyPanelMessage(context.l10n.dashboardNoSubjectsYet),
-            )
+            _EmptyPanelMessage(context.l10n.dashboardNoSubjectsYet)
           else
-            Expanded(
+            SizedBox(
+              height: 288 + MediaQuery.textScalerOf(context).scale(40),
               child: Column(
                 children: [
                   Expanded(
@@ -1530,54 +1507,38 @@ class _AcademicScrollControls extends StatelessWidget {
     required this.onPrevious,
     required this.onNext,
   });
-
   final bool canScrollBackward;
   final bool canScrollForward;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
-
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 220,
-      height: 38,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.26)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _AcademicScrollButton(
-              icon: Icons.chevron_left,
-              enabled: canScrollBackward,
-              tooltip: context.l10n.dashboardPreviousSubjects,
-              onPressed: onPrevious,
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text(
-                context.l10n.dashboardSwapSubjects,
-                style: const TextStyle(
-                  color: AppColors.primaryDark,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            _AcademicScrollButton(
-              icon: Icons.chevron_right,
-              enabled: canScrollForward,
-              tooltip: context.l10n.dashboardNextSubjects,
-              onPressed: onNext,
-            ),
-          ],
+  Widget build(BuildContext context) => Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      _AcademicScrollButton(
+        icon: Icons.chevron_left,
+        enabled: canScrollBackward,
+        tooltip: context.l10n.dashboardPreviousSubjects,
+        onPressed: onPrevious,
+      ),
+      Flexible(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+          child: Text(
+            context.l10n.dashboardSwapSubjects,
+            textAlign: TextAlign.center,
+            style: AppTypography.secondaryStyle,
+          ),
         ),
       ),
-    );
-  }
+      _AcademicScrollButton(
+        icon: Icons.chevron_right,
+        enabled: canScrollForward,
+        tooltip: context.l10n.dashboardNextSubjects,
+        onPressed: onNext,
+      ),
+    ],
+  );
 }
 
 class _AcademicScrollButton extends StatelessWidget {
@@ -1600,10 +1561,10 @@ class _AcademicScrollButton extends StatelessWidget {
       child: IconButton(
         onPressed: enabled ? onPressed : null,
         icon: Icon(icon, size: 22),
-        constraints: const BoxConstraints.tightFor(width: 44, height: 38),
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
         padding: EdgeInsets.zero,
-        color: AppColors.primaryDark,
-        disabledColor: AppColors.primaryDark.withValues(alpha: 0.28),
+        color: AppColors.primaryForeground,
+        disabledColor: AppColors.primaryForeground.withValues(alpha: 0.28),
       ),
     );
   }
@@ -1671,18 +1632,18 @@ class _AcademicScoreRing extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 4),
                 Text(
                   '${score.toStringAsFixed(1)}%',
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 17,
+                    fontSize: 18,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Text(
                   item.label,
                   textAlign: TextAlign.center,
@@ -1744,8 +1705,8 @@ class _MetricRangeFilter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 34,
-      padding: const EdgeInsets.symmetric(horizontal: 9),
+      constraints: const BoxConstraints(minHeight: 40),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(8),
@@ -1754,14 +1715,12 @@ class _MetricRangeFilter extends StatelessWidget {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<DashboardRange>(
           value: value,
-          isDense: true,
+          isDense: false,
           borderRadius: AppDropdownStyle.menuBorderRadius,
           icon: const Icon(Icons.keyboard_arrow_down, size: 17),
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
           items: DashboardRange.values
               .map(
                 (range) => DropdownMenuItem(
@@ -1800,7 +1759,7 @@ class _StudentProgressChart extends StatelessWidget {
     return Column(
       children: [
         const _ChartLegend(),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Expanded(
           child: LineChart(
             LineChartData(
@@ -1855,7 +1814,7 @@ class _StudentProgressChart extends StatelessWidget {
                         value.toInt().toString(),
                         style: const TextStyle(
                           color: AppColors.textSecondary,
-                          fontSize: 9,
+                          fontSize: 10,
                         ),
                       );
                     },
@@ -1882,7 +1841,7 @@ class _StudentProgressChart extends StatelessWidget {
                           points[index].label,
                           style: const TextStyle(
                             color: AppColors.textSecondary,
-                            fontSize: 9,
+                            fontSize: 10,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1948,7 +1907,7 @@ class _ChartLegend extends StatelessWidget {
   Widget build(BuildContext context) {
     return Wrap(
       spacing: 12,
-      runSpacing: 6,
+      runSpacing: AppSpacing.xs,
       children: [
         _LegendItem(
           color: AppColors.primary,
@@ -1983,7 +1942,7 @@ class _LegendItem extends StatelessWidget {
           height: 9,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 8),
         Text(
           label,
           style: const TextStyle(
@@ -2099,7 +2058,7 @@ class _SessionStatusChart extends StatelessWidget {
                         value.toInt().toString(),
                         style: const TextStyle(
                           color: AppColors.textSecondary,
-                          fontSize: 9,
+                          fontSize: 10,
                         ),
                       );
                     },
@@ -2131,7 +2090,7 @@ class _SessionStatusChart extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: AppColors.textSecondary,
-                              fontSize: 9,
+                              fontSize: 10,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -2161,10 +2120,10 @@ class _SessionStatusChart extends StatelessWidget {
             duration: const Duration(milliseconds: 260),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Wrap(
-          spacing: 10,
-          runSpacing: 6,
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.xs,
           alignment: WrapAlignment.center,
           children: [
             for (final item in items)
@@ -2193,8 +2152,8 @@ class _UpcomingSchedulePanel extends StatelessWidget {
       title: context.l10n.dashboardUpcomingScheduleThisWeek,
       subtitle: context.l10n.dashboardUpcomingScheduleSubtitle,
       icon: Icons.calendar_month_outlined,
-      child: SizedBox(
-        height: _dashboardPanelContentHeight,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 128),
         child: schedules.isEmpty
             ? _EmptyPanelMessage(context.l10n.dashboardNoUpcomingSchedule)
             : Column(
@@ -2223,7 +2182,7 @@ class _ScheduleItem extends StatelessWidget {
       leading: Icons.schedule_outlined,
       title: item.title,
       subtitle: '${_shortDate(context, item.date)} | ${item.time}',
-      margin: EdgeInsets.only(bottom: isLast ? 0 : 9),
+      margin: EdgeInsets.only(bottom: isLast ? 0 : AppSpacing.xs),
       onTap: () => context.go('/schedules'),
       trailing: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2239,7 +2198,7 @@ class _ScheduleItem extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
             item.teacher,
             overflow: TextOverflow.ellipsis,
@@ -2275,8 +2234,8 @@ class _TopLearnersPanel extends StatelessWidget {
           size: 18,
         ),
       ),
-      child: SizedBox(
-        height: _dashboardPanelContentHeight,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 128),
         child: learners.isEmpty
             ? _EmptyPanelMessage(context.l10n.dashboardNoLearnerScore)
             : Column(
@@ -2314,94 +2273,98 @@ class _TopLearnerItem extends StatelessWidget {
       _ => AppColors.primary,
     };
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => context.go('/students/${learner.studentId}'),
-        child: Container(
-          margin: EdgeInsets.only(bottom: isLast ? 0 : 7),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: rank == 1
-                ? AppColors.primary.withValues(alpha: 0.08)
-                : AppColors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
+    return Tooltip(
+      message: [learner.studentName, learner.studentNo].join("\n"),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: InkWell(
+          onTap: () => context.go('/students/${learner.studentId}'),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            decoration: BoxDecoration(
               color: rank == 1
-                  ? AppColors.primary.withValues(alpha: 0.26)
-                  : AppColors.border,
-            ),
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 28,
-                child: Text(
-                  '#$rank',
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                  ),
+                  ? AppColors.primary.withValues(alpha: 0.08)
+                  : AppColors.white,
+              border: Border(
+                bottom: BorderSide(
+                  color: isLast ? AppColors.transparent : AppColors.border,
                 ),
               ),
-              const SizedBox(width: 8),
-              _LearnerAvatar(name: learner.studentName, color: rankColor),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 28,
+                  child: Text(
+                    '#$rank',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _LearnerAvatar(name: learner.studentName, color: rankColor),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        learner.studentName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        learner.studentNo,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    Container(
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: rankColor.withValues(alpha: 0.16),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.star_rounded,
+                        color: rankColor,
+                        size: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
                     Text(
-                      learner.studentName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      '${learner.points} ${context.l10n.dashboardPointsShort}',
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 12,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      learner.studentNo,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 10),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: rankColor.withValues(alpha: 0.16),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.star_rounded, color: rankColor, size: 14),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    '${learner.points} ${context.l10n.dashboardPointsShort}',
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -2425,18 +2388,18 @@ class _LearnerAvatar extends StatelessWidget {
     final initials = parts.map((part) => part[0]).join();
 
     return Container(
-      width: 34,
-      height: 34,
+      width: 32,
+      height: 32,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
       child: Center(
         child: Text(
           initials.toUpperCase(),
           style: TextStyle(
-            color: color,
+            color: AppColors.textPrimary,
             fontSize: 12,
             fontWeight: FontWeight.w900,
           ),
@@ -2454,69 +2417,37 @@ class _DashboardPanel extends StatelessWidget {
     required this.child,
     this.trailing,
   });
-
   final String title;
   final String subtitle;
   final IconData icon;
   final Widget child;
   final Widget? trailing;
-
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: _panelDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppSpacing.md),
+    decoration: _panelDecoration(),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _MetricHeader(
+          title: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: AppColors.primaryDark, size: 16),
-              ),
-              const SizedBox(width: 10),
+              Icon(icon, color: AppColors.primaryForeground, size: 20),
+              const SizedBox(width: AppSpacing.xs),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
+                child: _MetricCardTitle(title: title, description: subtitle),
               ),
-              if (trailing != null) ...[const SizedBox(width: 10), trailing!],
             ],
           ),
-          const SizedBox(height: 14),
-          child,
-        ],
-      ),
-    );
-  }
+          controls: trailing,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        child,
+      ],
+    ),
+  );
 }
 
 class _ListTileShell extends StatelessWidget {
@@ -2525,86 +2456,68 @@ class _ListTileShell extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.trailing,
-    this.margin = const EdgeInsets.only(bottom: 9),
+    this.margin = EdgeInsets.zero,
     this.onTap,
   });
-
   final IconData leading;
   final String title;
   final String subtitle;
   final Widget trailing;
   final EdgeInsetsGeometry margin;
   final VoidCallback? onTap;
-
   @override
-  Widget build(BuildContext context) {
-    final tile = Container(
-      margin: margin,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(7),
-            ),
-            child: Icon(leading, color: AppColors.primaryDark, size: 15),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
+  Widget build(BuildContext context) => Padding(
+    padding: margin,
+    child: InkWell(
+      onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 56),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.border)),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final details = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 2,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 10.5,
-                    height: 1.3,
-                  ),
+                Text(title, style: AppTypography.bodyStrongStyle),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(subtitle, style: AppTypography.secondaryStyle),
+              ],
+            );
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(leading, color: AppColors.primaryForeground, size: 20),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child:
+                      constraints.maxWidth < 420 ||
+                          MediaQuery.textScalerOf(context).scale(12) > 18
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            details,
+                            const SizedBox(height: AppSpacing.xs),
+                            trailing,
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Expanded(child: details),
+                            const SizedBox(width: AppSpacing.sm),
+                            Flexible(child: trailing),
+                          ],
+                        ),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 180),
-            child: trailing,
-          ),
-        ],
+            );
+          },
+        ),
       ),
-    );
-
-    if (onTap == null) return tile;
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: tile,
-      ),
-    );
-  }
+    ),
+  );
 }
 
 class _EmptyPanelMessage extends StatelessWidget {
@@ -2712,18 +2625,13 @@ String _localizedStatusLabel(BuildContext context, String status) {
 BoxDecoration _panelDecoration() {
   return BoxDecoration(
     color: AppColors.white,
-    borderRadius: BorderRadius.circular(8),
+    borderRadius: BorderRadius.circular(AppRadii.panel),
     border: Border.all(color: AppColors.border),
   );
 }
 
 Color _academicColor(int index) {
-  const colors = [
-    Color(0xFF4F46E5),
-    Color(0xFF7C3AED),
-    Color(0xFF38A9E8),
-    Color(0xFFFFC857),
-  ];
+  const colors = AppChartPalette.series;
   return colors[index % colors.length];
 }
 
