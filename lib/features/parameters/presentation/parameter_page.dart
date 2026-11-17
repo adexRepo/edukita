@@ -113,7 +113,9 @@ class _ParameterPageState extends State<ParameterPage> {
               padding: const EdgeInsets.all(12),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  if (constraints.maxWidth < 720) {
+                  if (constraints.maxWidth /
+                          (MediaQuery.textScalerOf(context).scale(12) / 12) <
+                      1000) {
                     return Column(
                       children: [
                         _buildCompactNavigation(),
@@ -145,13 +147,13 @@ class _ParameterPageState extends State<ParameterPage> {
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Text(
               context.l10n.parameterSubtitle,
               style: const TextStyle(
@@ -192,11 +194,11 @@ class _ParameterPageState extends State<ParameterPage> {
     final items = [for (final section in _sections) ...section.items];
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
       ),
       child: DropdownButtonFormField<String>(
         initialValue: _selectedTitle,
@@ -212,7 +214,7 @@ class _ParameterPageState extends State<ParameterPage> {
               child: Row(
                 children: [
                   Icon(item.icon, size: 17, color: AppColors.textSecondary),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
                       _menuLabel(context, item.title),
@@ -272,10 +274,10 @@ class _ParameterPageState extends State<ParameterPage> {
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -289,7 +291,7 @@ class _ParameterPageState extends State<ParameterPage> {
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadii.panel),
                 ),
                 child: Center(
                   child: Text(
@@ -361,57 +363,64 @@ class _ParameterSectionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () => onExpansionChanged(!expanded),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      section.icon,
-                      size: 17,
-                      color: AppColors.primaryDark,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _parameterSectionLabel(context, section.title),
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+          Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(AppRadii.panel),
+              onTap: () => onExpansionChanged(!expanded),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(AppRadii.panel),
+                      ),
+                      child: Icon(
+                        section.icon,
+                        size: 17,
+                        color: AppColors.primaryForeground,
                       ),
                     ),
-                  ),
-                  AnimatedRotation(
-                    turns: expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 140),
-                    curve: Curves.easeOut,
-                    child: const Icon(
-                      Icons.keyboard_arrow_down,
-                      size: 19,
-                      color: AppColors.textSecondary,
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        _parameterSectionLabel(context, section.title),
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                    AnimatedRotation(
+                      turns: expanded ? 0.5 : 0,
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 140),
+                      curve: Curves.easeOut,
+                      child: const Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 19,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
           AnimatedCrossFade(
-            duration: const Duration(milliseconds: 140),
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 140),
             firstCurve: Curves.easeOut,
             secondCurve: Curves.easeOut,
             sizeCurve: Curves.easeOut,
@@ -419,7 +428,7 @@ class _ParameterSectionTile extends StatelessWidget {
                 ? CrossFadeState.showFirst
                 : CrossFadeState.showSecond,
             firstChild: Padding(
-              padding: const EdgeInsets.only(left: 12, right: 2, bottom: 6),
+              padding: const EdgeInsets.only(left: 12, right: 4, bottom: 8),
               child: Column(
                 children: [
                   for (final item in section.items)
@@ -454,45 +463,60 @@ class _ParameterMenuTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: selected
-                ? AppColors.primary.withValues(alpha: 0.12)
-                : AppColors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: selected ? AppColors.primaryLight : AppColors.transparent,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                item.icon,
-                size: 17,
-                color: selected
-                    ? AppColors.primaryDark
-                    : AppColors.textSecondary,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  _parameterMenuLabel(context, item.title),
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+      child: Semantics(
+        selected: selected,
+        child: Tooltip(
+          message: _parameterMenuLabel(context, item.title),
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(AppRadii.panel),
+              onTap: onTap,
+              child: Ink(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? AppColors.primary.withValues(alpha: 0.12)
+                      : AppColors.transparent,
+                  borderRadius: BorderRadius.circular(AppRadii.panel),
+                  border: Border.all(
                     color: selected
-                        ? AppColors.primaryDark
-                        : AppColors.textPrimary,
+                        ? AppColors.primaryLight
+                        : AppColors.transparent,
                   ),
                 ),
+                child: Row(
+                  children: [
+                    Icon(
+                      item.icon,
+                      size: 17,
+                      color: selected
+                          ? AppColors.primaryForeground
+                          : AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        _parameterMenuLabel(context, item.title),
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: selected
+                              ? AppColors.primaryForeground
+                              : AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
         ),
       ),

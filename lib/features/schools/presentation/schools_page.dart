@@ -1,3 +1,7 @@
+import 'package:flutter/services.dart';
+import 'package:edukita/widgets/app_error_dialog.dart';
+import 'package:edukita/widgets/app_inline_error.dart';
+import 'package:edukita/widgets/app_desktop_workspace.dart';
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
@@ -18,6 +22,10 @@ import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+typedef _SchoolCountsRead = ({Map<String, int>? data, Object? error});
+
+typedef _SchoolClassesRead = ({List<SchoolClass>? data, Object? error});
+
 class SchoolsPage extends StatefulWidget {
   const SchoolsPage({super.key, this.embedded = false});
 
@@ -29,7 +37,18 @@ class SchoolsPage extends StatefulWidget {
 
 class _SchoolsPageState extends State<SchoolsPage> {
   String _schoolSearchQuery = '';
-  late Future<Map<String, int>> _classCountsFuture;
+  final _searchFocus = FocusNode();
+  final _searchController = TextEditingController();
+  @override
+  void dispose() {
+    _searchFocus.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  late Future<_SchoolCountsRead> _classCountsFuture;
+  Map<String, int>? _lastClassCounts;
+  int _countReadGeneration = 0;
 
   @override
   void initState() {
@@ -38,18 +57,29 @@ class _SchoolsPageState extends State<SchoolsPage> {
     _classCountsFuture = _loadClassCounts();
   }
 
-  Future<Map<String, int>> _loadClassCounts() async {
-    final allClasses = await context.read<ClassCubit>().getAllClasses();
-    final counts = <String, int>{};
-    for (final schoolClass in allClasses) {
-      final schoolId = schoolClass.schoolId;
-      if (schoolId == null || schoolId.isEmpty) continue;
-      counts[schoolId] = (counts[schoolId] ?? 0) + 1;
+  Future<_SchoolCountsRead> _loadClassCounts() async {
+    final generation = ++_countReadGeneration;
+    try {
+      final allClasses = await context.read<ClassCubit>().getAllClasses();
+      final counts = <String, int>{};
+      for (final schoolClass in allClasses) {
+        final schoolId = schoolClass.schoolId;
+        if (schoolId == null || schoolId.isEmpty) continue;
+        counts[schoolId] = (counts[schoolId] ?? 0) + 1;
+      }
+      if (mounted && generation == _countReadGeneration) {
+        _lastClassCounts = counts;
+      }
+      return (data: counts, error: null);
+    } catch (error) {
+      return (data: _lastClassCounts, error: error);
     }
-    return counts;
   }
 
   Future<void> _refreshClassCounts() async {
+    if (!mounted) {
+      return;
+    }
     setState(() {
       _classCountsFuture = _loadClassCounts();
     });
@@ -88,63 +118,114 @@ class _SchoolsPageState extends State<SchoolsPage> {
     );
   }
 
+  Future<_SchoolClassesRead> _readClasses(
+    ClassCubit cubit,
+    String schoolId,
+  ) async {
+    try {
+      return (data: await cubit.getClassesBySchool(schoolId), error: null);
+    } catch (error) {
+      return (data: null, error: error);
+    }
+  }
+
   Future<void> _showClassDialog(School school) async {
-    final classCubit = context.read<ClassCubit>();
-    final classesFuture = classCubit.getClassesBySchool(school.id);
-
-    await showGuardedDialog<void>(
-      context: context,
-      guardKey: 'school_classes_${school.id}',
-      builder: (dialogContext) {
-        return FutureBuilder<List<SchoolClass>>(
-          future: classesFuture,
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return AppDialog(
-                title: AppDialogTitle(
-                  context.l10n.classesForSchool(school.name ?? '-'),
-                ),
-                content: const SizedBox(
-                  width: 720,
-                  height: 180,
-                  child: AppDialogSkeleton(rows: 6),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text(context.l10n.close),
+    await AppActionGuard.run('school_classes_flow_${school.id}', () async {
+      var viewRevision = 0;
+      while (true) {
+        if (!mounted) return;
+        final classCubit = context.read<ClassCubit>();
+        final classesFuture = _readClasses(classCubit, school.id);
+        final action = await showGuardedDialog<_SchoolClassAction>(
+          context: context,
+          guardKey: 'school_classes_${school.id}_${viewRevision++}',
+          builder: (dialogContext) => FutureBuilder<_SchoolClassesRead>(
+            future: classesFuture,
+            builder: (context, snapshot) {
+              if (snapshot.hasError || snapshot.data?.error != null) {
+                return AppDialog(
+                  title: AppDialogTitle(
+                    context.l10n.classesForSchool(school.name ?? '-'),
                   ),
-                ],
-              );
-            }
-
-            return _SchoolClassesDialog(
-              school: school,
-              classes: snapshot.data ?? const [],
-              onAdd: () async {
-                await _showClassFormDialog(school: school);
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-                await _showClassDialog(school);
-              },
-              onEdit: (schoolClass) async {
-                await _showClassFormDialog(
-                  school: school,
-                  schoolClass: schoolClass,
+                  content: SizedBox(
+                    width: 720,
+                    child: AppInlineError(
+                      message: context.l10n.operationFailedTryAgain,
+                      onRetry: () => Navigator.of(
+                        dialogContext,
+                      ).pop(const _SchoolClassAction('retry')),
+                      onDetails: () => showErrorDetailDialog(
+                        context,
+                        title: context.l10n.operationFailedTryAgain,
+                        error:
+                            snapshot.data?.error ??
+                            snapshot.error ??
+                            context.l10n.operationFailedTryAgain,
+                      ),
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: Text(context.l10n.close),
+                    ),
+                  ],
                 );
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-                await _showClassDialog(school);
-              },
-              onDelete: (schoolClass) async {
-                final deleted = await _confirmDeleteClass(schoolClass);
-                if (!deleted) return;
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-                await _showClassDialog(school);
-              },
-            );
-          },
+              }
+              if (!snapshot.hasData) {
+                return AppDialog(
+                  title: AppDialogTitle(
+                    context.l10n.classesForSchool(school.name ?? '-'),
+                  ),
+                  content: SizedBox(
+                    width: 720,
+                    height: _schoolClassesViewportHeight(context),
+                    child: const AppDialogSkeleton(rows: 6),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: Text(context.l10n.close),
+                    ),
+                  ],
+                );
+              }
+              return _SchoolClassesDialog(
+                school: school,
+                classes: snapshot.data!.data!,
+                onAdd: () async {
+                  Navigator.of(
+                    dialogContext,
+                  ).pop(const _SchoolClassAction('add'));
+                },
+                onEdit: (value) async {
+                  Navigator.of(
+                    dialogContext,
+                  ).pop(_SchoolClassAction('edit', value));
+                },
+                onDelete: (value) async {
+                  Navigator.of(
+                    dialogContext,
+                  ).pop(_SchoolClassAction('delete', value));
+                },
+              );
+            },
+          ),
         );
-      },
-    );
+        if (action == null || !mounted) return;
+        switch (action.kind) {
+          case 'add':
+            await _showClassFormDialog(school: school);
+          case 'edit':
+            await _showClassFormDialog(
+              school: school,
+              schoolClass: action.schoolClass,
+            );
+          case 'delete':
+            await _confirmDeleteClass(action.schoolClass!);
+        }
+      }
+    });
   }
 
   Future<void> _showClassFormDialog({
@@ -185,7 +266,10 @@ class _SchoolsPageState extends State<SchoolsPage> {
             child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.errorDark,
+              foregroundColor: AppColors.white,
+            ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(context.l10n.delete),
           ),
@@ -226,7 +310,10 @@ class _SchoolsPageState extends State<SchoolsPage> {
             child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.errorDark,
+              foregroundColor: AppColors.white,
+            ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(context.l10n.delete),
           ),
@@ -286,10 +373,6 @@ class _SchoolsPageState extends State<SchoolsPage> {
   }
 
   Widget _buildContent(SchoolState state) {
-    if (state.error != null) {
-      return Center(child: Text(context.l10n.errorWithDetails(state.error!)));
-    }
-
     final normalizedQuery = _schoolSearchQuery.trim().toLowerCase();
     final schools = normalizedQuery.isEmpty
         ? state.schools
@@ -297,114 +380,168 @@ class _SchoolsPageState extends State<SchoolsPage> {
             return (school.name ?? '').toLowerCase().contains(normalizedQuery);
           }).toList();
 
-    return Column(
-      children: [
-        _buildTableHeader(),
-        if (widget.embedded)
-          AppLoadingStrip(isLoading: state.isLoading, topPadding: 0),
-        const SizedBox(height: AppPageHeaderStyle.bottomGap),
-        Expanded(
-          child: FutureBuilder<Map<String, int>>(
+    Map<String, int> ranks(String Function(School) value) {
+      final ordered = [...schools]
+        ..sort(
+          (a, b) => value(a).toLowerCase().compareTo(value(b).toLowerCase()),
+        );
+      return {for (var i = 0; i < ordered.length; i++) ordered[i].id: i};
+    }
+
+    final nameRanks = ranks((value) => value.name ?? ''),
+        addressRanks = ranks((value) => value.address ?? '');
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () =>
+            _searchFocus.requestFocus(),
+      },
+      child: Focus(
+        autofocus: true,
+        child: AppDesktopWorkspace(
+          header: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildTableHeader(),
+              if (state.error != null)
+                AppInlineError(
+                  message: context.l10n.operationFailedTryAgain,
+                  onRetry: () => context.read<SchoolCubit>().loadSchools(
+                    forceRefresh: true,
+                  ),
+                  onDetails: () => showErrorDetailDialog(
+                    context,
+                    title: context.l10n.operationFailedTryAgain,
+                    error: state.error!,
+                  ),
+                ),
+              if (widget.embedded)
+                AppLoadingStrip(isLoading: state.isLoading, topPadding: 0),
+              const SizedBox(height: AppPageHeaderStyle.bottomGap),
+            ],
+          ),
+          content: FutureBuilder<_SchoolCountsRead>(
             future: _classCountsFuture,
             builder: (context, snapshot) {
-              final classCounts = snapshot.data ?? const <String, int>{};
-              return AppTable<School>(
-                data: schools,
-                pageable: Pageable(
-                  page: 0,
-                  size: schools.length,
-                  totalPages: 1,
-                  totalItems: schools.length,
-                ),
-                emptyMessage: state.schools.isEmpty
-                    ? context.l10n.noSchoolsYet
-                    : context.l10n.noSchoolsMatch,
-                onRowTap: _showClassDialog,
-                columns: [
-                  AppTableColumn(
-                    title: context.l10n.school,
-                    flex: 4,
-                    sortValue: (school) {
-                      final name = school.name ?? '';
-                      return name.isEmpty ? 0 : name.codeUnitAt(0);
-                    },
-                    cell: (school) => Text(
-                      school.name ?? '-',
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+              final classCounts =
+                  snapshot.data?.data ??
+                  _lastClassCounts ??
+                  const <String, int>{};
+              return Column(
+                children: [
+                  if (snapshot.hasError || snapshot.data?.error != null)
+                    AppInlineError(
+                      message: context.l10n.operationFailedTryAgain,
+                      onRetry: _refreshClassCounts,
+                      onDetails: () => showErrorDetailDialog(
+                        context,
+                        title: context.l10n.operationFailedTryAgain,
+                        error:
+                            snapshot.data?.error ??
+                            snapshot.error ??
+                            context.l10n.operationFailedTryAgain,
                       ),
                     ),
-                  ),
-                  AppTableColumn(
-                    title: context.l10n.type,
-                    flex: 2,
-                    sortValue: (school) => school.type?.index ?? 0,
-                    cell: (school) => Text(
-                      school.type?.label ?? '-',
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-                  AppTableColumn(
-                    title: context.l10n.address,
-                    flex: 4,
-                    sortValue: (school) {
-                      final address = school.address ?? '';
-                      return address.isEmpty ? 0 : address.codeUnitAt(0);
-                    },
-                    cell: (school) => Text(
-                      school.address ?? '-',
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-                  AppTableColumn(
-                    title: context.l10n.classes,
-                    flex: 2,
-                    sortValue: (school) => classCounts[school.id] ?? 0,
-                    cell: (school) => Text(
-                      '${classCounts[school.id] ?? 0}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-                  AppTableColumn(
-                    title: context.l10n.actions,
-                    flex: 2,
-                    cell: (school) => Align(
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            tooltip: context.l10n.edit,
-                            onPressed: () =>
-                                _showSchoolFormDialog(school: school),
-                            constraints: const BoxConstraints.tightFor(
-                              width: 28,
-                              height: 28,
-                            ),
-                            padding: EdgeInsets.zero,
-                            icon: const Icon(Icons.edit, size: 16),
-                          ),
-                          IconButton(
-                            tooltip: context.l10n.delete,
-                            onPressed: () => _confirmDeleteSchool(school),
-                            constraints: const BoxConstraints.tightFor(
-                              width: 28,
-                              height: 28,
-                            ),
-                            padding: EdgeInsets.zero,
-                            color: AppColors.errorDark,
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              size: 16,
-                              color: AppColors.error,
-                            ),
-                          ),
-                        ],
+                  Expanded(
+                    child: AppTable<School>(
+                      data: schools,
+                      pageable: Pageable(
+                        page: 0,
+                        size: schools.length,
+                        totalPages: 1,
+                        totalItems: schools.length,
                       ),
+                      emptyMessage: state.schools.isEmpty
+                          ? context.l10n.noSchoolsYet
+                          : context.l10n.noSchoolsMatch,
+                      onRowTap: _showClassDialog,
+                      columns: [
+                        AppTableColumn(
+                          title: context.l10n.school,
+                          flex: 4,
+                          sortValue: (school) => nameRanks[school.id] ?? 0,
+                          cell: (school) => Text(
+                            school.name ?? '-',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        AppTableColumn(
+                          title: context.l10n.type,
+                          flex: 2,
+                          sortValue: (school) => school.type?.index ?? 0,
+                          cell: (school) => Text(
+                            school.type?.label ?? '-',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        AppTableColumn(
+                          title: context.l10n.address,
+                          flex: 4,
+                          sortValue: (school) => addressRanks[school.id] ?? 0,
+                          cell: (school) => Text(
+                            school.address ?? '-',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        AppTableColumn(
+                          title: context.l10n.classes,
+                          alignment: Alignment.centerRight,
+                          headerTextAlign: TextAlign.right,
+                          flex: 2,
+                          sortValue: (school) => classCounts[school.id] ?? 0,
+                          cell: (school) => Text(
+                            snapshot.data?.data != null ||
+                                    _lastClassCounts != null
+                                ? '${classCounts[school.id] ?? 0}'
+                                : '-',
+                            style: AppTypography.numericStyle,
+                          ),
+                        ),
+                        AppTableColumn(
+                          title: context.l10n.actions,
+                          minWidth: 144,
+                          flex: 2,
+                          cell: (school) => Align(
+                            alignment: Alignment.centerLeft,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  tooltip: context.l10n.edit,
+                                  onPressed: () =>
+                                      _showSchoolFormDialog(school: school),
+                                  constraints: const BoxConstraints.tightFor(
+                                    width: 40,
+                                    height: 40,
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                  icon: const Icon(Icons.edit, size: 16),
+                                ),
+                                IconButton(
+                                  tooltip: context.l10n.delete,
+                                  onPressed: () => _confirmDeleteSchool(school),
+                                  constraints: const BoxConstraints.tightFor(
+                                    width: 40,
+                                    height: 40,
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                  color: AppColors.errorDark,
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    size: 16,
+                                    color: AppColors.error,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -412,15 +549,20 @@ class _SchoolsPageState extends State<SchoolsPage> {
             },
           ),
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildTableHeader() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 760;
+        final compact =
+            constraints.maxWidth /
+                (MediaQuery.textScalerOf(context).scale(12) / 12) <
+            1000;
         final search = TextField(
+          controller: _searchController,
+          focusNode: _searchFocus,
           onChanged: (value) {
             setState(() {
               _schoolSearchQuery = value;
@@ -428,7 +570,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
           },
           decoration: InputDecoration(
             prefixIcon: Icon(Icons.search),
-            hintText: context.l10n.searchSchoolName,
+            labelText: context.l10n.searchSchoolName,
           ),
         );
         final addButton = FilledButton.icon(
@@ -461,9 +603,9 @@ class _SchoolsPageState extends State<SchoolsPage> {
                     refresh,
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpacing.sm),
                 search,
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpacing.sm),
                 Align(alignment: Alignment.centerLeft, child: addButton),
               ],
             );
@@ -485,7 +627,7 @@ class _SchoolsPageState extends State<SchoolsPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               search,
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.sm),
               Align(alignment: Alignment.centerRight, child: addButton),
             ],
           );
@@ -524,7 +666,7 @@ class _SchoolClassesDialog extends StatelessWidget {
       title: AppDialogTitle(context.l10n.classesForSchool(school.name ?? '-')),
       content: SizedBox(
         width: 720,
-        height: 420,
+        height: _schoolClassesViewportHeight(context),
         child: Column(
           children: [
             Align(
@@ -551,8 +693,9 @@ class _SchoolClassesDialog extends StatelessWidget {
                         AppTableColumn(
                           title: context.l10n.className,
                           flex: 3,
-                          sortValue: (schoolClass) =>
-                              schoolClass.name.codeUnitAt(0),
+                          sortValue: (schoolClass) => schoolClass.name.isEmpty
+                              ? 0
+                              : schoolClass.name.codeUnitAt(0),
                           cell: (schoolClass) => Text(
                             schoolClass.name,
                             overflow: TextOverflow.ellipsis,
@@ -599,6 +742,7 @@ class _SchoolClassesDialog extends StatelessWidget {
                         ),
                         AppTableColumn(
                           title: context.l10n.actions,
+                          minWidth: 144,
                           flex: 2,
                           cell: (schoolClass) => Row(
                             mainAxisSize: MainAxisSize.min,
@@ -607,8 +751,8 @@ class _SchoolClassesDialog extends StatelessWidget {
                                 tooltip: context.l10n.edit,
                                 onPressed: () => onEdit(schoolClass),
                                 constraints: const BoxConstraints.tightFor(
-                                  width: 28,
-                                  height: 28,
+                                  width: 40,
+                                  height: 40,
                                 ),
                                 padding: EdgeInsets.zero,
                                 icon: const Icon(Icons.edit, size: 16),
@@ -617,8 +761,8 @@ class _SchoolClassesDialog extends StatelessWidget {
                                 tooltip: context.l10n.delete,
                                 onPressed: () => onDelete(schoolClass),
                                 constraints: const BoxConstraints.tightFor(
-                                  width: 28,
-                                  height: 28,
+                                  width: 40,
+                                  height: 40,
                                 ),
                                 padding: EdgeInsets.zero,
                                 color: AppColors.errorDark,
@@ -646,3 +790,12 @@ class _SchoolClassesDialog extends StatelessWidget {
     );
   }
 }
+
+class _SchoolClassAction {
+  const _SchoolClassAction(this.kind, [this.schoolClass]);
+  final String kind;
+  final SchoolClass? schoolClass;
+}
+
+double _schoolClassesViewportHeight(BuildContext context) =>
+    (MediaQuery.sizeOf(context).height * 0.7).clamp(320.0, 600.0);

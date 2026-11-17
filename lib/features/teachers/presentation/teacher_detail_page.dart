@@ -1,3 +1,5 @@
+import 'package:edukita/widgets/app_error_dialog.dart';
+import 'package:edukita/widgets/app_inline_error.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
@@ -13,6 +15,8 @@ import 'package:edukita/widgets/detail_breadcrumbs.dart';
 import 'package:edukita/widgets/detail_tab_bar.dart';
 import 'package:edukita/widgets/detail_tab_scroll.dart';
 import 'package:flutter/material.dart';
+
+typedef _TeacherDetailResult = ({TeacherDetailData? data, Object? error});
 
 class TeacherDetailPage extends StatefulWidget {
   const TeacherDetailPage({super.key, required this.teacher});
@@ -31,7 +35,19 @@ class _TeacherDetailPageState extends State<TeacherDetailPage> {
     ),
   );
   bool _authorizationLoaded = false;
-  Future<TeacherDetailData>? _detailFuture;
+  Future<_TeacherDetailResult>? _detailFuture;
+  Future<_TeacherDetailResult> _readDetail() async {
+    try {
+      return (
+        data: await getIt<TeacherRepository>().loadTeacherDetail(
+          widget.teacher,
+        ),
+        error: null,
+      );
+    } catch (error) {
+      return (data: null, error: error);
+    }
+  }
 
   bool get _canViewTeachers =>
       _authScope.canView(AppMenuAccessRegistry.teachers.code);
@@ -61,8 +77,7 @@ class _TeacherDetailPageState extends State<TeacherDetailPage> {
       _authScope = scope;
       _authorizationLoaded = true;
       if (scope.canView(AppMenuAccessRegistry.teachers.code)) {
-        _detailFuture =
-            getIt<TeacherRepository>().loadTeacherDetail(widget.teacher);
+        _detailFuture = _readDetail();
       }
     });
   }
@@ -118,7 +133,7 @@ class _TeacherDetailPageState extends State<TeacherDetailPage> {
       );
     }
 
-    return FutureBuilder<TeacherDetailData>(
+    return FutureBuilder<_TeacherDetailResult>(
       future: detailFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -129,29 +144,43 @@ class _TeacherDetailPageState extends State<TeacherDetailPage> {
           );
         }
 
-        if (snapshot.hasError || snapshot.data == null) {
+        if (snapshot.hasError || snapshot.data?.data == null) {
           return Scaffold(
             backgroundColor: AppColors.surfaceSoft,
             appBar: _appBar(widget.teacher.fullName),
-            body: Center(
-              child: Text(
-                snapshot.error?.toString() ?? context.l10n.teacherNotFound,
+            body: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: AppInlineError(
+                message: context.l10n.operationFailedTryAgain,
+                onRetry: () {
+                  setState(() {
+                    _detailFuture = _readDetail();
+                  });
+                },
+                onDetails: () => showErrorDetailDialog(
+                  context,
+                  title: context.l10n.operationFailedTryAgain,
+                  error:
+                      snapshot.data?.error ??
+                      snapshot.error ??
+                      context.l10n.teacherNotFound,
+                ),
               ),
             ),
           );
         }
 
-        final data = snapshot.data!;
+        final data = snapshot.data!.data!;
         return Scaffold(
           backgroundColor: AppColors.surfaceSoft,
           appBar: _appBar(data.teacher.fullName),
           body: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             child: DefaultTabController(
               length: 4,
               child: Column(
                 children: [
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpacing.sm),
                   DetailTabBar(
                     filledStyle: true,
                     tabs: [
@@ -210,14 +239,14 @@ class _TeacherHeader extends StatelessWidget {
                 child: Text(
                   _initials(data.teacher.fullName),
                   style: const TextStyle(
-                    color: AppColors.primaryDark,
+                    color: AppColors.primaryForeground,
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,7 +269,7 @@ class _TeacherHeader extends StatelessWidget {
                       height: 1.3,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     '${data.teacher.email ?? '-'} | ${data.teacher.mobileNo ?? '-'}',
                     style: const TextStyle(
@@ -254,7 +283,7 @@ class _TeacherHeader extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.md),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -501,12 +530,15 @@ class _MetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 136,
+      width: 192,
       constraints: const BoxConstraints(minHeight: 76),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -514,23 +546,14 @@ class _MetricTile extends StatelessWidget {
         children: [
           Text(
             label,
-            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 10.5,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(value, style: AppTypography.numericStyle.copyWith(fontSize: 17)),
         ],
       ),
     );

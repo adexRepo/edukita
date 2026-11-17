@@ -1,3 +1,10 @@
+import 'package:edukita/core/helper/pageable.dart';
+import 'package:flutter/services.dart';
+import 'package:edukita/widgets/app_table.dart';
+import 'package:edukita/widgets/app_page_header.dart';
+import 'package:edukita/widgets/app_error_dialog.dart';
+import 'package:edukita/widgets/app_inline_error.dart';
+import 'package:edukita/widgets/app_desktop_workspace.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/schools/domain/class_cubit.dart';
 import 'package:edukita/features/schools/presentation/class_form_dialog.dart';
@@ -19,6 +26,16 @@ class ClassesPage extends StatefulWidget {
 }
 
 class _ClassesPageState extends State<ClassesPage> {
+  String _query = '';
+  final _searchFocus = FocusNode();
+  final _searchController = TextEditingController();
+  @override
+  void dispose() {
+    _searchFocus.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -63,6 +80,7 @@ class _ClassesPageState extends State<ClassesPage> {
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.errorDark,
+                foregroundColor: AppColors.white,
               ),
               onPressed: () => Navigator.of(context).pop(true),
               child: Text(context.l10n.delete),
@@ -89,84 +107,150 @@ class _ClassesPageState extends State<ClassesPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<ClassCubit, ClassState>(
-      builder: (context, state) {
-        if (state.error != null) {
-          return Center(
-            child: Text(context.l10n.errorWithDetails(state.error!)),
-          );
-        } else {
-          final classes = state.classes;
+  Widget build(BuildContext context) => CallbackShortcuts(
+    bindings: {
+      const SingleActivator(LogicalKeyboardKey.keyF, control: true): () =>
+          _searchFocus.requestFocus(),
+    },
+    child: Focus(
+      autofocus: true,
+      child: BlocBuilder<ClassCubit, ClassState>(
+        builder: (context, state) {
+          final query = _query.trim().toLowerCase();
+          final classes = state.classes
+              .where(
+                (value) =>
+                    query.isEmpty ||
+                    value.className.toLowerCase().contains(query),
+              )
+              .toList();
           return Scaffold(
-            appBar: AppBar(
-              title: Text(
-                context.l10n.classes,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+            backgroundColor: AppColors.surfaceSoft,
+            body: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: AppDesktopWorkspace(
+                header: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    AppPageHeader(
+                      title: context.l10n.classes,
+                      trailing: FilledButton.icon(
+                        onPressed: () => _showClassFormDialog(context),
+                        icon: const Icon(Icons.add),
+                        label: Text(context.l10n.addClass),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocus,
+                      onChanged: (value) => setState(() => _query = value),
+                      decoration: InputDecoration(
+                        labelText: context.l10n.searchItems(
+                          context.l10n.classes,
+                        ),
+                        prefixIcon: const Icon(Icons.search),
+                      ),
+                    ),
+                    AppLoadingStrip(isLoading: state.isLoading),
+                    if (state.error != null)
+                      AppInlineError(
+                        message: context.l10n.operationFailedTryAgain,
+                        onRetry: () => context.read<ClassCubit>().loadClasses(
+                          forceRefresh: true,
+                        ),
+                        onDetails: () => showErrorDetailDialog(
+                          context,
+                          title: context.l10n.operationFailedTryAgain,
+                          error: state.error!,
+                        ),
+                      ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                ),
+                content: AppTable<SchoolClass>(
+                  data: classes,
+                  emptyMessage: context.l10n.noClassesYet,
+                  pageable: Pageable(
+                    page: 0,
+                    size: classes.length,
+                    totalPages: classes.isEmpty ? 0 : 1,
+                    totalItems: classes.length,
+                  ),
+                  onRowTap: (value) =>
+                      _showClassFormDialog(context, existingClass: value),
+                  columns: [
+                    AppTableColumn(
+                      title: context.l10n.className,
+                      minWidth: 200,
+                      flex: 3,
+                      cell: (value) => Tooltip(
+                        message: value.className,
+                        child: Text(
+                          value.className,
+                          style: AppTypography.bodyStrongStyle,
+                        ),
+                      ),
+                    ),
+                    AppTableColumn(
+                      title: context.l10n.level,
+                      minWidth: 120,
+                      sortValue: (value) => value.level,
+                      alignment: Alignment.centerRight,
+                      headerTextAlign: TextAlign.right,
+                      cell: (value) => Text(
+                        '${value.level}',
+                        style: AppTypography.numericStyle,
+                      ),
+                    ),
+                    AppTableColumn(
+                      title: context.l10n.section,
+                      minWidth: 120,
+                      cell: (value) => Text(
+                        SchoolClass.normalizeSection(value.section) ?? '-',
+                      ),
+                    ),
+                    AppTableColumn(
+                      title: context.l10n.year,
+                      minWidth: 120,
+                      sortValue: (value) => int.tryParse(value.year) ?? 0,
+                      alignment: Alignment.centerRight,
+                      headerTextAlign: TextAlign.right,
+                      cell: (value) =>
+                          Text(value.year, style: AppTypography.numericStyle),
+                    ),
+                    AppTableColumn(
+                      title: context.l10n.actions,
+                      minWidth: 120,
+                      cell: (value) => Row(
+                        children: [
+                          IconButton(
+                            tooltip: context.l10n.edit,
+                            onPressed: () => _showClassFormDialog(
+                              context,
+                              existingClass: value,
+                            ),
+                            icon: const Icon(Icons.edit_outlined, size: 20),
+                          ),
+                          IconButton(
+                            tooltip: context.l10n.delete,
+                            onPressed: () => _confirmDelete(context, value.id),
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              size: 20,
+                              color: AppColors.errorDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () => _showClassFormDialog(context),
-                ),
-              ],
-            ),
-            body: Column(
-              children: [
-                AppLoadingStrip(isLoading: state.isLoading, topPadding: 0),
-                Expanded(
-                  child: classes.isEmpty
-                      ? Center(child: Text(context.l10n.noClassesYet))
-                      : ListView.builder(
-                          itemCount: classes.length,
-                          itemBuilder: (context, index) {
-                            final schoolClass = classes[index];
-                            final section = SchoolClass.normalizeSection(
-                              schoolClass.section,
-                            );
-                            return ListTile(
-                              title: Text(schoolClass.className),
-                              subtitle: Text(
-                                [
-                                  '${context.l10n.level} ${schoolClass.level}',
-                                  if (section != null)
-                                    '${context.l10n.section} $section',
-                                  '${context.l10n.year} ${schoolClass.year}',
-                                ].join(' | '),
-                              ),
-                              onTap: () => {},
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit),
-                                    onPressed: () => _showClassFormDialog(
-                                      context,
-                                      existingClass: schoolClass,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.delete,
-                                      color: AppColors.error,
-                                    ),
-                                    onPressed: () =>
-                                        _confirmDelete(context, schoolClass.id),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
             ),
           );
-        }
-      },
-    );
-  }
+        },
+      ),
+    ),
+  );
 }

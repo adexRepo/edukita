@@ -1,3 +1,8 @@
+import 'package:edukita/widgets/app_dialog.dart';
+import 'package:flutter/services.dart';
+import 'package:edukita/widgets/app_error_dialog.dart';
+import 'package:edukita/widgets/app_inline_error.dart';
+import 'package:edukita/widgets/app_desktop_workspace.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
@@ -27,6 +32,15 @@ class TeachersPage extends StatefulWidget {
 
 class _TeachersPageState extends State<TeachersPage> {
   String _searchQuery = '';
+  final _searchFocus = FocusNode();
+  final _searchController = TextEditingController();
+  @override
+  void dispose() {
+    _searchFocus.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
   AppAuthorizationScope _authScope = AppAuthorizationScope(
     role: AppUserRole.admin,
     permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
@@ -112,7 +126,7 @@ class _TeachersPageState extends State<TeachersPage> {
       context: context,
       guardKey: 'delete_teacher_${teacher.id}',
       builder: (context) {
-        return AlertDialog(
+        return AppDialog(
           title: AppDialogTitle(context.l10n.deleteTeacher),
           content: Text(context.l10n.deleteTeacherConfirm(teacher.fullName)),
           actions: [
@@ -121,6 +135,10 @@ class _TeachersPageState extends State<TeachersPage> {
               child: Text(context.l10n.buttonCancel),
             ),
             FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.errorDark,
+                foregroundColor: AppColors.white,
+              ),
               onPressed: () => Navigator.of(context).pop(true),
               child: Text(context.l10n.buttonDelete),
             ),
@@ -148,9 +166,7 @@ class _TeachersPageState extends State<TeachersPage> {
   @override
   Widget build(BuildContext context) {
     if (!_authorizationLoaded) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (!_canViewTeachers) {
@@ -196,10 +212,6 @@ class _TeachersPageState extends State<TeachersPage> {
   }
 
   Widget _buildContent(TeacherState state) {
-    if (state.error != null) {
-      return Center(child: Text(context.l10n.errorWithDetails(state.error!)));
-    }
-
     final normalizedQuery = _searchQuery.trim().toLowerCase();
     final teachers = normalizedQuery.isEmpty
         ? state.teachers
@@ -210,27 +222,54 @@ class _TeachersPageState extends State<TeachersPage> {
                 nickName.contains(normalizedQuery);
           }).toList();
 
-    return Column(
-      children: [
-        _buildTableHeader(),
-        const SizedBox(height: 12),
-        Expanded(
-          child: _buildTeacherTable(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () =>
+            _searchFocus.requestFocus(),
+      },
+      child: Focus(
+        autofocus: true,
+        child: AppDesktopWorkspace(
+          header: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildTableHeader(),
+              if (state.error != null)
+                AppInlineError(
+                  message: context.l10n.operationFailedTryAgain,
+                  onRetry: () => context.read<TeacherCubit>().loadTeachers(
+                    forceRefresh: true,
+                  ),
+                  onDetails: () => showErrorDetailDialog(
+                    context,
+                    title: context.l10n.operationFailedTryAgain,
+                    error: state.error!,
+                  ),
+                ),
+              const SizedBox(height: 12),
+            ],
+          ),
+          content: _buildTeacherTable(
             teachers,
             emptyMessage: state.teachers.isEmpty
                 ? context.l10n.noTeachersYet
                 : context.l10n.noTeachersMatch,
           ),
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildTableHeader() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 560;
+        final compact =
+            constraints.maxWidth /
+                (MediaQuery.textScalerOf(context).scale(12) / 12) <
+            760;
         final search = TextField(
+          controller: _searchController,
+          focusNode: _searchFocus,
           onChanged: (value) {
             setState(() {
               _searchQuery = value;
@@ -238,7 +277,7 @@ class _TeachersPageState extends State<TeachersPage> {
           },
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.search),
-            hintText: context.l10n.searchTeacherName,
+            labelText: context.l10n.searchTeacherName,
           ),
         );
         final addButton = _canCreateTeachers
@@ -252,17 +291,17 @@ class _TeachersPageState extends State<TeachersPage> {
         if (compact) {
           return Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
               color: AppColors.white,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadii.panel),
               border: Border.all(color: AppColors.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 search,
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpacing.sm),
                 Align(alignment: Alignment.centerRight, child: addButton),
               ],
             ),
@@ -271,10 +310,10 @@ class _TeachersPageState extends State<TeachersPage> {
 
         return Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(AppSpacing.sm),
           decoration: BoxDecoration(
             color: AppColors.white,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadii.panel),
             border: Border.all(color: AppColors.border),
           ),
           child: Row(
@@ -293,11 +332,23 @@ class _TeachersPageState extends State<TeachersPage> {
     List<Teacher> teachers, {
     required String emptyMessage,
   }) {
+    Map<String, int> ranks(String Function(Teacher) value) {
+      final ordered = [...teachers]
+        ..sort(
+          (a, b) => value(a).toLowerCase().compareTo(value(b).toLowerCase()),
+        );
+      return {for (var i = 0; i < ordered.length; i++) ordered[i].id: i};
+    }
+
+    final nameRanks = ranks((value) => value.fullName),
+        educationRanks = ranks((value) => value.lastEducationType ?? ''),
+        contactRanks = ranks((value) => value.email ?? value.mobileNo ?? '');
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
         border: Border.all(color: AppColors.border),
       ),
       clipBehavior: Clip.antiAlias,
@@ -317,8 +368,7 @@ class _TeachersPageState extends State<TeachersPage> {
           AppTableColumn(
             title: context.l10n.teacher,
             flex: 4,
-            sortValue: (teacher) =>
-                teacher.fullName.isEmpty ? 0 : teacher.fullName.codeUnitAt(0),
+            sortValue: (teacher) => nameRanks[teacher.id] ?? 0,
             cell: (teacher) => Text(
               teacher.nickName == null || teacher.nickName!.trim().isEmpty
                   ? teacher.fullName
@@ -331,8 +381,7 @@ class _TeachersPageState extends State<TeachersPage> {
           AppTableColumn(
             title: context.l10n.education,
             flex: 2,
-            sortValue: (teacher) =>
-                teacher.lastEducationType?.codeUnitAt(0) ?? 0,
+            sortValue: (teacher) => educationRanks[teacher.id] ?? 0,
             cell: (teacher) => Text(
               teacher.lastEducationType ?? '-',
               overflow: TextOverflow.ellipsis,
@@ -352,10 +401,7 @@ class _TeachersPageState extends State<TeachersPage> {
           AppTableColumn(
             title: context.l10n.contact,
             flex: 4,
-            sortValue: (teacher) {
-              final contact = teacher.email ?? teacher.mobileNo ?? '';
-              return contact.isEmpty ? 0 : contact.codeUnitAt(0);
-            },
+            sortValue: (teacher) => contactRanks[teacher.id] ?? 0,
             cell: (teacher) => Text(
               '${teacher.email ?? '-'}\n${teacher.mobileNo ?? '-'}',
               overflow: TextOverflow.ellipsis,
@@ -386,7 +432,7 @@ class _TeachersPageState extends State<TeachersPage> {
                     hasUser ? context.l10n.linked : context.l10n.noUser,
                     style: TextStyle(
                       color: hasUser
-                          ? AppColors.primaryDark
+                          ? AppColors.primaryForeground
                           : AppColors.textSecondary,
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -398,8 +444,9 @@ class _TeachersPageState extends State<TeachersPage> {
           ),
           AppTableColumn(
             title: context.l10n.actions,
+            minWidth: 144,
             flex: 3,
-            minWidth: 140,
+
             cell: (teacher) => Align(
               alignment: Alignment.centerLeft,
               child: Row(
@@ -411,8 +458,8 @@ class _TeachersPageState extends State<TeachersPage> {
                         ? () => _showTeacherFormDialog(existingTeacher: teacher)
                         : null,
                     constraints: const BoxConstraints.tightFor(
-                      width: 28,
-                      height: 28,
+                      width: 40,
+                      height: 40,
                     ),
                     padding: EdgeInsets.zero,
                     icon: const Icon(Icons.edit, size: 16),
@@ -425,14 +472,11 @@ class _TeachersPageState extends State<TeachersPage> {
                         ? () => context.push('/users', extra: teacher)
                         : null,
                     constraints: const BoxConstraints.tightFor(
-                      width: 28,
-                      height: 28,
+                      width: 40,
+                      height: 40,
                     ),
                     padding: EdgeInsets.zero,
-                    icon: const Icon(
-                      Icons.person_add_alt_1_outlined,
-                      size: 16,
-                    ),
+                    icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
                   ),
                   IconButton(
                     tooltip: context.l10n.deleteTeacherTooltip,
@@ -440,8 +484,8 @@ class _TeachersPageState extends State<TeachersPage> {
                         ? () => _confirmDelete(teacher)
                         : null,
                     constraints: const BoxConstraints.tightFor(
-                      width: 28,
-                      height: 28,
+                      width: 40,
+                      height: 40,
                     ),
                     padding: EdgeInsets.zero,
                     color: AppColors.errorDark,

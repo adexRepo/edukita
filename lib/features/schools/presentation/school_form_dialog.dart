@@ -1,8 +1,9 @@
+import 'dart:async';
+import 'package:edukita/widgets/app_form_scope.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/features/schools/data/school_model.dart';
 import 'package:edukita/theme/app_theme.dart';
-import 'package:edukita/widgets/app_action_guard.dart';
 import 'package:edukita/widgets/app_dialog.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
 import 'package:edukita/widgets/app_toast.dart';
@@ -36,6 +37,30 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   SchoolType _type = SchoolType.sd;
   int _typeDropdownVersion = 0;
   bool _isSaving = false;
+  Widget? _inlineDialog;
+  VoidCallback? _cancelInline;
+  bool _disposing = false;
+  Future<T?> _showInline<T>(Widget Function(ValueChanged<T?> finish) builder) {
+    if (_inlineDialog != null) return Future.value();
+    final result = Completer<T?>();
+    void finish(T? value) {
+      if (result.isCompleted) return;
+      if (mounted && !_disposing) {
+        setState(() {
+          _inlineDialog = null;
+          _cancelInline = null;
+        });
+      }
+      result.complete(value);
+    }
+
+    setState(() {
+      _inlineDialog = builder(finish);
+      _cancelInline = () => finish(null);
+    });
+    return result.future;
+  }
+
   bool _showValidationMessages = false;
 
   bool get _autoClassName => _type.usesAutoClassName;
@@ -64,6 +89,8 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
 
   @override
   void dispose() {
+    _disposing = true;
+    _cancelInline?.call();
     _nameController.dispose();
     _addressController.dispose();
     for (final draft in _classes) {
@@ -73,6 +100,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   }
 
   Future<void> _submit() async {
+    if (_isSaving) return;
     setState(() {
       _showValidationMessages = true;
     });
@@ -164,10 +192,8 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   }
 
   Future<bool?> _confirmTypeChange(SchoolType newType) {
-    return showGuardedDialog<bool>(
-      context: context,
-      guardKey: 'school_form_change_type_${_type.name}_${newType.name}',
-      builder: (dialogContext) => AppDialog(
+    return _showInline<bool>(
+      (finish) => AppDialog(
         title: AppDialogTitle(context.l10n.changeSchoolType),
         content: Text(
           context.l10n.changeSchoolTypeRemovesClasses(
@@ -177,12 +203,15 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
+            onPressed: () => finish(false),
             child: Text(context.l10n.keepType),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.errorDark,
+              foregroundColor: AppColors.white,
+            ),
+            onPressed: () => finish(true),
             child: Text(context.l10n.removeClasses),
           ),
         ],
@@ -263,20 +292,21 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   Future<void> _removeAllClassDrafts() async {
     if (!_hasUserClassDrafts) return;
 
-    final confirmed = await showGuardedDialog<bool>(
-      context: context,
-      guardKey: 'school_form_clear_classes',
-      builder: (dialogContext) => AppDialog(
+    final confirmed = await _showInline<bool>(
+      (finish) => AppDialog(
         title: AppDialogTitle(context.l10n.clearClasses),
         content: Text(context.l10n.removeAllClassesConfirm),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
+            onPressed: () => finish(false),
             child: Text(context.l10n.buttonCancel),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.errorDark),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.errorDark,
+              foregroundColor: AppColors.white,
+            ),
+            onPressed: () => finish(true),
             child: Text(context.l10n.clearAll),
           ),
         ],
@@ -288,11 +318,10 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
   }
 
   Future<void> _showClassDraftDialog({int? index}) async {
-    final result = await showGuardedDialog<_ClassDraft>(
-      context: context,
-      guardKey: 'school_form_class_draft_${index ?? 'new'}',
-      builder: (dialogContext) => _ClassDraftDialog(
+    final result = await _showInline<_ClassDraft>(
+      (finish) => _ClassDraftDialog(
         type: _type,
+        onResult: finish,
         autoName: _autoClassName,
         initialDraft: index == null ? null : _classes[index],
         existingDrafts: _classes,
@@ -300,7 +329,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
       ),
     );
 
-    if (result == null) return;
+    if (result == null || !mounted) return;
 
     _updateClassDrafts(() {
       if (index == null) {
@@ -345,53 +374,67 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AppDialog(
-      title: AppDialogTitle(
-        widget.school == null
-            ? context.l10n.addSchool
-            : context.l10n.editSchool,
-      ),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 620),
-        child: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Form(
-                key: _formKey,
-                autovalidateMode: _showValidationMessages
-                    ? AutovalidateMode.always
-                    : AutovalidateMode.disabled,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildSchoolInfoSection(),
-                    const SizedBox(height: 14),
-                    _buildClasses(),
-                  ],
+    if (_inlineDialog != null) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) _cancelInline?.call();
+        },
+        child: _inlineDialog!,
+      );
+    }
+    return AppFormScope(
+      busy: _isSaving,
+      onSave: _submit,
+      child: AppDialog(
+        title: AppDialogTitle(
+          widget.school == null
+              ? context.l10n.addSchool
+              : context.l10n.editSchool,
+          enabled: !_isSaving,
+        ),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
+          child: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Form(
+                  key: _formKey,
+                  autovalidateMode: _showValidationMessages
+                      ? AutovalidateMode.always
+                      : AutovalidateMode.disabled,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildSchoolInfoSection(),
+                      const SizedBox(height: AppSpacing.md),
+                      _buildClasses(),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+            child: Text(context.l10n.buttonCancel),
+          ),
+          FilledButton(
+            onPressed: _isSaving ? null : _submit,
+            child: _isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(context.l10n.buttonSave),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-          child: Text(context.l10n.buttonCancel),
-        ),
-        FilledButton(
-          onPressed: _isSaving ? null : _submit,
-          child: _isSaving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(context.l10n.buttonSave),
-        ),
-      ],
     );
   }
 
@@ -405,7 +448,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
             context,
           ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.sm),
         AppDropdownButtonFormField<SchoolType>(
           key: ValueKey('school-type-$_type-$_typeDropdownVersion'),
           initialValue: _type,
@@ -438,7 +481,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
             _changeType(value);
           },
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.sm),
         TextFormField(
           controller: _nameController,
           decoration: InputDecoration(
@@ -459,7 +502,7 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
           },
           inputFormatters: [LengthLimitingTextInputFormatter(80)],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.sm),
         TextFormField(
           controller: _addressController,
           decoration: InputDecoration(
@@ -552,10 +595,10 @@ class _SchoolFormDialogState extends State<SchoolFormDialog> {
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(AppSpacing.sm),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadii.panel),
             border: Border.all(color: Theme.of(context).colorScheme.outline),
           ),
           child: _ClassDraftTable(
@@ -752,15 +795,24 @@ class _ClassTableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 8,
+      ),
       child: Row(
         children: [
           SizedBox(width: 42, child: _ClassHeaderText(context.l10n.number)),
           Expanded(flex: 3, child: _ClassHeaderText(context.l10n.className)),
-          Expanded(flex: 2, child: _ClassHeaderText(context.l10n.level)),
+          Expanded(
+            flex: 2,
+            child: _ClassHeaderText(context.l10n.level, numeric: true),
+          ),
           Expanded(flex: 2, child: _ClassHeaderText(context.l10n.section)),
-          Expanded(flex: 2, child: _ClassHeaderText(context.l10n.year)),
-          SizedBox(width: 74, child: _ClassHeaderText(context.l10n.actions)),
+          Expanded(
+            flex: 2,
+            child: _ClassHeaderText(context.l10n.year, numeric: true),
+          ),
+          SizedBox(width: 104, child: _ClassHeaderText(context.l10n.actions)),
         ],
       ),
     );
@@ -768,19 +820,24 @@ class _ClassTableHeader extends StatelessWidget {
 }
 
 class _ClassHeaderText extends StatelessWidget {
-  const _ClassHeaderText(this.text);
+  const _ClassHeaderText(this.text, {this.numeric = false});
+  final bool numeric;
 
   final String text;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        color: AppColors.textSecondary,
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
+    return Tooltip(
+      message: text,
+      child: Text(
+        text,
+        textAlign: numeric ? TextAlign.right : TextAlign.left,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -818,7 +875,10 @@ class _ClassTableRow extends StatelessWidget {
       child: InkWell(
         onTap: () => onEdit(draftIndex),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: 8,
+          ),
           child: Column(
             children: [
               Row(
@@ -833,7 +893,7 @@ class _ClassTableRow extends StatelessWidget {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(AppRadii.panel),
                           border: Border.all(
                             color: AppColors.primary.withValues(alpha: 0.2),
                           ),
@@ -841,7 +901,7 @@ class _ClassTableRow extends StatelessWidget {
                         child: Text(
                           '$number',
                           style: const TextStyle(
-                            color: AppColors.primaryDark,
+                            color: AppColors.primaryForeground,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
@@ -855,7 +915,10 @@ class _ClassTableRow extends StatelessWidget {
                   ),
                   Expanded(
                     flex: 2,
-                    child: _ClassCellText(draft.levelController.text),
+                    child: _ClassCellText(
+                      draft.levelController.text,
+                      numeric: true,
+                    ),
                   ),
                   Expanded(
                     flex: 2,
@@ -869,17 +932,20 @@ class _ClassTableRow extends StatelessWidget {
                   ),
                   Expanded(
                     flex: 2,
-                    child: _ClassCellText(draft.yearController.text),
+                    child: _ClassCellText(
+                      draft.yearController.text,
+                      numeric: true,
+                    ),
                   ),
                   SizedBox(
-                    width: 74,
+                    width: 104,
                     child: Row(
                       children: [
                         IconButton(
                           tooltip: context.l10n.edit,
                           constraints: const BoxConstraints.tightFor(
-                            width: 32,
-                            height: 32,
+                            width: 40,
+                            height: 40,
                           ),
                           padding: EdgeInsets.zero,
                           onPressed: () => onEdit(draftIndex),
@@ -888,8 +954,8 @@ class _ClassTableRow extends StatelessWidget {
                         IconButton(
                           tooltip: context.l10n.remove,
                           constraints: const BoxConstraints.tightFor(
-                            width: 32,
-                            height: 32,
+                            width: 40,
+                            height: 40,
                           ),
                           padding: EdgeInsets.zero,
                           onPressed: () => onRemove(draftIndex),
@@ -905,7 +971,7 @@ class _ClassTableRow extends StatelessWidget {
                 ],
               ),
               if (error != null) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: AppSpacing.xs),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -927,17 +993,26 @@ class _ClassTableRow extends StatelessWidget {
 }
 
 class _ClassCellText extends StatelessWidget {
-  const _ClassCellText(this.text, {this.showPlaceholder = true});
+  const _ClassCellText(
+    this.text, {
+    this.showPlaceholder = true,
+    this.numeric = false,
+  });
+  final bool numeric;
 
   final String text;
   final bool showPlaceholder;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text.trim().isEmpty && showPlaceholder ? '-' : text,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+    return Tooltip(
+      message: text,
+      child: Text(
+        text.trim().isEmpty && showPlaceholder ? '-' : text,
+        textAlign: numeric ? TextAlign.right : TextAlign.left,
+        overflow: TextOverflow.ellipsis,
+        style: numeric ? AppTypography.numericStyle : AppTypography.bodyStyle,
+      ),
     );
   }
 }
@@ -945,6 +1020,7 @@ class _ClassCellText extends StatelessWidget {
 class _ClassDraftDialog extends StatefulWidget {
   const _ClassDraftDialog({
     required this.type,
+    required this.onResult,
     required this.autoName,
     required this.existingDrafts,
     this.initialDraft,
@@ -952,6 +1028,7 @@ class _ClassDraftDialog extends StatefulWidget {
   });
 
   final SchoolType type;
+  final ValueChanged<_ClassDraft?> onResult;
   final bool autoName;
   final List<_ClassDraft> existingDrafts;
   final _ClassDraft? initialDraft;
@@ -1015,143 +1092,165 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
   Widget build(BuildContext context) {
     final isEditing = widget.initialDraft != null;
 
-    return AppDialog(
-      title: AppDialogTitle(
-        isEditing ? context.l10n.editClass : context.l10n.addClass,
-      ),
-      content: SizedBox(
-        width: 380,
-        child: Form(
-          key: _formKey,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _nameController,
-                readOnly: widget.autoName,
-                enableInteractiveSelection: !widget.autoName,
-                decoration: InputDecoration(
-                  label: widget.autoName
-                      ? Text(context.l10n.className)
-                      : requiredLabel(context, context.l10n.name),
-                  hintText: widget.autoName
-                      ? context.l10n.generatedClassHint
-                      : context.l10n.className,
-                ),
-                validator: (value) {
-                  if (widget.autoName) return null;
-                  if (value == null || value.trim().isEmpty) {
-                    return context.l10n.classNameRequired;
-                  }
-                  if (value.trim().length > 40) {
-                    return context.l10n.classNameMax40;
-                  }
-                  if (_isDuplicate()) return context.l10n.duplicateClassYear;
-                  return null;
-                },
-                inputFormatters: [LengthLimitingTextInputFormatter(40)],
-              ),
-              const SizedBox(height: 10),
-              AppDropdownButtonFormField<int>(
-                initialValue: _level,
-                isExpanded: false,
-                decoration: InputDecoration(
-                  label: requiredLabel(context, context.l10n.level),
-                  hintText: widget.type.levelHint,
-                ),
-                items: widget.type.allowedLevels
-                    .map(
-                      (level) => DropdownMenuItem<int>(
-                        value: level,
-                        child: AppDropdownStyle.menuItemLabel(
-                          label: level.toString(),
-                          selected: level == _level,
-                        ),
-                      ),
-                    )
-                    .toList(),
-                selectedItemBuilder: (context) =>
-                    AppDropdownStyle.selectedLabels(
-                      widget.type.allowedLevels.map(
-                        (level) => level.toString(),
-                      ),
+    return AppFormScope(
+      busy: false,
+      onSave: _submit,
+      child: AppDialog(
+        title: AppDialogTitle(
+          isEditing ? context.l10n.editClass : context.l10n.addClass,
+        ),
+        content: SizedBox(
+          width: 380,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(top: AppSpacing.sm),
+            child: Form(
+              key: _formKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: _nameController,
+                    readOnly: widget.autoName,
+                    enableInteractiveSelection: !widget.autoName,
+                    decoration: InputDecoration(
+                      label: widget.autoName
+                          ? Text(context.l10n.className)
+                          : requiredLabel(context, context.l10n.name),
+                      hintText: widget.autoName
+                          ? context.l10n.generatedClassHint
+                          : context.l10n.className,
                     ),
-                dropdownColor: AppColors.white,
-                focusColor: AppColors.transparent,
-                iconEnabledColor: AppColors.primary,
-                borderRadius: AppDropdownStyle.menuBorderRadius,
-                menuMaxHeight: AppDropdownStyle.menuMaxHeight,
-                style: AppDropdownStyle.textStyle,
-                onChanged: widget.type.allowedLevels.length == 1
-                    ? null
-                    : (level) {
-                        setState(() {
-                          _level = level;
-                          _syncName();
-                        });
-                      },
-                validator: (value) {
-                  if (value == null) return context.l10n.levelRequired;
-                  if (_isDuplicate()) return context.l10n.duplicateClassYear;
-                  return null;
-                },
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _sectionController,
-                decoration: InputDecoration(label: Text(context.l10n.section)),
-                textCapitalization: TextCapitalization.characters,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp('[a-zA-Z]')),
-                  LengthLimitingTextInputFormatter(1),
-                  TextInputFormatter.withFunction((oldValue, newValue) {
-                    return newValue.copyWith(text: newValue.text.toUpperCase());
-                  }),
+                    validator: (value) {
+                      if (widget.autoName) return null;
+                      if (value == null || value.trim().isEmpty) {
+                        return context.l10n.classNameRequired;
+                      }
+                      if (value.trim().length > 40) {
+                        return context.l10n.classNameMax40;
+                      }
+                      if (_isDuplicate()) {
+                        return context.l10n.duplicateClassYear;
+                      }
+                      return null;
+                    },
+                    inputFormatters: [LengthLimitingTextInputFormatter(40)],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  AppDropdownButtonFormField<int>(
+                    initialValue: _level,
+                    isExpanded: false,
+                    decoration: InputDecoration(
+                      label: requiredLabel(context, context.l10n.level),
+                      hintText: widget.type.levelHint,
+                    ),
+                    items: widget.type.allowedLevels
+                        .map(
+                          (level) => DropdownMenuItem<int>(
+                            value: level,
+                            child: AppDropdownStyle.menuItemLabel(
+                              label: level.toString(),
+                              selected: level == _level,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    selectedItemBuilder: (context) =>
+                        AppDropdownStyle.selectedLabels(
+                          widget.type.allowedLevels.map(
+                            (level) => level.toString(),
+                          ),
+                        ),
+                    dropdownColor: AppColors.white,
+                    focusColor: AppColors.transparent,
+                    iconEnabledColor: AppColors.primary,
+                    borderRadius: AppDropdownStyle.menuBorderRadius,
+                    menuMaxHeight: AppDropdownStyle.menuMaxHeight,
+                    style: AppDropdownStyle.textStyle,
+                    onChanged: widget.type.allowedLevels.length == 1
+                        ? null
+                        : (level) {
+                            setState(() {
+                              _level = level;
+                              _syncName();
+                            });
+                          },
+                    validator: (value) {
+                      if (value == null) return context.l10n.levelRequired;
+                      if (_isDuplicate()) {
+                        return context.l10n.duplicateClassYear;
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  TextFormField(
+                    controller: _sectionController,
+                    decoration: InputDecoration(
+                      label: Text(context.l10n.section),
+                    ),
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp('[a-zA-Z]')),
+                      LengthLimitingTextInputFormatter(1),
+                      TextInputFormatter.withFunction((oldValue, newValue) {
+                        return newValue.copyWith(
+                          text: newValue.text.toUpperCase(),
+                        );
+                      }),
+                    ],
+                    onChanged: (_) => setState(_syncName),
+                    validator: (value) {
+                      final text = value?.trim() ?? '';
+                      if (text.isEmpty) return null;
+                      if (!RegExp(r'^[A-Z]$').hasMatch(text.toUpperCase())) {
+                        return context.l10n.alphabetOnly;
+                      }
+                      if (_isDuplicate()) {
+                        return context.l10n.duplicateClassAndYear;
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  TextFormField(
+                    controller: _yearController,
+                    decoration: InputDecoration(
+                      label: requiredLabel(context, context.l10n.year),
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(4),
+                    ],
+                    validator: (value) {
+                      final text = value?.trim() ?? '';
+                      if (text.isEmpty) return context.l10n.yearRequired;
+                      if (!RegExp(r'^\d{4}$').hasMatch(text)) {
+                        return context.l10n.yearMustFourDigits;
+                      }
+                      if (_isDuplicate()) {
+                        return context.l10n.duplicateClassAndYear;
+                      }
+                      return null;
+                    },
+                  ),
                 ],
-                onChanged: (_) => setState(_syncName),
-                validator: (value) {
-                  final text = value?.trim() ?? '';
-                  if (text.isEmpty) return null;
-                  if (!RegExp(r'^[A-Z]$').hasMatch(text.toUpperCase())) {
-                    return context.l10n.alphabetOnly;
-                  }
-                  if (_isDuplicate()) return context.l10n.duplicateClassAndYear;
-                  return null;
-                },
               ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _yearController,
-                decoration: InputDecoration(
-                  label: requiredLabel(context, context.l10n.year),
-                ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(4),
-                ],
-                validator: (value) {
-                  final text = value?.trim() ?? '';
-                  if (text.isEmpty) return context.l10n.yearRequired;
-                  if (!RegExp(r'^\d{4}$').hasMatch(text)) {
-                    return context.l10n.yearMustFourDigits;
-                  }
-                  if (_isDuplicate()) return context.l10n.duplicateClassAndYear;
-                  return null;
-                },
-              ),
-            ],
+            ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => widget.onResult(null),
+            child: Text(context.l10n.buttonCancel),
+          ),
+          FilledButton(
+            onPressed: _submit,
+            child: Text(context.l10n.buttonSave),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.l10n.buttonCancel),
-        ),
-        FilledButton(onPressed: _submit, child: Text(context.l10n.buttonSave)),
-      ],
     );
   }
 
@@ -1190,7 +1289,7 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
 
-    Navigator.of(context).pop(
+    widget.onResult(
       _ClassDraft.fromValues(
         id: widget.initialDraft?.id,
         schoolId: widget.initialDraft?.schoolId,
@@ -1203,17 +1302,17 @@ class _ClassDraftDialogState extends State<_ClassDraftDialog> {
   }
 }
 
-Widget requiredLabel(BuildContext context, String label) {
-  return RichText(
-    text: TextSpan(
-      text: label,
-      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-      children: const [
-        TextSpan(
-          text: ' *',
-          style: TextStyle(color: AppColors.errorDark),
-        ),
-      ],
-    ),
-  );
-}
+Widget requiredLabel(BuildContext context, String label) => Text.rich(
+  TextSpan(
+    text: label,
+    children: const [
+      TextSpan(
+        text: ' *',
+        style: TextStyle(color: AppColors.errorDark),
+      ),
+    ],
+  ),
+  style: AppTypography.bodyStrongStyle.copyWith(
+    color: Theme.of(context).colorScheme.onSurfaceVariant,
+  ),
+);

@@ -11,7 +11,7 @@ Theme, komponen bersama, shell/sidebar, title bar Windows, dan dashboard sudah d
 | 3 | Detail Aktivitas Mengajar (`teaching_activity_detail_page.dart`) | Besar | Sekitar 3.315 baris; beberapa area data, attendance/nilai/kompetensi, aksi status dan banyak ukuran lokal. Sudah memiliki reflow dan tes fungsional; perlu standardisasi surface, kontrol, dan hierarchy per area. | Workspace detail, rating, kontrol dan dialog diterapkan; lihat verifikasi prioritas 3 |
 | 4 | Siswa: daftar, filter, form, tab detail | Besar | Daftar sekitar 1.671 baris sebelum perubahan, ditambah form/detail terpisah; statistik satu baris, toolbar, dua implementasi dialog filter, form besar, dan row action kecil. | Restyle utama diterapkan; lihat audit dan verifikasi prioritas 4 |
 | 5 | Silabus, daftar Aktivitas Mengajar, Laporan/Definisi Laporan, Users | Sedang–besar | Silabus sekitar 1.470 baris, aktivitas 1.288, laporan 1.098, users 1.043. Perlu keseragaman navigasi bagian, toolbar, empty/error, form dan permission matrix; pertahankan grid data. | Restyle khusus diterapkan; lihat audit prioritas 5 |
-| 6 | Settings, Guru/detail/form, Sekolah/Kelas, Parameter | Sedang | Settings dan laporan memakai panel/master-detail; guru memiliki masalah error yang mengganti data; sekolah/parameter memiliki reflow awal. Perlu perbaikan yang lebih terlokalisasi. | Belum restyle khusus |
+| 6 | Settings, Guru/detail/form, Sekolah/Kelas, Parameter | Sedang | Settings dan laporan memakai panel/master-detail; guru memiliki masalah error yang mengganti data; sekolah/parameter memiliki reflow awal. Perlu perbaikan yang lebih terlokalisasi. | Restyle khusus diterapkan; lihat audit prioritas 6 |
 | 7 | Program Bantuan, Aturan Bantuan, Lokasi Mengajar, Strategi, Wali, Login/Ganti Password | Kecil–sedang | Lebih sedikit area mandiri; mayoritas memperoleh manfaat dari komponen bersama. Perlu spacing, hit target, label, dialog dan state per halaman. | Belum restyle khusus |
 
 `management_page.dart`, `classes_page.dart`, dan `class_detail_page.dart` juga tercakup dalam inventaris. Sebagian berfungsi sebagai wrapper/host sehingga penilaian restyle harus mengikuti komponen anaknya, bukan mengganti wrapper tanpa kebutuhan.
@@ -244,6 +244,56 @@ Simpan form tetap eksplisit; tidak menambahkan auto-save atau sinkronisasi remot
 - 33 tes widget baru lulus pada iterasi terarah. Preview sintetis dengan Poppins/MaterialIcons diperiksa pada 1280x800 @100% dan 800x600 @200%; satu tes render tambahan lulus.
 - Pemeriksaan import dan diff: shared/core tidak mengimpor implementasi feature; tidak tersedia dependency-boundary script khusus.
 
-Status prioritas 5: perubahan lokal, belum commit/push.
+Status prioritas 5: sudah di-commit sebagai `1e99646` (Restyle curriculum reports and user desktop workflows), belum di-push pada tahap ini.
 
 Pemeriksaan akhir: formatter 18 file Dart, 0 perubahan; flutter analyze --no-pub tanpa issue (20.3 detik); flutter test --no-pub, 210 tes lulus; tes terarah prioritas 5, 33 lulus. Kombinasi textPrimary/primary 7.73:1, primaryForeground/surface 5.69:1 dan textSecondary/surface 4.62:1 memenuhi AA teks normal; ini pemeriksaan pasangan token terkait, bukan sertifikasi aksesibilitas menyeluruh. git diff --check bersih. flutter build windows --release --no-pub final berhasil (76.3 detik), menghasilkan build/windows/x64/runner/Release/edukita.exe. Satu tes render tambahan final lulus; judul Poppins, status dan label mengambang diperiksa kembali. Tidak ada perubahan kode setelah verifikasi ini.
+
+## Prioritas 6 — Pengaturan dan administrasi akademik
+
+Tanggal: 17 November 2026. Commit prioritas 5 diselesaikan terlebih dahulu sebagai `1e99646`. Perubahan lokal awal `analysis_options.yaml` dan `pubspec.lock` tetap dipertahankan dan tidak masuk commit tersebut.
+
+### Audit dan rencana sebelum implementasi
+
+Design system yang ditemukan tetap Poppins, Material 3 dengan Shadcn pada form Guru, primary turquoise `#48CFCB`, foreground `#176F6C`, dan AppColors/AppTypography/AppSpacing/AppRadii yang sudah digunakan. Tidak membuat palette atau dependency baru. Radius panel 16, kontrol 12 dan dialog 24; section Settings mengurangi frame berulang, sedangkan surface metrik yang berada di dalam panel berpading 16 memakai inner radius 0 (16−16).
+
+Inventaris: Settings (general, personalisasi, akun, path, maintenance, about); daftar Guru, empat tab detail dan form Guru; daftar Sekolah, daftar kelas sekolah, form sekolah dengan draft kelas/konfirmasi, daftar/form/detail Kelas; serta navigasi desktop/compact Parameter. Sepuluh file produksi diperiksa beserta Cubit, model, cache, repository, route dan caller terkait.
+
+| Severity | Lokasi | Masalah | Perubahan dan dampak |
+|---|---|---|---|
+| HIGH | Settings load/save | Gagal memuat meninggalkan default yang masih dapat disimpan | Error persisten + Retry/detail, guard Save/Ctrl+S sampai load berhasil; tidak menimpa konfigurasi dengan default setelah kegagalan baca |
+| HIGH | Form Guru, Sekolah, Kelas | Reflow dan dismiss/keyboard selama simpan tidak konsisten | AppFormRow/AppFormScope, AppDialog, scrolling, Ctrl+S, validasi tetap, duplicate submit dan dismiss saat simpan diblok |
+| HIGH | Daftar Guru/Sekolah/Kelas | Error mengganti tabel dan pesan normal memakai exception; target aksi 28–32 px | Data lama tetap tampak, banner actionable, aksi minimal 40 px dan tooltip |
+| HIGH | Detail Guru / kelas sekolah | Future dapat gagal sebelum listener UI terpasang; baca kelas gagal terlihat sebagai loading terus | Hasil detail dinormalisasi menjadi record sukses/error lokal dan Retry; hasil baca kelas dinormalisasi sebelum dialog dibuat sehingga error tertangani dan pembacaan tetap berada di luar build |
+| MEDIUM | Header, field, path, Parameter | Batas lebar tidak mengikuti text scaling dan label/path panjang | Reflow berdasarkan lebar efektif, grid field 1–2 kolom, path selectable selebar section, navigasi compact lebih awal |
+| MEDIUM | Dialog kelas sekolah | Dialog list/edit/konfirmasi bertumpuk | List ditutup sebelum form/konfirmasi dan kembali setelah aksi; editor/konfirmasi draft sekolah berganti pada satu route modal sambil mempertahankan controller induk |
+| MEDIUM | Sorting tabel teks | Nama/kontak/alamat dibandingkan dari huruf pertama | Rank teks lengkap pada data yang sedang dimuat; konvensi arah sorting AppTable tetap |
+| LOW | Detail visual | Label rich text tidak menentukan font; padding/radius/ink tidak konsisten | Poppins eksplisit, spacing token, surface dalam datar, Material/Ink untuk hover/focus; reduced-motion pada navigasi Parameter |
+
+### Perubahan dan file utama
+
+- `settings_page.dart`: error load persisten, penguncian Save, Ctrl+S, busy guard sebelum folder picker, error persentase dekat field; section tanpa kartu bertumpuk dan form dibatasi 960 px dengan field adaptif. General Save menjadi secondary; aksi personalisasi tetap menjalankan handler Save & Refresh yang sama.
+- `teachers_page.dart`: workspace/search berlabel dan Ctrl+F, data dipertahankan saat error, sorting nama/pendidikan/kontak lengkap, aksi dan dialog konfirmasi konsisten.
+- `teacher_detail_page.dart`: empat tab tetap; error aman + Retry memakai hasil baca lokal, metrik tabular dan surface datar di dalam panel. Repository, perhitungan KPI dan bentuk TeacherDetailData tetap.
+- `teacher_form_dialog.dart`: Shadcn field dan validator tetap, sedangkan chrome/aksi memakai AppDialog dan kontrol Material yang sudah menjadi pola aplikasi. Poppins, select selebar field, placeholder lokal, satu kolom saat sempit dan Ctrl+S/PopScope.
+- `schools_page.dart`: error daftar dan jumlah kelas actionable, jumlah terakhir (termasuk nol) dipertahankan pada kegagalan refresh, hasil baca lama tidak menimpa hasil baru, dan nilai belum diketahui tidak ditampilkan sebagai nol. Flow list kelas–edit–confirmation memakai satu modal aktif; guard per tampilan mencegah cooldown menghentikan Retry tanpa delay buatan.
+- `school_form_dialog.dart`: editor draft dan konfirmasi tampil dalam route modal yang sama; Cancel/Escape kembali ke form sekolah tanpa menghapus input. Parent/draft controller tetap memiliki lifecycle yang jelas. Label Poppins, tooltip data panjang, kolom aksi 104 px dan angka tabular/rata kanan.
+- `classes_page.dart`: daftar operasional memakai AppTable dengan header/empty state, search/Ctrl+F, sorting angka dan aksi berlabel; click/Enter mengakses edit yang sudah tersedia.
+- `class_form_dialog.dart`: form dibatasi 560 px, scroll, busy guard, Ctrl+S dan Escape aman. `class_detail_page.dart`: halaman baca dapat digulir dan dibatasi 720 px.
+- `parameter_page.dart`: reflow menurut lebar efektif, state aktif/tooltip/focus melalui Material/Ink, animasi lama dinonaktifkan ketika reduced motion aktif. Tujuan dan grouping menu tetap.
+
+### Kontrak dan bagian yang sengaja dipertahankan
+
+Tidak ada perubahan repository, Cubit, model publik, SQL/schema, transaksi sekolah–kelas, permission grant, route, format settings atau backup, locale storage, hashing/session, dependency maupun packaging Windows. Pembatasan tampilan admin/staff/teacher di Settings dipertahankan. Kode normalisasi data, rentang level/tipe sekolah, duplicate class/year, generator nama/kelas, sort draft dan cache clear dibandingkan dengan snapshot awal dan identik setelah whitespace/trailing comma formatter dinormalisasi.
+
+Perubahan async hanya pada penyajian hasil detail Guru dan guard/feedback UI; tidak menambahkan service cache atau sumber data eksternal. Tidak mengubah repository sorting menjadi query/pagination global. Batas feature dan import legacy detail widgets tidak dimigrasikan massal dalam restyle ini. Tidak menambah dark mode atau migrasi storage. Backup SQLite nyata/folder picker, perubahan bahasa setelah restart, navigasi end-to-end semua role, Windows DPI fisik/multi-monitor dan Narrator belum diuji langsung. Seluruh test/preview memakai data sintetis serta app-data terisolasi di .dart_tool; tidak memakai data produksi.
+
+### Verifikasi prioritas 6
+
+- Matriks tujuh halaman: 560x600 (ruang setelah sidebar), 800x600, 1280x800, 1920x1080, 2560x1080; text scaling 100/125/150/200%; EN/ID. Keempat tab detail Guru dibuka dan section Settings terakhir dicapai melalui scrolling.
+- Form Guru/Sekolah/Kelas pada 800x600 dengan keempat skala; validasi Guru lama tetap lulus. Preview Poppins/MaterialIcons diperiksa pada 1280x800 @100% dan 800x600 @200%, termasuk label sekolah, lebar select Guru, Parameter dan metrik detail.
+- Regresi: refresh error mempertahankan Guru, Ctrl+F/filter, Settings load-fail mengunci save + Retry, Ctrl+S submit tunggal/gagal simpan mempertahankan input, sekolah tetap menyimpan kelas yang sama, Escape saat saving, cancel editor menjaga draft induk, daftar kelas Retry–editor hanya memiliki satu dialog, detail Guru gagal/retry, Settings teacher tidak menampilkan maintenance/general, serta sorting nama dengan huruf awal sama.
+- Tidak ada dependency-boundary script khusus. Import dan diff diperiksa; tidak ada dependency feature baru pada shared/core.
+
+Status prioritas 6: implementasi lokal, belum commit/push.
+
+Pemeriksaan akhir kode: formatter 11 file Dart; flutter analyze --no-pub tanpa issue (5.3 detik); flutter test --no-pub, 245 tes lulus termasuk 35 tes baru. Tes tambahan menutup nilai nol/jumlah belum diketahui saat gagal refresh serta dialog daftar kelas pada 800x600 @200%. Skeleton dan tabel memakai viewport yang sama agar tidak meloncat saat loading selesai. Pemetaan payload AppSettingsData, Teacher, School serta model draft kelas dibandingkan dengan source awal dan identik; validasi/generator/cache-clear juga identik. Tidak ada perubahan kode setelah suite penuh ini. flutter build windows --release --no-pub final berhasil (67.9 detik), output build/windows/x64/runner/Release/edukita.exe. Satu tes render tambahan final lulus; preview memakai Poppins/MaterialIcons dan data sintetis. git diff --check bersih.

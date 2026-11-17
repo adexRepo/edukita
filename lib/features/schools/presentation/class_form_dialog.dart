@@ -1,3 +1,4 @@
+import 'package:edukita/widgets/app_form_scope.dart';
 import 'dart:async';
 
 import 'package:edukita/core/localization/localization_extension.dart';
@@ -73,108 +74,125 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
   Widget build(BuildContext context) {
     bool isAdd = widget.schoolClass == null;
 
-    return AppDialog(
-      title: AppDialogTitle(
-        isAdd ? context.l10n.addClass : context.l10n.editClass,
-      ),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CommonFormWidgets.textField(
-                label: context.l10n.generatedClassName,
-                value: className,
-                controller: _classNameController,
-                readOnly: true,
-                hint: context.l10n.generatedClassHint,
-                onSaved: (value) => className = value ?? '',
-                validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return context.l10n.classNameRequired;
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              CommonFormWidgets.dropdownField(
-                label: context.l10n.level,
-                items: _schoolType.allowedLevels
-                    .map((level) => level.toString())
-                    .toList(),
-                value: widget.schoolClass != null ? level.toString() : null,
-                hint:
-                    '${context.l10n.selectField(context.l10n.level)} '
-                    '(${_schoolType.levelHint})',
-                onChanged: (value) {
-                  level = int.parse(value ?? _schoolType.minLevel.toString());
-                  _refreshClassName();
-                },
-                onSaved: (value) =>
-                    level = int.parse(value ?? _schoolType.minLevel.toString()),
-              ),
-              const SizedBox(height: 16),
-              CommonFormWidgets.dropdownField(
-                label: context.l10n.section,
-                items: ['A', 'B', 'C', 'D'],
-                value: SchoolClass.normalizeSection(section),
-                hint: context.l10n.selectField(context.l10n.section),
-                onChanged: (value) {
-                  section = SchoolClass.normalizeSection(value);
-                  _refreshClassName();
-                },
-                onSaved: (value) =>
-                    section = SchoolClass.normalizeSection(value),
-                isRequired: false,
-              ),
-              const SizedBox(height: 16),
-              CommonFormWidgets.textField(
-                label: context.l10n.year,
-                value: year,
-                hint: AppFormFieldStyle.yearFormat,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(4),
+    return AppFormScope(
+      busy: _isSaving,
+      onSave: _submit,
+      child: AppDialog(
+        title: AppDialogTitle(
+          isAdd ? context.l10n.addClass : context.l10n.editClass,
+          enabled: !_isSaving,
+        ),
+        content: SizedBox(
+          width: 560,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(top: AppSpacing.sm),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CommonFormWidgets.textField(
+                    label: context.l10n.generatedClassName,
+                    value: className,
+                    controller: _classNameController,
+                    readOnly: true,
+                    hint: context.l10n.generatedClassHint,
+                    onSaved: (value) => className = value ?? '',
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) {
+                        return context.l10n.classNameRequired;
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  CommonFormWidgets.dropdownField(
+                    label: context.l10n.level,
+                    items: _schoolType.allowedLevels
+                        .map((level) => level.toString())
+                        .toList(),
+                    value: widget.schoolClass != null ? level.toString() : null,
+                    hint:
+                        '${context.l10n.selectField(context.l10n.level)} '
+                        '(${_schoolType.levelHint})',
+                    onChanged: (value) {
+                      level = int.parse(
+                        value ?? _schoolType.minLevel.toString(),
+                      );
+                      _refreshClassName();
+                    },
+                    onSaved: (value) => level = int.parse(
+                      value ?? _schoolType.minLevel.toString(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  CommonFormWidgets.dropdownField(
+                    label: context.l10n.section,
+                    items: ['A', 'B', 'C', 'D'],
+                    value: SchoolClass.normalizeSection(section),
+                    hint: context.l10n.selectField(context.l10n.section),
+                    onChanged: (value) {
+                      section = SchoolClass.normalizeSection(value);
+                      _refreshClassName();
+                    },
+                    onSaved: (value) =>
+                        section = SchoolClass.normalizeSection(value),
+                    isRequired: false,
+                  ),
+                  const SizedBox(height: 16),
+                  CommonFormWidgets.textField(
+                    label: context.l10n.year,
+                    value: year,
+                    hint: AppFormFieldStyle.yearFormat,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(4),
+                    ],
+                    onChanged: (value) {
+                      year = value;
+                      _refreshClassName();
+                    },
+                    onSaved: (value) => year = value ?? '',
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) {
+                        return context.l10n.yearRequired;
+                      }
+                      if (!RegExp(r'^\d{4}$').hasMatch(value!.trim())) {
+                        return context.l10n.yearMustFourDigits;
+                      }
+                      return null;
+                    },
+                  ),
                 ],
-                onChanged: (value) {
-                  year = value;
-                  _refreshClassName();
-                },
-                onSaved: (value) => year = value ?? '',
-                validator: (value) {
-                  if (value?.isEmpty ?? true) return context.l10n.yearRequired;
-                  if (!RegExp(r'^\d{4}$').hasMatch(value!.trim())) {
-                    return context.l10n.yearMustFourDigits;
-                  }
-                  return null;
-                },
               ),
-            ],
+            ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : () => Navigator.pop(context),
+            child: Text(context.l10n.buttonCancel),
+          ),
+          ElevatedButton(
+            onPressed: _isSaving ? null : _submit,
+            child: _isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(context.l10n.buttonSave),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: Text(context.l10n.buttonCancel),
-        ),
-        ElevatedButton(
-          onPressed: _isSaving ? null : _submit,
-          child: _isSaving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(context.l10n.buttonSave),
-        ),
-      ],
     );
   }
 
   Future<void> _submit() async {
+    if (_isSaving) {
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
 
     final action = widget.schoolClass == null

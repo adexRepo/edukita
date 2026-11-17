@@ -1,3 +1,8 @@
+import 'package:edukita/widgets/app_shad_theme.dart';
+import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_dialog.dart';
+import 'package:edukita/widgets/app_form_scope.dart';
+import 'package:edukita/widgets/app_form_row.dart';
 import 'dart:async';
 
 import 'package:edukita/core/localization/localization_extension.dart';
@@ -59,144 +64,130 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.teacher != null;
-    final dialogWidth = (MediaQuery.sizeOf(context).width - 80)
-        .clamp(360.0, 760.0)
-        .toDouble();
-
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
-      child: ShadCard(
-        width: dialogWidth,
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                isEditing ? context.l10n.editTeacher : context.l10n.addTeacher,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
+    return AppFormScope(
+      busy: _isSaving,
+      onSave: _submit,
+      child: AppShadTheme(
+        child: AppDialog(
+          title: AppDialogTitle(
+            isEditing ? context.l10n.editTeacher : context.l10n.addTeacher,
+            enabled: !_isSaving,
+          ),
+          content: SizedBox(
+            width: 720,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(top: AppSpacing.sm),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _fieldGrid([
+                      _inputField(
+                        label: context.l10n.nickName,
+                        controller: _nickNameController,
+                        isRequired: true,
+                        validator: (value) => AppFormValidation.requiredText(
+                          context,
+                          value,
+                          context.l10n.nickName,
+                          minLength: 2,
+                          maxLength: 40,
+                        ),
+                        inputFormatters: [LengthLimitingTextInputFormatter(40)],
+                      ),
+                      _inputField(
+                        label: context.l10n.fullName,
+                        controller: _fullNameController,
+                        isRequired: true,
+                        validator: (value) => AppFormValidation.requiredText(
+                          context,
+                          value,
+                          context.l10n.fullName,
+                          minLength: 3,
+                          maxLength: 80,
+                        ),
+                        inputFormatters: [LengthLimitingTextInputFormatter(80)],
+                      ),
+                      _selectField<String>(
+                        label: context.l10n.educationLevel,
+                        value: _lastEducationType,
+                        values: _educationLevels,
+                        isRequired: true,
+                        optionLabel: (value) => value,
+                        onChanged: (value) => setState(() {
+                          _lastEducationType = value;
+                        }),
+                        validator: (value) => AppFormValidation.requiredText(
+                          context,
+                          value,
+                          context.l10n.educationLevel,
+                        ),
+                      ),
+                      _selectField<String>(
+                        label: context.l10n.gender,
+                        value: _gender,
+                        values: _genderValues,
+                        isRequired: true,
+                        optionLabel: _genderLabel,
+                        onChanged: (value) => setState(() {
+                          _gender = value;
+                        }),
+                        validator: (value) => AppFormValidation.requiredText(
+                          context,
+                          value,
+                          context.l10n.gender,
+                        ),
+                      ),
+                      _inputField(
+                        label: context.l10n.email,
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) =>
+                            AppFormValidation.optionalEmail(context, value),
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(120),
+                        ],
+                      ),
+                      _inputField(
+                        label: context.l10n.mobileNo,
+                        controller: _mobileNoController,
+                        placeholder: AppFormValidation.mobilePlaceholder,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters:
+                            AppFormValidation.mobileInputFormatters,
+                        validator: (value) =>
+                            AppFormValidation.optionalMobile(context, value),
+                      ),
+                    ]),
+                  ],
                 ),
               ),
             ),
-            ShadButton.ghost(
-              onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-              child: const Icon(Icons.close, size: 18),
+          ),
+          actions: [
+            OutlinedButton(
+              onPressed: _isSaving ? null : () => Navigator.pop(context),
+              child: Text(context.l10n.buttonCancel),
+            ),
+            FilledButton(
+              onPressed: _isSaving ? null : _submit,
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(context.l10n.buttonSave),
             ),
           ],
-        ),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _fieldGrid([
-                _inputField(
-                  label: context.l10n.nickName,
-                  controller: _nickNameController,
-                  isRequired: true,
-                  validator: (value) => AppFormValidation.requiredText(
-                    context,
-                    value,
-                    context.l10n.nickName,
-                    minLength: 2,
-                    maxLength: 40,
-                  ),
-                  inputFormatters: [LengthLimitingTextInputFormatter(40)],
-                ),
-                _inputField(
-                  label: context.l10n.fullName,
-                  controller: _fullNameController,
-                  isRequired: true,
-                  validator: (value) => AppFormValidation.requiredText(
-                    context,
-                    value,
-                    context.l10n.fullName,
-                    minLength: 3,
-                    maxLength: 80,
-                  ),
-                  inputFormatters: [LengthLimitingTextInputFormatter(80)],
-                ),
-                _selectField<String>(
-                  label: context.l10n.educationLevel,
-                  value: _lastEducationType,
-                  values: _educationLevels,
-                  isRequired: true,
-                  optionLabel: (value) => value,
-                  onChanged: (value) => setState(() {
-                    _lastEducationType = value;
-                  }),
-                  validator: (value) => AppFormValidation.requiredText(
-                    context,
-                    value,
-                    context.l10n.educationLevel,
-                  ),
-                ),
-                _selectField<String>(
-                  label: context.l10n.gender,
-                  value: _gender,
-                  values: _genderValues,
-                  isRequired: true,
-                  optionLabel: _genderLabel,
-                  onChanged: (value) => setState(() {
-                    _gender = value;
-                  }),
-                  validator: (value) => AppFormValidation.requiredText(
-                    context,
-                    value,
-                    context.l10n.gender,
-                  ),
-                ),
-                _inputField(
-                  label: context.l10n.email,
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) =>
-                      AppFormValidation.optionalEmail(context, value),
-                  inputFormatters: [LengthLimitingTextInputFormatter(120)],
-                ),
-                _inputField(
-                  label: context.l10n.mobileNo,
-                  controller: _mobileNoController,
-                  placeholder: AppFormValidation.mobilePlaceholder,
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: AppFormValidation.mobileInputFormatters,
-                  validator: (value) =>
-                      AppFormValidation.optionalMobile(context, value),
-                ),
-              ]),
-              const SizedBox(height: 22),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  ShadButton.outline(
-                    onPressed: _isSaving ? null : () => Navigator.pop(context),
-                    child: Text(context.l10n.buttonCancel),
-                  ),
-                  const SizedBox(width: 10),
-                  ShadButton(
-                    onPressed: _isSaving ? null : _submit,
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(context.l10n.buttonSave),
-                  ),
-                ],
-              ),
-            ],
-          ),
         ),
       ),
     );
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving || !_formKey.currentState!.validate()) return;
 
     final action = widget.teacher == null
         ? SubmissionAction.create
@@ -225,19 +216,7 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
   }
 
   Widget _fieldGrid(List<Widget> children) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 620 ? 2 : 1;
-        final width = (constraints.maxWidth - (14 * (columns - 1))) / columns;
-        return Wrap(
-          spacing: 14,
-          runSpacing: 14,
-          children: children
-              .map((child) => SizedBox(width: width, child: child))
-              .toList(),
-        );
-      },
-    );
+    return AppFormRow(children: children);
   }
 
   Widget _inputField({
@@ -271,28 +250,36 @@ class _TeacherFormDialogState extends State<TeacherFormDialog> {
   }) {
     final optionValues = values.toList();
     final selectedValue = optionValues.contains(value) ? value : null;
-    return ShadSelectFormField<T>(
-      key: ValueKey('${label}_${selectedValue}_${optionValues.length}'),
-      enabled: !_isSaving,
-      label: _fieldLabel(label, isRequired: isRequired),
-      initialValue: selectedValue,
-      placeholder: Text(
-        AppFormFieldStyle.select(label),
-        overflow: TextOverflow.ellipsis,
+    return LayoutBuilder(
+      builder: (context, constraints) => ShadSelectFormField<T>(
+        minWidth: constraints.maxWidth,
+        maxWidth: constraints.maxWidth,
+        key: ValueKey('${label}_${selectedValue}_${optionValues.length}'),
+        enabled: !_isSaving,
+        label: _fieldLabel(label, isRequired: isRequired),
+        initialValue: selectedValue,
+        placeholder: Text(
+          context.l10n.selectField(label),
+          overflow: TextOverflow.ellipsis,
+        ),
+        selectedOptionBuilder: (context, selected) =>
+            Text(optionLabel(selected), overflow: TextOverflow.ellipsis),
+        options: optionValues
+            .map(
+              (option) => ShadOption<T>(
+                value: option,
+                child: Text(
+                  optionLabel(option),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            )
+            .toList(),
+        maxHeight: AppDropdownStyle.menuMaxHeight,
+        trailing: const Icon(Icons.expand_more, size: 20),
+        onChanged: onChanged,
+        validator: validator,
       ),
-      selectedOptionBuilder: (context, selected) =>
-          Text(optionLabel(selected), overflow: TextOverflow.ellipsis),
-      options: optionValues
-          .map(
-            (option) => ShadOption<T>(
-              value: option,
-              child: Text(optionLabel(option), overflow: TextOverflow.ellipsis),
-            ),
-          )
-          .toList(),
-      maxHeight: AppDropdownStyle.menuMaxHeight,
-      onChanged: onChanged,
-      validator: validator,
     );
   }
 

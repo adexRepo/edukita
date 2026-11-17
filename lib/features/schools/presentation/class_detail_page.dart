@@ -1,3 +1,4 @@
+import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/features/schools/data/class_model.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/widgets/detail_breadcrumbs.dart';
@@ -17,29 +18,38 @@ class ClassDetailPage extends StatelessWidget {
         leading: const DetailAppBarBackButton(fallbackRoute: '/school'),
         title: DetailBreadcrumbs(
           items: [
-            DetailBreadcrumbItem(
-              label: context.l10n.school,
-              route: '/school',
-            ),
+            DetailBreadcrumbItem(label: context.l10n.school, route: '/school'),
             DetailBreadcrumbItem(label: schoolClass.className),
           ],
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.classDetails,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      body: SingleChildScrollView(
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.classDetails,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('${context.l10n.className}: ${schoolClass.className}'),
+                  Text('${context.l10n.level}: ${schoolClass.level}'),
+                  if (section != null)
+                    Text('${context.l10n.section}: $section'),
+                  Text('${context.l10n.year}: ${schoolClass.year}'),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            Text('${context.l10n.className}: ${schoolClass.className}'),
-            Text('${context.l10n.level}: ${schoolClass.level}'),
-            if (section != null) Text('${context.l10n.section}: $section'),
-            Text('${context.l10n.year}: ${schoolClass.year}'),
-          ],
+          ),
         ),
       ),
     );

@@ -1,3 +1,8 @@
+import 'package:edukita/widgets/app_desktop_workspace.dart';
+import 'package:edukita/widgets/app_error_dialog.dart';
+import 'package:edukita/widgets/app_inline_error.dart';
+import 'package:edukita/widgets/app_form_scope.dart';
+import 'package:edukita/widgets/app_form_row.dart';
 import 'package:edukita/core/localization/app_language_cubit.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/router/service_locator.dart';
@@ -51,6 +56,8 @@ class _SettingsPageState extends State<SettingsPage> {
   String? _databasePath;
   String? _storagePath;
   bool _loading = true;
+  Object? _loadError;
+  String? _attendanceError;
   bool _checkingAuthorization = true;
   bool _isAdmin = false;
   bool _isStaff = false;
@@ -104,6 +111,10 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
     try {
       final settings = await _repository.load();
       final databasePath = await _repository.databasePath();
@@ -129,8 +140,16 @@ class _SettingsPageState extends State<SettingsPage> {
       });
     } catch (error) {
       if (!mounted) return;
-      setState(() => _loading = false);
-      AppToast.showFailed(error.toString().replaceFirst('Exception: ', ''));
+      setState(() {
+        _loading = false;
+        _loadError = error;
+      });
+      showErrorToastWithDetails(
+        context,
+        title: context.l10n.operationFailedTryAgain,
+        message: context.l10n.operationFailedTryAgain,
+        error: error,
+      );
     }
   }
 
@@ -141,17 +160,25 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _save({bool applyLanguage = false}) async {
-    if (_saving) return;
+    if (_saving || _loading || _checkingAuthorization || _loadError != null) {
+      return;
+    }
     final languageCubit = context.read<AppLanguageCubit>();
     final attendance = double.tryParse(
       _minimumAttendanceController.text.trim(),
     );
     if (attendance == null || attendance < 0 || attendance > 100) {
+      setState(
+        () => _attendanceError = context.l10n.minimumAttendanceRangeError,
+      );
       AppToast.showFailed(context.l10n.minimumAttendanceRangeError);
       return;
     }
 
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _attendanceError = null;
+    });
     final successMessage = context.l10n.messageDataSaved;
     try {
       await _repository.save(
@@ -190,7 +217,13 @@ class _SettingsPageState extends State<SettingsPage> {
       }
       AppToast.showSuccess(successMessage);
     } catch (error) {
-      AppToast.showFailed(error.toString().replaceFirst('Exception: ', ''));
+      if (!mounted) return;
+      showErrorToastWithDetails(
+        context,
+        title: context.l10n.operationFailedTryAgain,
+        message: context.l10n.operationFailedTryAgain,
+        error: error,
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -204,15 +237,20 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _backupDatabase() async {
     if (_backingUp) return;
     final l10n = context.l10n;
-    final directoryPath = await getDirectoryPath();
-    if (directoryPath == null) return;
-
     setState(() => _backingUp = true);
     try {
+      final directoryPath = await getDirectoryPath();
+      if (!mounted || directoryPath == null) return;
       final path = await _repository.backupDatabase(directoryPath);
       AppToast.showSuccess(l10n.databaseBackupCreated(path));
     } catch (error) {
-      AppToast.showFailed(error.toString().replaceFirst('Exception: ', ''));
+      if (!mounted) return;
+      showErrorToastWithDetails(
+        context,
+        title: context.l10n.operationFailedTryAgain,
+        message: context.l10n.operationFailedTryAgain,
+        error: error,
+      );
     } finally {
       if (mounted) setState(() => _backingUp = false);
     }
@@ -265,48 +303,68 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: AppColors.surfaceSoft,
-      child: Padding(
-        padding: AppPageHeaderStyle.pagePadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppPageHeader(
-              title: context.l10n.settingsTitle,
-              subtitle: context.l10n.settingsSubtitle,
+    return AppFormScope(
+      busy: _saving || _backingUp,
+      onSave: () => _save(applyLanguage: true),
+      child: ColoredBox(
+        color: AppColors.surfaceSoft,
+        child: Padding(
+          padding: AppPageHeaderStyle.pagePadding,
+          child: AppDesktopWorkspace(
+            header: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_loadError != null)
+                  AppInlineError(
+                    message: context.l10n.operationFailedTryAgain,
+                    onRetry: _load,
+                    onDetails: () => showErrorDetailDialog(
+                      context,
+                      title: context.l10n.operationFailedTryAgain,
+                      error: _loadError!,
+                    ),
+                  ),
+                AppPageHeader(
+                  title: context.l10n.settingsTitle,
+                  subtitle: context.l10n.settingsSubtitle,
+                ),
+                const SizedBox(height: AppPageHeaderStyle.bottomGap),
+              ],
             ),
-            const SizedBox(height: AppPageHeaderStyle.bottomGap),
-            Expanded(
-              child: _checkingAuthorization || _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.only(bottom: 18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (_isAdmin || _isStaff) ...[
-                            _generalPanel(),
-                            const SizedBox(height: 14),
+            content: _checkingAuthorization || _loading
+                ? const Center(child: CircularProgressIndicator())
+                : Align(
+                    alignment: Alignment.topLeft,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 960),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (_isAdmin || _isStaff) ...[
+                              _generalPanel(),
+                              const SizedBox(height: AppSpacing.md),
+                            ],
+                            _personalizationPanel(),
+                            const SizedBox(height: AppSpacing.md),
+                            _accountPanel(),
+                            const SizedBox(height: AppSpacing.md),
+                            if (_isAdmin) ...[
+                              _technicalNoticePanel(),
+                              const SizedBox(height: AppSpacing.md),
+                              _pathsPanel(),
+                              const SizedBox(height: AppSpacing.md),
+                              _toolsPanel(),
+                              const SizedBox(height: AppSpacing.md),
+                            ],
+                            _aboutPanel(),
                           ],
-                          _personalizationPanel(),
-                          const SizedBox(height: 14),
-                          _accountPanel(),
-                          const SizedBox(height: 14),
-                          if (_isAdmin) ...[
-                            _technicalNoticePanel(),
-                            const SizedBox(height: 14),
-                            _pathsPanel(),
-                            const SizedBox(height: 14),
-                            _toolsPanel(),
-                            const SizedBox(height: 14),
-                          ],
-                          _aboutPanel(),
-                        ],
+                        ),
                       ),
                     ),
-            ),
-          ],
+                  ),
+          ),
         ),
       ),
     );
@@ -326,7 +384,9 @@ class _SettingsPageState extends State<SettingsPage> {
       title: context.l10n.personalization,
       description: context.l10n.personalizationDescription,
       trailing: FilledButton.icon(
-        onPressed: _saving ? null : () => _save(applyLanguage: true),
+        onPressed: (_saving || _loadError != null)
+            ? null
+            : () => _save(applyLanguage: true),
         icon: _saving
             ? const SizedBox(
                 width: 16,
@@ -369,7 +429,7 @@ class _SettingsPageState extends State<SettingsPage> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.24)),
       ),
       child: Row(
@@ -378,7 +438,7 @@ class _SettingsPageState extends State<SettingsPage> {
             Icons.admin_panel_settings_outlined,
             color: AppColors.primary,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               context.l10n.technicalSettingsAdminOnly,
@@ -398,8 +458,8 @@ class _SettingsPageState extends State<SettingsPage> {
     return _SettingsPanel(
       title: context.l10n.generalDefaults,
       description: context.l10n.generalDefaultsDescription,
-      trailing: FilledButton.icon(
-        onPressed: _saving ? null : () => _save(),
+      trailing: OutlinedButton.icon(
+        onPressed: (_saving || _loadError != null) ? null : () => _save(),
         icon: _saving
             ? const SizedBox(
                 width: 16,
@@ -437,6 +497,7 @@ class _SettingsPageState extends State<SettingsPage> {
           controller: _minimumAttendanceController,
           decoration: InputDecoration(
             labelText: context.l10n.defaultMinimumAttendance,
+            errorText: _attendanceError,
             suffixText: '%',
           ),
           keyboardType: TextInputType.number,
@@ -446,10 +507,22 @@ class _SettingsPageState extends State<SettingsPage> {
           initialValue: _dashboardRange,
           items: [
             DropdownMenuItem(value: 'weekly', child: Text(context.l10n.weekly)),
-            DropdownMenuItem(value: 'monthly', child: Text(context.l10n.monthly)),
-            DropdownMenuItem(value: '3_month', child: Text(context.l10n.threeMonths)),
-            DropdownMenuItem(value: '6_month', child: Text(context.l10n.sixMonths)),
-            DropdownMenuItem(value: '1_year', child: Text(context.l10n.oneYear)),
+            DropdownMenuItem(
+              value: 'monthly',
+              child: Text(context.l10n.monthly),
+            ),
+            DropdownMenuItem(
+              value: '3_month',
+              child: Text(context.l10n.threeMonths),
+            ),
+            DropdownMenuItem(
+              value: '6_month',
+              child: Text(context.l10n.sixMonths),
+            ),
+            DropdownMenuItem(
+              value: '1_year',
+              child: Text(context.l10n.oneYear),
+            ),
           ],
           onChanged: (value) {
             if (value == null) return;
@@ -480,7 +553,7 @@ class _SettingsPageState extends State<SettingsPage> {
             value: _databasePath ?? '-',
             icon: Icons.storage_outlined,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
           _PathRow(
             label: context.l10n.uploads,
             value: _storagePath ?? '-',
@@ -496,8 +569,8 @@ class _SettingsPageState extends State<SettingsPage> {
       title: context.l10n.maintenance,
       description: context.l10n.maintenanceDescription,
       child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
         children: [
           OutlinedButton.icon(
             onPressed: _backingUp ? null : _backupDatabase,
@@ -543,7 +616,7 @@ class _SettingsPageState extends State<SettingsPage> {
       title: context.l10n.aboutEdukita,
       description: context.l10n.aboutEdukitaDescription,
       child: Wrap(
-        spacing: 28,
+        spacing: AppSpacing.lg,
         runSpacing: 12,
         children: [
           _AboutValue(
@@ -566,28 +639,8 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _responsiveGrid(List<Widget> children) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 920
-            ? 3
-            : constraints.maxWidth >= 620
-            ? 2
-            : 1;
-        const spacing = 12.0;
-        final width = columns == 1
-            ? constraints.maxWidth
-            : (constraints.maxWidth - spacing * (columns - 1)) / columns;
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: [
-            for (final child in children) SizedBox(width: width, child: child),
-          ],
-        );
-      },
-    );
-  }
+  Widget _responsiveGrid(List<Widget> children) =>
+      AppFormRow(children: children);
 
   Widget _settingsDropdown({
     required String label,
@@ -642,20 +695,26 @@ class _CurrentLanguageRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadii.control),
         border: Border.all(color: AppColors.primaryLight),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: AppSpacing.xs,
+        runSpacing: AppSpacing.xs,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           const Icon(
             Icons.translate_outlined,
             color: AppColors.primary,
             size: 18,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.sm),
           Text(
             '$label:',
             style: const TextStyle(
@@ -694,43 +753,18 @@ class _SettingsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
+
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      description,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (trailing != null) ...[const SizedBox(width: 12), trailing!],
-            ],
+          AppPageHeader(
+            title: title,
+            subtitle: description,
+            trailing: trailing,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.md),
           child,
         ],
       ),
@@ -759,7 +793,7 @@ class _AboutValue extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: AppSpacing.xxs),
           Text(
             value,
             style: const TextStyle(
@@ -788,37 +822,29 @@ class _PathRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadii.control),
         border: Border.all(color: AppColors.border),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(icon, size: 18, color: AppColors.primary),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 90,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+          Row(
+            children: [
+              Icon(icon, size: 20, color: AppColors.primaryForeground),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(label, style: AppTypography.bodyStrongStyle),
               ),
-            ),
+            ],
           ),
-          Expanded(
-            child: SelectableText(
-              value,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
+          const SizedBox(height: AppSpacing.xs),
+          SelectableText(value, style: AppTypography.bodyStyle),
         ],
       ),
     );
