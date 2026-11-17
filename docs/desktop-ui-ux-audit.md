@@ -98,3 +98,10 @@ Verifikasi akhir prioritas 5: formatter 18 file (0 perubahan), analyzer bersih, 
 Prioritas 5 sudah di-commit sebagai `1e99646`. Prioritas 6 — Settings, Guru/detail/form, Sekolah/Kelas dan Parameter — menerapkan reflow desktop, error yang mempertahankan data, busy/keyboard guards, modal tunggal, sorting teks lengkap dan feedback lokal. Audit, daftar file, kontrak yang dipertahankan dan batas verifikasi tersedia pada [ui-restyle-priorities.md](ui-restyle-priorities.md). Perubahan prioritas 6 masih lokal, belum commit/push.
 
 Verifikasi nomor 6 mencakup 35 tes widget baru, termasuk dialog kelas pada teks 200%, state jumlah kelas nol versus belum diketahui, serta gagal simpan dan role visibility. Full suite 245 tes lulus dan analyzer bersih. Rincian build akhir dan status commit/push dicatat pada dokumen prioritas.
+
+
+Prioritas 6 sudah di-commit sebagai `a21b086`. Prioritas 7 mencakup Program/Paket/Item dan Aturan Bantuan, Lokasi Mengajar, Strategi, Wali, Login dan Ganti Password. Restyle menggunakan satu modal aktif dengan draft terjaga, workspace/search/keyboard bersama, form adaptif, busy guard, sorting teks lengkap dan error aman yang mempertahankan data. Audit severity, file utama, kontrak data dan batas verifikasi dicatat dalam [ui-restyle-priorities.md](ui-restyle-priorities.md). Perubahan nomor 7 masih lokal, belum commit/push.
+
+Verifikasi final nomor 7: formatter 15 file tanpa perubahan tersisa, analyzer bersih, 280 tes penuh lulus termasuk 35 tes baru, Windows release build berhasil dan satu tes render tambahan lulus. Regresi fokus setelah Escape dua tingkat diperbaiki dan masuk assertion tes permanen. Preview 12 halaman/form memakai Poppins dengan data sintetis. Batas DPI fisik, Narrator, native picker dan autentikasi database nyata tetap berlaku.
+
+Penutupan: cakupan restyle prioritas 1–7 selesai; commit dan push diminta pengguna pada tahap akhir. Batas pengujian Windows fisik/native dan pekerjaan arsitektur yang sengaja dipertahankan tetap tercatat dalam dokumen prioritas.

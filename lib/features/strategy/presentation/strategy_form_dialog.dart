@@ -1,14 +1,13 @@
-import 'package:edukita/widgets/app_form_scope.dart';
-import 'package:edukita/widgets/app_form_row.dart';
 import 'dart:async';
 import 'dart:io';
-
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/storage/app_storage_paths.dart';
-import 'package:edukita/features/strategy/data/strategy_model.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
-import 'package:edukita/widgets/app_dialog.dart';
+import 'package:edukita/features/strategy/data/strategy_model.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_dialog.dart';
+import 'package:edukita/widgets/app_form_row.dart';
+import 'package:edukita/widgets/app_form_scope.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
@@ -210,43 +209,49 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
         border: OutlineInputBorder(),
         helperText: context.l10n.allowedDocumentTypes,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Text(
-              hasFile ? fileName! : context.l10n.noFileSelected,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                color: hasFile
-                    ? Theme.of(context).colorScheme.onSurface
-                    : Theme.of(context).hintColor,
+          Text(
+            hasFile ? fileName! : context.l10n.noFileSelected,
+
+            style: TextStyle(
+              fontSize: 12,
+              color: hasFile
+                  ? Theme.of(context).colorScheme.onSurface
+                  : Theme.of(context).hintColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 4,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _isSaving ? null : _pickSampleFile,
+                icon: const Icon(Icons.upload_file, size: 16),
+                label: Text(
+                  hasFile ? context.l10n.change : context.l10n.upload,
+                ),
               ),
-            ),
+              if (hasFile) ...[
+                IconButton(
+                  tooltip: context.l10n.removeFile,
+                  onPressed: _isSaving
+                      ? null
+                      : () {
+                          setState(() {
+                            sampleFilePath = null;
+                            _selectedSampleSourcePath = null;
+                            _selectedSampleFileName = null;
+                          });
+                        },
+                  icon: const Icon(Icons.close, size: 18),
+                ),
+              ],
+            ],
           ),
-          const SizedBox(width: 12),
-          OutlinedButton.icon(
-            onPressed: _isSaving ? null : _pickSampleFile,
-            icon: const Icon(Icons.upload_file, size: 16),
-            label: Text(hasFile ? context.l10n.change : context.l10n.upload),
-          ),
-          if (hasFile) ...[
-            const SizedBox(width: 4),
-            IconButton(
-              tooltip: context.l10n.removeFile,
-              onPressed: _isSaving
-                  ? null
-                  : () {
-                      setState(() {
-                        sampleFilePath = null;
-                        _selectedSampleSourcePath = null;
-                        _selectedSampleFileName = null;
-                      });
-                    },
-              icon: const Icon(Icons.close, size: 18),
-            ),
-          ],
         ],
       ),
     );

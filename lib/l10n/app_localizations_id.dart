@@ -5292,4 +5292,10 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get operationFailedTryAgain =>
       'Operasi belum berhasil. Silakan coba lagi.';
+
+  @override
+  String get foundationEducationSystem => 'Sistem Pendidikan Yayasan';
+
+  @override
+  String get brandTagline => 'Ilmu yang Tertata, Generasi Bermakna';
 }

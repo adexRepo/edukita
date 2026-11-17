@@ -1,11 +1,11 @@
-import 'package:edukita/features/common/title_bar.dart';
-import 'package:edukita/features/auth/domain/auth_session_cache.dart';
+import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/router/service_locator.dart';
+import 'package:edukita/features/auth/domain/auth_session_cache.dart';
+import 'package:edukita/features/common/title_bar.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:edukita/core/database/database_provider.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key, required this.onAuthenticated});
@@ -21,6 +21,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   final FocusNode _usernameFocusNode = FocusNode();
   final FocusNode _passwordFocusNode = FocusNode();
+  final _formKey = GlobalKey<FormState>();
   String? _errorMessage;
   bool _loading = false;
   bool _checkingSession = true;
@@ -67,6 +68,7 @@ class _LoginPageState extends State<LoginPage> {
           mustChangePassword:
               (user['must_change_password'] as num?)?.toInt() != 0,
         );
+        if (!mounted) return;
         if ((user['must_change_password'] as num?)?.toInt() != 0) {
           if (mounted) context.go('/change-password');
         } else {
@@ -84,6 +86,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _login() async {
+    if (_loading || _checkingSession || !_formKey.currentState!.validate()) {
+      return;
+    }
     setState(() {
       _loading = true;
       _errorMessage = null;
@@ -106,6 +111,7 @@ class _LoginPageState extends State<LoginPage> {
           mustChangePassword:
               (user['must_change_password'] as num?)?.toInt() != 0,
         );
+        if (!mounted) return;
         if ((user['must_change_password'] as num?)?.toInt() != 0) {
           if (mounted) context.go('/change-password');
         } else {
@@ -132,224 +138,150 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    if (_checkingSession) {
-      return Scaffold(
-        backgroundColor: AppColors.surfaceSoft,
-        body: Column(
-          children: [
-            buildTitleBar(-1, context),
-            const Expanded(
-              child: Center(
-                child: SizedBox(
-                  height: 22,
-                  width: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: AppColors.surfaceSoft,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth < 120 || constraints.maxHeight < 80) {
-            return const SizedBox.shrink();
-          }
-
-          return Column(
-            children: [
-              buildTitleBar(-1, context),
-              Expanded(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: SizedBox(
-                      width: 440,
-                      child: Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: AppColors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.border),
-                        ),
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppColors.surfaceSoft,
+    body: Column(
+      children: [
+        buildTitleBar(-1, context),
+        Expanded(
+          child: _checkingSession
+              ? const Center(child: CircularProgressIndicator())
+              : Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Container(
+                      width: 480,
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        border: Border.all(color: AppColors.border),
+                        borderRadius: BorderRadius.circular(AppRadii.panel),
+                      ),
+                      child: Form(
+                        key: _formKey,
                         child: Column(
-                          mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Container(
-                                  width: 72,
-                                  height: 72,
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(
-                                      alpha: 0.10,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
+                                SizedBox.square(
+                                  dimension: 72,
                                   child: Image.asset(
                                     'assets/images/logo.webp',
                                     fit: BoxFit.contain,
-                                    errorBuilder: (_, _, _) => Center(
+                                    errorBuilder: (_, _, _) => const Center(
                                       child: Text(
                                         'E',
-                                        textAlign: TextAlign.center,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .headlineMedium
-                                            ?.copyWith(
-                                              fontSize: 24,
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.primaryDark,
-                                            ),
+                                        style: AppTypography.sectionTitleStyle,
                                       ),
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 16),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Edukita',
-                                      textAlign: TextAlign.center,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineMedium
-                                          ?.copyWith(
-                                            fontSize: 26,
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: 0,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Foundation Education System',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: AppColors.textSecondary,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                    ),
-                                  ],
+                                const SizedBox(width: AppSpacing.md),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Edukita',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.textPrimary,
+                                            ),
+                                      ),
+                                      const SizedBox(height: AppSpacing.xxs),
+                                      Text(
+                                        context.l10n.foundationEducationSystem,
+                                        style: AppTypography.bodyStrongStyle,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 22),
-                            Container(
-                              height: 1,
-                              color: AppColors.border,
-                            ),
-                            const SizedBox(height: 18),
+                            const SizedBox(height: AppSpacing.lg),
+                            const Divider(height: 1),
+                            const SizedBox(height: AppSpacing.md),
                             Text(
-                              'Ilmu yang Tertata, Generasi Bermakna',
+                              context.l10n.brandTagline,
                               textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0,
-                                    height: 1.5,
-                                    color: AppColors.textSecondary,
-                                  ),
+                              style: AppTypography.bodyStyle,
                             ),
-                            const SizedBox(height: 24),
-                            TextField(
+                            const SizedBox(height: AppSpacing.lg),
+                            TextFormField(
                               controller: _usernameController,
                               focusNode: _usernameFocusNode,
                               autofocus: true,
+                              enabled: !_loading,
                               textInputAction: TextInputAction.next,
-                              onSubmitted: (_) =>
+                              onFieldSubmitted: (_) =>
                                   _passwordFocusNode.requestFocus(),
                               decoration: InputDecoration(
                                 labelText: context.l10n.username,
                                 prefixIcon: const Icon(Icons.person_outline),
                               ),
+                              validator: (value) =>
+                                  value == null || value.trim().isEmpty
+                                  ? context.l10n.fieldRequiredMessage(
+                                      context.l10n.username,
+                                    )
+                                  : null,
                             ),
-                            const SizedBox(height: 14),
-                            TextField(
+                            const SizedBox(height: AppSpacing.md),
+                            TextFormField(
                               controller: _passwordController,
                               focusNode: _passwordFocusNode,
+                              enabled: !_loading,
+                              obscureText: true,
+                              enableSuggestions: false,
+                              autocorrect: false,
                               textInputAction: TextInputAction.done,
-                              onSubmitted: (_) {
-                                if (!_loading) _login();
-                              },
+                              onFieldSubmitted: (_) => _login(),
                               decoration: InputDecoration(
                                 labelText: context.l10n.password,
                                 prefixIcon: const Icon(Icons.lock_outline),
                               ),
-                              obscureText: true,
+                              validator: (value) =>
+                                  value == null || value.isEmpty
+                                  ? context.l10n.fieldRequiredMessage(
+                                      context.l10n.password,
+                                    )
+                                  : null,
                             ),
-                            const SizedBox(height: 18),
-                            if (_errorMessage != null) ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
+                            if (_errorMessage != null)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: AppSpacing.md,
                                 ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.error.withValues(
-                                    alpha: 0.08,
+                                child: Semantics(
+                                  liveRegion: true,
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: AppTypography.bodyStrongStyle
+                                        .copyWith(color: AppColors.errorDark),
                                   ),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: AppColors.error.withValues(
-                                      alpha: 0.32,
-                                    ),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.error_outline,
-                                      color: AppColors.error,
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        _errorMessage!,
-                                        style: const TextStyle(
-                                          color: AppColors.errorDark,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 14),
-                            ],
-                            SizedBox(
-                              height: 44,
-                              child: FilledButton(
-                                onPressed: _loading ? null : _login,
+                            const SizedBox(height: AppSpacing.lg),
+                            FilledButton(
+                              onPressed: _loading ? null : _login,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: AppSpacing.xs,
+                                ),
                                 child: _loading
-                                    ? const SizedBox(
-                                        height: 18,
-                                        width: 18,
+                                    ? const SizedBox.square(
+                                        dimension: 16,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
-                                          color: AppColors.white,
                                         ),
                                       )
-                                    : Text(
-                                        context.l10n.login,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
+                                    : Text(context.l10n.login),
                               ),
                             ),
                           ],
@@ -358,11 +290,8 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
 }

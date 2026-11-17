@@ -1,12 +1,14 @@
 import 'dart:async';
-
-import 'package:edukita/features/management/data/guardian_model.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
-import 'package:flutter/material.dart';
 import 'package:edukita/features/common/common_form_widgets.dart';
+import 'package:edukita/features/management/data/guardian_model.dart';
+import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_dialog.dart';
+import 'package:edukita/widgets/app_form_scope.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:edukita/widgets/form_validation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class GuardianFormDialog extends StatefulWidget {
@@ -45,96 +47,105 @@ class _GuardianFormDialogState extends State<GuardianFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: AppDialogTitle(
-        widget.guardian == null
-            ? context.l10n.addGuardian
-            : context.l10n.editGuardian,
-      ),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CommonFormWidgets.textField(
-                label: context.l10n.fullName,
-                value: fullName,
-                onSaved: (value) => fullName = value ?? '',
-                validator: (value) => AppFormValidation.requiredText(
-                  context,
-                  value,
-                  context.l10n.fullName,
-                  minLength: 3,
-                  maxLength: 80,
-                ),
-                inputFormatters: [LengthLimitingTextInputFormatter(80)],
+    return AppFormScope(
+      busy: _isSaving,
+      onSave: _submit,
+      child: AppDialog(
+        title: AppDialogTitle(
+          widget.guardian == null
+              ? context.l10n.addGuardian
+              : context.l10n.editGuardian,
+          enabled: !_isSaving,
+        ),
+        content: SizedBox(
+          width: 560,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(top: AppSpacing.sm),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CommonFormWidgets.textField(
+                    label: context.l10n.fullName,
+                    value: fullName,
+                    onSaved: (value) => fullName = value ?? '',
+                    validator: (value) => AppFormValidation.requiredText(
+                      context,
+                      value,
+                      context.l10n.fullName,
+                      minLength: 3,
+                      maxLength: 80,
+                    ),
+                    inputFormatters: [LengthLimitingTextInputFormatter(80)],
+                  ),
+                  const SizedBox(height: 16),
+                  CommonFormWidgets.textField(
+                    label: context.l10n.mobileNo,
+                    value: mobileNo,
+                    onSaved: (value) => mobileNo = value?.trim(),
+                    keyboardType: TextInputType.phone,
+                    hint: AppFormValidation.mobilePlaceholder,
+                    inputFormatters: AppFormValidation.mobileInputFormatters,
+                    validator: (value) =>
+                        AppFormValidation.requiredMobile(context, value),
+                  ),
+                  const SizedBox(height: 16),
+                  CommonFormWidgets.textField(
+                    label: context.l10n.occupation,
+                    value: occupation,
+                    onSaved: (value) => occupation = value?.trim(),
+                    validator: (value) => AppFormValidation.optionalText(
+                      context,
+                      value,
+                      context.l10n.occupation,
+                      maxLength: 60,
+                    ),
+                    inputFormatters: [LengthLimitingTextInputFormatter(60)],
+                    isRequired: false,
+                  ),
+                  const SizedBox(height: 16),
+                  CommonFormWidgets.textField(
+                    label: context.l10n.address,
+                    value: address,
+                    onSaved: (value) => address = value?.trim(),
+                    maxLines: 3,
+                    validator: (value) => AppFormValidation.requiredText(
+                      context,
+                      value,
+                      context.l10n.address,
+                      minLength: 5,
+                      maxLength: 160,
+                    ),
+                    inputFormatters: [LengthLimitingTextInputFormatter(160)],
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              CommonFormWidgets.textField(
-                label: context.l10n.mobileNo,
-                value: mobileNo,
-                onSaved: (value) => mobileNo = value?.trim(),
-                keyboardType: TextInputType.phone,
-                hint: AppFormValidation.mobilePlaceholder,
-                inputFormatters: AppFormValidation.mobileInputFormatters,
-                validator: (value) =>
-                    AppFormValidation.requiredMobile(context, value),
-              ),
-              const SizedBox(height: 16),
-              CommonFormWidgets.textField(
-                label: context.l10n.occupation,
-                value: occupation,
-                onSaved: (value) => occupation = value?.trim(),
-                validator: (value) => AppFormValidation.optionalText(
-                  context,
-                  value,
-                  context.l10n.occupation,
-                  maxLength: 60,
-                ),
-                inputFormatters: [LengthLimitingTextInputFormatter(60)],
-                isRequired: false,
-              ),
-              const SizedBox(height: 16),
-              CommonFormWidgets.textField(
-                label: context.l10n.address,
-                value: address,
-                onSaved: (value) => address = value?.trim(),
-                maxLines: 3,
-                validator: (value) => AppFormValidation.requiredText(
-                  context,
-                  value,
-                  context.l10n.address,
-                  minLength: 5,
-                  maxLength: 160,
-                ),
-                inputFormatters: [LengthLimitingTextInputFormatter(160)],
-              ),
-            ],
+            ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : () => Navigator.pop(context),
+            child: Text(context.l10n.buttonCancel),
+          ),
+          FilledButton(
+            onPressed: _isSaving ? null : _submit,
+            child: _isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(context.l10n.save),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: Text(context.l10n.buttonCancel),
-        ),
-        ElevatedButton(
-          onPressed: _isSaving ? null : _submit,
-          child: _isSaving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(context.l10n.save),
-        ),
-      ],
     );
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving || !_formKey.currentState!.validate()) return;
 
     final action = widget.guardian == null
         ? SubmissionAction.create

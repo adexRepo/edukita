@@ -9773,6 +9773,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unable to complete the operation. Please try again.'**
   String get operationFailedTryAgain;
+
+  /// No description provided for @foundationEducationSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Foundation Education System'**
+  String get foundationEducationSystem;
+
+  /// No description provided for @brandTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Organized Knowledge, Meaningful Generations'**
+  String get brandTagline;
 }
 
 class _AppLocalizationsDelegate

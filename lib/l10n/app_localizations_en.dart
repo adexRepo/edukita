@@ -5280,4 +5280,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get operationFailedTryAgain =>
       'Unable to complete the operation. Please try again.';
+
+  @override
+  String get foundationEducationSystem => 'Foundation Education System';
+
+  @override
+  String get brandTagline => 'Organized Knowledge, Meaningful Generations';
 }

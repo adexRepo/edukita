@@ -1856,5 +1856,7 @@
   "studentsLoadFailed": "Unable to refresh student data. Try again.",
   "studentsSearchNameHint": "Search student name",
   "studentSaveFailed": "Unable to save the student. Try again. Your input has been kept.",
-  "operationFailedTryAgain": "Unable to complete the operation. Please try again."
+  "operationFailedTryAgain": "Unable to complete the operation. Please try again.",
+  "foundationEducationSystem": "Foundation Education System",
+  "brandTagline": "Organized Knowledge, Meaningful Generations"
 }

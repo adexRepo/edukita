@@ -12,7 +12,7 @@ Theme, komponen bersama, shell/sidebar, title bar Windows, dan dashboard sudah d
 | 4 | Siswa: daftar, filter, form, tab detail | Besar | Daftar sekitar 1.671 baris sebelum perubahan, ditambah form/detail terpisah; statistik satu baris, toolbar, dua implementasi dialog filter, form besar, dan row action kecil. | Restyle utama diterapkan; lihat audit dan verifikasi prioritas 4 |
 | 5 | Silabus, daftar Aktivitas Mengajar, Laporan/Definisi Laporan, Users | Sedang–besar | Silabus sekitar 1.470 baris, aktivitas 1.288, laporan 1.098, users 1.043. Perlu keseragaman navigasi bagian, toolbar, empty/error, form dan permission matrix; pertahankan grid data. | Restyle khusus diterapkan; lihat audit prioritas 5 |
 | 6 | Settings, Guru/detail/form, Sekolah/Kelas, Parameter | Sedang | Settings dan laporan memakai panel/master-detail; guru memiliki masalah error yang mengganti data; sekolah/parameter memiliki reflow awal. Perlu perbaikan yang lebih terlokalisasi. | Restyle khusus diterapkan; lihat audit prioritas 6 |
-| 7 | Program Bantuan, Aturan Bantuan, Lokasi Mengajar, Strategi, Wali, Login/Ganti Password | Kecil–sedang | Lebih sedikit area mandiri; mayoritas memperoleh manfaat dari komponen bersama. Perlu spacing, hit target, label, dialog dan state per halaman. | Belum restyle khusus |
+| 7 | Program Bantuan, Aturan Bantuan, Lokasi Mengajar, Strategi, Wali, Login/Ganti Password | Kecil–sedang | Lebih sedikit area mandiri; mayoritas memperoleh manfaat dari komponen bersama. Perlu spacing, hit target, label, dialog dan state per halaman. | Restyle khusus diterapkan; lihat audit prioritas 7 |
 
 `management_page.dart`, `classes_page.dart`, dan `class_detail_page.dart` juga tercakup dalam inventaris. Sebagian berfungsi sebagai wrapper/host sehingga penilaian restyle harus mengikuti komponen anaknya, bukan mengganti wrapper tanpa kebutuhan.
 
@@ -294,6 +294,63 @@ Perubahan async hanya pada penyajian hasil detail Guru dan guard/feedback UI; ti
 - Regresi: refresh error mempertahankan Guru, Ctrl+F/filter, Settings load-fail mengunci save + Retry, Ctrl+S submit tunggal/gagal simpan mempertahankan input, sekolah tetap menyimpan kelas yang sama, Escape saat saving, cancel editor menjaga draft induk, daftar kelas Retry–editor hanya memiliki satu dialog, detail Guru gagal/retry, Settings teacher tidak menampilkan maintenance/general, serta sorting nama dengan huruf awal sama.
 - Tidak ada dependency-boundary script khusus. Import dan diff diperiksa; tidak ada dependency feature baru pada shared/core.
 
-Status prioritas 6: implementasi lokal, belum commit/push.
+Status prioritas 6: sudah di-commit sebagai `a21b086` (Restyle settings and academic administration workflows), belum di-push pada tahap ini.
 
 Pemeriksaan akhir kode: formatter 11 file Dart; flutter analyze --no-pub tanpa issue (5.3 detik); flutter test --no-pub, 245 tes lulus termasuk 35 tes baru. Tes tambahan menutup nilai nol/jumlah belum diketahui saat gagal refresh serta dialog daftar kelas pada 800x600 @200%. Skeleton dan tabel memakai viewport yang sama agar tidak meloncat saat loading selesai. Pemetaan payload AppSettingsData, Teacher, School serta model draft kelas dibandingkan dengan source awal dan identik; validasi/generator/cache-clear juga identik. Tidak ada perubahan kode setelah suite penuh ini. flutter build windows --release --no-pub final berhasil (67.9 detik), output build/windows/x64/runner/Release/edukita.exe. Satu tes render tambahan final lulus; preview memakai Poppins/MaterialIcons dan data sintetis. git diff --check bersih.
+
+
+## Prioritas 7 — Program dan aturan bantuan, lokasi, strategi, wali, autentikasi
+
+Tanggal: 17 November 2026. Prioritas 6 di-commit terlebih dahulu sebagai a21b086. Perubahan lokal awal analysis_options.yaml dan pubspec.lock tetap dipertahankan dan tidak masuk commit.
+
+### Audit sebelum implementasi
+
+Design system tetap Poppins, turquoise Edukita, Material 3, AppColors/AppTypography/AppSpacing/AppRadii, serta AppPageHeader/AppTable/AppDialog/AppFormScope/AppFormRow/AppDesktopWorkspace. Tidak membuat palette, dependency atau framework UI baru. Panel 16, kontrol 12, dialog 24; surface paket di dalam panel berpadding 12 memakai inner radius 4 (16−12).
+
+Inventaris: daftar dan form Program Bantuan, editor Paket dan Item; daftar/dialog Aturan Bantuan; daftar/form Lokasi Mengajar; daftar/form Strategi; daftar/form Wali; wrapper empat tab Management; Login dan Ganti Password. Dua belas file UI awal diperiksa beserta caller, Cubit/state, repository/cache, model, route, sesi dan perubahan password. Management hanya meneruskan komponen anak dan tidak membutuhkan perubahan perilaku.
+
+| Severity | Lokasi | Masalah | Perubahan dan dampak |
+|---|---|---|---|
+| HIGH | Program → Paket → Item | Tiga modal bertumpuk; mengganti widget induk berisiko menghapus draft FormField | Editor berganti dalam satu route modal, parent tetap mounted/offstage dan dikeluarkan dari focus; LocalHistoryEntry menangani Escape satu tingkat; focus scope/controller induk dipulihkan setelah editor ditutup |
+| HIGH | Form pendukung / Login | Dua kolom tetap, form tidak scroll, label panjang dan teks besar | AppFormRow menurut lebar efektif, scroll terbatas dan lebar form 460–720 px; login max 480 px, brand row fleksibel, tombol dapat tumbuh |
+| HIGH | Saving dan auth async | Entry guard belum konsisten; password menunggu baca sesi sebelum busy; callback login setelah await tidak mengecek mounted | Busy sebelum await, blok submit/dismiss/input selama simpan, mounted guard sebelum navigasi/callback; kontrak hashing/sesi tetap |
+| HIGH | Daftar dan form | Error mentah; gagal refresh mengganti seluruh data | Banner aman + Retry sambil mempertahankan daftar; toast/inline error generik, draft tetap ada |
+| MEDIUM | Tabel Program/Lokasi/Strategi | Target aksi 28 px dan sorting huruf pertama | Target minimal 40 px dan tooltip; rank teks lengkap pada data yang dimuat |
+| MEDIUM | Aturan/Strategi/Wali | Header add icon tidak jelas, search/keyboard kurang konsisten | Shared header dengan aksi bertulisan, search lokal dan Ctrl+F; header wrap, daftar Wali tetap list objek |
+| MEDIUM | Toggle status | Klik cepat dapat menjalankan write berulang, aturan tidak menangani throw | Pending per baris, disabled saat write dan feedback aman; tidak mengubah mutasi Cubit/repository |
+| LOW | Surface dan typography | Radius/spacing lokal, file name terpotong, angka berubah lebar | Token, concentric radius, nama file lengkap, tabular pada nominal/quantity/nilai dan ringkasan paket |
+
+### Perubahan dan file utama
+
+- assistance_programs_page.dart: workspace/filter/search Ctrl+F, status pending, Retry mempertahankan data, sorting lengkap dan tooltip nilai panjang. Izin view/create/update tetap.
+- assistance_program_form_dialog.dart: form adaptif, Ctrl+S, busy guard, error aman dan draft paket. benefit_package_dialog.dart, benefit_item_dialog.dart serta benefit_editors.dart menjadi part dari library form yang sama; memisahkan editor dan lifecycle tanpa API domain/abstraksi shared baru. Callback hasil opsional mempertahankan penggunaan dialog mandiri.
+- assistance_rules_page.dart: workspace, pencarian lokal/Ctrl+F, sorting nama, error persisten, status dengan semantics/busy/error handling, dialog adaptif dan Ctrl+S. System rule tetap hanya dapat di-toggle.
+- teaching_locations_page.dart dan teaching_location_form_dialog.dart: workspace, pencarian berlabel, Ctrl+F/Ctrl+S, sorting lengkap, tombol dan busy/scroll.
+- strategy_page.dart dan strategy_form_dialog.dart: header, search lokal/Ctrl+F, tabel tetap saat kosong/error, sorting lengkap, konfirmasi delete berwarna error, serta file control yang wrap dan menampilkan nama lengkap.
+- guardians_page.dart dan guardian_form_dialog.dart: header/search, list objek virtualized, tooltip edit/delete, konfirmasi destructive, form bounded/scroll dan penguncian save. Telepon/alamat dan validator tetap.
+- login_page.dart: branding/logo tetap, form scroll max 480 px, validasi kosong lokal, Enter aman, input disabled ketika login dan mounted guard sesudah save sesi. change_password_page.dart: busy sebelum baca sesi, Ctrl+S/Enter, error inline aman, validator password tetap.
+- app_en.arb dan app_id.arb beserta hasil generate: tagline dan deskripsi brand Login dilokalkan; tidak mengganti logo atau warna.
+
+### Kontrak dan temuan yang sengaja dipertahankan
+
+Tidak ada perubahan Cubit/repository, SQL/schema/migrasi, cache key/invalidation, route atau permission grant, perhitungan seleksi bantuan, ID dan relasi item, nominal/quantity formatter, PBKDF2, forced password change, format/masa sesi maupun data produksi. Snapshot payload AssistanceProgram, AssistanceProgramBenefit, AssistanceProgramBenefitItem, AssistanceRule, TeachingLocation dan Guardian identik setelah whitespace/trailing comma formatter dinormalisasi. Fungsi pilih/simpan/download file Strategi juga identik. Tidak menambahkan backend/network.
+
+Struktur legacy autentikasi yang mengakses DatabaseProvider langsung dan lifecycle file Strategi tidak dimigrasikan dalam restyle ini; perubahan arsitektur/security storage memerlukan scope terpisah. Session JSON dan SQLite tidak diklaim sebagai secure/encrypted storage. Tidak menambahkan dark mode, sinkronisasi, global repository sorting atau schema pagination. Local search Wali/Strategi/Aturan berlaku pada data yang dimuat. Wrapper Management tidak diberi dekorasi tambahan.
+
+### Verifikasi prioritas 7
+
+- Lima daftar pada 560x600 (area setelah sidebar), 800x600, 1280x800, 1920x1080 dan 2560x1080; text scaling 100/125/150/200%, EN/ID.
+- Enam form publik dan Login/Ganti Password pada 800x600 di empat skala; dialog aturan pada 100/200%. Poppins/MaterialIcons dirender untuk dua belas halaman/form pada 1280x800 @100% dan 800x600 @200%; preview sintetis diperiksa, satu tes render lulus.
+- Regresi: satu modal terlihat, Escape Item→Paket→Program mempertahankan draft dan Ctrl+S kembali ke form induk, save amount/quantity/foreign-key item identik pada 100/200%, validasi custom rule, Ctrl+F, Ctrl+S submit tunggal dan Escape saat busy, gagal save mempertahankan input, refresh error menyimpan data lama tanpa exception, loading/empty header, sorting awalan nama sama, validasi login/password dan akses bantuan ditolak tanpa sesi.
+- Semua fixture menggunakan data sintetis dan app-data/session terisolasi di .dart_tool. Tidak membaca database produksi.
+- Tidak tersedia dependency-boundary script khusus; diff/import diperiksa dan tidak menambah dependency feature pada shared/core.
+- Pengujian Windows display scaling fisik, multi-monitor, Narrator, native file picker dan autentikasi end-to-end terhadap database nyata belum dijalankan. Text scaling widget tidak menggantikan DPI fisik.
+
+Status prioritas 7: implementasi dan verifikasi selesai. Perubahan masuk kelompok commit restyle nomor 7; pengguna meminta commit dan push pada tahap penutupan. analysis_options.yaml dan pubspec.lock milik pengguna tetap tidak di-stage atau diubah oleh tahap ini.
+
+Pemeriksaan akhir setelah koreksi pemulihan fokus: dart format --output=none --set-exit-if-changed pada 15 file Dart, 0 perubahan; flutter analyze --no-pub tanpa issue (36.4 detik); flutter test --no-pub, 280 tes lulus termasuk 35 tes nomor 7; flutter build windows --release --no-pub berhasil (68.6 detik), output build/windows/x64/runner/Release/edukita.exe. Satu tes render akhir tambahan lulus untuk 12 halaman/form di dua ukuran, serta satu tes fokus tambahan lulus. Perbaikan fokus dua tingkat juga menjadi assertion dalam tes permanen. git diff --check bersih; payload model dan fungsi file dibandingkan kembali dengan snapshot awal dan identik. Tidak ada perubahan fungsional setelah checks akhir ini.
+
+
+## Penutupan cakupan restyle
+
+Seluruh cakupan prioritas 1–7 pada inventaris di atas telah diimplementasikan dan diverifikasi sesuai catatan masing-masing tahap. Shell, theme, shared component dan dashboard telah ditangani pada tahap sebelumnya. Tidak ada prioritas tersisa dalam daftar ini. Ini bukan sertifikasi seluruh kombinasi perangkat: pengujian DPI Windows fisik/multi-monitor, Narrator, native picker serta alur autentikasi database nyata tetap menjadi batas verifikasi yang dicatat. Dark mode tidak termasuk karena belum tersedia.

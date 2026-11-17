@@ -1,5 +1,4 @@
 import 'dart:io' as io;
-
 import 'package:edukita/core/helper/pageable.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/utils/generated_file_name.dart';
@@ -8,13 +7,18 @@ import 'package:edukita/features/strategy/domain/strategy_cubit.dart';
 import 'package:edukita/features/strategy/presentation/strategy_form_dialog.dart';
 import 'package:edukita/theme/app_theme.dart';
 import 'package:edukita/widgets/app_action_guard.dart';
+import 'package:edukita/widgets/app_desktop_workspace.dart';
 import 'package:edukita/widgets/app_dialog_title.dart';
+import 'package:edukita/widgets/app_dialog.dart';
+import 'package:edukita/widgets/app_inline_error.dart';
 import 'package:edukita/widgets/app_loading.dart';
+import 'package:edukita/widgets/app_page_header.dart';
 import 'package:edukita/widgets/app_table.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:file_selector/file_selector.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
 class StrategyPage extends StatefulWidget {
@@ -34,6 +38,15 @@ class _StrategyPageState extends State<StrategyPage> {
     'md',
     'pdf',
   ];
+
+  final _searchController = TextEditingController();
+  final _searchFocus = FocusNode();
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocus.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -68,7 +81,7 @@ class _StrategyPageState extends State<StrategyPage> {
       context: context,
       guardKey: 'delete_strategy_$id',
       builder: (context) {
-        return AlertDialog(
+        return AppDialog(
           title: AppDialogTitle(context.l10n.deleteStrategyTitle),
           content: Text(context.l10n.deleteStrategyConfirm),
           actions: [
@@ -77,6 +90,10 @@ class _StrategyPageState extends State<StrategyPage> {
               child: Text(context.l10n.buttonCancel),
             ),
             FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.errorDark,
+                foregroundColor: AppColors.white,
+              ),
               onPressed: () => Navigator.of(context).pop(true),
               child: Text(context.l10n.delete),
             ),
@@ -142,49 +159,92 @@ class _StrategyPageState extends State<StrategyPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<StrategyCubit, StrategyState>(
-      builder: (context, state) {
-        if (state.error != null) {
-          return Center(
-            child: Text(context.l10n.errorWithDetails(state.error!)),
-          );
-        } else {
-          final strategies = state.strategies;
+  Widget build(BuildContext context) =>
+      BlocBuilder<StrategyCubit, StrategyState>(
+        builder: (context, state) {
+          final query = _searchController.text.trim().toLowerCase();
+          final items = state.strategies
+              .where(
+                (item) => [
+                  item.code,
+                  item.name,
+                  item.description,
+                  item.rule,
+                ].any((v) => (v ?? '').toLowerCase().contains(query)),
+              )
+              .toList();
           return Scaffold(
-            appBar: AppBar(
-              title: Text(context.l10n.strategies),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () => _showStrategyFormDialog(context),
-                ),
-              ],
-            ),
-            body: Column(
-              children: [
-                AppLoadingStrip(isLoading: state.isLoading, topPadding: 0),
-                Expanded(
-                  child: strategies.isEmpty
-                      ? Center(
-                          child: Text(context.l10n.noStrategiesYet),
-                        )
-                      : Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: _buildStrategyTable(context, strategies),
+            body: Padding(
+              padding: AppPageHeaderStyle.pagePadding,
+              child: CallbackShortcuts(
+                bindings: {
+                  const SingleActivator(
+                    LogicalKeyboardKey.keyF,
+                    control: true,
+                  ): () =>
+                      _searchFocus.requestFocus(),
+                },
+                child: Focus(
+                  autofocus: true,
+                  child: AppDesktopWorkspace(
+                    header: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AppPageHeader(
+                          title: context.l10n.strategies,
+                          trailing: FilledButton.icon(
+                            onPressed: () => _showStrategyFormDialog(context),
+                            icon: const Icon(Icons.add),
+                            label: Text(context.l10n.addStrategy),
+                          ),
                         ),
+                        TextField(
+                          controller: _searchController,
+                          focusNode: _searchFocus,
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
+                            labelText: context.l10n.searchCodeNameDescription,
+                            prefixIcon: const Icon(Icons.search),
+                          ),
+                        ),
+                        AppLoadingStrip(isLoading: state.isLoading),
+                        if (state.error != null)
+                          AppInlineError(
+                            message: context.l10n.operationFailedTryAgain,
+                            onRetry: state.isLoading
+                                ? null
+                                : () => context
+                                      .read<StrategyCubit>()
+                                      .loadStrategies(),
+                          ),
+                        const SizedBox(height: AppSpacing.sm),
+                      ],
+                    ),
+                    content: _buildStrategyTable(context, items),
                   ),
-              ],
+                ),
+              ),
             ),
           );
-        }
-      },
-    );
-  }
+        },
+      );
 
   Widget _buildStrategyTable(BuildContext context, List<Strategy> strategies) {
+    final values =
+        strategies
+            .expand(
+              (p) => [p.code, p.name, p.description, p.rule, p.sampleFileName],
+            )
+            .map((v) => (v ?? '').trim().toLowerCase())
+            .toSet()
+            .toList()
+          ..sort();
+    final ranks = {for (var i = 0; i < values.length; i++) values[i]: i};
+    int sortText(String? value) =>
+        ranks[value?.trim().toLowerCase() ?? ''] ?? -1;
     return AppTable<Strategy>(
       data: strategies,
+      emptyMessage: context.l10n.noStrategiesYet,
       pageable: Pageable(
         page: 0,
         size: strategies.length,
@@ -197,7 +257,7 @@ class _StrategyPageState extends State<StrategyPage> {
         AppTableColumn(
           title: context.l10n.code,
           flex: 2,
-          sortValue: (strategy) => _sortValue(strategy.code),
+          sortValue: (strategy) => sortText(strategy.code),
           cell: (strategy) => Text(
             strategy.code?.trim().isNotEmpty == true ? strategy.code! : '-',
             maxLines: 1,
@@ -208,7 +268,7 @@ class _StrategyPageState extends State<StrategyPage> {
         AppTableColumn(
           title: context.l10n.name,
           flex: 3,
-          sortValue: (strategy) => _sortValue(strategy.name),
+          sortValue: (strategy) => sortText(strategy.name),
           cell: (strategy) => Text(
             strategy.name,
             maxLines: 2,
@@ -219,31 +279,31 @@ class _StrategyPageState extends State<StrategyPage> {
         AppTableColumn(
           title: context.l10n.description,
           flex: 5,
-          sortValue: (strategy) => _sortValue(strategy.description),
+          sortValue: (strategy) => sortText(strategy.description),
           cell: (strategy) => Text(
             strategy.description?.trim().isNotEmpty == true
                 ? strategy.description!
                 : '-',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, height: 1.25),
+            style: const TextStyle(fontSize: 12, height: 1.4),
           ),
         ),
         AppTableColumn(
           title: context.l10n.rule,
           flex: 5,
-          sortValue: (strategy) => _sortValue(strategy.rule),
+          sortValue: (strategy) => sortText(strategy.rule),
           cell: (strategy) => Text(
             strategy.rule?.trim().isNotEmpty == true ? strategy.rule! : '-',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, height: 1.25),
+            style: const TextStyle(fontSize: 12, height: 1.4),
           ),
         ),
         AppTableColumn(
           title: context.l10n.sample,
           flex: 3,
-          sortValue: (strategy) => _sortValue(strategy.sampleFileName),
+          sortValue: (strategy) => sortText(strategy.sampleFileName),
           cell: (strategy) => Text(
             strategy.sampleFileName ?? '-',
             maxLines: 1,
@@ -253,6 +313,7 @@ class _StrategyPageState extends State<StrategyPage> {
         ),
         AppTableColumn(
           title: context.l10n.actions,
+          minWidth: 144,
           flex: 3,
           cell: (strategy) => Align(
             alignment: Alignment.centerLeft,
@@ -267,8 +328,8 @@ class _StrategyPageState extends State<StrategyPage> {
                       ? () => _downloadStrategySample(strategy)
                       : null,
                   constraints: const BoxConstraints.tightFor(
-                    width: 28,
-                    height: 28,
+                    width: 40,
+                    height: 40,
                   ),
                   padding: EdgeInsets.zero,
                   icon: const Icon(Icons.download_outlined, size: 16),
@@ -280,8 +341,8 @@ class _StrategyPageState extends State<StrategyPage> {
                     existingStrategy: strategy,
                   ),
                   constraints: const BoxConstraints.tightFor(
-                    width: 28,
-                    height: 28,
+                    width: 40,
+                    height: 40,
                   ),
                   padding: EdgeInsets.zero,
                   icon: const Icon(Icons.edit, size: 16),
@@ -290,15 +351,15 @@ class _StrategyPageState extends State<StrategyPage> {
                   tooltip: context.l10n.delete,
                   onPressed: () => _confirmDelete(context, strategy.id),
                   constraints: const BoxConstraints.tightFor(
-                    width: 28,
-                    height: 28,
+                    width: 40,
+                    height: 40,
                   ),
                   padding: EdgeInsets.zero,
                   color: AppColors.errorDark,
                   icon: const Icon(
                     Icons.delete_outline,
                     size: 16,
-                    color: AppColors.error,
+                    color: AppColors.errorDark,
                   ),
                 ),
               ],
@@ -307,11 +368,5 @@ class _StrategyPageState extends State<StrategyPage> {
         ),
       ],
     );
-  }
-
-  int _sortValue(String? value) {
-    final normalized = value?.trim().toLowerCase();
-    if (normalized == null || normalized.isEmpty) return 0;
-    return normalized.codeUnitAt(0);
   }
 }

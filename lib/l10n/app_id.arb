@@ -1855,5 +1855,7 @@
   "studentsLoadFailed": "Data siswa belum dapat diperbarui. Coba lagi.",
   "studentsSearchNameHint": "Cari nama siswa",
   "studentSaveFailed": "Siswa belum dapat disimpan. Coba lagi. Input Anda tetap disimpan.",
-  "operationFailedTryAgain": "Operasi belum berhasil. Silakan coba lagi."
+  "operationFailedTryAgain": "Operasi belum berhasil. Silakan coba lagi.",
+  "foundationEducationSystem": "Sistem Pendidikan Yayasan",
+  "brandTagline": "Ilmu yang Tertata, Generasi Bermakna"
 }

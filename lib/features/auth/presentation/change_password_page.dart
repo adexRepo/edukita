@@ -3,6 +3,7 @@ import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
 import 'package:edukita/features/common/title_bar.dart';
 import 'package:edukita/theme/app_theme.dart';
+import 'package:edukita/widgets/app_form_scope.dart';
 import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -22,6 +23,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   final _newController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _saving = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -33,16 +35,21 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   Future<void> _save() async {
     if (_saving || !_formKey.currentState!.validate()) return;
+    final failedMessage = context.l10n.operationFailedTryAgain;
     final passwordChangedMessage = context.l10n.passwordChangedLoginAgain;
     final currentPasswordIncorrectMessage =
         context.l10n.currentPasswordIncorrect;
-    final session = await AuthSessionCache.instance.read();
-    if (session == null) {
-      if (mounted) context.go('/login');
-      return;
-    }
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _errorMessage = null;
+    });
     try {
+      final session = await AuthSessionCache.instance.read();
+      if (session == null) {
+        if (mounted) context.go('/login');
+        return;
+      }
+
       await DatabaseProvider.instance.changePassword(
         userId: session.userId,
         currentPassword: _currentController.text,
@@ -54,89 +61,114 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     } catch (error) {
       final message = error.toString().contains('Current password is incorrect')
           ? currentPasswordIncorrectMessage
-          : error.toString().replaceFirst('Bad state: ', '');
-      AppToast.showFailed(message);
+          : failedMessage;
+      if (mounted) setState(() => _errorMessage = message);
+    } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: Column(
-        children: [
-          buildTitleBar(-1, context),
-          Expanded(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Container(
-                  width: 460,
+    return AppFormScope(
+      busy: _saving,
+      onSave: _save,
+      child: Scaffold(
+        backgroundColor: AppColors.surface,
+        body: Column(
+          children: [
+            buildTitleBar(-1, context),
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
                   padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    border: Border.all(color: AppColors.border),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          widget.forced
-                              ? context.l10n.createNewPassword
-                              : context.l10n.changePassword,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          widget.forced
-                              ? context.l10n.temporaryPasswordMustBeReplaced
-                              : context.l10n.strongPasswordDescription,
-                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                        ),
-                        const SizedBox(height: 20),
-                        _passwordField(
-                          _currentController,
-                          context.l10n.currentPassword,
-                        ),
-                        const SizedBox(height: 12),
-                        _passwordField(
-                          _newController,
-                          context.l10n.newPassword,
-                          validateNew: true,
-                        ),
-                        const SizedBox(height: 12),
-                        _passwordField(
-                          _confirmController,
-                          context.l10n.confirmNewPassword,
-                          confirm: true,
-                        ),
-                        const SizedBox(height: 20),
-                        FilledButton.icon(
-                          onPressed: _saving ? null : _save,
-                          icon: _saving
-                              ? const SizedBox.square(
-                                  dimension: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.lock_reset_outlined),
-                          label: Text(
-                            _saving
-                                ? '${context.l10n.saving}...'
+                  child: Container(
+                    width: 460,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      border: Border.all(color: AppColors.border),
+                      borderRadius: BorderRadius.circular(AppRadii.panel),
+                    ),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            widget.forced
+                                ? context.l10n.createNewPassword
                                 : context.l10n.changePassword,
+                            style: Theme.of(context).textTheme.titleLarge,
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            widget.forced
+                                ? context.l10n.temporaryPasswordMustBeReplaced
+                                : context.l10n.strongPasswordDescription,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          _passwordField(
+                            _currentController,
+                            context.l10n.currentPassword,
+                          ),
+                          const SizedBox(height: 12),
+                          _passwordField(
+                            _newController,
+                            context.l10n.newPassword,
+                            validateNew: true,
+                          ),
+                          const SizedBox(height: 12),
+                          _passwordField(
+                            _confirmController,
+                            context.l10n.confirmNewPassword,
+                            confirm: true,
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          if (_errorMessage != null)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpacing.md,
+                              ),
+                              child: Semantics(
+                                liveRegion: true,
+                                child: Text(
+                                  _errorMessage!,
+                                  style: AppTypography.bodyStrongStyle.copyWith(
+                                    color: AppColors.errorDark,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          FilledButton.icon(
+                            onPressed: _saving ? null : _save,
+                            icon: _saving
+                                ? const SizedBox.square(
+                                    dimension: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.lock_reset_outlined),
+                            label: Text(
+                              _saving
+                                  ? '${context.l10n.saving}...'
+                                  : context.l10n.changePassword,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -150,6 +182,17 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     return TextFormField(
       controller: controller,
       obscureText: true,
+      enabled: !_saving,
+      autocorrect: false,
+      enableSuggestions: false,
+      textInputAction: confirm ? TextInputAction.done : TextInputAction.next,
+      onFieldSubmitted: (_) {
+        if (confirm) {
+          _save();
+        } else {
+          FocusScope.of(context).nextFocus();
+        }
+      },
       decoration: InputDecoration(labelText: label),
       validator: (value) {
         final text = value ?? '';
