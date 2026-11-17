@@ -108,3 +108,6 @@ Penutupan: cakupan restyle prioritas 1–7 selesai; commit dan push diminta peng
 
 
 Penyederhanaan Settings lanjutan: enam kontrol default tanpa consumer otomatis dihapus dari UI, sementara record/key lama tetap dipertahankan. Settings kini memakai satu scroll, satu Save bahasa, role visibility yang sama, serta detail penyimpanan khusus admin. Audit, bukti pemakaian, kontrak yang dipertahankan dan verifikasi tersedia pada [settings-ui-cleanup.md](settings-ui-cleanup.md). Analyzer bersih, 282 tes penuh lulus dan build Windows release berhasil. Commit dan push penyederhanaan Settings diminta pengguna pada tahap penutupan.
+
+
+Preferensi layout kalender — 18 November 2026: Aktivitas Mengajar dan Jadwal kembali memakai kalender di kiri serta hasil di kanan pada ruang desktop normal. Kalender tidak disembunyikan saat compact. Timeline Jadwal memakai baris/kolom ringkas ketika kosong dan ukuran berdasarkan isi ketika ada item, dengan header-grid yang tetap selaras. Audit, kontrak dan verifikasi pada [calendar-results-layout.md](calendar-results-layout.md). Analyzer bersih, 295 tes penuh lulus dan Windows release build berhasil. Pengguna meminta commit all dan push pada tahap penutupan, termasuk perubahan konfigurasi, lockfile dan versi 1.1.2 yang ada di workspace.

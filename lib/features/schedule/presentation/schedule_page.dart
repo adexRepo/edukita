@@ -42,6 +42,11 @@ class SchedulePage extends StatefulWidget {
   State<SchedulePage> createState() => _SchedulePageState();
 }
 
+typedef _TimelineSlot = ({
+  List<Schedule> schedules,
+  List<ScheduleEvent> events,
+});
+
 enum _ScheduleAddType { schedule, schoolEvent, otherEvent }
 
 const _schoolEventTypes = ['Exam', 'Holiday', 'Report Card'];
@@ -67,6 +72,7 @@ class _SchedulePageState extends State<SchedulePage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final _pageScrollController = ScrollController();
+  final _calendarScrollController = ScrollController();
   final _timelineVerticalController = ScrollController();
   final _searchResultsController = ScrollController();
   final _searchResultKeys = List.generate(8, (_) => GlobalKey());
@@ -163,6 +169,7 @@ class _SchedulePageState extends State<SchedulePage> {
   @override
   void dispose() {
     _pageScrollController.dispose();
+    _calendarScrollController.dispose();
     _timelineVerticalController.dispose();
     _searchResultsController.dispose();
     _timelineHeaderHorizontalController.dispose();
@@ -1032,10 +1039,10 @@ class _SchedulePageState extends State<SchedulePage> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+        final calendarWidth = 320 * scale;
         final compact =
-            constraints.maxWidth /
-                (MediaQuery.textScalerOf(context).scale(12) / 12) <
-            1160;
+            constraints.maxWidth < calendarWidth + AppSpacing.md + 480 * scale;
         final leftPanel = _buildLeftPanel(state, schools: schools);
         final timeline = _buildTimeline(
           state,
@@ -1051,39 +1058,17 @@ class _SchedulePageState extends State<SchedulePage> {
           return ListView(
             controller: _pageScrollController,
             children: [
-              Material(
-                color: AppColors.surfaceElevated,
-                borderRadius: BorderRadius.circular(AppRadii.panel),
-                child: ExpansionTile(
-                  maintainState: true,
-                  title: Text(
-                    _monthTitle(context, _focusedMonth),
-                    style: AppTypography.bodyStrongStyle,
-                  ),
-                  subtitle: Text(
-                    _longDate(context, _selectedDate),
-                    style: AppTypography.secondaryStyle,
-                  ),
-                  leading: const Icon(Icons.calendar_month_outlined),
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth:
-                              360 *
-                              (MediaQuery.textScalerOf(context).scale(12) / 12),
-                        ),
-                        child: leftPanel,
-                      ),
-                    ),
-                  ],
+              Align(
+                alignment: Alignment.centerLeft,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: calendarWidth),
+                  child: leftPanel,
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
               SizedBox(
                 height: math.max(520, constraints.maxHeight * 0.85),
-                child: timeline,
+                child: Align(alignment: Alignment.topLeft, child: timeline),
               ),
             ],
           );
@@ -1093,8 +1078,14 @@ class _SchedulePageState extends State<SchedulePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              width: 360 * (MediaQuery.textScalerOf(context).scale(12) / 12),
-              child: SingleChildScrollView(child: leftPanel),
+              width: calendarWidth,
+              child: Scrollbar(
+                controller: _calendarScrollController,
+                child: SingleChildScrollView(
+                  controller: _calendarScrollController,
+                  child: leftPanel,
+                ),
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(child: timeline),
@@ -1415,6 +1406,32 @@ class _SchedulePageState extends State<SchedulePage> {
     );
   }
 
+  double _roundTimelineHeight(double value) =>
+      (value / AppSpacing.xs).ceilToDouble() * AppSpacing.xs;
+  double get _timelineLineHeight =>
+      Theme.of(context).textTheme.bodyMedium?.height ?? 1.5;
+  double get _timelineDateMinHeight => _roundTimelineHeight(
+    math.max(
+      48,
+      MediaQuery.textScalerOf(context).scale(18) * _timelineLineHeight +
+          AppSpacing.lg,
+    ),
+  );
+  double get _timelineScheduleCardHeight => _roundTimelineHeight(
+    math.max(
+      64,
+      MediaQuery.textScalerOf(context).scale(11) * _timelineLineHeight * 2 +
+          AppSpacing.md,
+    ),
+  );
+  double get _timelineEventCardHeight => _roundTimelineHeight(
+    math.max(
+      48,
+      MediaQuery.textScalerOf(context).scale(11) * _timelineLineHeight +
+          AppSpacing.md,
+    ),
+  );
+
   Widget _buildTimeline(
     ScheduleState state, {
     required List<SchoolClass> classes,
@@ -1445,17 +1462,72 @@ class _SchedulePageState extends State<SchedulePage> {
         .toList();
     final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
     final dayColumnWidth = math.max(112.0, 96 * scale);
-    final hourColumnWidth = math.max(176.0, 152 * scale);
-    final timelineRowHeight = math.max(128.0, 96 * scale);
-    final hoursWidth = 14 * hourColumnWidth;
+    // Size and render the same filtered slots, including multi-day events.
+    final slotsByDate = <String, List<_TimelineSlot>>{
+      for (final date in dates)
+        _dateKey(date): List.generate(14, (index) {
+          final hour = index + 9;
+          return (
+            schedules: visibleSchedules
+                .where(
+                  (item) =>
+                      item.date == _dateKey(date) &&
+                      _scheduleCoversHour(item, hour),
+                )
+                .toList(),
+            events: visibleEvents
+                .where(
+                  (item) =>
+                      _eventCoversDate(item, _dateKey(date)) &&
+                      _eventCoversHourForDate(item, date, hour),
+                )
+                .toList(),
+          );
+        }),
+    };
+    final hourWidths = <double>[
+      for (var index = 0; index < 14; index++)
+        slotsByDate.values.any(
+              (slots) =>
+                  slots[index].schedules.isNotEmpty ||
+                  slots[index].events.isNotEmpty,
+            )
+            ? math.max(176.0, 152 * scale)
+            : math.max(80.0, 64 * scale),
+    ];
+    final rowHeights = <String, double>{
+      for (final entry in slotsByDate.entries)
+        entry.key: entry.value
+            .map((slot) {
+              final count = slot.schedules.length + slot.events.length;
+              // Include the cell border before rounding to the spacing scale.
+              return _roundTimelineHeight(
+                slot.schedules.length * _timelineScheduleCardHeight +
+                    slot.events.length * _timelineEventCardHeight +
+                    math.max(0, count - 1) * AppSpacing.xxs +
+                    2 * AppSpacing.xxs +
+                    1,
+              );
+            })
+            .fold<double>(
+              _timelineDateMinHeight,
+              (height, needed) => math.max(height, needed),
+            ),
+    };
+    final hoursWidth = hourWidths.fold<double>(
+      0,
+      (total, width) => total + width,
+    );
 
     return Container(
+      key: const ValueKey('schedule-timeline'),
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(AppRadii.control),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -1485,8 +1557,9 @@ class _SchedulePageState extends State<SchedulePage> {
             ),
           ),
           const Divider(height: 1),
-          Expanded(
+          Flexible(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(
                   height: math.max(
@@ -1508,7 +1581,7 @@ class _SchedulePageState extends State<SchedulePage> {
                             child: SizedBox(
                               width: hoursWidth,
                               child: _buildTimelineTimeHeader(
-                                hourColumnWidth: hourColumnWidth,
+                                hourWidths: hourWidths,
                               ),
                             ),
                           ),
@@ -1518,7 +1591,7 @@ class _SchedulePageState extends State<SchedulePage> {
                   ),
                 ),
                 const Divider(height: 1),
-                Expanded(
+                Flexible(
                   child: Scrollbar(
                     controller: _timelineVerticalController,
                     child: SingleChildScrollView(
@@ -1533,7 +1606,7 @@ class _SchedulePageState extends State<SchedulePage> {
                                 for (final date in dates)
                                   _buildTimelineDateCell(
                                     date,
-                                    height: timelineRowHeight,
+                                    height: rowHeights[_dateKey(date)]!,
                                   ),
                               ],
                             ),
@@ -1549,15 +1622,14 @@ class _SchedulePageState extends State<SchedulePage> {
                                     for (final date in dates)
                                       _buildTimelineGridRow(
                                         date,
-                                        schedules: visibleSchedules,
-                                        events: visibleEvents,
+                                        slots: slotsByDate[_dateKey(date)]!,
                                         classes: classes,
                                         teachers: teachers,
                                         units: units,
                                         strategies: strategies,
                                         schools: schools,
-                                        hourColumnWidth: hourColumnWidth,
-                                        height: timelineRowHeight,
+                                        hourWidths: hourWidths,
+                                        height: rowHeights[_dateKey(date)]!,
                                       ),
                                   ],
                                 ),
@@ -1600,14 +1672,15 @@ class _SchedulePageState extends State<SchedulePage> {
     );
   }
 
-  Widget _buildTimelineTimeHeader({required double hourColumnWidth}) {
+  Widget _buildTimelineTimeHeader({required List<double> hourWidths}) {
     return SizedBox(
       height: math.max(48, MediaQuery.textScalerOf(context).scale(24) + 16),
       child: Row(
         children: [
           for (var hour = 9; hour <= 22; hour++)
             Container(
-              width: hourColumnWidth,
+              width: hourWidths[hour - 9],
+              key: ValueKey('schedule-timeline-hour-$hour'),
               alignment: Alignment.center,
               decoration: const BoxDecoration(
                 border: Border(
@@ -1634,6 +1707,7 @@ class _SchedulePageState extends State<SchedulePage> {
     final today = _isSameDate(date, DateTime.now());
 
     return InkWell(
+      key: ValueKey('schedule-timeline-date-${_dateKey(date)}'),
       onTap: () => setState(() {
         _selectedDate = date;
         _clearBlockedDates();
@@ -1651,9 +1725,8 @@ class _SchedulePageState extends State<SchedulePage> {
             bottom: BorderSide(color: AppColors.border),
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               _shortWeekday(date),
@@ -1665,7 +1738,7 @@ class _SchedulePageState extends State<SchedulePage> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(width: AppSpacing.xs),
             Text(
               '${date.day}',
               style: TextStyle(
@@ -1684,50 +1757,35 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Widget _buildTimelineGridRow(
     DateTime date, {
-    required List<Schedule> schedules,
-    required List<ScheduleEvent> events,
+    required List<_TimelineSlot> slots,
     required List<SchoolClass> classes,
     required List<Teacher> teachers,
     required List<Unit> units,
     required List<Strategy> strategies,
     required List<School> schools,
-    required double hourColumnWidth,
+    required List<double> hourWidths,
     required double height,
-  }) {
-    final key = _dateKey(date);
-    final dateSchedules = schedules
-        .where((schedule) => schedule.date == key)
-        .toList(growable: false);
-    final dateEvents = events
-        .where((event) => _eventCoversDate(event, key))
-        .toList(growable: false);
-
-    return SizedBox(
-      height: height,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var hour = 9; hour <= 22; hour++)
-            _buildTimelineCell(
-              hour,
-              date: date,
-              schedules: dateSchedules
-                  .where((schedule) => _scheduleCoversHour(schedule, hour))
-                  .toList(),
-              events: dateEvents
-                  .where((event) => _eventCoversHourForDate(event, date, hour))
-                  .toList(),
-              classes: classes,
-              teachers: teachers,
-              units: units,
-              strategies: strategies,
-              schools: schools,
-              width: hourColumnWidth,
-            ),
-        ],
-      ),
-    );
-  }
+  }) => SizedBox(
+    height: height,
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var hour = 9; hour <= 22; hour++)
+          _buildTimelineCell(
+            hour,
+            date: date,
+            schedules: slots[hour - 9].schedules,
+            events: slots[hour - 9].events,
+            classes: classes,
+            teachers: teachers,
+            units: units,
+            strategies: strategies,
+            schools: schools,
+            width: hourWidths[hour - 9],
+          ),
+      ],
+    ),
+  );
 
   Widget _buildTimelineCell(
     int hour, {
@@ -1741,37 +1799,38 @@ class _SchedulePageState extends State<SchedulePage> {
     required List<School> schools,
     required double width,
   }) {
+    final cards = <Widget>[
+      for (final schedule in schedules)
+        _buildSmallScheduleCard(
+          schedule,
+          hour: hour,
+          classes: classes,
+          teachers: teachers,
+          units: units,
+          strategies: strategies,
+        ),
+      for (final event in events)
+        _buildSmallEventCard(event, date: date, hour: hour, schools: schools),
+    ];
     return Container(
+      key: ValueKey('schedule-timeline-cell-${_dateKey(date)}-$hour'),
       width: width,
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(AppSpacing.xxs),
       decoration: const BoxDecoration(
         border: Border(
           right: BorderSide(color: AppColors.border),
           bottom: BorderSide(color: AppColors.border),
         ),
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final schedule in schedules)
-              _buildSmallScheduleCard(
-                schedule,
-                hour: hour,
-                classes: classes,
-                teachers: teachers,
-                units: units,
-                strategies: strategies,
-              ),
-            for (final event in events)
-              _buildSmallEventCard(
-                event,
-                date: date,
-                hour: hour,
-                schools: schools,
-              ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var index = 0; index < cards.length; index++) ...[
+            if (index > 0) const SizedBox(height: AppSpacing.xxs),
+            cards[index],
           ],
-        ),
+        ],
       ),
     );
   }
@@ -1799,7 +1858,7 @@ class _SchedulePageState extends State<SchedulePage> {
       waitDuration: const Duration(milliseconds: 350),
       message: _scheduleTooltip(schedule, title, classes),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 64),
+        constraints: BoxConstraints(minHeight: _timelineScheduleCardHeight),
         child: Material(
           color: AppColors.transparent,
           child: InkWell(
@@ -1902,7 +1961,7 @@ class _SchedulePageState extends State<SchedulePage> {
       waitDuration: const Duration(milliseconds: 350),
       message: _eventTooltip(event),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 40),
+        constraints: BoxConstraints(minHeight: _timelineEventCardHeight),
         child: Material(
           color: AppColors.transparent,
           child: InkWell(

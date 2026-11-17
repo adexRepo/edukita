@@ -1,3 +1,5 @@
+import 'package:edukita/widgets/app_table.dart';
+import 'package:edukita/features/teaching_activity/data/teaching_activity_data.dart';
 import 'package:edukita/features/syllabus/data/subject_model.dart';
 import 'package:edukita/features/strategy/presentation/strategy_form_dialog.dart';
 import 'dart:async';
@@ -707,4 +709,49 @@ void main() {
       noLayoutErrors(tester);
     },
   );
+
+  for (final scenario in [
+    (const Size(1040, 800), 1.0),
+    (const Size(1100, 800), 1.25),
+    (const Size(1366, 900), 1.5),
+    (const Size(1920, 1080), 2.0),
+  ]) {
+    testWidgets('Teaching calendar stays left of results $scenario', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(scenario.$1);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final fixture = OperationsFixture();
+      addTearDown(fixture.close);
+      await tester.pumpWidget(
+        fixture.host(const TeachingActivityPage(), scale: scenario.$2),
+      );
+      await settleOperations(tester);
+      final calendar = find.byType(GridView).first;
+      final results = find.byType(AppTable<TeachingActivityListItem>);
+      expect(
+        tester.getTopLeft(results).dx,
+        greaterThan(tester.getTopRight(calendar).dx),
+      );
+      expect(
+        tester.getTopLeft(results).dy,
+        lessThan(tester.getBottomLeft(calendar).dy),
+      );
+      final day = find
+          .byType(TextButton)
+          .evaluate()
+          .where((e) => (e.widget as TextButton).child is Column)
+          .first
+          .widget;
+      await tester.ensureVisible(find.byWidget(day));
+      expect(
+        tester.getSize(find.byWidget(day)).width,
+        greaterThanOrEqualTo(40),
+      );
+      await tester.tap(find.byWidget(day));
+      await tester.pumpAndSettle();
+      expect(fixture.activities.chosenDate, isNotNull);
+      noLayoutErrors(tester);
+    });
+  }
 }

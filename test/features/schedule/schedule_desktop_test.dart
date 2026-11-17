@@ -202,12 +202,13 @@ void main() {
         );
         await settleSchedule(tester);
         expect(tester.takeException(), isNull);
-        final expansion = find.byType(ExpansionTile);
-        if (expansion.evaluate().isNotEmpty) {
-          await tester.ensureVisible(expansion.last);
-          await tester.tap(expansion.last);
-          await tester.pumpAndSettle();
-        }
+        expect(
+          find.ancestor(
+            of: find.byType(ScheduleCalendarDay).first,
+            matching: find.byType(ExpansionTile),
+          ),
+          findsNothing,
+        );
         expect(tester.takeException(), isNull);
         expect(find.byType(ScheduleCalendarDay), findsWidgets);
         final day = find.byType(ScheduleCalendarDay).first;
@@ -487,4 +488,247 @@ void main() {
       await tester.pumpAndSettle();
     },
   );
+
+  for (final scenario in [
+    (const Size(1040, 800), 1.0),
+    (const Size(1100, 800), 1.25),
+    (const Size(1366, 900), 1.5),
+    (const Size(1920, 1080), 2.0),
+  ]) {
+    testWidgets('Schedule calendar stays left of timeline $scenario', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(scenario.$1);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final cubits = fixtures();
+      addTearDown(() async {
+        for (final c in cubits) {
+          await c.close();
+        }
+      });
+      (cubits.first as TestScheduleCubit).show(
+        const ScheduleState(hasLoaded: true),
+      );
+      await tester.pumpWidget(scheduleHost(cubits, scale: scenario.$2));
+      await settleSchedule(tester);
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(SchedulePage)),
+      );
+      final calendar = find.byType(GridView).first;
+      final timelineHeader = find.text(l10n.date).last;
+      expect(
+        find.ancestor(
+          of: find.byType(ScheduleCalendarDay).first,
+          matching: find.byType(ExpansionTile),
+        ),
+        findsNothing,
+      );
+      expect(
+        tester.getTopLeft(timelineHeader).dx,
+        greaterThan(tester.getTopRight(calendar).dx),
+      );
+      expect(
+        tester.getTopLeft(timelineHeader).dy,
+        lessThan(tester.getBottomLeft(calendar).dy),
+      );
+      final day = find.byType(ScheduleCalendarDay).first;
+      final selectedDay = tester.widget<ScheduleCalendarDay>(day).day;
+      await tester.ensureVisible(day);
+      await tester.tap(day);
+      await tester.pumpAndSettle();
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is ScheduleCalendarDay && w.day == selectedDay && w.selected,
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final scale in [1.0, 1.25, 1.5, 2.0]) {
+    testWidgets(
+      'Timeline shrinks empty rows and hours and grows for stacked items text $scale',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(1920, 1200));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final cubits = fixtures();
+        addTearDown(() async {
+          for (final c in cubits) {
+            await c.close();
+          }
+        });
+        final source = cubits.first as TestScheduleCubit;
+        source.show(const ScheduleState(hasLoaded: true));
+        await tester.pumpWidget(scheduleHost(cubits, scale: scale));
+        await settleSchedule(tester);
+        final now = DateTime.now();
+        final sunday = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(Duration(days: now.weekday % 7));
+        final busyDate = sunday
+            .add(const Duration(days: 3))
+            .toIso8601String()
+            .split('T')
+            .first;
+        final emptyDate = sunday.toIso8601String().split('T').first;
+        final cell = find.byKey(
+          ValueKey('schedule-timeline-cell-$busyDate-10'),
+        );
+        final header = find.byKey(const ValueKey('schedule-timeline-hour-10'));
+        final date = find.byKey(ValueKey('schedule-timeline-date-$busyDate'));
+        final panel = find.byKey(const ValueKey('schedule-timeline'));
+        final emptySize = tester.getSize(cell),
+            emptyPanelHeight = tester.getSize(panel).height;
+        source.show(
+          ScheduleState(
+            hasLoaded: true,
+            schedules: [
+              for (var index = 0; index < 3; index++)
+                Schedule(
+                  unitId: 'synthetic',
+                  title: 'Synthetic schedule $index',
+                  date: busyDate,
+                  startAt: '10:00',
+                  endAt: '11:00',
+                ),
+            ],
+            events: [
+              ScheduleEvent(
+                title: 'Synthetic event',
+                date: busyDate,
+                startAt: '10:00',
+                endAt: '11:00',
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.getSize(cell).height, greaterThan(emptySize.height));
+        expect(tester.getSize(cell).width, greaterThan(emptySize.width));
+        expect(tester.getSize(panel).height, greaterThan(emptyPanelHeight));
+        expect(tester.getSize(date).height, tester.getSize(cell).height);
+        expect(
+          tester
+              .getSize(
+                find.byKey(ValueKey('schedule-timeline-cell-$emptyDate-10')),
+              )
+              .height,
+          emptySize.height,
+        );
+        expect(
+          tester
+              .getSize(
+                find.byKey(ValueKey('schedule-timeline-cell-$busyDate-9')),
+              )
+              .width,
+          emptySize.width,
+        );
+        expect(tester.getSize(header).width, tester.getSize(cell).width);
+        for (var index = 0; index < 2; index++) {
+          expect(
+            tester.getBottomLeft(find.text('Synthetic schedule $index')).dy,
+            lessThan(
+              tester
+                  .getTopLeft(find.text('Synthetic schedule ${index + 1}'))
+                  .dy,
+            ),
+          );
+        }
+        expect(
+          find.descendant(
+            of: cell,
+            matching: find.byType(SingleChildScrollView),
+          ),
+          findsNothing,
+        );
+        await tester.drag(header, const Offset(-240, 0));
+        await tester.pumpAndSettle();
+        expect(
+          tester.getTopLeft(header).dx,
+          closeTo(tester.getTopLeft(cell).dx, .1),
+        );
+        final field = find.byType(TextField).first;
+        await tester.ensureVisible(field);
+        await tester.enterText(field, 'unmatched-synthetic-query');
+        await tester.pumpAndSettle();
+        expect(tester.getSize(cell), emptySize);
+        expect(tester.getSize(header).width, emptySize.width);
+        expect(
+          tester.getTopLeft(header).dx,
+          closeTo(tester.getTopLeft(cell).dx, .1),
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+  testWidgets('Multi-day event expands only covered dates and hours', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final cubits = fixtures();
+    addTearDown(() async {
+      for (final c in cubits) {
+        await c.close();
+      }
+    });
+    final source = cubits.first as TestScheduleCubit;
+    final sunday = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    ).subtract(Duration(days: DateTime.now().weekday % 7));
+    final begin = sunday
+            .add(const Duration(days: 2))
+            .toIso8601String()
+            .split('T')
+            .first,
+        end = sunday
+            .add(const Duration(days: 3))
+            .toIso8601String()
+            .split('T')
+            .first,
+        empty = sunday.toIso8601String().split('T').first;
+    source.show(
+      ScheduleState(
+        hasLoaded: true,
+        events: [
+          ScheduleEvent(
+            title: 'Synthetic multi-day',
+            date: begin,
+            endDate: end,
+            startAt: '10:00',
+            endAt: '12:00',
+          ),
+        ],
+      ),
+    );
+    await tester.pumpWidget(scheduleHost(cubits));
+    await settleSchedule(tester);
+    expect(
+      find.descendant(
+        of: find.byKey(ValueKey('schedule-timeline-cell-$begin-10')),
+        matching: find.text('Synthetic multi-day'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(ValueKey('schedule-timeline-cell-$end-9')),
+        matching: find.text('Synthetic multi-day'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(ValueKey('schedule-timeline-cell-$empty-10')),
+        matching: find.text('Synthetic multi-day'),
+      ),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
 }

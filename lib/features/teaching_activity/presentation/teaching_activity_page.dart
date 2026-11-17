@@ -31,6 +31,8 @@ class TeachingActivityPage extends StatefulWidget {
 }
 
 class _TeachingActivityPageState extends State<TeachingActivityPage> {
+  final _calendarScrollController = ScrollController();
+  final _contentScrollController = ScrollController();
   late DateTime _focusedMonth;
   late final TeachingActivityCacheService _activityCacheService;
   late int _cacheRevision;
@@ -58,6 +60,8 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
   @override
   void dispose() {
     _activityCacheService.removeListener(_onActivityCacheChanged);
+    _calendarScrollController.dispose();
+    _contentScrollController.dispose();
     super.dispose();
   }
 
@@ -200,7 +204,10 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
                   builder: (context, constraints) {
                     final scale =
                         MediaQuery.textScalerOf(context).scale(12) / 12;
-                    final compact = constraints.maxWidth / scale < 1100;
+                    final calendarWidth = 320 * scale;
+                    final compact =
+                        constraints.maxWidth <
+                        calendarWidth + AppSpacing.md + 480 * scale;
                     final stats = _TeachingActivityStats(
                       activities: state.activities,
                     );
@@ -239,10 +246,19 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
 
                     if (compact) {
                       return ListView(
+                        controller: _contentScrollController,
                         children: [
                           stats,
                           const SizedBox(height: 12),
-                          leftPanel,
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: calendarWidth,
+                              ),
+                              child: leftPanel,
+                            ),
+                          ),
                           const SizedBox(height: 12),
                           SizedBox(height: 600 * scale, child: rightPanel),
                         ],
@@ -257,7 +273,16 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SizedBox(width: 406, child: leftPanel),
+                              SizedBox(
+                                width: calendarWidth,
+                                child: Scrollbar(
+                                  controller: _calendarScrollController,
+                                  child: SingleChildScrollView(
+                                    controller: _calendarScrollController,
+                                    child: leftPanel,
+                                  ),
+                                ),
+                              ),
                               const SizedBox(width: AppSpacing.md),
                               Expanded(child: rightPanel),
                             ],
