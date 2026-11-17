@@ -5286,4 +5286,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get brandTagline => 'Organized Knowledge, Meaningful Generations';
+
+  @override
+  String get settingsFocusedDescription =>
+      'Manage your language and account security.';
+
+  @override
+  String get settingsLanguageDescription =>
+      'Choose the interface language, then save to apply it.';
+
+  @override
+  String get settingsMaintenanceDescription =>
+      'Tools for managing data on this computer.';
+
+  @override
+  String get settingsBackupDescription =>
+      'Create a copy of the SQLite database. Uploaded documents are not included.';
+
+  @override
+  String get settingsCacheDescription =>
+      'Clear temporary data caches. Saved records and documents are not deleted.';
 }

@@ -9785,6 +9785,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Organized Knowledge, Meaningful Generations'**
   String get brandTagline;
+
+  /// No description provided for @settingsFocusedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage your language and account security.'**
+  String get settingsFocusedDescription;
+
+  /// No description provided for @settingsLanguageDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the interface language, then save to apply it.'**
+  String get settingsLanguageDescription;
+
+  /// No description provided for @settingsMaintenanceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Tools for managing data on this computer.'**
+  String get settingsMaintenanceDescription;
+
+  /// No description provided for @settingsBackupDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a copy of the SQLite database. Uploaded documents are not included.'**
+  String get settingsBackupDescription;
+
+  /// No description provided for @settingsCacheDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear temporary data caches. Saved records and documents are not deleted.'**
+  String get settingsCacheDescription;
 }
 
 class _AppLocalizationsDelegate

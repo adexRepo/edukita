@@ -105,3 +105,6 @@ Prioritas 6 sudah di-commit sebagai `a21b086`. Prioritas 7 mencakup Program/Pake
 Verifikasi final nomor 7: formatter 15 file tanpa perubahan tersisa, analyzer bersih, 280 tes penuh lulus termasuk 35 tes baru, Windows release build berhasil dan satu tes render tambahan lulus. Regresi fokus setelah Escape dua tingkat diperbaiki dan masuk assertion tes permanen. Preview 12 halaman/form memakai Poppins dengan data sintetis. Batas DPI fisik, Narrator, native picker dan autentikasi database nyata tetap berlaku.
 
 Penutupan: cakupan restyle prioritas 1–7 selesai; commit dan push diminta pengguna pada tahap akhir. Batas pengujian Windows fisik/native dan pekerjaan arsitektur yang sengaja dipertahankan tetap tercatat dalam dokumen prioritas.
+
+
+Penyederhanaan Settings lanjutan: enam kontrol default tanpa consumer otomatis dihapus dari UI, sementara record/key lama tetap dipertahankan. Settings kini memakai satu scroll, satu Save bahasa, role visibility yang sama, serta detail penyimpanan khusus admin. Audit, bukti pemakaian, kontrak yang dipertahankan dan verifikasi tersedia pada [settings-ui-cleanup.md](settings-ui-cleanup.md). Analyzer bersih, 282 tes penuh lulus dan build Windows release berhasil. Commit dan push penyederhanaan Settings diminta pengguna pada tahap penutupan.

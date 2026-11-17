@@ -1858,5 +1858,10 @@
   "studentSaveFailed": "Unable to save the student. Try again. Your input has been kept.",
   "operationFailedTryAgain": "Unable to complete the operation. Please try again.",
   "foundationEducationSystem": "Foundation Education System",
-  "brandTagline": "Organized Knowledge, Meaningful Generations"
+  "brandTagline": "Organized Knowledge, Meaningful Generations",
+  "settingsFocusedDescription": "Manage your language and account security.",
+  "settingsLanguageDescription": "Choose the interface language, then save to apply it.",
+  "settingsMaintenanceDescription": "Tools for managing data on this computer.",
+  "settingsBackupDescription": "Create a copy of the SQLite database. Uploaded documents are not included.",
+  "settingsCacheDescription": "Clear temporary data caches. Saved records and documents are not deleted."
 }

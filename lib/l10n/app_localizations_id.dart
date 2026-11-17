@@ -5298,4 +5298,23 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get brandTagline => 'Ilmu yang Tertata, Generasi Bermakna';
+
+  @override
+  String get settingsFocusedDescription => 'Kelola bahasa dan keamanan akun.';
+
+  @override
+  String get settingsLanguageDescription =>
+      'Pilih bahasa antarmuka, lalu simpan untuk menerapkannya.';
+
+  @override
+  String get settingsMaintenanceDescription =>
+      'Alat untuk mengelola data di komputer ini.';
+
+  @override
+  String get settingsBackupDescription =>
+      'Buat salinan database SQLite. Dokumen unggahan tidak disertakan.';
+
+  @override
+  String get settingsCacheDescription =>
+      'Kosongkan cache sementara. Data tersimpan dan dokumen tidak dihapus.';
 }

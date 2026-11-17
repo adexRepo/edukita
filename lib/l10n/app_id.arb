@@ -1857,5 +1857,10 @@
   "studentSaveFailed": "Siswa belum dapat disimpan. Coba lagi. Input Anda tetap disimpan.",
   "operationFailedTryAgain": "Operasi belum berhasil. Silakan coba lagi.",
   "foundationEducationSystem": "Sistem Pendidikan Yayasan",
-  "brandTagline": "Ilmu yang Tertata, Generasi Bermakna"
+  "brandTagline": "Ilmu yang Tertata, Generasi Bermakna",
+  "settingsFocusedDescription": "Kelola bahasa dan keamanan akun.",
+  "settingsLanguageDescription": "Pilih bahasa antarmuka, lalu simpan untuk menerapkannya.",
+  "settingsMaintenanceDescription": "Alat untuk mengelola data di komputer ini.",
+  "settingsBackupDescription": "Buat salinan database SQLite. Dokumen unggahan tidak disertakan.",
+  "settingsCacheDescription": "Kosongkan cache sementara. Data tersimpan dan dokumen tidak dihapus."
 }

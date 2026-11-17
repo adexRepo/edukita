@@ -1,3 +1,4 @@
+import 'package:edukita/theme/app_theme.dart';
 import 'dart:async';
 import 'package:edukita/core/database/database_provider.dart';
 import 'package:edukita/core/localization/app_language_cubit.dart';
@@ -107,13 +108,25 @@ class SettingsFixture extends SettingsRepository {
   bool failLoad = false;
   bool failSave = false;
   int saves = 0;
+  AppSettingsData? saved;
+  AppSettingsData loaded = AppSettingsData.defaults.copyWith(
+    foundationName: 'Synthetic Foundation',
+    currencyCode: 'USD',
+    currencySymbol: 'USD',
+    exportFilePrefix: 'synthetic-prefix',
+    minimumAttendancePercentage: 82,
+    defaultDashboardRange: 'weekly',
+    themeMode: 'legacy-theme',
+    uiDensity: 'compact',
+    dateFormat: 'dd/MM/yyyy',
+    timeFormat: '12h',
+    numberFormat: 'en_US',
+  );
   Completer<void>? pending;
   @override
   Future<AppSettingsData> load() async {
     if (failLoad) throw StateError('PRIVATE settings failure');
-    return AppSettingsData.defaults.copyWith(
-      foundationName: 'Synthetic Foundation',
-    );
+    return loaded;
   }
 
   @override
@@ -121,6 +134,7 @@ class SettingsFixture extends SettingsRepository {
   @override
   Future<void> save(AppSettingsData settings) async {
     saves++;
+    saved = settings;
     if (failSave) throw StateError('synthetic save failure');
     await pending?.future;
   }
@@ -203,6 +217,13 @@ Future<void> ctrl(WidgetTester tester, LogicalKeyboardKey key) async {
   await tester.sendKeyEvent(key);
   await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
   await tester.pump();
+}
+
+Future<void> selectSettingsLanguage(WidgetTester tester) async {
+  await tester.tap(find.byType(AppDropdownButtonFormField<String>));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Bahasa Indonesia').last);
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -365,7 +386,16 @@ void main() {
       );
       await tester.tap(find.text(l10n.retry));
       await settleAdmin(tester);
-      expect(find.text('Synthetic Foundation'), findsOneWidget);
+      expect(find.text(l10n.generalDefaults), findsNothing);
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton).first).onPressed,
+        isNull,
+      );
+      await selectSettingsLanguage(tester);
+      await ctrl(tester, LogicalKeyboardKey.keyS);
+      await tester.pumpAndSettle();
+      expect(repo.saves, 1);
+      expect(repo.saved!.language, 'id');
       AppToast.instance.dismiss();
       await tester.pump(const Duration(seconds: 5));
       operations.noLayoutErrors(tester);
@@ -451,10 +481,7 @@ void main() {
       final repo = getIt<SettingsRepository>() as SettingsFixture;
       await tester.pumpWidget(fixture.host(const SettingsPage()));
       await settleAdmin(tester);
-      final name = find.byWidgetPredicate(
-        (w) => w is TextField && w.controller?.text == 'Synthetic Foundation',
-      );
-      await tester.enterText(name, 'Synthetic preserved defaults');
+      await selectSettingsLanguage(tester);
       repo.pending = Completer<void>();
       await ctrl(tester, LogicalKeyboardKey.keyS);
       expect(repo.saves, 1);
@@ -462,7 +489,8 @@ void main() {
       expect(repo.saves, 1);
       repo.pending!.completeError(StateError('synthetic save failure'));
       await tester.pumpAndSettle();
-      expect(find.text('Synthetic preserved defaults'), findsOneWidget);
+      expect(find.text('Bahasa Indonesia'), findsOneWidget);
+      expect(fixture.language.state.locale.languageCode, 'en');
       AppToast.instance.dismiss();
       await tester.pump(const Duration(seconds: 5));
       operations.noLayoutErrors(tester);
@@ -555,7 +583,7 @@ void main() {
       );
       expect(find.text(l10n.maintenance), findsNothing);
       expect(find.text(l10n.generalDefaults), findsNothing);
-      expect(find.text(l10n.personalization), findsOneWidget);
+      expect(find.text(l10n.language), findsOneWidget);
       operations.noLayoutErrors(tester);
     },
   );
@@ -656,4 +684,85 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pump(const Duration(milliseconds: 500));
   });
+  testWidgets(
+    'Settings only saves language and preserves hidden legacy values',
+    (tester) async {
+      final fixture = AdministrationFixture();
+      addTearDown(fixture.close);
+      final repo = getIt<SettingsRepository>() as SettingsFixture;
+      await tester.pumpWidget(fixture.host(const SettingsPage()));
+      await settleAdmin(tester);
+      await ctrl(tester, LogicalKeyboardKey.keyS);
+      expect(repo.saves, 0);
+      await selectSettingsLanguage(tester);
+      await ctrl(tester, LogicalKeyboardKey.keyS);
+      await tester.pumpAndSettle();
+      final value = repo.saved!;
+      expect(value.language, 'id');
+      expect(value.foundationName, repo.loaded.foundationName);
+      expect(value.currencyCode, repo.loaded.currencyCode);
+      expect(value.currencySymbol, repo.loaded.currencySymbol);
+      expect(value.exportFilePrefix, repo.loaded.exportFilePrefix);
+      expect(value.minimumAttendancePercentage, 82);
+      expect(value.defaultDashboardRange, 'weekly');
+      expect(value.themeMode, 'legacy-theme');
+      expect(value.uiDensity, 'compact');
+      expect(value.dateFormat, 'dd/MM/yyyy');
+      expect(value.timeFormat, '12h');
+      expect(value.numberFormat, 'en_US');
+      expect(fixture.language.state.locale.languageCode, 'id');
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton).first).onPressed,
+        isNull,
+      );
+      await ctrl(tester, LogicalKeyboardKey.keyS);
+      expect(repo.saves, 1);
+      AppToast.instance.dismiss();
+      operations.noLayoutErrors(tester);
+    },
+  );
+
+  testWidgets(
+    'Settings admin details expand at 200 percent; staff and teacher stay focused',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final fixture = AdministrationFixture();
+      addTearDown(fixture.close);
+      for (final role in ['admin', 'staff', 'teacher']) {
+        await tester.runAsync(
+          () => AuthSessionCache.instance.save(
+            userId: 'synthetic-$role',
+            username: 'synthetic',
+            role: role,
+          ),
+        );
+        await tester.pumpWidget(fixture.host(const SettingsPage(), scale: 2));
+        await settleAdmin(tester);
+        final l10n = AppLocalizations.of(
+          tester.element(find.byType(SettingsPage)),
+        );
+        expect(find.text(l10n.generalDefaults), findsNothing);
+        expect(find.text(l10n.currentLanguage), findsNothing);
+        expect(find.text(l10n.technicalSettingsAdminOnly), findsNothing);
+        expect(find.byType(FilledButton), findsOneWidget);
+        expect(find.byType(SingleChildScrollView), findsOneWidget);
+        if (role == 'admin') {
+          expect(find.text(l10n.databaseSchema), findsNothing);
+          await tester.ensureVisible(find.text(l10n.storage));
+          await tester.tap(find.text(l10n.storage));
+          await tester.pumpAndSettle();
+          expect(find.text(l10n.databaseSchema), findsOneWidget);
+          await tester.ensureVisible(find.text(l10n.databaseSchema));
+          await tester.pumpAndSettle();
+          expect(find.text('synthetic/database.db'), findsOneWidget);
+        } else {
+          expect(find.text(l10n.maintenance), findsNothing);
+          expect(find.text(l10n.storage), findsNothing);
+        }
+        operations.noLayoutErrors(tester);
+        await tester.pumpWidget(const SizedBox());
+      }
+    },
+  );
 }
