@@ -9767,6 +9767,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unable to save the student. Try again. Your input has been kept.'**
   String get studentSaveFailed;
+
+  /// No description provided for @operationFailedTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to complete the operation. Please try again.'**
+  String get operationFailedTryAgain;
 }
 
 class _AppLocalizationsDelegate

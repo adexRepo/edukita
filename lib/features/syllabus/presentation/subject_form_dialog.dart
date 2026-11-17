@@ -1,3 +1,5 @@
+import 'package:edukita/widgets/app_form_scope.dart';
+import 'package:edukita/widgets/app_form_row.dart';
 import 'dart:async';
 
 import 'package:edukita/core/localization/localization_extension.dart';
@@ -11,14 +13,7 @@ import 'package:edukita/widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 
 Widget _twoColumnFormRow(Widget first, Widget second) {
-  return Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Expanded(child: first),
-      const SizedBox(width: 12),
-      Expanded(child: second),
-    ],
-  );
+  return AppFormRow(children: [first, second]);
 }
 
 class CurriculumFormDialog extends StatefulWidget {
@@ -56,95 +51,102 @@ class _CurriculumFormDialogState extends State<CurriculumFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AppDialog(
-      title: AppDialogTitle(
-        widget.curriculum == null
-            ? context.l10n.addCurriculum
-            : context.l10n.editCurriculum,
-      ),
-      content: SizedBox(
-        width: 680,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _twoColumnFormRow(
-                  CommonFormWidgets.textField(
-                    label: context.l10n.name,
-                    value: name,
-                    onSaved: (value) => name = value?.trim() ?? '',
-                    validator: (value) {
-                      if (value?.trim().isEmpty ?? true) {
-                        return context.l10n.curriculumNameRequired;
-                      }
-                      return null;
-                    },
+    return AppFormScope(
+      busy: _isSaving,
+      onSave: _submit,
+      child: AppDialog(
+        title: AppDialogTitle(
+          widget.curriculum == null
+              ? context.l10n.addCurriculum
+              : context.l10n.editCurriculum,
+          enabled: !_isSaving,
+        ),
+        content: SizedBox(
+          width: 680,
+          child: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _twoColumnFormRow(
+                    CommonFormWidgets.textField(
+                      label: context.l10n.name,
+                      value: name,
+                      onSaved: (value) => name = value?.trim() ?? '',
+                      validator: (value) {
+                        if (value?.trim().isEmpty ?? true) {
+                          return context.l10n.curriculumNameRequired;
+                        }
+                        return null;
+                      },
+                    ),
+                    CommonFormWidgets.textField(
+                      label: context.l10n.version,
+                      value: version,
+                      onSaved: (value) => version = _nullIfBlank(value),
+                      validator: (_) => null,
+                      isRequired: false,
+                    ),
                   ),
+                  const SizedBox(height: 16),
+                  _twoColumnFormRow(
+                    CommonFormWidgets.dropdownField(
+                      label: context.l10n.effectiveYear,
+                      items: _yearOptions(effectiveYear),
+                      value: effectiveYear,
+                      onChanged: (value) =>
+                          setState(() => effectiveYear = value),
+                      onSaved: (value) =>
+                          effectiveYear = value ?? _currentYear(),
+                    ),
+                    CommonFormWidgets.dropdownField(
+                      label: context.l10n.status,
+                      items: const ['active', 'inactive'],
+                      value: status,
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => status = value);
+                      },
+                      onSaved: (value) => status = value ?? 'active',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   CommonFormWidgets.textField(
-                    label: context.l10n.version,
-                    value: version,
-                    onSaved: (value) => version = _nullIfBlank(value),
+                    label: context.l10n.description,
+                    value: description,
+                    onSaved: (value) => description = _nullIfBlank(value),
+                    maxLines: 3,
                     validator: (_) => null,
                     isRequired: false,
                   ),
-                ),
-                const SizedBox(height: 14),
-                _twoColumnFormRow(
-                  CommonFormWidgets.dropdownField(
-                    label: context.l10n.effectiveYear,
-                    items: _yearOptions(effectiveYear),
-                    value: effectiveYear,
-                    onChanged: (value) => setState(() => effectiveYear = value),
-                    onSaved: (value) => effectiveYear = value ?? _currentYear(),
-                  ),
-                  CommonFormWidgets.dropdownField(
-                    label: context.l10n.status,
-                    items: const ['active', 'inactive'],
-                    value: status,
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() => status = value);
-                    },
-                    onSaved: (value) => status = value ?? 'active',
-                  ),
-                ),
-                const SizedBox(height: 14),
-                CommonFormWidgets.textField(
-                  label: context.l10n.description,
-                  value: description,
-                  onSaved: (value) => description = _nullIfBlank(value),
-                  maxLines: 3,
-                  validator: (_) => null,
-                  isRequired: false,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : () => Navigator.pop(context),
+            child: Text(context.l10n.buttonCancel),
+          ),
+          ElevatedButton(
+            onPressed: _isSaving ? null : _submit,
+            child: _isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(context.l10n.buttonSave),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: Text(context.l10n.buttonCancel),
-        ),
-        ElevatedButton(
-          onPressed: _isSaving ? null : _submit,
-          child: _isSaving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(context.l10n.buttonSave),
-        ),
-      ],
     );
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving || !_formKey.currentState!.validate()) return;
 
     final action = widget.curriculum == null
         ? SubmissionAction.create
@@ -249,180 +251,187 @@ class _SyllabusFormDialogState extends State<SyllabusFormDialog> {
       (subject) => subject.id == subjectId,
     );
 
-    return AppDialog(
-      title: AppDialogTitle(
-        widget.syllabus == null
-            ? context.l10n.addSyllabus
-            : context.l10n.editSyllabus,
-      ),
-      content: SizedBox(
-        width: 680,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.curriculums.isNotEmpty &&
-                    widget.subjects.isNotEmpty) ...[
+    return AppFormScope(
+      busy: _isSaving,
+      onSave: _submit,
+      child: AppDialog(
+        title: AppDialogTitle(
+          widget.syllabus == null
+              ? context.l10n.addSyllabus
+              : context.l10n.editSyllabus,
+          enabled: !_isSaving,
+        ),
+        content: SizedBox(
+          width: 680,
+          child: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.curriculums.isNotEmpty &&
+                      widget.subjects.isNotEmpty) ...[
+                    _twoColumnFormRow(
+                      CommonFormWidgets.dropdownFieldTyped<Curriculum>(
+                        label: context.l10n.curriculum,
+                        items: widget.curriculums,
+                        labelBuilder: (curriculum) => curriculum.name,
+                        valueBuilder: (curriculum) => curriculum.id,
+                        value: selectedCurriculum,
+                        onSaved: (value) => curriculumId = value?.id,
+                      ),
+                      CommonFormWidgets.dropdownFieldTyped<Subject>(
+                        label: context.l10n.subject,
+                        items: widget.subjects,
+                        labelBuilder: (subject) => subject.name,
+                        valueBuilder: (subject) => subject.id,
+                        value: selectedSubject,
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() {
+                            subjectId = value.id;
+                            final currentTitle = _titleController.text.trim();
+                            if (currentTitle.isEmpty ||
+                                currentTitle == selectedSubject?.name) {
+                              title = value.name;
+                              _titleController.text = value.name;
+                            }
+                          });
+                        },
+                        onSaved: (value) => subjectId = value?.id,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ] else ...[
+                    if (widget.curriculums.isNotEmpty) ...[
+                      CommonFormWidgets.dropdownFieldTyped<Curriculum>(
+                        label: context.l10n.curriculum,
+                        items: widget.curriculums,
+                        labelBuilder: (curriculum) => curriculum.name,
+                        valueBuilder: (curriculum) => curriculum.id,
+                        value: selectedCurriculum,
+                        onSaved: (value) => curriculumId = value?.id,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    if (widget.subjects.isNotEmpty) ...[
+                      CommonFormWidgets.dropdownFieldTyped<Subject>(
+                        label: context.l10n.subject,
+                        items: widget.subjects,
+                        labelBuilder: (subject) => subject.name,
+                        valueBuilder: (subject) => subject.id,
+                        value: selectedSubject,
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() {
+                            subjectId = value.id;
+                            final currentTitle = _titleController.text.trim();
+                            if (currentTitle.isEmpty ||
+                                currentTitle == selectedSubject?.name) {
+                              title = value.name;
+                              _titleController.text = value.name;
+                            }
+                          });
+                        },
+                        onSaved: (value) => subjectId = value?.id,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ],
                   _twoColumnFormRow(
-                    CommonFormWidgets.dropdownFieldTyped<Curriculum>(
-                      label: context.l10n.curriculum,
-                      items: widget.curriculums,
-                      labelBuilder: (curriculum) => curriculum.name,
-                      valueBuilder: (curriculum) => curriculum.id,
-                      value: selectedCurriculum,
-                      onSaved: (value) => curriculumId = value?.id,
-                    ),
-                    CommonFormWidgets.dropdownFieldTyped<Subject>(
-                      label: context.l10n.subject,
-                      items: widget.subjects,
-                      labelBuilder: (subject) => subject.name,
-                      valueBuilder: (subject) => subject.id,
-                      value: selectedSubject,
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          subjectId = value.id;
-                          final currentTitle = _titleController.text.trim();
-                          if (currentTitle.isEmpty ||
-                              currentTitle == selectedSubject?.name) {
-                            title = value.name;
-                            _titleController.text = value.name;
-                          }
-                        });
+                    CommonFormWidgets.textField(
+                      label: context.l10n.title,
+                      value: title,
+                      controller: _titleController,
+                      onChanged: (value) => title = value,
+                      onSaved: (value) => title = value?.trim() ?? '',
+                      validator: (value) {
+                        if (value?.trim().isEmpty ?? true) {
+                          return context.l10n.syllabusTitleRequired;
+                        }
+                        return null;
                       },
-                      onSaved: (value) => subjectId = value?.id,
+                    ),
+                    CommonFormWidgets.dropdownField(
+                      label: context.l10n.academicYear,
+                      items: _yearOptions(academicYear),
+                      value: academicYear,
+                      onChanged: (value) =>
+                          setState(() => academicYear = value),
+                      onSaved: (value) =>
+                          academicYear = value ?? _currentYear(),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                ] else ...[
-                  if (widget.curriculums.isNotEmpty) ...[
-                    CommonFormWidgets.dropdownFieldTyped<Curriculum>(
-                      label: context.l10n.curriculum,
-                      items: widget.curriculums,
-                      labelBuilder: (curriculum) => curriculum.name,
-                      valueBuilder: (curriculum) => curriculum.id,
-                      value: selectedCurriculum,
-                      onSaved: (value) => curriculumId = value?.id,
-                    ),
-                    const SizedBox(height: 14),
-                  ],
-                  if (widget.subjects.isNotEmpty) ...[
-                    CommonFormWidgets.dropdownFieldTyped<Subject>(
-                      label: context.l10n.subject,
-                      items: widget.subjects,
-                      labelBuilder: (subject) => subject.name,
-                      valueBuilder: (subject) => subject.id,
-                      value: selectedSubject,
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          subjectId = value.id;
-                          final currentTitle = _titleController.text.trim();
-                          if (currentTitle.isEmpty ||
-                              currentTitle == selectedSubject?.name) {
-                            title = value.name;
-                            _titleController.text = value.name;
-                          }
-                        });
-                      },
-                      onSaved: (value) => subjectId = value?.id,
-                    ),
-                    const SizedBox(height: 14),
-                  ],
-                ],
-                _twoColumnFormRow(
+                  const SizedBox(height: 16),
                   CommonFormWidgets.textField(
-                    label: context.l10n.title,
-                    value: title,
-                    controller: _titleController,
-                    onChanged: (value) => title = value,
-                    onSaved: (value) => title = value?.trim() ?? '',
-                    validator: (value) {
-                      if (value?.trim().isEmpty ?? true) {
-                        return context.l10n.syllabusTitleRequired;
-                      }
-                      return null;
-                    },
-                  ),
-                  CommonFormWidgets.dropdownField(
-                    label: context.l10n.academicYear,
-                    items: _yearOptions(academicYear),
-                    value: academicYear,
-                    onChanged: (value) => setState(() => academicYear = value),
-                    onSaved: (value) => academicYear = value ?? _currentYear(),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                CommonFormWidgets.textField(
-                  label: context.l10n.description,
-                  value: description,
-                  onSaved: (value) => description = _nullIfBlank(value),
-                  maxLines: 3,
-                  validator: (_) => null,
-                  isRequired: false,
-                ),
-                const SizedBox(height: 14),
-                _twoColumnFormRow(
-                  CommonFormWidgets.dropdownFieldTyped<SchoolType>(
-                    label: context.l10n.schoolType,
-                    items: SchoolType.values,
-                    labelBuilder: (type) => type.label,
-                    valueBuilder: (type) => type.storageValue,
-                    value: schoolType,
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        schoolType = value;
-                        level = value.minLevel.toString();
-                      });
-                    },
-                    onSaved: (value) => schoolType = value ?? SchoolType.sd,
-                  ),
-                  CommonFormWidgets.dropdownField(
-                    label: context.l10n.level,
-                    items: schoolType.allowedLevels
-                        .map((level) => level.toString())
-                        .toList(),
-                    value: level,
-                    onChanged: (value) => setState(() => level = value),
-                    onSaved: (value) =>
-                        level = value ?? schoolType.minLevel.toString(),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _twoColumnFormRow(
-                  CommonFormWidgets.dropdownField(
-                    label: context.l10n.semester,
-                    items: const ['1', '2'],
-                    value: semester,
+                    label: context.l10n.description,
+                    value: description,
+                    onSaved: (value) => description = _nullIfBlank(value),
+                    maxLines: 3,
+                    validator: (_) => null,
                     isRequired: false,
-                    onChanged: (value) => setState(() => semester = value),
-                    onSaved: (value) => semester = _nullIfBlank(value),
                   ),
-                  CommonFormWidgets.dropdownField(
-                    label: context.l10n.status,
-                    items: const ['active', 'inactive'],
-                    value: status,
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() => status = value);
-                    },
-                    onSaved: (value) => status = value ?? 'active',
+                  const SizedBox(height: 16),
+                  _twoColumnFormRow(
+                    CommonFormWidgets.dropdownFieldTyped<SchoolType>(
+                      label: context.l10n.schoolType,
+                      items: SchoolType.values,
+                      labelBuilder: (type) => type.label,
+                      valueBuilder: (type) => type.storageValue,
+                      value: schoolType,
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          schoolType = value;
+                          level = value.minLevel.toString();
+                        });
+                      },
+                      onSaved: (value) => schoolType = value ?? SchoolType.sd,
+                    ),
+                    CommonFormWidgets.dropdownField(
+                      label: context.l10n.level,
+                      items: schoolType.allowedLevels
+                          .map((level) => level.toString())
+                          .toList(),
+                      value: level,
+                      onChanged: (value) => setState(() => level = value),
+                      onSaved: (value) =>
+                          level = value ?? schoolType.minLevel.toString(),
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  _twoColumnFormRow(
+                    CommonFormWidgets.dropdownField(
+                      label: context.l10n.semester,
+                      items: const ['1', '2'],
+                      value: semester,
+                      isRequired: false,
+                      onChanged: (value) => setState(() => semester = value),
+                      onSaved: (value) => semester = _nullIfBlank(value),
+                    ),
+                    CommonFormWidgets.dropdownField(
+                      label: context.l10n.status,
+                      items: const ['active', 'inactive'],
+                      value: status,
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => status = value);
+                      },
+                      onSaved: (value) => status = value ?? 'active',
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
+        actions: _dialogActions(_submit),
       ),
-      actions: _dialogActions(_submit),
     );
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving || !_formKey.currentState!.validate()) return;
 
     final action = widget.syllabus == null
         ? SubmissionAction.create
@@ -508,74 +517,79 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AppDialog(
-      title: AppDialogTitle(
-        widget.subject == null
-            ? context.l10n.addSubject
-            : context.l10n.editSubject,
-      ),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CommonFormWidgets.textField(
-                label: context.l10n.subject,
-                value: name,
-                onSaved: (value) => name = value?.trim() ?? '',
-                validator: (value) {
-                  if (value?.trim().isEmpty ?? true) {
-                    return context.l10n.subjectNameRequired;
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              CommonFormWidgets.textField(
-                label: context.l10n.description,
-                value: description,
-                onSaved: (value) => description = _nullIfBlank(value),
-                maxLines: 3,
-                validator: (_) => null,
-                isRequired: false,
-              ),
-              const SizedBox(height: 16),
-              CommonFormWidgets.dropdownField(
-                label: context.l10n.status,
-                items: const ['active', 'inactive'],
-                value: status,
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => status = value);
-                },
-                onSaved: (value) => status = value ?? 'active',
-              ),
-            ],
+    return AppFormScope(
+      busy: _isSaving,
+      onSave: _submit,
+      child: AppDialog(
+        title: AppDialogTitle(
+          widget.subject == null
+              ? context.l10n.addSubject
+              : context.l10n.editSubject,
+          enabled: !_isSaving,
+        ),
+        content: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CommonFormWidgets.textField(
+                  label: context.l10n.subject,
+                  value: name,
+                  onSaved: (value) => name = value?.trim() ?? '',
+                  validator: (value) {
+                    if (value?.trim().isEmpty ?? true) {
+                      return context.l10n.subjectNameRequired;
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                CommonFormWidgets.textField(
+                  label: context.l10n.description,
+                  value: description,
+                  onSaved: (value) => description = _nullIfBlank(value),
+                  maxLines: 3,
+                  validator: (_) => null,
+                  isRequired: false,
+                ),
+                const SizedBox(height: 16),
+                CommonFormWidgets.dropdownField(
+                  label: context.l10n.status,
+                  items: const ['active', 'inactive'],
+                  value: status,
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => status = value);
+                  },
+                  onSaved: (value) => status = value ?? 'active',
+                ),
+              ],
+            ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : () => Navigator.pop(context),
+            child: Text(context.l10n.buttonCancel),
+          ),
+          ElevatedButton(
+            onPressed: _isSaving ? null : _submit,
+            child: _isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(context.l10n.buttonSave),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: Text(context.l10n.buttonCancel),
-        ),
-        ElevatedButton(
-          onPressed: _isSaving ? null : _submit,
-          child: _isSaving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(context.l10n.buttonSave),
-        ),
-      ],
     );
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving || !_formKey.currentState!.validate()) return;
 
     final action = widget.subject == null
         ? SubmissionAction.create
@@ -644,80 +658,85 @@ class _UnitFormDialogState extends State<UnitFormDialog> {
       (subject) => subject.id == subjectId,
     );
 
-    return AppDialog(
-      title: AppDialogTitle(
-        widget.unit == null ? context.l10n.addUnit : context.l10n.editUnit,
-      ),
-      content: SizedBox(
-        width: 680,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _twoColumnFormRow(
-                  CommonFormWidgets.dropdownFieldTyped<Subject>(
-                    label: context.l10n.subject,
-                    items: widget.subjects,
-                    labelBuilder: (subject) => subject.name,
-                    valueBuilder: (subject) => subject.id,
-                    value: selectedSubject,
-                    onSaved: (value) => subjectId = value?.id ?? '',
+    return AppFormScope(
+      busy: _isSaving,
+      onSave: _submit,
+      child: AppDialog(
+        title: AppDialogTitle(
+          widget.unit == null ? context.l10n.addUnit : context.l10n.editUnit,
+          enabled: !_isSaving,
+        ),
+        content: SizedBox(
+          width: 680,
+          child: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _twoColumnFormRow(
+                    CommonFormWidgets.dropdownFieldTyped<Subject>(
+                      label: context.l10n.subject,
+                      items: widget.subjects,
+                      labelBuilder: (subject) => subject.name,
+                      valueBuilder: (subject) => subject.id,
+                      value: selectedSubject,
+                      onSaved: (value) => subjectId = value?.id ?? '',
+                    ),
+                    CommonFormWidgets.integerField(
+                      label: context.l10n.sequence,
+                      value: sequenceNo,
+                      onSaved: (value) => sequenceNo = value,
+                    ),
                   ),
-                  CommonFormWidgets.integerField(
-                    label: context.l10n.sequence,
-                    value: sequenceNo,
-                    onSaved: (value) => sequenceNo = value,
+                  const SizedBox(height: 16),
+                  CommonFormWidgets.textField(
+                    label: context.l10n.unit,
+                    value: name,
+                    onSaved: (value) => name = value?.trim() ?? '',
+                    validator: (value) {
+                      if (value?.trim().isEmpty ?? true) {
+                        return context.l10n.unitNameRequired;
+                      }
+                      return null;
+                    },
                   ),
-                ),
-                const SizedBox(height: 14),
-                CommonFormWidgets.textField(
-                  label: context.l10n.unit,
-                  value: name,
-                  onSaved: (value) => name = value?.trim() ?? '',
-                  validator: (value) {
-                    if (value?.trim().isEmpty ?? true) {
-                      return context.l10n.unitNameRequired;
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 14),
-                CommonFormWidgets.textField(
-                  label: context.l10n.description,
-                  value: description,
-                  onSaved: (value) => description = _nullIfBlank(value),
-                  maxLines: 3,
-                  validator: (_) => null,
-                  isRequired: false,
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  CommonFormWidgets.textField(
+                    label: context.l10n.description,
+                    value: description,
+                    onSaved: (value) => description = _nullIfBlank(value),
+                    maxLines: 3,
+                    validator: (_) => null,
+                    isRequired: false,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : () => Navigator.pop(context),
+            child: Text(context.l10n.buttonCancel),
+          ),
+          ElevatedButton(
+            onPressed: _isSaving ? null : _submit,
+            child: _isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(context.l10n.buttonSave),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: Text(context.l10n.buttonCancel),
-        ),
-        ElevatedButton(
-          onPressed: _isSaving ? null : _submit,
-          child: _isSaving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(context.l10n.buttonSave),
-        ),
-      ],
     );
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving || !_formKey.currentState!.validate()) return;
 
     final action = widget.unit == null
         ? SubmissionAction.create
@@ -786,85 +805,90 @@ class _CompetencyFormDialogState extends State<CompetencyFormDialog> {
       (unit) => unit.id == unitId,
     );
 
-    return AppDialog(
-      title: AppDialogTitle(
-        widget.competency == null
-            ? context.l10n.addCompetency
-            : context.l10n.editCompetency,
-      ),
-      content: SizedBox(
-        width: 680,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CommonFormWidgets.dropdownFieldTyped<Unit>(
-                  label: context.l10n.unit,
-                  items: widget.units,
-                  labelBuilder: (unit) => unit.name,
-                  valueBuilder: (unit) => unit.id,
-                  value: selectedUnit,
-                  onSaved: (value) => unitId = value?.id ?? '',
-                ),
-                const SizedBox(height: 14),
-                _twoColumnFormRow(
+    return AppFormScope(
+      busy: _isSaving,
+      onSave: _submit,
+      child: AppDialog(
+        title: AppDialogTitle(
+          widget.competency == null
+              ? context.l10n.addCompetency
+              : context.l10n.editCompetency,
+          enabled: !_isSaving,
+        ),
+        content: SizedBox(
+          width: 680,
+          child: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CommonFormWidgets.dropdownFieldTyped<Unit>(
+                    label: context.l10n.unit,
+                    items: widget.units,
+                    labelBuilder: (unit) => unit.name,
+                    valueBuilder: (unit) => unit.id,
+                    value: selectedUnit,
+                    onSaved: (value) => unitId = value?.id ?? '',
+                  ),
+                  const SizedBox(height: 16),
+                  _twoColumnFormRow(
+                    CommonFormWidgets.textField(
+                      label: context.l10n.code,
+                      value: code,
+                      onSaved: (value) => code = _nullIfBlank(value),
+                      validator: (_) => null,
+                      isRequired: false,
+                    ),
+                    CommonFormWidgets.dropdownField(
+                      label: context.l10n.level,
+                      items: _competencyLevelOptions,
+                      value: level,
+                      isRequired: false,
+                      onChanged: (value) => setState(() => level = value),
+                      onSaved: (value) => level = _nullIfBlank(value),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   CommonFormWidgets.textField(
-                    label: context.l10n.code,
-                    value: code,
-                    onSaved: (value) => code = _nullIfBlank(value),
-                    validator: (_) => null,
-                    isRequired: false,
+                    label: context.l10n.description,
+                    value: description,
+                    maxLines: 4,
+                    onSaved: (value) => description = value?.trim() ?? '',
+                    validator: (value) {
+                      if (value?.trim().isEmpty ?? true) {
+                        return context.l10n.competencyDescriptionRequired;
+                      }
+                      return null;
+                    },
                   ),
-                  CommonFormWidgets.dropdownField(
-                    label: context.l10n.level,
-                    items: _competencyLevelOptions,
-                    value: level,
-                    isRequired: false,
-                    onChanged: (value) => setState(() => level = value),
-                    onSaved: (value) => level = _nullIfBlank(value),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                CommonFormWidgets.textField(
-                  label: context.l10n.description,
-                  value: description,
-                  maxLines: 4,
-                  onSaved: (value) => description = value?.trim() ?? '',
-                  validator: (value) {
-                    if (value?.trim().isEmpty ?? true) {
-                      return context.l10n.competencyDescriptionRequired;
-                    }
-                    return null;
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : () => Navigator.pop(context),
+            child: Text(context.l10n.buttonCancel),
+          ),
+          ElevatedButton(
+            onPressed: _isSaving ? null : _submit,
+            child: _isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(context.l10n.buttonSave),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: Text(context.l10n.buttonCancel),
-        ),
-        ElevatedButton(
-          onPressed: _isSaving ? null : _submit,
-          child: _isSaving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(context.l10n.buttonSave),
-        ),
-      ],
     );
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving || !_formKey.currentState!.validate()) return;
 
     final action = widget.competency == null
         ? SubmissionAction.create

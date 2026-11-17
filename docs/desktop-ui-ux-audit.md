@@ -90,3 +90,7 @@ Tahap Jadwal: workspace, kalender, toolbar/pencarian keyboard, timeline dan dial
 Prioritas 3 — Detail Aktivitas Mengajar: audit dan implementasi workspace adaptif, pemeliharaan draft saat ringkasan dibuka, kontrol rating keyboard, font Shadcn, dialog catatan dan hierarki aksi dicatat dalam [ui-restyle-priorities.md](ui-restyle-priorities.md). Tidak ada perubahan persistence atau aturan penilaian.
 
 Prioritas 4 — Siswa: daftar, filter tunggal, form cepat/lengkap dan komponen tujuh tab detail direstyle. Audit severity, pengujian, batas kontrak data serta alur native yang belum diuji tersedia dalam [ui-restyle-priorities.md](ui-restyle-priorities.md).
+
+Prioritas 3 dan 4 sudah di-commit bersama sebagai `c073c90`. Prioritas 5 — Kurikulum, daftar Aktivitas Mengajar, Laporan/Definisi Laporan dan Pengguna — menerapkan workspace/filter/form adaptif, keyboard, target kontrol, pengamanan saving, status kontras tinggi dan error yang mempertahankan data. Audit sebelum implementasi, file utama, kontrak dan batas verifikasi tersedia pada [ui-restyle-priorities.md](ui-restyle-priorities.md). Perubahan prioritas 5 masih lokal dan belum commit/push.
+
+Verifikasi akhir prioritas 5: formatter 18 file (0 perubahan), analyzer bersih, 210 tes penuh lulus (33 tes baru), build Windows release berhasil dan preview sintetis diperiksa. Label mengambang editor laporan pada 200% tidak terpotong. Rincian batas uji native/DPI dan status commit/push tersedia di dokumen prioritas.

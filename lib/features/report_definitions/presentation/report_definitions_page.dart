@@ -1,3 +1,6 @@
+import 'package:flutter/services.dart';
+import 'package:edukita/widgets/app_inline_error.dart';
+import 'package:edukita/widgets/app_desktop_workspace.dart';
 import 'dart:async';
 
 import 'package:edukita/core/helper/pageable.dart';
@@ -31,6 +34,7 @@ class ReportDefinitionsPage extends StatefulWidget {
 
 class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
   late final TextEditingController _searchController;
+  final _searchFocus = FocusNode();
   Timer? _searchDebounce;
   AppAuthorizationScope _authScope = AppAuthorizationScope(
     role: AppUserRole.admin,
@@ -66,6 +70,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _searchFocus.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -74,20 +79,37 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
   Widget build(BuildContext context) {
     final content = BlocBuilder<ReportDefinitionCubit, ReportDefinitionState>(
       builder: (context, state) {
-        if (state.error != null && state.definitions.isEmpty) {
-          return Center(
-            child: Text(context.l10n.errorWithDetails(state.error!)),
-          );
-        }
-
-        final pageContent = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeader(context, state),
-            AppLoadingStrip(isLoading: state.isLoading, topPadding: 0),
-            const SizedBox(height: AppPageHeaderStyle.bottomGap),
-            Expanded(child: _buildTable(context, state)),
-          ],
+        final pageContent = CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.keyF, control: true): () =>
+                _searchFocus.requestFocus(),
+          },
+          child: Focus(
+            autofocus: true,
+            child: AppDesktopWorkspace(
+              header: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildHeader(context, state),
+                  if (state.error != null)
+                    AppInlineError(
+                      message: context.l10n.operationFailedTryAgain,
+                      onDetails: () => showErrorDetailDialog(
+                        context,
+                        title: context.l10n.operationFailedTryAgain,
+                        error: state.error!,
+                      ),
+                      onRetry: () => context
+                          .read<ReportDefinitionCubit>()
+                          .loadDefinitions(forceRefresh: true),
+                    ),
+                  AppLoadingStrip(isLoading: state.isLoading, topPadding: 0),
+                  const SizedBox(height: AppPageHeaderStyle.bottomGap),
+                ],
+              ),
+              content: _buildTable(context, state),
+            ),
+          ),
         );
 
         if (widget.embedded) return pageContent;
@@ -96,7 +118,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
           decoration: BoxDecoration(
             color: AppColors.white,
             border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadii.panel),
           ),
           child: Padding(padding: const EdgeInsets.all(12), child: pageContent),
         );
@@ -129,14 +151,15 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
         ),
         const SizedBox(height: 12),
         Wrap(
-          spacing: 10,
-          runSpacing: 10,
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             SizedBox(
               width: 300,
               child: TextField(
                 controller: _searchController,
+                focusNode: _searchFocus,
                 onChanged: (value) => _debouncedSearch(cubit, value),
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.search, size: 18),
@@ -151,12 +174,12 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
                           },
                           icon: const Icon(Icons.close, size: 18),
                         ),
-                  hintText: context.l10n.searchReportNameCodeDescription,
+                  labelText: context.l10n.searchReportNameCodeDescription,
                 ),
               ),
             ),
             SizedBox(
-              width: 145,
+              width: 240,
               child: CommonFormWidgets.dropdownFieldTyped<_StatusFilter>(
                 label: context.l10n.status,
                 items: _StatusFilter.values,
@@ -278,6 +301,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
         ),
         AppTableColumn(
           title: context.l10n.actions,
+          minWidth: 144,
           flex: 2,
           cell: (definition) => Row(
             mainAxisSize: MainAxisSize.min,
@@ -288,8 +312,8 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
                     ? () => _openForm(context, definition: definition)
                     : null,
                 constraints: const BoxConstraints.tightFor(
-                  width: 28,
-                  height: 28,
+                  width: 40,
+                  height: 40,
                 ),
                 padding: EdgeInsets.zero,
                 icon: const Icon(Icons.edit, size: 16),
@@ -302,8 +326,8 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
                     ? () => _toggleActive(context, definition)
                     : null,
                 constraints: const BoxConstraints.tightFor(
-                  width: 28,
-                  height: 28,
+                  width: 40,
+                  height: 40,
                 ),
                 padding: EdgeInsets.zero,
                 icon: Icon(
@@ -312,7 +336,7 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
                       : Icons.toggle_off_outlined,
                   size: 18,
                   color: definition.isActive
-                      ? AppColors.primaryDark
+                      ? AppColors.primaryForeground
                       : AppColors.textSecondary,
                 ),
               ),
@@ -323,8 +347,8 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
                       ? () => _confirmDelete(context, definition)
                       : null,
                   constraints: const BoxConstraints.tightFor(
-                    width: 28,
-                    height: 28,
+                    width: 40,
+                    height: 40,
                   ),
                   padding: EdgeInsets.zero,
                   icon: const Icon(
@@ -358,7 +382,9 @@ class _ReportDefinitionsPageState extends State<ReportDefinitionsPage> {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: muted ? AppColors.textSecondary : AppColors.primaryDark,
+            color: muted
+                ? AppColors.textSecondary
+                : AppColors.primaryForeground,
           ),
         ),
       ),

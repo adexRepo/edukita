@@ -1,3 +1,7 @@
+import 'package:edukita/widgets/app_error_dialog.dart';
+import 'package:flutter/services.dart';
+import 'package:edukita/widgets/app_inline_error.dart';
+import 'package:edukita/widgets/app_desktop_workspace.dart';
 import 'dart:io' as io;
 
 import 'package:edukita/core/helper/pageable.dart';
@@ -49,6 +53,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
   String _searchQuery = '';
   _CurriculumView _selectedView = _CurriculumView.curriculums;
   double _navigatorWidth = 232;
+  final _searchFocus = FocusNode();
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -74,6 +79,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
 
   @override
   void dispose() {
+    _searchFocus.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -382,39 +388,64 @@ class _SyllabusPageState extends State<SyllabusPage> {
   }
 
   Widget _buildContent(SubjectState state, StrategyState strategyState) {
-    if (state.error != null) {
-      return Center(child: Text(context.l10n.errorWithDetails(state.error!)));
-    }
-    if (strategyState.error != null) {
-      return Center(
-        child: Text(context.l10n.errorWithDetails(strategyState.error!)),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildContentHeader(state),
-        AppLoadingStrip(isLoading: state.isLoading || strategyState.isLoading),
-        const SizedBox(height: AppPageHeaderStyle.bottomGap),
-        Expanded(child: _buildSelectedTable(state, strategyState)),
-      ],
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () =>
+            _searchFocus.requestFocus(),
+      },
+      child: Focus(
+        autofocus: true,
+        child: AppDesktopWorkspace(
+          header: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildContentHeader(state),
+              if (state.error != null || strategyState.error != null)
+                AppInlineError(
+                  message: context.l10n.operationFailedTryAgain,
+                  onDetails: () => showErrorDetailDialog(
+                    context,
+                    title: context.l10n.operationFailedTryAgain,
+                    error: state.error ?? strategyState.error!,
+                  ),
+                  onRetry: () {
+                    context.read<SubjectCubit>().loadCurriculum(
+                      forceRefresh: true,
+                    );
+                    context.read<StrategyCubit>().loadStrategies(
+                      forceRefresh: true,
+                    );
+                  },
+                ),
+              AppLoadingStrip(
+                isLoading: state.isLoading || strategyState.isLoading,
+              ),
+              const SizedBox(height: AppPageHeaderStyle.bottomGap),
+            ],
+          ),
+          content: _buildSelectedTable(state, strategyState),
+        ),
+      ),
     );
   }
 
   Widget _buildContentHeader(SubjectState state) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 680;
+        final compact =
+            constraints.maxWidth /
+                (MediaQuery.textScalerOf(context).scale(12) / 12) <
+            1000;
         final search = SizedBox(
           width: compact ? double.infinity : 320,
           child: TextField(
             key: ValueKey(_selectedView),
             controller: _searchController,
+            focusNode: _searchFocus,
             onChanged: (value) => setState(() => _searchQuery = value),
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.search),
-              hintText: context.l10n.searchItems(
+              labelText: context.l10n.searchItems(
                 _viewLabel(context, _selectedView).toLowerCase(),
               ),
               suffixIcon: _searchQuery.isEmpty
@@ -454,9 +485,9 @@ class _SyllabusPageState extends State<SyllabusPage> {
                   refresh,
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.sm),
               search,
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.sm),
               Align(alignment: Alignment.centerLeft, child: action),
             ],
           );
@@ -549,6 +580,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
         ),
         AppTableColumn(
           title: context.l10n.actions,
+          minWidth: 144,
           cell: (curriculum) => _actionCell(
             onEdit: () => _showCurriculumForm(existingCurriculum: curriculum),
             onDelete: () => _confirmDelete(
@@ -631,6 +663,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
         ),
         AppTableColumn(
           title: context.l10n.actions,
+          minWidth: 144,
           flex: 1,
           cell: (syllabus) => _actionCell(
             onEdit: () => _showSyllabusForm(
@@ -677,6 +710,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
         ),
         AppTableColumn(
           title: context.l10n.actions,
+          minWidth: 144,
           cell: (subject) => _actionCell(
             onEdit: () => _showSubjectForm(existingSubject: subject),
             onDelete: () => _confirmDelete(
@@ -730,6 +764,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
         ),
         AppTableColumn(
           title: context.l10n.actions,
+          minWidth: 144,
           cell: (unit) => _actionCell(
             onEdit: () => _showUnitForm(state.subjects, existingUnit: unit),
             onDelete: () => _confirmDelete(
@@ -784,6 +819,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
         ),
         AppTableColumn(
           title: context.l10n.actions,
+          minWidth: 144,
           cell: (competency) => _actionCell(
             onEdit: () => _showCompetencyForm(
               state.units,
@@ -840,6 +876,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
         ),
         AppTableColumn(
           title: context.l10n.actions,
+          minWidth: 144,
           flex: 2,
           cell: (strategy) => _actionCell(
             onDownload: strategy.sampleFilePath?.trim().isNotEmpty == true
@@ -900,7 +937,7 @@ class _SyllabusPageState extends State<SyllabusPage> {
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
           ),
           if (subtitle?.trim().isNotEmpty == true) ...[
-            const SizedBox(height: 2),
+            const SizedBox(height: AppSpacing.xxs),
             Text(
               subtitle!,
               maxLines: 1,
@@ -943,21 +980,21 @@ class _SyllabusPageState extends State<SyllabusPage> {
             IconButton(
               tooltip: context.l10n.downloadSample,
               onPressed: onDownload,
-              constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
               padding: EdgeInsets.zero,
               icon: const Icon(Icons.download_outlined, size: 17),
             ),
           IconButton(
             tooltip: context.l10n.edit,
             onPressed: onEdit,
-            constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
             padding: EdgeInsets.zero,
             icon: const Icon(Icons.edit_outlined, size: 17),
           ),
           IconButton(
             tooltip: context.l10n.delete,
             onPressed: onDelete,
-            constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
             padding: EdgeInsets.zero,
             color: AppColors.errorDark,
             icon: const Icon(
@@ -1036,7 +1073,7 @@ class _DeleteImpactContent extends StatelessWidget {
             border: Border.all(
               color: AppColors.warning.withValues(alpha: 0.28),
             ),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadii.panel),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1054,7 +1091,7 @@ class _DeleteImpactContent extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.sm),
         Text(
           context.l10n.reviewCannotUndo,
           style: const TextStyle(
@@ -1194,7 +1231,7 @@ class _CurriculumNavigator extends StatelessWidget {
           SizedBox(
             width: width,
             child: Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(AppSpacing.sm),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1211,7 +1248,7 @@ class _CurriculumNavigator extends StatelessWidget {
                                 fontWeight: FontWeight.w800,
                               ),
                         ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: AppSpacing.xxs),
                         Text(
                           context.l10n.setupStructure,
                           style: const TextStyle(
@@ -1382,48 +1419,63 @@ class _CurriculumNavItem extends StatelessWidget {
     final borderColor = selected
         ? AppColors.primary.withValues(alpha: 0.28)
         : AppColors.border;
-    final foreground = selected ? AppColors.primaryDark : AppColors.textPrimary;
+    final foreground = selected
+        ? AppColors.primaryForeground
+        : AppColors.textPrimary;
 
     return Tooltip(
       message: _viewLabel(context, view),
       waitDuration: const Duration(milliseconds: 450),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Container(
-          width: compact ? 168 : null,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          decoration: BoxDecoration(
-            color: background,
-            border: Border.all(color: borderColor),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Icon(view.icon, size: 18, color: foreground),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Text(
-                  _viewLabel(context, view),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: foreground,
-                    fontSize: 12,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+      child: Semantics(
+        selected: selected,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadii.panel),
+            onTap: onTap,
+            child: Ink(
+              width: compact ? 168 : null,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: background,
+                border: Border.all(color: borderColor),
+                borderRadius: BorderRadius.circular(AppRadii.panel),
+              ),
+              child: Row(
+                children: [
+                  Icon(view.icon, size: 18, color: foreground),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      _viewLabel(context, view),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: foreground,
+                        fontSize: 12,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Text(
+                    count.toString(),
+                    style: TextStyle(
+                      color: selected
+                          ? AppColors.primaryForeground
+                          : AppColors.textHint,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Text(
-                count.toString(),
-                style: TextStyle(
-                  color: selected ? AppColors.primaryDark : AppColors.textHint,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -1442,7 +1494,10 @@ class _StatusChip extends StatelessWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xxs,
+        ),
         decoration: BoxDecoration(
           color: active
               ? AppColors.success.withValues(alpha: 0.12)
@@ -1455,11 +1510,11 @@ class _StatusChip extends StatelessWidget {
           ),
         ),
         child: Text(
-          label,
+          active ? context.l10n.statusActive : context.l10n.statusInactive,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: active ? AppColors.success : AppColors.textSecondary,
+            color: active ? AppColors.textPrimary : AppColors.textSecondary,
             fontSize: 11,
             fontWeight: FontWeight.w700,
           ),

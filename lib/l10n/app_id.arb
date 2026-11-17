@@ -1854,5 +1854,6 @@
   },
   "studentsLoadFailed": "Data siswa belum dapat diperbarui. Coba lagi.",
   "studentsSearchNameHint": "Cari nama siswa",
-  "studentSaveFailed": "Siswa belum dapat disimpan. Coba lagi. Input Anda tetap disimpan."
+  "studentSaveFailed": "Siswa belum dapat disimpan. Coba lagi. Input Anda tetap disimpan.",
+  "operationFailedTryAgain": "Operasi belum berhasil. Silakan coba lagi."
 }

@@ -1,3 +1,9 @@
+import 'package:edukita/widgets/app_error_dialog.dart';
+import 'package:edukita/widgets/app_inline_error.dart';
+import 'package:edukita/widgets/app_desktop_workspace.dart';
+import 'package:edukita/widgets/app_form_row.dart';
+import 'package:edukita/widgets/app_form_scope.dart';
+import 'package:edukita/widgets/app_dialog.dart';
 import 'dart:math';
 
 import 'package:edukita/core/helper/pageable.dart';
@@ -30,6 +36,15 @@ class UsersPage extends StatefulWidget {
 
 class _UsersPageState extends State<UsersPage> {
   String _query = '';
+  final _searchFocus = FocusNode();
+  final _searchController = TextEditingController();
+  @override
+  void dispose() {
+    _searchFocus.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
   bool _openedInitialTeacher = false;
   int _tabIndex = 0;
 
@@ -131,7 +146,10 @@ class _UsersPageState extends State<UsersPage> {
       },
     );
     if (confirmed != true || !mounted) return;
-    await context.read<UserManagementCubit>().setUserActive(user.id, targetActive);
+    await context.read<UserManagementCubit>().setUserActive(
+      user.id,
+      targetActive,
+    );
   }
 
   @override
@@ -147,90 +165,123 @@ class _UsersPageState extends State<UsersPage> {
               message: context.l10n.noPermissionViewUserManagement,
             );
           }
-          return Column(
-            children: [
-              Padding(
-                padding: AppPageHeaderStyle.pagePadding,
-                child: AppPageHeader(
-                  title: context.l10n.menuUserManagement,
-                  subtitle: isAdmin
-                      ? context.l10n.userManagementSubtitleAdmin
-                      : context.l10n.userManagementSubtitleStandard,
-                  trailing: (!isAdmin || _tabIndex == 0) && state.canCreateUsers
-                      ? FilledButton.icon(
-                          onPressed: () => _showUserDialog(),
-                          icon: const Icon(Icons.add),
-                          label: Text(context.l10n.addUser),
-                        )
-                      : null,
-                ),
-              ),
-              AppLoadingStrip(isLoading: state.loading),
-              if (isAdmin)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: SegmentedButton<int>(
-                      selected: {_tabIndex},
-                      onSelectionChanged: (selected) {
-                        setState(() => _tabIndex = selected.first);
-                      },
-                      segments: [
-                        ButtonSegment(
-                          value: 0,
-                          icon: const Icon(Icons.people_alt_outlined),
-                          label: Text(context.l10n.usersTab),
-                        ),
-                        ButtonSegment(
-                          value: 1,
-                          icon: const Icon(Icons.admin_panel_settings_outlined),
-                          label: Text(context.l10n.rolesPermissions),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: state.error != null
-                      ? Center(child: Text(state.error!))
-                      : isAdmin && _tabIndex == 1
-                          ? _RolePermissionsPanel(
-                              rolePermissions: state.rolePermissions,
-                              onSave: (role, permissions) => context
-                                  .read<UserManagementCubit>()
-                                  .saveRolePermissions(role, permissions),
-                            )
-                          : Column(
-                              children: [
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: AppColors.border,
-                                    ),
-                                  ),
-                                  child: TextField(
-                                    onChanged: (value) =>
-                                        setState(() => _query = value),
-                                    decoration: InputDecoration(
-                                      prefixIcon: const Icon(Icons.search),
-                                      hintText: context.l10n.searchUsersHint,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Expanded(child: _buildTable(users, state)),
-                              ],
-                            ),
+          return CallbackShortcuts(
+            bindings: {
+              const SingleActivator(
+                LogicalKeyboardKey.keyF,
+                control: true,
+              ): () =>
+                  _searchFocus.requestFocus(),
+            },
+            child: Focus(
+              autofocus: true,
+              child: AppDesktopWorkspace(
+                header: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: AppPageHeaderStyle.pagePadding,
+                      child: AppPageHeader(
+                        title: context.l10n.menuUserManagement,
+                        subtitle: isAdmin
+                            ? context.l10n.userManagementSubtitleAdmin
+                            : context.l10n.userManagementSubtitleStandard,
+                        trailing:
+                            (!isAdmin || _tabIndex == 0) && state.canCreateUsers
+                            ? FilledButton.icon(
+                                onPressed: () => _showUserDialog(),
+                                icon: const Icon(Icons.add),
+                                label: Text(context.l10n.addUser),
+                              )
+                            : null,
                       ),
+                    ),
+                    AppLoadingStrip(isLoading: state.loading),
+                    if (state.error != null)
+                      AppInlineError(
+                        message: context.l10n.operationFailedTryAgain,
+                        onDetails: () => showErrorDetailDialog(
+                          context,
+                          title: context.l10n.operationFailedTryAgain,
+                          error: state.error!,
+                        ),
+                        onRetry: () =>
+                            context.read<UserManagementCubit>().load(),
+                      ),
+                    if (isAdmin)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Wrap(
+                            spacing: AppSpacing.xs,
+                            runSpacing: AppSpacing.xs,
+                            children: [
+                              ChoiceChip(
+                                label: Text(context.l10n.usersTab),
+                                avatar: const Icon(
+                                  Icons.people_alt_outlined,
+                                  size: 20,
+                                ),
+                                selected: _tabIndex == 0,
+                                onSelected: (_) =>
+                                    setState(() => _tabIndex = 0),
+                              ),
+                              ChoiceChip(
+                                label: Text(context.l10n.rolesPermissions),
+                                avatar: const Icon(
+                                  Icons.admin_panel_settings_outlined,
+                                  size: 20,
+                                ),
+                                selected: _tabIndex == 1,
+                                onSelected: (_) =>
+                                    setState(() => _tabIndex = 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                content: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: isAdmin && _tabIndex == 1
+                      ? _RolePermissionsPanel(
+                          rolePermissions: state.rolePermissions,
+                          onSave: (role, permissions) => context
+                              .read<UserManagementCubit>()
+                              .saveRolePermissions(role, permissions),
+                        )
+                      : Column(
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(AppSpacing.sm),
+                              decoration: BoxDecoration(
+                                color: AppColors.white,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.panel,
+                                ),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: TextField(
+                                controller: _searchController,
+                                focusNode: _searchFocus,
+                                onChanged: (value) =>
+                                    setState(() => _query = value),
+                                decoration: InputDecoration(
+                                  prefixIcon: const Icon(Icons.search),
+                                  labelText: context.l10n.searchUsersHint,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Expanded(child: _buildTable(users, state)),
+                          ],
+                        ),
+                ),
               ),
-            ],
+            ),
           );
         },
       ),
@@ -253,7 +304,7 @@ class _UsersPageState extends State<UsersPage> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
         border: Border.all(color: AppColors.border),
       ),
       clipBehavior: Clip.antiAlias,
@@ -266,104 +317,113 @@ class _UsersPageState extends State<UsersPage> {
           totalItems: users.length,
         ),
         columns: [
-        AppTableColumn(
-          title: context.l10n.user,
-          flex: 4,
-          minWidth: 180,
-          sortValue: (user) =>
-              user.fullName.isEmpty ? 0 : user.fullName.codeUnitAt(0),
-          cell: (user) => Text(
-            '${user.fullName}\n@${user.username}',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, height: 1.2),
+          AppTableColumn(
+            title: context.l10n.user,
+            flex: 4,
+            minWidth: 180,
+            sortValue: (user) =>
+                user.fullName.isEmpty ? 0 : user.fullName.codeUnitAt(0),
+            cell: (user) => Text(
+              '${user.fullName}\n@${user.username}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, height: 1.2),
+            ),
           ),
-        ),
-        AppTableColumn(
-          title: context.l10n.role,
-          flex: 2,
-          minWidth: 110,
-          cell: (user) => _pill(_roleLabel(context, user.role)),
-        ),
-        AppTableColumn(
-          title: context.l10n.teacherLink,
-          flex: 3,
-          minWidth: 160,
-          cell: (user) => Text(
-            user.teacherName ?? '-',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12),
+          AppTableColumn(
+            title: context.l10n.role,
+            flex: 2,
+            minWidth: 110,
+            cell: (user) => _pill(_roleLabel(context, user.role)),
           ),
-        ),
-        AppTableColumn(
-          title: context.l10n.status,
-          flex: 2,
-          minWidth: 100,
-          cell: (user) => _pill(
-            user.isActive
-                ? context.l10n.statusActive
-                : context.l10n.statusInactive,
-            color: user.isActive ? AppColors.primaryDark : AppColors.errorDark,
-          ),
-        ),
-        AppTableColumn(
-          title: context.l10n.extraAccess,
-          flex: 3,
-          minWidth: 170,
-          cell: (user) {
-            final count = state.extraAccessByUser[user.id]?.length ?? 0;
-            return Text(
-              count == 0 ? '-' : context.l10n.extraAccessCount(count),
+          AppTableColumn(
+            title: context.l10n.teacherLink,
+            flex: 3,
+            minWidth: 160,
+            cell: (user) => Text(
+              user.teacherName ?? '-',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 12),
-            );
-          },
-        ),
-        AppTableColumn(
-          title: context.l10n.actions,
-          flex: 2,
-          minWidth: 120,
-          cell: (user) {
-            final canEdit = state.currentRole.canManage(user.role) ||
-                state.currentRole.isAdmin;
-            final canUpdate = canEdit && state.canUpdateUsers;
-            final canDelete = canEdit && state.canDeleteUsers;
-            final protectedAdmin = user.username == 'admin';
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: context.l10n.editUserTooltip,
-                  onPressed: canUpdate ? () => _showUserDialog(user: user) : null,
-                  constraints:
-                      const BoxConstraints.tightFor(width: 28, height: 28),
-                  padding: EdgeInsets.zero,
-                  icon: const Icon(Icons.edit, size: 16),
-                ),
-                IconButton(
-                  tooltip: user.isActive
-                      ? context.l10n.deactivate
-                      : context.l10n.activate,
-                  onPressed: canDelete && !protectedAdmin
-                      ? () => _toggleActive(user)
-                      : null,
-                  constraints:
-                      const BoxConstraints.tightFor(width: 28, height: 28),
-                  padding: EdgeInsets.zero,
-                  icon: Icon(
-                    user.isActive
-                        ? Icons.block_outlined
-                        : Icons.check_circle_outline,
-                    size: 16,
-                    color: user.isActive
-                        ? AppColors.error
-                        : AppColors.primaryDark,
+            ),
+          ),
+          AppTableColumn(
+            title: context.l10n.status,
+            flex: 2,
+            minWidth: 100,
+            cell: (user) => _pill(
+              user.isActive
+                  ? context.l10n.statusActive
+                  : context.l10n.statusInactive,
+              color: user.isActive
+                  ? AppColors.primaryForeground
+                  : AppColors.errorDark,
+            ),
+          ),
+          AppTableColumn(
+            title: context.l10n.extraAccess,
+            flex: 3,
+            minWidth: 170,
+            cell: (user) {
+              final count = state.extraAccessByUser[user.id]?.length ?? 0;
+              return Text(
+                count == 0 ? '-' : context.l10n.extraAccessCount(count),
+                style: const TextStyle(fontSize: 12),
+              );
+            },
+          ),
+          AppTableColumn(
+            title: context.l10n.actions,
+            flex: 2,
+            minWidth: 120,
+            cell: (user) {
+              final canEdit =
+                  state.currentRole.canManage(user.role) ||
+                  state.currentRole.isAdmin;
+              final canUpdate = canEdit && state.canUpdateUsers;
+              final canDelete = canEdit && state.canDeleteUsers;
+              final protectedAdmin = user.username == 'admin';
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: context.l10n.editUserTooltip,
+                    onPressed: canUpdate
+                        ? () => _showUserDialog(user: user)
+                        : null,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 40,
+                      height: 40,
+                    ),
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(Icons.edit, size: 16),
                   ),
-                ),
-              ],
-            );
-          },
-        ),
+                  IconButton(
+                    tooltip: user.isActive
+                        ? context.l10n.deactivate
+                        : context.l10n.activate,
+                    onPressed: canDelete && !protectedAdmin
+                        ? () => _toggleActive(user)
+                        : null,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 40,
+                      height: 40,
+                    ),
+                    padding: EdgeInsets.zero,
+                    icon: Icon(
+                      user.isActive
+                          ? Icons.block_outlined
+                          : Icons.check_circle_outline,
+                      size: 16,
+                      color: user.isActive
+                          ? AppColors.error
+                          : AppColors.primaryForeground,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
@@ -389,7 +449,6 @@ class _UsersPageState extends State<UsersPage> {
       ),
     );
   }
-
 }
 
 String _roleLabel(BuildContext context, AppUserRole role) {
@@ -439,7 +498,8 @@ class _RolePermissionsPanel extends StatefulWidget {
   final Future<void> Function(
     AppUserRole role,
     Map<String, AppMenuPermission> permissions,
-  ) onSave;
+  )
+  onSave;
 
   @override
   State<_RolePermissionsPanel> createState() => _RolePermissionsPanelState();
@@ -465,7 +525,8 @@ class _RolePermissionsPanelState extends State<_RolePermissionsPanel> {
   }
 
   Map<String, AppMenuPermission> _permissionsFor(AppUserRole role) {
-    final source = widget.rolePermissions[role] ??
+    final source =
+        widget.rolePermissions[role] ??
         AppMenuAccessRegistry.defaultPermissionsForRole(role);
     return {
       for (final menu in AppMenuAccessRegistry.all)
@@ -480,21 +541,17 @@ class _RolePermissionsPanelState extends State<_RolePermissionsPanel> {
     });
   }
 
-  void _toggle(
-    AppMenuAccess menu,
-    AppPermissionAction action,
-    bool value,
-  ) {
+  void _toggle(AppMenuAccess menu, AppPermissionAction action, bool value) {
     final current = _draft[menu.code] ?? AppMenuPermission.none(menu.code);
     var next = switch (action) {
       AppPermissionAction.view => current.copyWith(
-          canView: value,
-          canCreate: value ? current.canCreate : false,
-          canUpdate: value ? current.canUpdate : false,
-          canDelete: value ? current.canDelete : false,
-          canExport: value ? current.canExport : false,
-          canApprove: value ? current.canApprove : false,
-        ),
+        canView: value,
+        canCreate: value ? current.canCreate : false,
+        canUpdate: value ? current.canUpdate : false,
+        canDelete: value ? current.canDelete : false,
+        canExport: value ? current.canExport : false,
+        canApprove: value ? current.canApprove : false,
+      ),
       AppPermissionAction.create => current.copyWith(canCreate: value),
       AppPermissionAction.update => current.copyWith(canUpdate: value),
       AppPermissionAction.delete => current.copyWith(canDelete: value),
@@ -517,7 +574,13 @@ class _RolePermissionsPanelState extends State<_RolePermissionsPanel> {
       await widget.onSave(_selectedRole, _draft);
       AppToast.showSuccess(successMessage);
     } catch (e) {
-      AppToast.showFailed(e.toString().replaceFirst('Bad state: ', ''));
+      if (!mounted) return;
+      showErrorToastWithDetails(
+        context,
+        title: context.l10n.operationFailedTryAgain,
+        message: context.l10n.operationFailedTryAgain,
+        error: e,
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -529,11 +592,15 @@ class _RolePermissionsPanelState extends State<_RolePermissionsPanel> {
       width: double.infinity,
       child: Center(
         child: SizedBox(
-          width: 32,
-          height: 32,
+          width: 40,
+          height: 40,
           child: Checkbox(
             value: permission.allows(action),
-            onChanged: (value) => _toggle(menu, action, value ?? false),
+            onChanged: _saving
+                ? null
+                : (value) => _toggle(menu, action, value ?? false),
+            semanticLabel:
+                '${_menuLabel(context, menu.code)}: ${_permissionActionLabel(context, action)}',
             visualDensity: VisualDensity.compact,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
@@ -544,28 +611,29 @@ class _RolePermissionsPanelState extends State<_RolePermissionsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
+    return AppDesktopWorkspace(
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: AppFormRow(
+              minFieldWidth: 300,
+              children: [
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       context.l10n.rolesPermissions,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -577,85 +645,73 @@ class _RolePermissionsPanelState extends State<_RolePermissionsPanel> {
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 220,
-                child: SegmentedButton<AppUserRole>(
+                SegmentedButton<AppUserRole>(
                   selected: {_selectedRole},
-                  onSelectionChanged: (selected) => _changeRole(selected.first),
+                  onSelectionChanged: _saving
+                      ? null
+                      : (selected) => _changeRole(selected.first),
                   segments: [
                     ButtonSegment(
                       value: AppUserRole.staff,
-                      label: SizedBox(
-                        width: 74,
-                        child: Text(
-                          _roleLabel(context, AppUserRole.staff),
-                          textAlign: TextAlign.center,
-                        ),
+                      label: Text(
+                        _roleLabel(context, AppUserRole.staff),
+                        textAlign: TextAlign.center,
                       ),
                     ),
                     ButtonSegment(
                       value: AppUserRole.teacher,
-                      label: SizedBox(
-                        width: 74,
-                        child: Text(
-                          _roleLabel(context, AppUserRole.teacher),
-                          textAlign: TextAlign.center,
-                        ),
+                      label: Text(
+                        _roleLabel(context, AppUserRole.teacher),
+                        textAlign: TextAlign.center,
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              FilledButton.icon(
-                onPressed: _saving ? null : _save,
-                icon: const Icon(Icons.save_outlined),
-                label: Text(_saving ? context.l10n.saving : context.l10n.save),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: AppTable<AppMenuAccess>(
-            data: AppMenuAccessRegistry.all,
-            pageable: Pageable(
-              page: 0,
-              size: AppMenuAccessRegistry.all.length,
-              totalPages: 1,
-              totalItems: AppMenuAccessRegistry.all.length,
-            ),
-            emptyMessage: context.l10n.noMenuAvailable,
-            columns: [
-              AppTableColumn(
-                title: context.l10n.menuColumn,
-                flex: 3,
-                minWidth: 220,
-                cell: (menu) => Text(
-                  _menuLabel(context, menu.code),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                FilledButton.icon(
+                  onPressed: _saving ? null : _save,
+                  icon: const Icon(Icons.save_outlined),
+                  label: Text(
+                    _saving ? context.l10n.saving : context.l10n.save,
                   ),
                 ),
-              ),
-              for (final action in AppPermissionAction.values)
-                AppTableColumn(
-                  title: _permissionActionLabel(context, action),
-                  flex: 1,
-                  minWidth: 92,
-                  alignment: Alignment.center,
-                  headerTextAlign: TextAlign.center,
-                  cell: (menu) => _permissionCheck(menu, action),
-                ),
-            ],
+              ],
+            ),
           ),
+          const SizedBox(height: 12),
+        ],
+      ),
+      content: AppTable<AppMenuAccess>(
+        data: AppMenuAccessRegistry.all,
+        pageable: Pageable(
+          page: 0,
+          size: AppMenuAccessRegistry.all.length,
+          totalPages: 1,
+          totalItems: AppMenuAccessRegistry.all.length,
         ),
-      ],
+        emptyMessage: context.l10n.noMenuAvailable,
+        columns: [
+          AppTableColumn(
+            title: context.l10n.menuColumn,
+            flex: 3,
+            minWidth: 220,
+            cell: (menu) => Text(
+              _menuLabel(context, menu.code),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ),
+          for (final action in AppPermissionAction.values)
+            AppTableColumn(
+              title: _permissionActionLabel(context, action),
+              flex: 1,
+              minWidth: 92,
+              alignment: Alignment.center,
+              headerTextAlign: TextAlign.center,
+              cell: (menu) => _permissionCheck(menu, action),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -723,12 +779,13 @@ class _UserDialogState extends State<_UserDialog> {
   void initState() {
     super.initState();
     final user = widget.user;
-    _role = user?.role ??
+    _role =
+        user?.role ??
         (widget.initialTeacher != null
             ? AppUserRole.teacher
             : widget.creatableRoles.isEmpty
-                ? AppUserRole.teacher
-                : widget.creatableRoles.first);
+            ? AppUserRole.teacher
+            : widget.creatableRoles.first);
     _teacherId = user?.teacherId ?? widget.initialTeacher?.id;
     _usernameController = TextEditingController(text: user?.username ?? '');
     _passwordController = TextEditingController();
@@ -774,7 +831,13 @@ class _UserDialogState extends State<_UserDialog> {
       AppToast.showSuccess(successMessage);
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      AppToast.showFailed(e.toString().replaceFirst('Bad state: ', ''));
+      if (!mounted) return;
+      showErrorToastWithDetails(
+        context,
+        title: context.l10n.operationFailedTryAgain,
+        message: context.l10n.operationFailedTryAgain,
+        error: e,
+      );
       if (mounted) setState(() => _saving = false);
     }
   }
@@ -784,8 +847,8 @@ class _UserDialogState extends State<_UserDialog> {
     final roleOptions = _editing
         ? [_role]
         : widget.creatableRoles.isEmpty
-            ? [_role]
-            : widget.creatableRoles;
+        ? [_role]
+        : widget.creatableRoles;
     final teachers = _teacherOptions();
     final defaultRoleMenus = AppMenuAccessRegistry.defaultCodesForRole(_role);
     final extraMenus = AppMenuAccessRegistry.all.where((menu) {
@@ -793,22 +856,25 @@ class _UserDialogState extends State<_UserDialog> {
           widget.currentAllowedMenuCodes.contains(menu.code);
     }).toList();
 
-    return AlertDialog(
-      title: AppDialogTitle(
-        _editing ? context.l10n.editUser : context.l10n.createUser,
-      ),
-      content: SizedBox(
-        width: 620,
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
+    return AppFormScope(
+      busy: _saving,
+      onSave: _save,
+      child: AppDialog(
+        title: AppDialogTitle(
+          _editing ? context.l10n.editUser : context.l10n.createUser,
+          enabled: !_saving,
+        ),
+        content: SizedBox(
+          width: 620,
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppFormRow(
+                    children: [
+                      TextFormField(
                         controller: _usernameController,
                         enabled: !_editing,
                         decoration: InputDecoration(
@@ -822,18 +888,16 @@ class _UserDialogState extends State<_UserDialog> {
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
+                      TextFormField(
                         controller: _passwordController,
                         obscureText: true,
                         decoration: InputDecoration(
-                          labelText:
-                              _editing
-                                  ? context.l10n.newPassword
-                                  : context.l10n.temporaryPassword,
-                          hintText: _editing ? context.l10n.leaveEmptyToKeep : null,
+                          labelText: _editing
+                              ? context.l10n.newPassword
+                              : context.l10n.temporaryPassword,
+                          hintText: _editing
+                              ? context.l10n.leaveEmptyToKeep
+                              : null,
                           suffixIcon: Tooltip(
                             message: context.l10n.generateTemporaryPassword,
                             child: IconButton(
@@ -853,50 +917,39 @@ class _UserDialogState extends State<_UserDialog> {
                           }
                           return null;
                         },
-                        inputFormatters: [
-                          LengthLimitingTextInputFormatter(64),
-                        ],
+                        inputFormatters: [LengthLimitingTextInputFormatter(64)],
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  AppFormRow(
+                    children: [
+                      TextFormField(
                         controller: _nickNameController,
                         decoration: InputDecoration(
                           labelText: context.l10n.nickName,
                         ),
                         validator: _requiredMin(context.l10n.nickName, 2),
-                        inputFormatters: [
-                          LengthLimitingTextInputFormatter(40),
-                        ],
+                        inputFormatters: [LengthLimitingTextInputFormatter(40)],
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
+                      TextFormField(
                         controller: _fullNameController,
                         decoration: InputDecoration(
                           labelText: context.l10n.fullName,
                         ),
                         validator: _requiredMin(context.l10n.fullName, 3),
-                        inputFormatters: [
-                          LengthLimitingTextInputFormatter(80),
-                        ],
+                        inputFormatters: [LengthLimitingTextInputFormatter(80)],
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<AppUserRole>(
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  AppFormRow(
+                    children: [
+                      DropdownButtonFormField<AppUserRole>(
                         initialValue: _role,
-                        decoration: InputDecoration(labelText: context.l10n.role),
+                        decoration: InputDecoration(
+                          labelText: context.l10n.role,
+                        ),
                         items: roleOptions
                             .map(
                               (role) => DropdownMenuItem(
@@ -916,10 +969,7 @@ class _UserDialogState extends State<_UserDialog> {
                                 });
                               },
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
+                      DropdownButtonFormField<String>(
                         initialValue: _role.isTeacher ? _teacherId : null,
                         decoration: InputDecoration(
                           labelText: context.l10n.teacher,
@@ -938,7 +988,7 @@ class _UserDialogState extends State<_UserDialog> {
                         onChanged: !_role.isTeacher
                             ? null
                             : (teacherId) =>
-                                setState(() => _teacherId = teacherId),
+                                  setState(() => _teacherId = teacherId),
                         validator: (_) {
                           if (_role.isTeacher && _teacherId == null) {
                             return context.l10n.teacherRequired;
@@ -946,68 +996,68 @@ class _UserDialogState extends State<_UserDialog> {
                           return null;
                         },
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    context.l10n.extraMenuAccess,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                if (extraMenus.isEmpty)
+                  const SizedBox(height: 16),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      context.l10n.noExtraMenuAccess,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
+                      context.l10n.extraMenuAccess,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                  )
-                else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final menu in extraMenus)
-                        FilterChip(
-                          label: Text(_menuLabel(context, menu.code)),
-                          selected: _extraMenuCodes.contains(menu.code),
-                          onSelected: (selected) {
-                            setState(() {
-                              if (selected) {
-                                _extraMenuCodes.add(menu.code);
-                              } else {
-                                _extraMenuCodes.remove(menu.code);
-                              }
-                            });
-                          },
-                        ),
-                    ],
                   ),
-              ],
+                  const SizedBox(height: 8),
+                  if (extraMenus.isEmpty)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        context.l10n.noExtraMenuAccess,
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    )
+                  else
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final menu in extraMenus)
+                          FilterChip(
+                            label: Text(_menuLabel(context, menu.code)),
+                            selected: _extraMenuCodes.contains(menu.code),
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  _extraMenuCodes.add(menu.code);
+                                } else {
+                                  _extraMenuCodes.remove(menu.code);
+                                }
+                              });
+                            },
+                          ),
+                      ],
+                    ),
+                ],
+              ),
             ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: _saving ? null : () => Navigator.pop(context),
+            child: Text(context.l10n.buttonCancel),
+          ),
+          FilledButton(
+            onPressed: _saving ? null : _save,
+            child: Text(_saving ? context.l10n.saving : context.l10n.save),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.pop(context),
-          child: Text(context.l10n.buttonCancel),
-        ),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          child: Text(_saving ? context.l10n.saving : context.l10n.save),
-        ),
-      ],
     );
   }
 

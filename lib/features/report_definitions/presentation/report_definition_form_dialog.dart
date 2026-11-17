@@ -1,3 +1,5 @@
+import 'package:edukita/widgets/app_form_scope.dart';
+import 'package:edukita/widgets/app_form_row.dart';
 import 'dart:async';
 
 import 'package:edukita/core/localization/localization_extension.dart';
@@ -41,6 +43,7 @@ class _ReportDefinitionFormDialogState
   late List<ReportColumnDefinition> _columns;
   late bool _isActive;
   bool _isDetecting = false;
+  bool _saving = false;
   String? _lastSyncedQuery;
 
   @override
@@ -75,7 +78,7 @@ class _ReportDefinitionFormDialogState
   }
 
   void _handleQueryFocusChanged() {
-    if (_queryFocusNode.hasFocus) return;
+    if (_queryFocusNode.hasFocus || _saving) return;
     final query = _queryController.text.trim();
     if (query.isEmpty || query == _lastSyncedQuery) return;
     _syncColumns(
@@ -87,46 +90,59 @@ class _ReportDefinitionFormDialogState
 
   @override
   Widget build(BuildContext context) {
-    final dialogHeight = (MediaQuery.sizeOf(context).height - 88)
-        .clamp(440.0, 720.0)
+    final textScale = MediaQuery.textScalerOf(context).scale(12) / 12;
+    final dialogHeight = (MediaQuery.sizeOf(context).height - 200 * textScale)
+        .clamp(160.0, 640.0)
         .toDouble();
 
-    return AppDialog(
-      title: AppDialogTitle(
-        widget.definition == null
-            ? context.l10n.addReportSetting
-            : context.l10n.editReportSetting,
-      ),
-      content: SizedBox(
-        width: 980,
-        height: dialogHeight,
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildBasicFields(),
-              const SizedBox(height: 10),
-              Expanded(child: _buildReportTabs()),
-              if (_isDetecting) ...[
-                const SizedBox(height: 8),
-                const LinearProgressIndicator(minHeight: 3),
-              ],
-            ],
+    return AppFormScope(
+      busy: _saving || _isDetecting,
+      onSave: _save,
+      child: AppDialog(
+        title: AppDialogTitle(
+          widget.definition == null
+              ? context.l10n.addReportSetting
+              : context.l10n.editReportSetting,
+          enabled: !_saving && !_isDetecting,
+        ),
+        content: SizedBox(
+          width: 980,
+          height: dialogHeight,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(top: AppSpacing.sm),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildBasicFields(),
+                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(height: 480 * textScale, child: _buildReportTabs()),
+                  if (_isDetecting) ...[
+                    const SizedBox(height: 8),
+                    const LinearProgressIndicator(minHeight: 3),
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: (_isDetecting || _saving)
+                ? null
+                : () => Navigator.of(context).pop(),
+            child: Text(context.l10n.buttonCancel),
+          ),
+          FilledButton.icon(
+            onPressed: (_isDetecting || _saving) ? null : _save,
+            icon: const Icon(Icons.save_outlined, size: 17),
+            label: Text(
+              _saving ? context.l10n.saving : context.l10n.buttonSave,
+            ),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _isDetecting ? null : () => Navigator.of(context).pop(),
-          child: Text(context.l10n.buttonCancel),
-        ),
-        FilledButton.icon(
-          onPressed: _isDetecting ? null : _save,
-          icon: const Icon(Icons.save_outlined, size: 17),
-          label: Text(context.l10n.buttonSave),
-        ),
-      ],
     );
   }
 
@@ -134,94 +150,78 @@ class _ReportDefinitionFormDialogState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
+        AppFormRow(
           children: [
-            Expanded(
-              child: TextFormField(
-                controller: _nameController,
-                style: _compactInputStyle,
-                validator: (value) {
-                  if (value?.trim().isEmpty ?? true) {
-                    return context.l10n.reportNameRequired;
-                  }
-                  return null;
-                },
-                decoration: _compactDecoration(
-                  label: '${context.l10n.reportName} *',
-                  hint: context.l10n.reportNameHint,
-                ),
+            TextFormField(
+              controller: _nameController,
+              style: _compactInputStyle,
+              validator: (value) {
+                if (value?.trim().isEmpty ?? true) {
+                  return context.l10n.reportNameRequired;
+                }
+                return null;
+              },
+              decoration: _compactDecoration(
+                label: '${context.l10n.reportName} *',
+                hint: context.l10n.reportNameHint,
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: TextFormField(
-                controller: _fileNameController,
-                style: _compactInputStyle,
-                validator: (value) {
-                  if (value?.trim().isEmpty ?? true) {
-                    return context.l10n.reportFileNameRequired;
-                  }
-                  return null;
-                },
-                decoration: _compactDecoration(
-                  label: '${context.l10n.reportFileName} *',
-                  hint: 'student-exam-score-{year}-{month}',
-                ),
+            TextFormField(
+              controller: _fileNameController,
+              style: _compactInputStyle,
+              validator: (value) {
+                if (value?.trim().isEmpty ?? true) {
+                  return context.l10n.reportFileNameRequired;
+                }
+                return null;
+              },
+              decoration: _compactDecoration(
+                label: '${context.l10n.reportFileName} *',
+                hint: 'student-exam-score-{year}-{month}',
               ),
             ),
-            const SizedBox(width: 10),
-            SizedBox(
-              width: 112,
-              child: CheckboxListTile(
-                value: _isActive,
-                onChanged: (value) => setState(() => _isActive = value ?? true),
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                title: Text(
-                  context.l10n.statusActive,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
+            CheckboxListTile(
+              value: _isActive,
+              onChanged: (value) => setState(() => _isActive = value ?? true),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(
+                context.l10n.statusActive,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        AppFormRow(
           children: [
-            SizedBox(
-              width: 160,
-              child: InputDecorator(
-                decoration: _compactDecoration(
-                  label: context.l10n.reportCode,
-                  hint: context.l10n.autoGenerated,
-                ),
-                child: Text(
-                  widget.definition?.code ?? context.l10n.auto,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
+            InputDecorator(
+              decoration: _compactDecoration(
+                label: context.l10n.reportCode,
+                hint: context.l10n.autoGenerated,
+              ),
+              child: Text(
+                widget.definition?.code ?? context.l10n.auto,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: TextFormField(
-                controller: _descriptionController,
-                style: _compactInputStyle,
-                minLines: 1,
-                maxLines: 2,
-                decoration: _compactDecoration(
-                  label: context.l10n.description,
-                  hint: context.l10n.descriptionHint,
-                ),
+            TextFormField(
+              controller: _descriptionController,
+              style: _compactInputStyle,
+              minLines: 1,
+              maxLines: 2,
+              decoration: _compactDecoration(
+                label: context.l10n.description,
+                hint: context.l10n.descriptionHint,
               ),
             ),
           ],
@@ -237,7 +237,7 @@ class _ReportDefinitionFormDialogState
         decoration: BoxDecoration(
           color: AppColors.white,
           border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadii.panel),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -274,7 +274,7 @@ class _ReportDefinitionFormDialogState
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel - AppSpacing.sm),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -355,7 +355,7 @@ class _ReportDefinitionFormDialogState
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel - AppSpacing.sm),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -375,7 +375,7 @@ class _ReportDefinitionFormDialogState
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: AppSpacing.xxs),
                       Text(
                         context.l10n.configuredColumns(_columns.length),
                         style: const TextStyle(
@@ -399,7 +399,7 @@ class _ReportDefinitionFormDialogState
                   ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.sm),
             if (_columns.isEmpty)
               Expanded(
                 child: Center(
@@ -443,11 +443,14 @@ class _ReportDefinitionFormDialogState
       labelText: label,
       hintText: hint,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.sm,
+      ),
       labelStyle: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
       floatingLabelStyle: const TextStyle(
         fontSize: 11,
-        color: AppColors.primaryDark,
+        color: AppColors.primaryForeground,
         fontWeight: FontWeight.w600,
       ),
     );
@@ -512,54 +515,60 @@ class _ReportDefinitionFormDialogState
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    final l10n = context.l10n;
-    final navigator = Navigator.of(context);
-    if (_queryController.text.trim() != _lastSyncedQuery || _columns.isEmpty) {
-      await _syncColumns(
-        showSuccessToast: false,
-        useDatabasePreview: false,
-        showLoading: true,
-      );
-      if (!mounted ||
-          _columns.isEmpty ||
-          _queryController.text.trim() != _lastSyncedQuery) {
-        return;
-      }
-    }
-
-    final now = DateTime.now().toIso8601String();
-    final existing = widget.definition;
-    final definition = ReportDefinition(
-      id: existing?.id ?? const Uuid().v4(),
-      code: _codeController.text.trim(),
-      name: _nameController.text.trim(),
-      fileNamePattern: _fileNameController.text.trim(),
-      description: _descriptionController.text.trim(),
-      querySql: _queryController.text.trim(),
-      columns: _columns,
-      isActive: _isActive,
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
-    );
-
+    if (_saving || _isDetecting || !_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
     try {
-      await widget.onSave(definition);
-      if (!mounted) return;
-      AppToast.showSubmissionSuccess(
-        action: existing == null
-            ? SubmissionAction.create
-            : SubmissionAction.update,
-        subject: l10n.reportSettingSubject,
+      final l10n = context.l10n;
+      final navigator = Navigator.of(context);
+      if (_queryController.text.trim() != _lastSyncedQuery ||
+          _columns.isEmpty) {
+        await _syncColumns(
+          showSuccessToast: false,
+          useDatabasePreview: false,
+          showLoading: true,
+        );
+        if (!mounted ||
+            _columns.isEmpty ||
+            _queryController.text.trim() != _lastSyncedQuery) {
+          return;
+        }
+      }
+
+      final now = DateTime.now().toIso8601String();
+      final existing = widget.definition;
+      final definition = ReportDefinition(
+        id: existing?.id ?? const Uuid().v4(),
+        code: _codeController.text.trim(),
+        name: _nameController.text.trim(),
+        fileNamePattern: _fileNameController.text.trim(),
+        description: _descriptionController.text.trim(),
+        querySql: _queryController.text.trim(),
+        columns: _columns,
+        isActive: _isActive,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
       );
-      navigator.pop();
-    } catch (e) {
-      if (!mounted) return;
-      showErrorToastWithDetails(
-        navigator.context,
-        title: l10n.failedSaveReport,
-        error: e,
-      );
+
+      try {
+        await widget.onSave(definition);
+        if (!mounted) return;
+        AppToast.showSubmissionSuccess(
+          action: existing == null
+              ? SubmissionAction.create
+              : SubmissionAction.update,
+          subject: l10n.reportSettingSubject,
+        );
+        navigator.pop();
+      } catch (e) {
+        if (!mounted) return;
+        showErrorToastWithDetails(
+          navigator.context,
+          title: l10n.failedSaveReport,
+          error: e,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 }
@@ -634,146 +643,118 @@ class _ColumnSettingRowState extends State<_ColumnSettingRow> {
         color: _column.missing
             ? AppColors.error.withValues(alpha: 0.05)
             : AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
         border: Border.all(
           color: _column.missing ? AppColors.errorAccent : AppColors.border,
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(context.l10n.field, style: _captionStyle),
-                      const SizedBox(height: 3),
-                      Text(
-                        _column.field,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: fieldStyle,
-                      ),
-                    ],
+      child: Material(
+        type: MaterialType.transparency,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(context.l10n.field, style: _captionStyle),
+                        const SizedBox(height: AppSpacing.xxs),
+                        Text(
+                          _column.field,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: fieldStyle,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                if (_column.missing) ...[
-                  const SizedBox(width: 8),
-                  _MissingBadge(),
-                ],
-              ],
-            ),
-            const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: 850,
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 4,
-                      child: TextFormField(
-                        controller: _labelController,
-                        onChanged: (value) =>
-                            _setColumn(_column.copyWith(label: value)),
-                        validator: (value) {
-                          if (value?.trim().isEmpty ?? true) {
-                            return context.l10n.labelRequired;
-                          }
-                          return null;
-                        },
-                        decoration: InputDecoration(
-                          labelText: context.l10n.columnLabel,
-                        ),
-                      ),
-                    ),
+                  if (_column.missing) ...[
                     const SizedBox(width: 8),
-                    SizedBox(
-                      width: 112,
-                      child: _SmallDropdown(
-                        label: context.l10n.type,
-                        value: _valueOrDefault(_column.type, _types),
-                        values: _types,
-                        onChanged: (value) =>
-                            _setColumn(_column.copyWith(type: value)),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 112,
-                      child: _SmallDropdown(
-                        label: context.l10n.align,
-                        value: _valueOrDefault(_column.align, _alignments),
-                        values: _alignments,
-                        onChanged: (value) =>
-                            _setColumn(_column.copyWith(align: value)),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 94,
-                      child: TextFormField(
-                        controller: _widthController,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        keyboardType: TextInputType.number,
-                        onChanged: (value) {
-                          final width = double.tryParse(value);
-                          if (width == null) return;
-                          _setColumn(
-                            _column.copyWith(
-                              width: width.clamp(80, 480).toDouble(),
-                            ),
-                          );
-                        },
-                        decoration: InputDecoration(
-                          labelText: context.l10n.width,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 92,
-                      child: CheckboxListTile(
-                        value: _column.visible,
-                        onChanged: (value) => _setColumn(
-                          _column.copyWith(visible: value ?? true),
-                        ),
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        controlAffinity: ListTileControlAffinity.leading,
-                        title: Text(
-                          context.l10n.show,
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 96,
-                      child: CheckboxListTile(
-                        value: _column.export,
-                        onChanged: (value) =>
-                            _setColumn(_column.copyWith(export: value ?? true)),
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        controlAffinity: ListTileControlAffinity.leading,
-                        title: Text(
-                          context.l10n.exportColumn,
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                      ),
-                    ),
+                    _MissingBadge(),
                   ],
-                ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              AppFormRow(
+                minFieldWidth: 200,
+                maxColumns: 3,
+                children: [
+                  TextFormField(
+                    controller: _labelController,
+                    onChanged: (value) =>
+                        _setColumn(_column.copyWith(label: value)),
+                    validator: (value) {
+                      if (value?.trim().isEmpty ?? true) {
+                        return context.l10n.labelRequired;
+                      }
+                      return null;
+                    },
+                    decoration: InputDecoration(
+                      labelText: context.l10n.columnLabel,
+                    ),
+                  ),
+                  _SmallDropdown(
+                    label: context.l10n.type,
+                    value: _valueOrDefault(_column.type, _types),
+                    values: _types,
+                    onChanged: (value) =>
+                        _setColumn(_column.copyWith(type: value)),
+                  ),
+                  _SmallDropdown(
+                    label: context.l10n.align,
+                    value: _valueOrDefault(_column.align, _alignments),
+                    values: _alignments,
+                    onChanged: (value) =>
+                        _setColumn(_column.copyWith(align: value)),
+                  ),
+                  TextFormField(
+                    controller: _widthController,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) {
+                      final width = double.tryParse(value);
+                      if (width == null) return;
+                      _setColumn(
+                        _column.copyWith(
+                          width: width.clamp(80, 480).toDouble(),
+                        ),
+                      );
+                    },
+                    decoration: InputDecoration(labelText: context.l10n.width),
+                  ),
+                  CheckboxListTile(
+                    value: _column.visible,
+                    onChanged: (value) =>
+                        _setColumn(_column.copyWith(visible: value ?? true)),
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: Text(
+                      context.l10n.show,
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ),
+                  CheckboxListTile(
+                    value: _column.export,
+                    onChanged: (value) =>
+                        _setColumn(_column.copyWith(export: value ?? true)),
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: Text(
+                      context.l10n.exportColumn,
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -811,8 +792,8 @@ class _SmallDropdown extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 10,
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.sm,
         ),
       ),
       items: values

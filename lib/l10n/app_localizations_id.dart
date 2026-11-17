@@ -5288,4 +5288,8 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get studentSaveFailed =>
       'Siswa belum dapat disimpan. Coba lagi. Input Anda tetap disimpan.';
+
+  @override
+  String get operationFailedTryAgain =>
+      'Operasi belum berhasil. Silakan coba lagi.';
 }

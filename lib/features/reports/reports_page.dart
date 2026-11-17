@@ -1,3 +1,6 @@
+import 'package:edukita/widgets/app_inline_error.dart';
+import 'package:flutter/services.dart';
+import 'package:edukita/widgets/app_desktop_workspace.dart';
 import 'dart:io' as io;
 
 import 'package:edukita/core/helper/pageable.dart';
@@ -27,6 +30,15 @@ class ReportsPage extends StatefulWidget {
 class _ReportsPageState extends State<ReportsPage> {
   String _reportSearchQuery = '';
   String _rowSearchQuery = '';
+  final _rowSearchFocus = FocusNode();
+  final _rowSearchController = TextEditingController();
+  @override
+  void dispose() {
+    _rowSearchFocus.dispose();
+    _rowSearchController.dispose();
+    super.dispose();
+  }
+
   AppAuthorizationScope _authScope = AppAuthorizationScope(
     role: AppUserRole.admin,
     permissions: AppMenuAccessRegistry.defaultPermissionsForRole(
@@ -78,50 +90,79 @@ class _ReportsPageState extends State<ReportsPage> {
       );
     }
 
-    return BlocBuilder<ReportDefinitionCubit, ReportDefinitionState>(
-      builder: (context, state) {
-        final selected = state.selectedDefinition;
-        return Scaffold(
-          backgroundColor: AppColors.surfaceSoft,
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            title: DetailBreadcrumbs(
-              items: [
-                DetailBreadcrumbItem(label: context.l10n.menuReports),
-                if (selected != null)
-                  DetailBreadcrumbItem(label: selected.name),
-              ],
-            ),
-          ),
-          body: Column(
-            children: [
-              AppLoadingStrip(isLoading: state.isLoading),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-                  child: Column(
-                    children: [
-                      _ReportDetailHeader(
-                        selected: selected,
-                        rowCount: state.resultRows.length,
-                        subtitle: selected == null
-                            ? context.l10n.reportsChooseDefinition
-                            : context.l10n.reportRowsLoaded(
-                                selected.name,
-                                state.resultRows.length,
-                              ),
-                        actions: _buildHeaderActions(context, state),
-                      ),
-                      const SizedBox(height: 10),
-                      Expanded(child: _buildWorkspace(context, state)),
-                    ],
-                  ),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () =>
+            _rowSearchFocus.requestFocus(),
+      },
+      child: Focus(
+        autofocus: true,
+        child: BlocBuilder<ReportDefinitionCubit, ReportDefinitionState>(
+          builder: (context, state) {
+            final selected = state.selectedDefinition;
+            return Scaffold(
+              backgroundColor: AppColors.surfaceSoft,
+              appBar: AppBar(
+                automaticallyImplyLeading: false,
+                title: DetailBreadcrumbs(
+                  items: [
+                    DetailBreadcrumbItem(label: context.l10n.menuReports),
+                    if (selected != null)
+                      DetailBreadcrumbItem(label: selected.name),
+                  ],
                 ),
               ),
-            ],
-          ),
-        );
-      },
+              body: Column(
+                children: [
+                  AppLoadingStrip(isLoading: state.isLoading),
+                  if (state.error != null)
+                    AppInlineError(
+                      message: context.l10n.operationFailedTryAgain,
+                      onRetry: state.isLoading
+                          ? null
+                          : () => context
+                                .read<ReportDefinitionCubit>()
+                                .loadDefinitions(forceRefresh: true),
+                      onDetails: () => showErrorDetailDialog(
+                        context,
+                        title: context.l10n.operationFailedTryAgain,
+                        error: state.error!,
+                      ),
+                    ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: AppDesktopWorkspace(
+                        minContentHeight:
+                            720 *
+                            (MediaQuery.textScalerOf(context).scale(12) / 12),
+                        header: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _ReportDetailHeader(
+                              selected: selected,
+                              rowCount: state.resultRows.length,
+                              subtitle: selected == null
+                                  ? context.l10n.reportsChooseDefinition
+                                  : context.l10n.reportRowsLoaded(
+                                      selected.name,
+                                      state.resultRows.length,
+                                    ),
+                              actions: _buildHeaderActions(context, state),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                          ],
+                        ),
+                        content: _buildWorkspace(context, state),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -131,14 +172,16 @@ class _ReportsPageState extends State<ReportsPage> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 900) {
+        if (constraints.maxWidth /
+                (MediaQuery.textScalerOf(context).scale(12) / 12) <
+            1100) {
           final listHeight = (constraints.maxHeight * 0.36)
               .clamp(150.0, 220.0)
               .toDouble();
           return Column(
             children: [
               SizedBox(height: listHeight, child: reportList),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.sm),
               Expanded(child: preview),
             ],
           );
@@ -147,7 +190,7 @@ class _ReportsPageState extends State<ReportsPage> {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(width: 280, child: reportList),
+            SizedBox(width: 400, child: reportList),
             const SizedBox(width: 12),
             Expanded(child: preview),
           ],
@@ -202,13 +245,13 @@ class _ReportsPageState extends State<ReportsPage> {
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+            padding: const EdgeInsets.all(AppSpacing.sm),
             child: Row(
               children: [
                 Container(
@@ -216,15 +259,15 @@ class _ReportsPageState extends State<ReportsPage> {
                   height: 30,
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppRadii.panel),
                   ),
                   child: const Icon(
                     Icons.folder_copy_outlined,
                     size: 16,
-                    color: AppColors.primaryDark,
+                    color: AppColors.primaryForeground,
                   ),
                 ),
-                const SizedBox(width: 9),
+                const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
                     context.l10n.availableReports,
@@ -239,7 +282,7 @@ class _ReportsPageState extends State<ReportsPage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             child: TextField(
               onChanged: (value) => setState(() => _reportSearchQuery = value),
               decoration: InputDecoration(
@@ -247,8 +290,8 @@ class _ReportsPageState extends State<ReportsPage> {
                 prefixIcon: const Icon(Icons.search, size: 18),
                 hintText: context.l10n.searchCodeOrName,
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 10,
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.sm,
                 ),
               ),
             ),
@@ -258,7 +301,7 @@ class _ReportsPageState extends State<ReportsPage> {
             child: activeDefinitions.isEmpty
                 ? Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(18),
+                      padding: const EdgeInsets.all(AppSpacing.md),
                       child: Text(
                         context.l10n.noActiveReportSettings,
                         textAlign: TextAlign.center,
@@ -273,7 +316,7 @@ class _ReportsPageState extends State<ReportsPage> {
                 : definitions.isEmpty
                 ? Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(18),
+                      padding: const EdgeInsets.all(AppSpacing.md),
                       child: Text(
                         context.l10n.noReportsMatchSearch,
                         textAlign: TextAlign.center,
@@ -298,6 +341,7 @@ class _ReportsPageState extends State<ReportsPage> {
                         selected: selected,
                         onTap: () {
                           setState(() => _rowSearchQuery = '');
+                          _rowSearchController.clear();
                           context
                               .read<ReportDefinitionCubit>()
                               .selectDefinition(definition);
@@ -341,7 +385,7 @@ class _ReportsPageState extends State<ReportsPage> {
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -350,12 +394,22 @@ class _ReportsPageState extends State<ReportsPage> {
           children: [
             _ReportPreviewHeader(
               definition: selected,
+              searchFocus: _rowSearchFocus,
+              searchController: _rowSearchController,
               onSearchChanged: (value) =>
                   setState(() => _rowSearchQuery = value),
             ),
             if (state.runError != null) ...[
-              const SizedBox(height: 10),
-              _ErrorBanner(error: state.runError!),
+              const SizedBox(height: AppSpacing.sm),
+              AppInlineError(
+                message: context.l10n.operationFailedTryAgain,
+                onRetry: state.isRunning ? null : () => _runReport(context),
+                onDetails: () => showErrorDetailDialog(
+                  context,
+                  title: context.l10n.failedRunReport,
+                  error: state.runError!,
+                ),
+              ),
             ],
             const SizedBox(height: 12),
             Expanded(
@@ -469,6 +523,8 @@ class _ReportsPageState extends State<ReportsPage> {
         title: column.label,
         flex: 1,
         minWidth: column.width,
+        alignment: _alignmentFor(column.align),
+        headerTextAlign: _textAlignFor(column.align),
         cell: (row) => Align(
           alignment: _alignmentFor(column.align),
           child: Text(
@@ -476,7 +532,9 @@ class _ReportsPageState extends State<ReportsPage> {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             textAlign: _textAlignFor(column.align),
-            style: const TextStyle(fontSize: 12, height: 1.25),
+            style: const ['number', 'currency', 'percent'].contains(column.type)
+                ? AppTypography.numericStyle
+                : AppTypography.bodyStyle,
           ),
         ),
       );
@@ -673,12 +731,15 @@ class _ReportDetailHeader extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
         border: Border.all(color: AppColors.border),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final compact = constraints.maxWidth < 760;
+          final compact =
+              constraints.maxWidth /
+                  (MediaQuery.textScalerOf(context).scale(12) / 12) <
+              1000;
           final identity = Row(
             children: [
               Container(
@@ -686,23 +747,21 @@ class _ReportDetailHeader extends StatelessWidget {
                 height: 52,
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(AppRadii.control),
                 ),
                 child: const Icon(
                   Icons.summarize_outlined,
-                  color: AppColors.primaryDark,
+                  color: AppColors.primaryForeground,
                   size: 25,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       definition?.name ?? context.l10n.menuReports,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 17,
@@ -737,12 +796,12 @@ class _ReportDetailHeader extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(child: identity),
-                    const SizedBox(width: 18),
+                    const SizedBox(width: AppSpacing.md),
                     actions,
                   ],
                 ),
               if (definition != null) ...[
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpacing.md),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -789,12 +848,15 @@ class _ReportHeaderMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 180,
+      width: 240 * (MediaQuery.textScalerOf(context).scale(12) / 12),
       constraints: const BoxConstraints(minHeight: 58),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: AppColors.surfaceSoft,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
@@ -804,11 +866,11 @@ class _ReportHeaderMetric extends StatelessWidget {
             height: 32,
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadii.panel),
             ),
-            child: Icon(icon, color: AppColors.primaryDark, size: 16),
+            child: Icon(icon, color: AppColors.primaryForeground, size: 16),
           ),
-          const SizedBox(width: 9),
+          const SizedBox(width: AppSpacing.xs),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -816,24 +878,18 @@ class _ReportHeaderMetric extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: AppTypography.numericStyle,
                 ),
               ],
             ),
@@ -847,10 +903,14 @@ class _ReportHeaderMetric extends StatelessWidget {
 class _ReportPreviewHeader extends StatelessWidget {
   const _ReportPreviewHeader({
     required this.definition,
+    required this.searchFocus,
+    required this.searchController,
     required this.onSearchChanged,
   });
 
   final ReportDefinition definition;
+  final FocusNode searchFocus;
+  final TextEditingController searchController;
   final ValueChanged<String> onSearchChanged;
 
   @override
@@ -862,15 +922,15 @@ class _ReportPreviewHeader extends StatelessWidget {
           height: 30,
           decoration: BoxDecoration(
             color: AppColors.primary.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadii.panel),
           ),
           child: const Icon(
             Icons.preview_outlined,
             size: 16,
-            color: AppColors.primaryDark,
+            color: AppColors.primaryForeground,
           ),
         ),
-        const SizedBox(width: 9),
+        const SizedBox(width: AppSpacing.xs),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -884,7 +944,7 @@ class _ReportPreviewHeader extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSpacing.xxs),
               Text(
                 definition.description?.trim().isNotEmpty == true
                     ? definition.description!
@@ -902,19 +962,27 @@ class _ReportPreviewHeader extends StatelessWidget {
       ],
     );
     final search = TextField(
+      focusNode: searchFocus,
+      controller: searchController,
       onChanged: onSearchChanged,
       decoration: InputDecoration(
         prefixIcon: const Icon(Icons.search, size: 18),
-        hintText: context.l10n.searchLoadedRows,
+        labelText: context.l10n.searchLoadedRows,
       ),
     );
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 560) {
+        if (constraints.maxWidth /
+                (MediaQuery.textScalerOf(context).scale(12) / 12) <
+            760) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [heading, const SizedBox(height: 10), search],
+            children: [
+              heading,
+              const SizedBox(height: AppSpacing.sm),
+              search,
+            ],
           );
         }
         return Row(
@@ -942,61 +1010,73 @@ class _ReportListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.primary.withValues(alpha: 0.12)
-              : AppColors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: selected
-                ? AppColors.primary.withValues(alpha: 0.24)
-                : AppColors.transparent,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.summarize_outlined,
-              size: 18,
-              color: selected ? AppColors.primaryDark : AppColors.textSecondary,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Semantics(
+      selected: selected,
+      child: Tooltip(
+        message: definition.name,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadii.panel),
+            onTap: onTap,
+            child: Ink(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.primary.withValues(alpha: 0.12)
+                    : AppColors.transparent,
+                borderRadius: BorderRadius.circular(AppRadii.panel),
+                border: Border.all(
+                  color: selected
+                      ? AppColors.primary.withValues(alpha: 0.24)
+                      : AppColors.transparent,
+                ),
+              ),
+              child: Row(
                 children: [
-                  Text(
-                    definition.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                      color: selected
-                          ? AppColors.primaryDark
-                          : AppColors.textPrimary,
-                    ),
+                  Icon(
+                    Icons.summarize_outlined,
+                    size: 18,
+                    color: selected
+                        ? AppColors.primaryForeground
+                        : AppColors.textSecondary,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    definition.code,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: AppColors.textSecondary,
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          definition.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                            color: selected
+                                ? AppColors.primaryForeground
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xxs),
+                        Text(
+                          definition.code,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1020,20 +1100,20 @@ class _EmptyReportPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
       ),
       child: Center(
         child: Padding(
-          padding: EdgeInsets.all(compact ? 18 : 32),
+          padding: EdgeInsets.all(compact ? AppSpacing.md : AppSpacing.xl),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 Icons.bar_chart_outlined,
                 size: compact ? 28 : 38,
-                color: AppColors.primaryDark,
+                color: AppColors.primaryForeground,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 title,
                 style: const TextStyle(
@@ -1053,44 +1133,6 @@ class _EmptyReportPanel extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.error});
-
-  final String error;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.08),
-        border: Border.all(color: AppColors.errorAccent),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Row(
-          children: [
-            const Icon(Icons.error_outline, color: AppColors.error, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                error,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.errorDark,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );

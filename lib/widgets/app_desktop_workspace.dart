@@ -7,9 +7,11 @@ class AppDesktopWorkspace extends StatefulWidget {
     super.key,
     required this.header,
     required this.content,
+    this.minContentHeight = 600,
   });
   final Widget header;
   final Widget content;
+  final double minContentHeight;
   @override
   State<AppDesktopWorkspace> createState() => _AppDesktopWorkspaceState();
 }
@@ -28,6 +30,7 @@ class _AppDesktopWorkspaceState extends State<AppDesktopWorkspace> {
       final compact =
           constraints.maxWidth < 960 ||
           constraints.maxHeight < 640 ||
+          constraints.maxHeight < widget.minContentHeight ||
           MediaQuery.textScalerOf(context).scale(12) > 15;
       if (!compact) {
         return Column(
@@ -47,7 +50,10 @@ class _AppDesktopWorkspaceState extends State<AppDesktopWorkspace> {
             children: [
               widget.header,
               SizedBox(
-                height: math.max(600, constraints.maxHeight * 0.9),
+                height: math.max(
+                  widget.minContentHeight,
+                  constraints.maxHeight * 0.9,
+                ),
                 child: widget.content,
               ),
             ],

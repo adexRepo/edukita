@@ -1,3 +1,6 @@
+import 'package:edukita/widgets/app_dialog.dart';
+import 'package:edukita/widgets/app_desktop_workspace.dart';
+import 'package:edukita/widgets/app_form_row.dart';
 import 'package:edukita/core/localization/localization_extension.dart';
 import 'package:edukita/core/router/service_locator.dart';
 import 'package:edukita/features/auth/domain/auth_session_cache.dart';
@@ -159,7 +162,7 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
             context,
             title: context.l10n.teachingActivityError,
             error: state.error!,
-            message: _cleanError(state.error!),
+            message: context.l10n.operationFailedTryAgain,
           );
         }
         final id = state.openActivityId;
@@ -167,108 +170,106 @@ class _TeachingActivityPageState extends State<TeachingActivityPage> {
       },
       child: Scaffold(
         backgroundColor: AppColors.surfaceSoft,
-        body: Column(
-          children: [
-            Padding(
-              padding: AppPageHeaderStyle.pagePadding,
-              child: AppPageHeader(
-                title: context.l10n.teachingActivityTitle,
-                subtitle: context.l10n.teachingActivitySubtitle,
-                trailing: IconButton(
-                  tooltip: context.l10n.refresh,
-                  onPressed: () => _loadScopedActivities(forceRefresh: true),
-                  icon: const Icon(Icons.refresh),
+        body: AppDesktopWorkspace(
+          header: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: AppPageHeaderStyle.pagePadding,
+                child: AppPageHeader(
+                  title: context.l10n.teachingActivityTitle,
+                  subtitle: context.l10n.teachingActivitySubtitle,
+                  trailing: IconButton(
+                    tooltip: context.l10n.refresh,
+                    onPressed: () => _loadScopedActivities(forceRefresh: true),
+                    icon: const Icon(Icons.refresh),
+                  ),
                 ),
               ),
-            ),
-            BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
-              builder: (context, state) =>
-                  AppLoadingStrip(isLoading: state.isLoading),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child:
-                    BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
-                      builder: (context, state) {
-                        return LayoutBuilder(
-                          builder: (context, constraints) {
-                            final compact = constraints.maxWidth < 920;
-                            final stats = _TeachingActivityStats(
-                              activities: state.activities,
-                            );
-                            final leftPanel = _TeachingActivityDatePanel(
-                              focusedMonth: _focusedMonth,
-                              selectedDate: _parseDate(state.date),
-                              activities: state.activities,
-                              sessionDateKeys: state.sessionDateKeys,
-                              onPreviousMonth: () {
-                                final newMonth = DateTime(
-                                  _focusedMonth.year,
-                                  _focusedMonth.month - 1,
-                                );
-                                setState(() => _focusedMonth = newMonth);
-                                _loadScopedActivities(date: _dateKey(newMonth));
-                              },
-                              onNextMonth: () {
-                                final newMonth = DateTime(
-                                  _focusedMonth.year,
-                                  _focusedMonth.month + 1,
-                                );
-                                setState(() => _focusedMonth = newMonth);
-                                _loadScopedActivities(date: _dateKey(newMonth));
-                              },
-                              onDateSelected: (date) {
-                                setState(() {
-                                  _focusedMonth = DateTime(
-                                    date.year,
-                                    date.month,
-                                  );
-                                });
-                                _loadScopedActivities(date: _dateKey(date));
-                              },
-                            );
-                            final rightPanel = _TeachingActivityTablePanel(
-                              authScope: _authScope,
-                              canManageReports: _canManageReports,
-                            );
-
-                            if (compact) {
-                              return ListView(
-                                children: [
-                                  stats,
-                                  const SizedBox(height: 12),
-                                  leftPanel,
-                                  const SizedBox(height: 12),
-                                  SizedBox(height: 560, child: rightPanel),
-                                ],
-                              );
-                            }
-
-                            return Column(
-                              children: [
-                                stats,
-                                const SizedBox(height: 12),
-                                Expanded(
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      SizedBox(width: 286, child: leftPanel),
-                                      const SizedBox(width: 14),
-                                      Expanded(child: rightPanel),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                    ),
+              BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
+                builder: (context, state) =>
+                    AppLoadingStrip(isLoading: state.isLoading),
               ),
+            ],
+          ),
+          content: Padding(
+            padding: const EdgeInsets.all(12),
+            child: BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
+              builder: (context, state) {
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final scale =
+                        MediaQuery.textScalerOf(context).scale(12) / 12;
+                    final compact = constraints.maxWidth / scale < 1100;
+                    final stats = _TeachingActivityStats(
+                      activities: state.activities,
+                    );
+                    final leftPanel = _TeachingActivityDatePanel(
+                      focusedMonth: _focusedMonth,
+                      selectedDate: _parseDate(state.date),
+                      activities: state.activities,
+                      sessionDateKeys: state.sessionDateKeys,
+                      onPreviousMonth: () {
+                        final newMonth = DateTime(
+                          _focusedMonth.year,
+                          _focusedMonth.month - 1,
+                        );
+                        setState(() => _focusedMonth = newMonth);
+                        _loadScopedActivities(date: _dateKey(newMonth));
+                      },
+                      onNextMonth: () {
+                        final newMonth = DateTime(
+                          _focusedMonth.year,
+                          _focusedMonth.month + 1,
+                        );
+                        setState(() => _focusedMonth = newMonth);
+                        _loadScopedActivities(date: _dateKey(newMonth));
+                      },
+                      onDateSelected: (date) {
+                        setState(() {
+                          _focusedMonth = DateTime(date.year, date.month);
+                        });
+                        _loadScopedActivities(date: _dateKey(date));
+                      },
+                    );
+                    final rightPanel = _TeachingActivityTablePanel(
+                      authScope: _authScope,
+                      canManageReports: _canManageReports,
+                    );
+
+                    if (compact) {
+                      return ListView(
+                        children: [
+                          stats,
+                          const SizedBox(height: 12),
+                          leftPanel,
+                          const SizedBox(height: 12),
+                          SizedBox(height: 600 * scale, child: rightPanel),
+                        ],
+                      );
+                    }
+
+                    return Column(
+                      children: [
+                        stats,
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(width: 406, child: leftPanel),
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(child: rightPanel),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -323,7 +324,7 @@ class _TeachingActivityStats extends StatelessWidget {
         label: context.l10n.sessions,
         value: activities.length,
         icon: Icons.event_note_outlined,
-        color: AppColors.primaryDark,
+        color: AppColors.primaryForeground,
       ),
       _TeachingActivityStatCard(
         label: context.l10n.scheduled,
@@ -347,7 +348,12 @@ class _TeachingActivityStats extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth < 680 ? 2 : 4;
+        final columns =
+            constraints.maxWidth /
+                    (MediaQuery.textScalerOf(context).scale(12) / 12) <
+                680
+            ? 2
+            : 4;
         const gap = 8.0;
         final cardWidth =
             (constraints.maxWidth - (gap * (columns - 1))) / columns;
@@ -380,20 +386,20 @@ class _TeachingActivityStatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(minHeight: 76),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadii.panel),
             ),
             child: Icon(icon, color: color, size: 18),
           ),
@@ -405,8 +411,6 @@ class _TeachingActivityStatCard extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w700,
@@ -415,7 +419,7 @@ class _TeachingActivityStatCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '$value',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  style: AppTypography.numericStyle.copyWith(
                     fontSize: AppTypography.sectionTitle,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
@@ -440,113 +444,101 @@ class _TeachingActivityFilters extends StatelessWidget {
     return BlocBuilder<TeachingActivityCubit, TeachingActivityState>(
       builder: (context, state) {
         return Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(AppSpacing.sm),
           decoration: BoxDecoration(
             color: AppColors.white,
             border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadii.panel),
           ),
-          child: Row(
+          child: AppFormRow(
+            maxColumns: 3,
+            minFieldWidth: 240,
             children: [
-              if (!authScope.isTeacher) ...[
-                Expanded(
-                  child: BlocBuilder<TeacherCubit, TeacherState>(
-                    builder: (context, teacherState) {
-                      return AppDropdownButtonFormField<String>(
-                        key: ValueKey('teacher-${state.teacherId ?? ''}'),
-                        initialValue: state.teacherId ?? '',
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: context.l10n.teacher,
+              if (!authScope.isTeacher)
+                BlocBuilder<TeacherCubit, TeacherState>(
+                  builder: (context, teacherState) {
+                    return AppDropdownButtonFormField<String>(
+                      key: ValueKey('teacher-${state.teacherId ?? ''}'),
+                      initialValue: state.teacherId ?? '',
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: context.l10n.teacher,
+                      ),
+                      items: [
+                        DropdownMenuItem<String>(
+                          value: '',
+                          child: Text(context.l10n.allTeachers),
                         ),
-                        items: [
-                          DropdownMenuItem<String>(
-                            value: '',
-                            child: Text(context.l10n.allTeachers),
+                        ...teacherState.teachers.map(
+                          (teacher) => DropdownMenuItem(
+                            value: teacher.id,
+                            child: Text(teacher.fullName),
                           ),
-                          ...teacherState.teachers.map(
-                            (teacher) => DropdownMenuItem(
-                              value: teacher.id,
-                              child: Text(teacher.fullName),
-                            ),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          context.read<TeachingActivityCubit>().loadActivities(
-                            teacherId: value,
-                            clearTeacherId: value == null || value.isEmpty,
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 10),
-              ],
-              Expanded(
-                child: AppDropdownButtonFormField<String>(
-                  key: ValueKey('level-${state.classLevel ?? ''}'),
-                  initialValue: state.classLevel?.toString() ?? '',
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.dashboardLevel,
-                  ),
-                  items: [
-                    DropdownMenuItem<String>(
-                      value: '',
-                      child: Text(context.l10n.allLevels),
-                    ),
-                    ...SchoolLevelOption.values.map(
-                      (level) => DropdownMenuItem(
-                        value: level.level.toString(),
-                        child: Text(level.label),
-                      ),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    context.read<TeachingActivityCubit>().loadActivities(
-                      teacherId: authScope.isTeacher
-                          ? authScope.teacherId
-                          : null,
-                      clearTeacherId: !authScope.isTeacher,
-                      classLevel: int.tryParse(value ?? ''),
-                      clearClassId: true,
-                      clearClassLevel: value == null || value.isEmpty,
+                        ),
+                      ],
+                      onChanged: (value) {
+                        context.read<TeachingActivityCubit>().loadActivities(
+                          teacherId: value,
+                          clearTeacherId: value == null || value.isEmpty,
+                        );
+                      },
                     );
                   },
                 ),
+              AppDropdownButtonFormField<String>(
+                key: ValueKey('level-${state.classLevel ?? ''}'),
+                initialValue: state.classLevel?.toString() ?? '',
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: context.l10n.dashboardLevel,
+                ),
+                items: [
+                  DropdownMenuItem<String>(
+                    value: '',
+                    child: Text(context.l10n.allLevels),
+                  ),
+                  ...SchoolLevelOption.values.map(
+                    (level) => DropdownMenuItem(
+                      value: level.level.toString(),
+                      child: Text(level.label),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  context.read<TeachingActivityCubit>().loadActivities(
+                    teacherId: authScope.isTeacher ? authScope.teacherId : null,
+                    clearTeacherId: !authScope.isTeacher,
+                    classLevel: int.tryParse(value ?? ''),
+                    clearClassId: true,
+                    clearClassLevel: value == null || value.isEmpty,
+                  );
+                },
               ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 180,
-                child: AppDropdownButtonFormField<String>(
-                  key: ValueKey('status-${state.status ?? ''}'),
-                  initialValue: state.status ?? '',
-                  isExpanded: true,
-                  decoration: InputDecoration(labelText: context.l10n.status),
-                  items: [
-                    DropdownMenuItem<String>(
-                      value: '',
-                      child: Text(context.l10n.allStatus),
+              AppDropdownButtonFormField<String>(
+                key: ValueKey('status-${state.status ?? ''}'),
+                initialValue: state.status ?? '',
+                isExpanded: true,
+                decoration: InputDecoration(labelText: context.l10n.status),
+                items: [
+                  DropdownMenuItem<String>(
+                    value: '',
+                    child: Text(context.l10n.allStatus),
+                  ),
+                  ...TeachingActivityStatus.values.map(
+                    (status) => DropdownMenuItem(
+                      value: status,
+                      child: Text(_teachingStatusLabel(context, status)),
                     ),
-                    ...TeachingActivityStatus.values.map(
-                      (status) => DropdownMenuItem(
-                        value: status,
-                        child: Text(_teachingStatusLabel(context, status)),
-                      ),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    context.read<TeachingActivityCubit>().loadActivities(
-                      teacherId: authScope.isTeacher
-                          ? authScope.teacherId
-                          : null,
-                      clearTeacherId: !authScope.isTeacher,
-                      status: value,
-                      clearStatus: value == null || value.isEmpty,
-                    );
-                  },
-                ),
+                  ),
+                ],
+                onChanged: (value) {
+                  context.read<TeachingActivityCubit>().loadActivities(
+                    teacherId: authScope.isTeacher ? authScope.teacherId : null,
+                    clearTeacherId: !authScope.isTeacher,
+                    status: value,
+                    clearStatus: value == null || value.isEmpty,
+                  );
+                },
               ),
             ],
           ),
@@ -695,18 +687,18 @@ class _TeachingActivityDatePanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.panel),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: _buildCalendar(context),
           ),
           const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Row(
               children: [
                 Container(
@@ -714,15 +706,15 @@ class _TeachingActivityDatePanel extends StatelessWidget {
                   height: 34,
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppRadii.panel),
                   ),
                   child: const Icon(
                     Icons.calendar_today_outlined,
-                    color: AppColors.primaryDark,
+                    color: AppColors.primaryForeground,
                     size: 18,
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -731,7 +723,7 @@ class _TeachingActivityDatePanel extends StatelessWidget {
                         context.l10n.selectedDate,
                         style: AppTypography.captionStyle,
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppSpacing.xxs),
                       Text(
                         MaterialLocalizations.of(
                           context,
@@ -761,7 +753,7 @@ class _TeachingActivityDatePanel extends StatelessWidget {
                     semanticsLabel:
                         '${context.l10n.sessions}: ${activities.length}',
                     style: const TextStyle(
-                      color: AppColors.primaryDark,
+                      color: AppColors.primaryForeground,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
@@ -777,7 +769,7 @@ class _TeachingActivityDatePanel extends StatelessWidget {
 
   Widget _buildCalendar(BuildContext context) {
     final days = _calendarDays(focusedMonth);
-    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    final weekDays = MaterialLocalizations.of(context).narrowWeekdays;
 
     return Column(
       children: [
@@ -826,15 +818,16 @@ class _TeachingActivityDatePanel extends StatelessWidget {
         LayoutBuilder(
           builder: (context, constraints) {
             final rows = (days.length / 7).ceil();
-            final cellHeight = (constraints.maxWidth / 7) / 1.08;
+            final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+            final cellHeight = (48 * scale).clamp(48.0, 96.0);
             return SizedBox(
               height: rows * cellHeight,
               child: GridView.builder(
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: days.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 7,
-                  childAspectRatio: 1.08,
+                  mainAxisExtent: cellHeight,
                 ),
                 itemBuilder: (context, index) {
                   final day = days[index];
@@ -843,48 +836,48 @@ class _TeachingActivityDatePanel extends StatelessWidget {
                   final today = _isSameDate(day, DateTime.now());
                   final hasSession = sessionDateKeys.contains(_dateKey(day));
 
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: () => onDateSelected(day),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 120),
-                      margin: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? AppColors.primary
-                            : today
-                            ? AppColors.primaryLight.withValues(alpha: 0.16)
-                            : AppColors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: today && !selected
-                              ? AppColors.primaryLight
+                  return Semantics(
+                    selected: selected,
+                    label: MaterialLocalizations.of(
+                      context,
+                    ).formatFullDate(day),
+                    child: Tooltip(
+                      message: MaterialLocalizations.of(
+                        context,
+                      ).formatFullDate(day),
+                      child: TextButton(
+                        onPressed: () => onDateSelected(day),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          foregroundColor: AppColors.textPrimary,
+                          backgroundColor: selected
+                              ? AppColors.primary
                               : AppColors.transparent,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '${day.day}',
-                            style: TextStyle(
-                              color: selected
-                                  ? AppColors.white
-                                  : AppColors.textPrimary,
-                              fontSize: 12,
-                              fontWeight: selected || today
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppRadii.control,
+                            ),
+                            side: BorderSide(
+                              color: today
+                                  ? AppColors.primaryForeground
+                                  : AppColors.transparent,
                             ),
                           ),
-                          const SizedBox(height: 3),
-                          if (hasSession)
-                            _calendarDot(
-                              selected ? AppColors.white : AppColors.accentBlue,
-                            )
-                          else
-                            const SizedBox(height: 5),
-                        ],
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '${day.day}',
+                              style: AppTypography.numericStyle,
+                            ),
+                            if (hasSession)
+                              const Icon(
+                                Icons.event_available_outlined,
+                                size: 16,
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -894,14 +887,6 @@ class _TeachingActivityDatePanel extends StatelessWidget {
           },
         ),
       ],
-    );
-  }
-
-  Widget _calendarDot(Color color) {
-    return Container(
-      width: 5,
-      height: 5,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }
@@ -961,7 +946,7 @@ class _ActionButtons extends StatelessWidget {
       );
     }
 
-    return Wrap(spacing: 8, runSpacing: 6, children: buttons);
+    return Wrap(spacing: 8, runSpacing: AppSpacing.xs, children: buttons);
   }
 
   Future<void> _showCancelDialog(
@@ -1025,56 +1010,58 @@ class _CancelSessionDialogState extends State<_CancelSessionDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return AppDialog(
       title: AppDialogTitle(context.l10n.cancelSession),
       content: SizedBox(
         width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppDropdownButtonFormField<String>(
-              initialValue: _reason,
-              isExpanded: true,
-              decoration: InputDecoration(labelText: context.l10n.reason),
-              items: CancellationReason.values
-                  .map(
-                    (reason) => DropdownMenuItem(
-                      value: reason,
-                      child: Text(_cancellationReasonLabel(context, reason)),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) setState(() => _reason = value);
-              },
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _notesController,
-              maxLines: 3,
-              decoration: InputDecoration(labelText: context.l10n.notes),
-            ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              value: _replacementRequired,
-              onChanged: (value) =>
-                  setState(() => _replacementRequired = value),
-              title: Text(context.l10n.replacementNeeded),
-              contentPadding: EdgeInsets.zero,
-            ),
-            if (_replacementRequired)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(context.l10n.replacementDate),
-                subtitle: Text(
-                  MaterialLocalizations.of(
-                    context,
-                  ).formatMediumDate(_replacementDate),
-                ),
-                trailing: const Icon(Icons.calendar_month_outlined),
-                onTap: _selectReplacementDate,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppDropdownButtonFormField<String>(
+                initialValue: _reason,
+                isExpanded: true,
+                decoration: InputDecoration(labelText: context.l10n.reason),
+                items: CancellationReason.values
+                    .map(
+                      (reason) => DropdownMenuItem(
+                        value: reason,
+                        child: Text(_cancellationReasonLabel(context, reason)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setState(() => _reason = value);
+                },
               ),
-          ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: _notesController,
+                maxLines: 3,
+                decoration: InputDecoration(labelText: context.l10n.notes),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                value: _replacementRequired,
+                onChanged: (value) =>
+                    setState(() => _replacementRequired = value),
+                title: Text(context.l10n.replacementNeeded),
+                contentPadding: EdgeInsets.zero,
+              ),
+              if (_replacementRequired)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(context.l10n.replacementDate),
+                  subtitle: Text(
+                    MaterialLocalizations.of(
+                      context,
+                    ).formatMediumDate(_replacementDate),
+                  ),
+                  trailing: const Icon(Icons.calendar_month_outlined),
+                  onTap: _selectReplacementDate,
+                ),
+            ],
+          ),
         ),
       ),
       actions: [
@@ -1180,7 +1167,10 @@ class _StatusBadge extends StatelessWidget {
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xxs,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
@@ -1191,7 +1181,7 @@ class _StatusBadge extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          color: color,
+          color: AppColors.textPrimary,
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
@@ -1281,8 +1271,4 @@ bool _isSameDate(DateTime first, DateTime second) {
 
 String _monthTitle(BuildContext context, DateTime date) {
   return MaterialLocalizations.of(context).formatMonthYear(date);
-}
-
-String _cleanError(String value) {
-  return value.replaceFirst('Exception: ', '');
 }

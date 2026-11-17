@@ -5276,4 +5276,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get studentSaveFailed =>
       'Unable to save the student. Try again. Your input has been kept.';
+
+  @override
+  String get operationFailedTryAgain =>
+      'Unable to complete the operation. Please try again.';
 }

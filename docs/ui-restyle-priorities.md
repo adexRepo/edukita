@@ -10,7 +10,7 @@ Theme, komponen bersama, shell/sidebar, title bar Windows, dan dashboard sudah d
 | 2 | Jadwal (`schedule_page.dart`) | Sangat besar | Sekitar 3.456 baris; kalender/timeline, overlay pencarian, sinkronisasi scroll dan form jadwal/acara. Perlu penataan toolbar, sel kalender, dialog, focus, serta pengujian setiap mode. | Workspace, kalender, pencarian dan dialog diterapkan; lihat verifikasi Jadwal |
 | 3 | Detail Aktivitas Mengajar (`teaching_activity_detail_page.dart`) | Besar | Sekitar 3.315 baris; beberapa area data, attendance/nilai/kompetensi, aksi status dan banyak ukuran lokal. Sudah memiliki reflow dan tes fungsional; perlu standardisasi surface, kontrol, dan hierarchy per area. | Workspace detail, rating, kontrol dan dialog diterapkan; lihat verifikasi prioritas 3 |
 | 4 | Siswa: daftar, filter, form, tab detail | Besar | Daftar sekitar 1.671 baris sebelum perubahan, ditambah form/detail terpisah; statistik satu baris, toolbar, dua implementasi dialog filter, form besar, dan row action kecil. | Restyle utama diterapkan; lihat audit dan verifikasi prioritas 4 |
-| 5 | Silabus, daftar Aktivitas Mengajar, Laporan/Definisi Laporan, Users | Sedang–besar | Silabus sekitar 1.470 baris, aktivitas 1.288, laporan 1.098, users 1.043. Perlu keseragaman navigasi bagian, toolbar, empty/error, form dan permission matrix; pertahankan grid data. | Belum restyle khusus |
+| 5 | Silabus, daftar Aktivitas Mengajar, Laporan/Definisi Laporan, Users | Sedang–besar | Silabus sekitar 1.470 baris, aktivitas 1.288, laporan 1.098, users 1.043. Perlu keseragaman navigasi bagian, toolbar, empty/error, form dan permission matrix; pertahankan grid data. | Restyle khusus diterapkan; lihat audit prioritas 5 |
 | 6 | Settings, Guru/detail/form, Sekolah/Kelas, Parameter | Sedang | Settings dan laporan memakai panel/master-detail; guru memiliki masalah error yang mengganti data; sekolah/parameter memiliki reflow awal. Perlu perbaikan yang lebih terlokalisasi. | Belum restyle khusus |
 | 7 | Program Bantuan, Aturan Bantuan, Lokasi Mengajar, Strategi, Wali, Login/Ganti Password | Kecil–sedang | Lebih sedikit area mandiri; mayoritas memperoleh manfaat dari komponen bersama. Perlu spacing, hit target, label, dialog dan state per halaman. | Belum restyle khusus |
 
@@ -58,7 +58,7 @@ Dialog sekunder pemilihan aturan, konfirmasi aturan kuota nol, pemilihan kandida
 - Dua tes rendering preview akhir daftar/detail dengan font Poppins: lulus. SDK aktual Flutter 3.47.4 / Dart 3.13.3; versi persis pada panduan 3.41.6 belum diuji.
 - Pengujian widget text scaling bukan pengganti uji DPI Windows, multi-monitor, Narrator, file picker asli, atau pembayaran/distribusi nyata.
 
-Status Bantuan: sudah commit `126d391`, belum push. Perubahan lokal awal pada `analysis_options.yaml` dan `pubspec.lock` tetap dipertahankan.
+Status Bantuan: sudah commit `126d391` dan ikut di-push bersama tahap Jadwal. Perubahan lokal awal pada `analysis_options.yaml` dan `pubspec.lock` tetap dipertahankan.
 
 ## Prioritas 2 — Jadwal
 
@@ -147,7 +147,7 @@ Halaman daftar Aktivitas Mengajar tetap menjadi lingkup prioritas 5. Tidak menam
 - git diff --check: bersih.
 - flutter build windows --release --no-pub berhasil (67.9 detik), output build/windows/x64/runner/Release/edukita.exe.
 
-Status: perubahan prioritas 3 belum commit/push. Perubahan lokal awal `analysis_options.yaml` dan `pubspec.lock` tetap dipertahankan.
+Status: perubahan prioritas 3 sudah masuk commit gabungan `c073c90` bersama prioritas 4; belum di-push pada tahap ini. Perubahan lokal awal `analysis_options.yaml` dan `pubspec.lock` tetap dipertahankan.
 
 ## Prioritas 4 — Siswa
 
@@ -200,4 +200,50 @@ Dialog sekunder ujian/wali/aktivitas/catatan tidak ditulis ulang seluruh workflo
 - git diff --check bersih. Tidak ada dependency-boundary script khusus; import/diff diperiksa, shared theme tidak bergantung pada feature.
 - flutter build windows --release --no-pub berhasil (71.8 detik), output build/windows/x64/runner/Release/edukita.exe.
 
-Status: prioritas 3 dan 4 belum commit/push. Perubahan lokal awal `analysis_options.yaml` dan `pubspec.lock` tetap dipertahankan.
+Status: prioritas 3 dan 4 sudah di-commit bersama sebagai `c073c90` (Restyle teaching reports and student desktop workflows); belum di-push pada tahap ini. Perubahan lokal awal `analysis_options.yaml` dan `pubspec.lock` tetap dipertahankan.
+
+## Prioritas 5 — Kurikulum dan workspace operasional
+
+Tanggal implementasi: 17 November 2026. Commit prioritas 3/4 diselesaikan terlebih dahulu sebagai `c073c90`. Perubahan lokal awal `analysis_options.yaml` dan `pubspec.lock` tidak dimasukkan ke commit dan tetap dipertahankan.
+
+### Audit sebelum implementasi
+
+Design system tetap Material 3, Poppins, turquoise Edukita, semantic AppColors/AppTypography dan skala AppSpacing 4/8/12/16/24/32/48. Tidak menambahkan UI framework, dependency, palette atau dark mode. Inventaris yang diperiksa: enam daftar kurikulum dan navigator; lima dialog kurikulum dan dialog Strategi yang dipanggil dari sana; daftar Aktivitas Mengajar, statistik, kalender, filter dan konfirmasi pembatalan; master-detail Laporan beserta pencarian/ekspor; tabel Definisi Laporan dan editor metadata/SQL/kolom; daftar Pengguna, form pengguna dan matriks izin per peran. Cubit, repository, cache, model, auth scope dan callback terkait ditelusuri tanpa mengubah kontraknya.
+
+| Severity | Lokasi | Masalah | Rekomendasi / dampak yang diterapkan |
+|---|---|---|---|
+| HIGH | Toolbar, filter, header izin dan editor laporan | Row/field tetap menyempit dan berpotensi overflow pada jendela kecil atau teks besar | Workspace dapat digulir; kelompok field reflow menurut lebar efektif; metadata dan editor tetap terjangkau |
+| HIGH | ReportDefinitionFormDialog | Tidak ada saving guard lokal selama onSave; pengguna dapat submit ulang atau dismiss saat await | Guard sinkron sebelum await, busy state, PopScope, input terkunci, close/Cancel/Save nonaktif; error mempertahankan draft |
+| HIGH | Kalender, aksi tabel dan checkbox izin | Target 28–32 px dan tanggal hanya berupa InkWell; checkbox dapat berubah saat penyimpanan izin | Target minimal 40 px, tombol tanggal native dengan Enter/fokus/semantics, matrix nonaktif selama simpan |
+| HIGH | Status dan judul dialog | Foreground status memakai success/warning terang; style dialog khusus tidak menentukan font project | Warna status sebagai latar/border dengan teks kontras tinggi; judul dan konten dialog menggunakan Poppins eksplisit |
+| MEDIUM | Error daftar kurikulum/pengguna/definisi | Error mengganti tabel atau menampilkan exception sebagai pesan utama | Banner operasional lokal, Retry dan detail diagnostik terpisah; data lama tetap ditampilkan |
+| MEDIUM | Pencarian dan form | Placeholder menjadi label dan shortcut desktop belum konsisten | Label pencarian terlihat, Ctrl+F, Ctrl+S pada form, Escape tetap aman saat tidak sibuk |
+| LOW | Spacing, radii dan hover/focus surface | Nilai padding acak, radius dan ink tertutup background | Token spacing/radius; inner surface editor mengikuti 16−12; nav/daftar laporan memakai Material/Ink agar focus/hover terlihat |
+
+### Perubahan dan file utama
+
+- `syllabus_page.dart`: navigator enam tujuan tetap, aksi dan data-table tetap; workspace adaptif, Ctrl+F, error persisten dan status lokal kontras tinggi. Kolom aksi menyediakan ruang untuk target 40 px; data terpotong tetap memiliki tooltip yang sudah ada.
+- `subject_form_dialog.dart` dan `strategy_form_dialog.dart`: field terkait memakai AppFormRow, form tetap scroll, shortcut simpan dan penguncian saat busy. Validasi, attachment dan penyimpanan tetap handler yang sama.
+- `teaching_activity_page.dart`: filter adaptif tanpa perubahan argumen scope guru/kelas/status, kalender berlabel tanggal lokal dan dapat diaktifkan keyboard, statistik tabular yang dapat wrap, dialog pembatalan scroll. Lifecycle Start/View/Cancel tetap.
+- `reports_page.dart`: master-detail dan export tetap, pencarian baris memiliki Ctrl+F/controller, error refresh/run mempertahankan hasil lama, table mengikuti alignment yang dikonfigurasi dan angka memakai tabular figures. Minimum viewport pada layout sempit mengikuti text scaling agar preview/error tidak saling mendesak.
+- `report_definitions_page.dart` dan `report_definition_form_dialog.dart`: toolbar/search/status konsisten, editor metadata/SQL/kolom dapat digulir; field kolom memakai wrap alih-alih horizontal scroll 850 px; duplicate submit/dismiss diblok selama save dan deteksi.
+- `users_page.dart`: data tetap terlihat saat error, tab sekunder dapat wrap, form pengguna adaptif, checkbox izin memiliki nama menu+aksi dan minimum 40 px. Pergantian peran dan checkbox dinonaktifkan ketika izin disimpan.
+- Shared: `app_form_row.dart`, `app_form_scope.dart`, `app_inline_error.dart`; AppDialogTitle menerima enabled; AppDesktopWorkspace menerima minimum tinggi konten opsional (default lama tetap). Theme dialog menentukan keluarga font; ARB EN/ID dan generated output diperbarui.
+
+### Kontrak, risiko dan pekerjaan yang tidak diubah
+
+Tidak ada perubahan Cubit, repository, SQL/schema, cache, route, parser SQL, model, password hashing, forced password change, grants, otorisasi aksi, teacher ownership, lifecycle sesi, query laporan atau format ekspor Excel. Perbandingan fungsi dengan snapshot sebelum perubahan menunjukkan filter baris/kolom, ekspor/HTML/nama file, pemilihan guru, dependensi izin, generator password dan refresh cache identik setelah whitespace/trailing comma formatter dinormalisasi.
+
+Simpan form tetap eksplisit; tidak menambahkan auto-save atau sinkronisasi remote. Struktur feature besar yang sudah ada tidak dipecah seluruhnya dalam restyle ini. Dialog Strategi masih memakai lifecycle file yang sudah ada; audit/migrasi data access berkas di luar scope visual ini. Sorting AppTable tetap pada data yang sedang dimuat; tidak mengubah query menjadi global sorting baru. Alur Export Excel, native file picker/attachment, pembatalan sesi ke database, DPI Windows fisik, multi-monitor dan Narrator belum diuji end-to-end. Dark mode belum tersedia dan tidak diklaim ditambahkan. Fixture dan preview hanya memakai data sintetis dengan session terisolasi di .dart_tool.
+
+### Verifikasi prioritas 5
+
+- Widget matrix lima halaman + panel izin: 560x600 (ruang konten setelah sidebar), 800x600, 1280x800, 1920x1080 dan 2560x1080; text scaling 100/125/150/200%; EN/ID. Text scaling widget bukan pengganti uji display scaling Windows fisik.
+- Tujuh form: 800x600 pada keempat skala, termasuk tab pengaturan kolom dan posisi label mengambang terhadap viewport. Enam view kurikulum diperiksa pada teks 200%.
+- Interaksi: Ctrl+F, search/filter lokal, Enter pada tanggal kalender, target tanggal minimal 40 px, aturan view pada matriks izin, busy/disabled, Escape saat saving, gagal save mempertahankan draft, refresh error mempertahankan data dan hasil laporan 1.000 baris sintetis.
+- 33 tes widget baru lulus pada iterasi terarah. Preview sintetis dengan Poppins/MaterialIcons diperiksa pada 1280x800 @100% dan 800x600 @200%; satu tes render tambahan lulus.
+- Pemeriksaan import dan diff: shared/core tidak mengimpor implementasi feature; tidak tersedia dependency-boundary script khusus.
+
+Status prioritas 5: perubahan lokal, belum commit/push.
+
+Pemeriksaan akhir: formatter 18 file Dart, 0 perubahan; flutter analyze --no-pub tanpa issue (20.3 detik); flutter test --no-pub, 210 tes lulus; tes terarah prioritas 5, 33 lulus. Kombinasi textPrimary/primary 7.73:1, primaryForeground/surface 5.69:1 dan textSecondary/surface 4.62:1 memenuhi AA teks normal; ini pemeriksaan pasangan token terkait, bukan sertifikasi aksesibilitas menyeluruh. git diff --check bersih. flutter build windows --release --no-pub final berhasil (76.3 detik), menghasilkan build/windows/x64/runner/Release/edukita.exe. Satu tes render tambahan final lulus; judul Poppins, status dan label mengambang diperiksa kembali. Tidak ada perubahan kode setelah verifikasi ini.

@@ -1,3 +1,5 @@
+import 'package:edukita/widgets/app_form_scope.dart';
+import 'package:edukita/widgets/app_form_row.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -13,14 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
 Widget _twoColumnFormRow(Widget first, Widget second) {
-  return Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Expanded(child: first),
-      const SizedBox(width: 12),
-      Expanded(child: second),
-    ],
-  );
+  return AppFormRow(children: [first, second]);
 }
 
 class StrategyFormDialog extends StatefulWidget {
@@ -74,89 +69,94 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AppDialog(
-      title: AppDialogTitle(
-        widget.strategy == null
-            ? context.l10n.addStrategy
-            : context.l10n.editStrategy,
-      ),
-      content: SizedBox(
-        width: 680,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _twoColumnFormRow(
+    return AppFormScope(
+      busy: _isSaving,
+      onSave: _submit,
+      child: AppDialog(
+        title: AppDialogTitle(
+          widget.strategy == null
+              ? context.l10n.addStrategy
+              : context.l10n.editStrategy,
+          enabled: !_isSaving,
+        ),
+        content: SizedBox(
+          width: 680,
+          child: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _twoColumnFormRow(
+                    CommonFormWidgets.textField(
+                      label: context.l10n.code,
+                      value: code,
+                      onSaved: (value) =>
+                          code = value?.isEmpty ?? true ? null : value,
+                      validator: (_) => null,
+                      isRequired: false,
+                    ),
+                    CommonFormWidgets.textField(
+                      label: context.l10n.name,
+                      value: name,
+                      onSaved: (value) => name = value ?? '',
+                      validator: (value) {
+                        if (value?.trim().isEmpty ?? true) {
+                          return context.l10n.strategyNameRequired;
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   CommonFormWidgets.textField(
-                    label: context.l10n.code,
-                    value: code,
-                    onSaved: (value) =>
-                        code = value?.isEmpty ?? true ? null : value,
+                    label: context.l10n.description,
+                    value: description,
+                    onSaved: (value) => description =
+                        value?.trim().isEmpty ?? true ? null : value?.trim(),
+                    maxLines: 3,
                     validator: (_) => null,
                     isRequired: false,
                   ),
+                  const SizedBox(height: 16),
                   CommonFormWidgets.textField(
-                    label: context.l10n.name,
-                    value: name,
-                    onSaved: (value) => name = value ?? '',
-                    validator: (value) {
-                      if (value?.trim().isEmpty ?? true) {
-                        return context.l10n.strategyNameRequired;
-                      }
-                      return null;
-                    },
+                    label: context.l10n.rule,
+                    value: rule,
+                    onSaved: (value) =>
+                        rule = value?.isEmpty ?? true ? null : value,
+                    maxLines: 4,
+                    validator: (_) => null,
+                    isRequired: false,
                   ),
-                ),
-                const SizedBox(height: 14),
-                CommonFormWidgets.textField(
-                  label: context.l10n.description,
-                  value: description,
-                  onSaved: (value) => description =
-                      value?.trim().isEmpty ?? true ? null : value?.trim(),
-                  maxLines: 3,
-                  validator: (_) => null,
-                  isRequired: false,
-                ),
-                const SizedBox(height: 14),
-                CommonFormWidgets.textField(
-                  label: context.l10n.rule,
-                  value: rule,
-                  onSaved: (value) =>
-                      rule = value?.isEmpty ?? true ? null : value,
-                  maxLines: 4,
-                  validator: (_) => null,
-                  isRequired: false,
-                ),
-                const SizedBox(height: 14),
-                _buildSampleFilePicker(),
-              ],
+                  const SizedBox(height: 16),
+                  _buildSampleFilePicker(),
+                ],
+              ),
             ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : () => Navigator.pop(context),
+            child: Text(context.l10n.buttonCancel),
+          ),
+          ElevatedButton(
+            onPressed: _isSaving ? null : _submit,
+            child: _isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(context.l10n.buttonSave),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: Text(context.l10n.buttonCancel),
-        ),
-        ElevatedButton(
-          onPressed: _isSaving ? null : _submit,
-          child: _isSaving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(context.l10n.buttonSave),
-        ),
-      ],
     );
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving || !_formKey.currentState!.validate()) return;
 
     final action = widget.strategy == null
         ? SubmissionAction.create
@@ -225,7 +225,7 @@ class _StrategyFormDialogState extends State<StrategyFormDialog> {
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           OutlinedButton.icon(
             onPressed: _isSaving ? null : _pickSampleFile,
             icon: const Icon(Icons.upload_file, size: 16),

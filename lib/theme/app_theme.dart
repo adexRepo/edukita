@@ -661,11 +661,13 @@ class AppTheme {
         borderRadius: BorderRadius.circular(AppRadii.dialog),
       ),
       titleTextStyle: const TextStyle(
+        fontFamily: AppTypography.fontFamily,
         color: AppColors.textPrimary,
         fontSize: AppTypography.dialogTitle,
         fontWeight: FontWeight.w700,
       ),
       contentTextStyle: const TextStyle(
+        fontFamily: AppTypography.fontFamily,
         color: AppColors.textPrimary,
         fontSize: AppTypography.body,
         height: 1.45,
